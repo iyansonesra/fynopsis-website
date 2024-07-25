@@ -12,7 +12,6 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 import { Separator } from "@/components/ui/separator"
 import RecentNews from "@/components/RecentNews"
 
-
 export default function Dashboard() {
     return (
         <div className=" flex flex-row h-full w-full p-2 lg:p-4 xl:p-8 2xl:p-10 gap-8">
