@@ -15,66 +15,49 @@ import RecentNews from "@/components/RecentNews"
 export default function Dashboard() {
     
     return (
-        <div className=" flex flex-row h-full w-full p-2 lg:p-4 xl:p-8 2xl:p-10 gap-8">
-            <div className="smallerCompAndRecentNews flex-[5]  flex flex-col gap-8">
-                <div className="smallerComp flex-[1] rounded-2xl flex flex-row gap-8">
+        <div className=" flex flex-row h-screen w-full p-2 lg:p-4 xl:p-8 2xl:p-10 gap-8">
+            <div className="smallerCompAndRecentNews flex-[5]  flex flex-col gap-8 h-[90%]">
+                <div className="smallerComp flex-[1] rounded-2xl flex flex-row gap-8 h-[30%]">
                     <div className="firstComp flex-[2] bg-white rounded-2xl border"></div>
                     <div className="secondComp flex-[1] bg-white rounded-2xl border"></div>
                 </div>
-                <div className="recentNews flex-[2] 2xl:flex-[3] rounded-2xl border bg-white flex flex-col h-[30%]">
-                    <div className="flex flex-[1] items-center pl-4 2xl:pl-8">
+                <div className="recentNews flex-[2] 2xl:flex-[3] rounded-2xl border bg-white flex flex-col h-[70%]">
+                    <div className="flex flex-[1] items-center pl-4 2xl:pl-8 h-[3%]">
                         <h1 className="text-xs 2xl:text-2xl font-semibold">Recent News</h1>
 
                     </div>
                     <Separator className="decoration-black w-[100%]" />
-                    <div className="flex-[4] 2xl:flex-[5] rounded-2xl flex flex-col overflow-hidden relative">
+                    <div className="flex-[5] rounded-b-2xl 2xl:flex-[5] flex flex-col overflow-hidden relative">
                         <ScrollArea className="h-full w-full 2xl:px-4"> {/* Wrap content in ScrollArea */}
-                            <RecentNews
-                                image={""}
-                                stockName={"AAPL"}
-                                stockDescription={"Apple Inc. is a multinational technology company specializing in consumer electronics, software, and online services."}
-                                width={"100%"}
-                                imageType={"circular"}
-                            />
+                           <RecentNews image={""} stockName={"AAPL"} stockDescription={"Apple Inc. is a multinational technology company specializing in consumer electronics, software, and online services."} width={""} imageType={"circular"}/>
+                            <RecentNews image={""} stockName={"AAPL"} stockDescription={"Apple Inc. is a multinational technology company specializing in consumer electronics, software, and online services."} width={""} imageType={"circular"}/>
+                            <RecentNews image={""} stockName={"AAPL"} stockDescription={"Apple Inc. is a multinational technology company specializing in consumer electronics, software, and online services."} width={""} imageType={"circular"}/>
+                            <RecentNews image={""} stockName={"AAPL"} stockDescription={"Apple Inc. is a multinational technology company specializing in consumer electronics, software, and online services."} width={""} imageType={"circular"}/>
+                            <RecentNews image={""} stockName={"AAPL"} stockDescription={"Apple Inc. is a multinational technology company specializing in consumer electronics, software, and online services."} width={""} imageType={"circular"}/>
+                            <RecentNews image={""} stockName={"AAPL"} stockDescription={"Apple Inc. is a multinational technology company specializing in consumer electronics, software, and online services."} width={""} imageType={"circular"}/>
+                            <RecentNews image={""} stockName={"AAPL"} stockDescription={"Apple Inc. is a multinational technology company specializing in consumer electronics, software, and online services."} width={""} imageType={"circular"}/>
+                            <RecentNews image={""} stockName={"AAPL"} stockDescription={"Apple Inc. is a multinational technology company specializing in consumer electronics, software, and online services."} width={""} imageType={"circular"}/>
+                            <RecentNews image={""} stockName={"AAPL"} stockDescription={"Apple Inc. is a multinational technology company specializing in consumer electronics, software, and online services."} width={""} imageType={"circular"}/>
+                            <RecentNews image={""} stockName={"AAPL"} stockDescription={"Apple Inc. is a multinational technology company specializing in consumer electronics, software, and online services."} width={""} imageType={"circular"}/>
 
-                            <RecentNews
-                                image={""}
-                                stockName={"AAPL"}
-                                stockDescription={"Apple Inc. is a multinational technology company specializing in consumer electronics, software, and online services."}
-                                width={"100%"}
-                                imageType={"circular"}
-                            />
 
-                            <RecentNews
-                                image={""}
-                                stockName={"AAPL"}
-                                stockDescription={"Apple Inc. is a multinational technology company specializing in consumer electronics, software, and online services."}
-                                width={"100%"}
-                                imageType={"circular"}
-                            />
 
-                            <RecentNews
-                                image={""}
-                                stockName={"AAPL"}
-                                stockDescription={"Apple Inc. is a multinational technology company specializing in consumer electronics, software, and online services."}
-                                width={"100%"}
-                                imageType={"circular"}
-                            />
+
                         </ScrollArea>
 
-                        <div className="absolute bottom-0 left-0 right-0 h-10 bg-gradient-to-t from-white to-transparent pointer-events-none"></div>
+                        <div className="absolute rounded-2xl bottom-0 left-0 right-0 h-10 bg-gradient-to-t from-white to-transparent pointer-events-none"></div>
 
                     </div>
 
                     
                 </div>
             </div>
-            <div className="companyWatch flex-[3] rounded-2xl border flex bg-white flex-col h-[100%]">
-                <div className="flex-[1] rounded-2xl bg-white flex flex-col items-align justify-center pl-4 2xl:pl-8">
+            <div className="companyWatch rounded-2xl flex-[3]  border flex bg-white flex-col h-[90%]">
+                <div className="flex-[1] rounded-2xl bg-white flex flex-col items-align justify-center pl-4 2xl:pl-8 h-[5%]">
                     <h1 className="text-xs 2xl:text-2xl font-semibold">Companies to Watch</h1>
                 </div>
                 <Separator className="decoration-black w-[100%]" />
-                <div className="flex-[1] flex flex-row">
+                <div className="flex-[1] flex flex-row h-[5%]">
                     <div className="flex-[1] flex items-center justify-center">
                         <h1 className="text-xs 2xl:text-lg font-med text-center">New Entrants</h1>
                     </div>
@@ -89,40 +72,23 @@ export default function Dashboard() {
                     </div>
                 </div>
                 <Separator className="decoration-black w-[100%]" />
-                <div className="flex-[7] 2xl:flex-[8] rounded-2xl flex flex-col overflow-hidden relative">
-                    <ScrollArea className="h-full w-full 2xl:px-4"> {/* Wrap content in ScrollArea */}
-                        <NewsListing
-                            image={""}
-                            stockName={"AAPL"}
-                            stockDescription={"Apple Inc. is a multinational technology company specializing in consumer electronics, software, and online services."}
-                            width={"100%"}
-                            imageType={"circular"}
-                        />
-
-                        <NewsListing
-                            image={""}
-                            stockName={"AAPL"}
-                            stockDescription={"Apple Inc. is a multinational technology company specializing in consumer electronics, software, and online services."}
-                            width={"100%"}
-                            imageType={"circular"}
-                        />
-                           <NewsListing
-                            image={""}
-                            stockName={"AAPL"}
-                            stockDescription={"Apple Inc. is a multinational technology company specializing in consumer electronics, software, and online services."}
-                            width={"100%"}
-                            imageType={"circular"}
-                        />
-
+                <div className="flex-[7] 2xl:flex-[8] rounded-b-2xl flex flex-col overflow-hidden relative h-[90%]">
+                    <ScrollArea className="h-full w-full xl:pr-4 2xl:px-4"> {/* Wrap content in ScrollArea */}
+                        <NewsListing image={""} stockName={"AAPL"} stockDescription={"Apple Inc. is a multinational technology company specializing in consumer electronics, software, and online services. "} width={""} imageType={"circular"}/>
+                        <NewsListing image={""} stockName={"AAPL"} stockDescription={"Apple Inc. is a multinational technology company specializing in consumer electronics, software, and online services. "} width={""} imageType={"circular"}/>
+                        <NewsListing image={""} stockName={"AAPL"} stockDescription={"Apple Inc. is a multinational technology company specializing in consumer electronics, software, and online services. "} width={""} imageType={"circular"}/>
+                        <NewsListing image={""} stockName={"AAPL"} stockDescription={"Apple Inc. is a multinational technology company specializing in consumer electronics, software, and online services. "} width={""} imageType={"circular"}/>
+                        <NewsListing image={""} stockName={"AAPL"} stockDescription={"Apple Inc. is a multinational technology company specializing in consumer electronics, software, and online services. "} width={""} imageType={"circular"}/>
+                        <NewsListing image={""} stockName={"AAPL"} stockDescription={"Apple Inc. is a multinational technology company specializing in consumer electronics, software, and online services. "} width={""} imageType={"circular"}/>
+                        <NewsListing image={""} stockName={"AAPL"} stockDescription={"Apple Inc. is a multinational technology company specializing in consumer electronics, software, and online services. "} width={""} imageType={"circular"}/>
+                        <NewsListing image={""} stockName={"AAPL"} stockDescription={"Apple Inc. is a multinational technology company specializing in consumer electronics, software, and online services. "} width={""} imageType={"circular"}/>
                         
-
-                    
 
                      
                  
                     </ScrollArea>
 
-                    <div className="absolute bottom-29 left-0 right-0 h-20 bg-gradient-to-t from-white to-transparent pointer-events-none"></div>
+                    <div className="absolute rounded-2xl bottom-0 left-0 right-0 h-20 bg-gradient-to-t from-white to-transparent pointer-events-none"></div>
 
 
                 </div>
