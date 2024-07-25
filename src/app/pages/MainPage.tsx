@@ -33,16 +33,57 @@ import {
 import { Input } from "@/components/ui/input"
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
 import logo from '../assets/fynopsis_noBG.png'
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import Dashboard from "./Dashboard";
 import StockSearch from "./StockSearch";
 import Settings from "./Settings";
 import { useAuthenticator } from '@aws-amplify/ui-react';
+import { fetchUserAttributes, FetchUserAttributesOutput } from 'aws-amplify/auth';
+import { fetchAuthSession } from 'aws-amplify/auth'
+
 
 export default function Home() {
 
   const [selectedTab, setSelectedTab] = useState("dashboard");
-  const { signOut } = useAuthenticator();
+  const { user, signOut } = useAuthenticator((context) => [context.user]);
+  const [userAttributes, setUserAttributes] = useState<FetchUserAttributesOutput | null>(null);
+  const [authToken, setAuthToken] = useState<String>("");
+  const [accessToken, setAccessToken] = useState<String>("");
+
+
+  useEffect(() => {
+       if (user) {
+           handleFetchUserAttributes();
+           handleFetchAuthSession();
+       }
+  }, [user]);
+
+
+  async function handleFetchUserAttributes() {
+      try {
+          const attributes = await fetchUserAttributes();
+          setUserAttributes(attributes);
+          console.log(attributes);
+      } catch (error) {
+          console.log(error);
+      }
+  }
+  
+   async function handleFetchAuthSession() {
+       try {
+           const token = (await fetchAuthSession()).tokens?.idToken?.toString();
+           const access = (await fetchAuthSession()).tokens?.accessToken?.toString();
+           if (!token || !access) {
+               throw new Error("Token is null or undefined");
+           }
+           setAccessToken(access);
+           setAuthToken(token);
+           console.log("idToken: " + token);
+           console.log("accessToken: " + access);
+       } catch (error) {
+           console.log(error);
+       }
+   }
 
   const renderSelectedScreen = () => {
     switch (selectedTab) {
@@ -57,6 +98,8 @@ export default function Home() {
     }
   }
 
+  
+
   return (
     <div className="grid max-h-screen w-full md:grid-cols-[220px_1fr] lg:grid-cols-[250px_1fr] xl:grid-cols-[250px_1fr] 2xl:grid-cols-[350px_1fr] overflow-hidden">
       <div className="hidden border-r bg-muted/40 md:block">
@@ -65,7 +108,7 @@ export default function Home() {
             <Link href="/" className="flex items-center gap-2 font-semibold">
             <img src={logo.src} alt="Fynopsis Logo" className="h-8 w-8 2xl:h-14 2xl:w-14" />
 
-              <span className="sm-text-lg lg:text-m 2xl:text-2xl">Iyan Sonesra</span>
+              <span className="sm-text-lg lg:text-m 2xl:text-2xl">{userAttributes?.given_name} {userAttributes?.family_name}</span>
             </Link>
             <Button variant="outline" size="icon" className="ml-auto h-8 w-8 2xl:[h-12 w-12]">
               <Bell className="h-4 w-4 2xl:h-6 w-6" />
@@ -207,7 +250,7 @@ export default function Home() {
             <form>
               <div className="relative">
                 <div className = "flex flex-col gap-0">
-                    <h1 className = "font-semibold text-med mb-0 2xl:text-2xl">Hello, Iyan!</h1>
+                    <h1 className = "font-semibold text-med mb-0 2xl:text-2xl">Hello, {userAttributes?.given_name}!</h1>
                     <h1 className = "text-sm -mt-1 text-gray-700 2xl:text-lg">Tuesday, July 6th, 2024</h1>
                 </div>
               </div>
@@ -223,10 +266,10 @@ export default function Home() {
             <DropdownMenuContent align="end">
               <DropdownMenuLabel>My Account</DropdownMenuLabel>
               <DropdownMenuSeparator />
-              <DropdownMenuItem>Settings</DropdownMenuItem>
-              <DropdownMenuItem>Support</DropdownMenuItem>
+              <DropdownMenuItem onClick={signOut} style={{ cursor: 'pointer' }}>Settings</DropdownMenuItem>
+              <DropdownMenuItem onClick={signOut} style={{ cursor: 'pointer' }}>Support</DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={signOut}>Logout</DropdownMenuItem>
+              <DropdownMenuItem onClick={signOut} style={{ cursor: 'pointer' }}>Logout</DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </header>

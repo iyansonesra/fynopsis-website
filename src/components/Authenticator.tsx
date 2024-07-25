@@ -100,7 +100,9 @@ export const Authenticator: React.FC<PropsWithChildren> = ({ children }) => {
     {/* socialProviders={['google']} */}
      <AmplifyAuthenticator 
        variation="modal"
-       signUpAttributes={["name"]}
+       signUpAttributes={["given_name", 
+        "family_name"
+       ]}
        formFields={{
          signIn: {
            username: {
@@ -109,14 +111,18 @@ export const Authenticator: React.FC<PropsWithChildren> = ({ children }) => {
            },
          },
          signUp: {
-           username: {
-             label: "Email",
-             placeholder: "Enter your email",
-           },
-           name: {
-             label: "First name",
-             placeholder: "Enter your first name",
-           },
+            given_name: {
+                label: "First name",
+                placeholder: "Enter your first name",
+            },
+            family_name: {
+                label: "Last name",
+                placeholder: "Enter your last name",
+            },
+            username: {
+                label: "Email",
+                placeholder: "Enter your email",
+            }
          },
        }}
      >
