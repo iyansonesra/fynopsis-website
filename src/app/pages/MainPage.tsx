@@ -40,24 +40,45 @@ import Settings from "./Settings";
 import { useAuthenticator } from '@aws-amplify/ui-react';
 import { fetchUserAttributes, FetchUserAttributesOutput } from 'aws-amplify/auth';
 import { fetchAuthSession } from 'aws-amplify/auth'
-
+import { get } from 'aws-amplify/api';
 
 export default function Home() {
 
   const [selectedTab, setSelectedTab] = useState("dashboard");
   const { user, signOut } = useAuthenticator((context) => [context.user]);
   const [userAttributes, setUserAttributes] = useState<FetchUserAttributesOutput | null>(null);
-  const [authToken, setAuthToken] = useState<String>("");
-  const [accessToken, setAccessToken] = useState<String>("");
+  const [authToken, setAuthToken] = useState<string>("");
+  const [accessToken, setAccessToken] = useState<string>("");
 
 
   useEffect(() => {
        if (user) {
            handleFetchUserAttributes();
            handleFetchAuthSession();
+           getTodo();
        }
   }, [user]);
 
+  
+
+  async function getTodo() {
+    try {
+      const restOperation = get({ 
+        apiName: 'testAPI',
+        path: '/getTest', 
+        options: {
+          headers: {
+            Authorization: authToken
+          }
+        }
+      });
+  
+      const response = await restOperation.response;
+      console.log('GET call succeeded: ', response);
+    } catch (e) {
+      console.log('GET call failed: ', e);
+    }
+  }
 
   async function handleFetchUserAttributes() {
       try {

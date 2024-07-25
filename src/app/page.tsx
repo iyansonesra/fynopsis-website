@@ -21,6 +21,15 @@ Amplify.configure({
      // // 'code' is used for Auth.confirmSignUp, 'link' is used for email link verification
      signUpVerificationMethod: 'code', // 'code' | 'link'
    }
+ },
+ API: {
+  REST: {
+      testAPI: {
+        endpoint:
+          'https://5b0uitw9i8.execute-api.us-east-1.amazonaws.com/test',
+        region: 'us-east-1' // Optional
+      }
+   }
  }
 });
 
