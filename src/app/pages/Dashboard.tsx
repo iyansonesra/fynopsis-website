@@ -105,8 +105,7 @@ export default function Dashboard() {
                             width={"100%"}
                             imageType={"circular"}
                         />
-
-                        <NewsListing
+                           <NewsListing
                             image={""}
                             stockName={"AAPL"}
                             stockDescription={"Apple Inc. is a multinational technology company specializing in consumer electronics, software, and online services."}
@@ -114,16 +113,15 @@ export default function Dashboard() {
                             imageType={"circular"}
                         />
 
-                        <NewsListing
-                            image={""}
-                            stockName={"AAPL"}
-                            stockDescription={"Apple Inc. is a multinational technology company specializing in consumer electronics, software, and online services."}
-                            width={"100%"}
-                            imageType={"circular"}
-                        />
+                        
+
+                    
+
+                     
+                 
                     </ScrollArea>
 
-                    <div className="absolute bottom-0 left-0 right-0 h-20 bg-gradient-to-t from-white to-transparent pointer-events-none"></div>
+                    <div className="absolute bottom-29 left-0 right-0 h-20 bg-gradient-to-t from-white to-transparent pointer-events-none"></div>
 
 
                 </div>
