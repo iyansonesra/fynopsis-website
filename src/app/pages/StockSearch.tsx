@@ -20,13 +20,14 @@ export default function Dashboard() {
 
     return (
         <div className="flex flex-col h-screen w-full xl:px-4 2xl:px-8 ">
-            <div className="flex-1 h-[50px] flex items-center justify-center">
-                <input type="text" className="searchBar bg-slate-200 w-[60%] h-[60%] rounded-full pl-16" placeholder="Search for a stock" />
+            <div className="flex-1 relative h-[70px] flex items-center justify-center">
+                <input type="text" className="searchBar bg-slate-200 w-[60%] 2xl:h-[50%] lg:h-[40%] sm:h-[40%] h-[40%] 2xl:text-xl rounded-full pl-8 lg:pl-12 xl:pl-16 2xl:pl-20" placeholder="Search for a stock" />
+                <Search className="h-4 w-4 lg:h-6 lg:w-6 2xl:h-8 2xl:w-8 absolute left-[22%] decoration-slate-50" />
             </div>
 
-            <div className="flex  flex-row flex-[7] h-[70px]">
-                <div className="flex-1 flex flex-col relative h-full max-w-[50%] ">
-                    <div className="h-[5%] pl-4 b-0 flex flex-row items-center gap-2">
+            <div className="flex  flex-row flex-[6] h-[70px]">
+                <div className="flex-1 flex flex-col relative h-full max-w-[50%]">
+                    <div className="h-[5%] pl-4 b-0 flex flex-row items-center gap-2 ">
                         <Search className="h-4 w-4" />
                         <h1 className="2xl:text-xl font-semibold">Recent Searches</h1>
                     </div>
@@ -122,7 +123,7 @@ export default function Dashboard() {
                 </div>
                 <Separator orientation="vertical" className="h-[90%] decoration-black justify-self-center self-center" />
                 <div className="pinnedCompaniesContainer flex-1 flex flex-col relative h-full max-w-[50%] pl-4">
-                    <div className="h-[5%] pl-4 b-0 flex flex-row items-center gap-2">
+                    <div className="h-[3%] pl-4 b-0 flex flex-row items-center gap-2 ">
                         <Search className="h-4 w-4" />
                         <h1 className="2xl:text-xl font-semibold">Pinned Companies</h1>
                     </div>

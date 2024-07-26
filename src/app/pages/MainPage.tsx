@@ -116,7 +116,7 @@ export default function Home() {
             </Button>
           </div>
           <div className="flex-1">
-            <nav className="grid items-start px-2 lg:text-sm xl:text-sm 2xl:text-xl font-medium lg:px-4">
+            <nav className="grid items-start px-2 lg:text-base xl:text-lg 2xl:text-2xl font-medium lg:px-4">
             <Link
               href="#"
               className={`flex items-center gap-3 rounded-lg px-3 py-2 transition-all hover:text-primary ${
@@ -124,7 +124,7 @@ export default function Home() {
               }`}
               onClick={() => setSelectedTab("dashboard")}
             >
-              <Homer className="h-4 w-4" />
+              <Homer className="h-4 w-4 2xl:h-6 2xl:w-6" />
               Dashboard
             </Link>
             <Link
@@ -134,7 +134,7 @@ export default function Home() {
               }`}
               onClick={() => setSelectedTab("stockSearch")}
             >
-              <Search className="h-4 w-4" />
+              <Search className="h-4 w-4 2xl:h-6 2xl:w-6" />
               Stock Search
             </Link>
             <Link
@@ -144,7 +144,7 @@ export default function Home() {
               }`}
               onClick={() => setSelectedTab("settings")}
             >
-              <SettingsIcon className="h-4 w-4" />
+              <SettingsIcon className="h-4 w-4 2xl:h-6 2xl:w-6" />
               Settings
             </Link>
             </nav>
