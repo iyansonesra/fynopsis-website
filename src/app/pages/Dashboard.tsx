@@ -15,7 +15,7 @@ import RecentNews from "@/components/RecentNews"
 export default function Dashboard() {
     
     return (
-        <div className=" flex flex-row h-screen w-full p-2 lg:p-4 xl:p-8 2xl:p-10 gap-8">
+        <div className=" flex flex-row h-screen w-full p-2 lg:p-4 xl:p-8 2xl:p-10 gap-8 font-montserrat">
             <div className="smallerCompAndRecentNews flex-[5]  flex flex-col gap-8 h-[90%]">
                 <div className="smallerComp flex-[1] rounded-2xl flex flex-row gap-8 h-[30%]">
                     <div className="firstComp flex-[2] bg-white rounded-2xl border"></div>

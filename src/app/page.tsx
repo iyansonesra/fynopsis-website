@@ -4,6 +4,7 @@ import StockSearch from "./pages/StockSearch";
 import Settings from "./pages/Settings";
 import { Authenticator } from "../components/Authenticator";
 import  Home  from "./pages/MainPage";
+import FrontPage from "./pages/FrontPage";
 import { Amplify } from "aws-amplify";
 import { Authenticator as AmplifyAuthenticator } from "@aws-amplify/ui-react";
 Amplify.configure({
@@ -44,7 +45,7 @@ export default function page() {
  return (
    <AmplifyAuthenticator.Provider>
      <Authenticator>
-       <Home/>
+       <FrontPage/>
      </Authenticator>
    </AmplifyAuthenticator.Provider>
  );
