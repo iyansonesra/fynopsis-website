@@ -35,7 +35,9 @@ export default function FrontPage() {
             <div className="fixed top-0 left-0 right-0 h-20 xl:h-24 bg-white bg-opacity-98 w-full flex items-center justify-between 2xl:px-16 xl:px-12 md:px-8 sm:px-4 shadow-md px-4 z-50">
                 <img src={logo.src} alt="logo" className="md:h-8 md:w-auto w-[35%] h-auto" />
                 <div className="h-full flex items-center gap-4">
-                    <button className="xl:h-[50%] h-[60%] inline-block px-6 bg-gradient-to-br from-sky-500 to-sky-950 hover:from-sky-600 hover:to-gray-900 rounded-full font-bold text-xl text-white max-sm:hidden md:flex text-center text-justify justify-center items-center">Book a Demo</button>
+                    <a href="https://calendly.com/willzhang-utexas/fynopsis-demo" className = "h-full flex items-center">
+                        <button className="xl:h-[50%] h-[60%] inline-block px-6 bg-gradient-to-br from-sky-500 to-sky-950 hover:from-sky-600 hover:to-gray-900 rounded-full font-bold text-xl text-white max-sm:hidden md:flex text-center text-justify justify-center items-center">Book a Demo</button>
+                    </a>
                     <button className="xl:h-[50%] h-[60%]  inline-block px-6 border-sky-700 border-2 rounded-full font-bold text-xl text-sky-700">Sign In</button>
                 </div>
             </div>
@@ -68,9 +70,12 @@ export default function FrontPage() {
                     <h1 className="font-normal text-2xl text-center md:w-[50%] w-[80%]">Revolutionizing financial research with AI-driven, comprehensive company histories and event insights</h1>
                     <FadeInSlideUp>
                         <div className="flex flex-col sm:flex-col md:flex-row floor:flex-col gap-4 mt-4">
-                            <button className="px-6 py-4 rounded-full font-bold text-xl text-white bg-gradient-to-br from-sky-500 to-sky-950 hover:from-sky-600 hover:to-gray-900 transition-all duration-300 hover:scale-105">
-                                Book a Demo
-                            </button>
+                            <a href="https://calendly.com/willzhang-utexas/fynopsis-demo">
+                                <button className="px-6 py-4 rounded-full font-bold text-xl text-white bg-gradient-to-br from-sky-500 to-sky-950 hover:from-sky-600 hover:to-gray-900 transition-all duration-300 hover:scale-105">
+                                    Book a Demo
+                                </button>
+
+                            </a>
 
                             <button className="px-6 py-4 rounded-full font-bold text-xl border-2 transition-all duration-300 hover:scale-105">
                                 <span className="bg-gradient-to-br from-sky-700 to-black bg-clip-text text-transparent">
@@ -136,9 +141,13 @@ export default function FrontPage() {
 
 
                                 <FadeInSlideUp className="w-full flex justify-end">
-                                <button className="px-6 py-4 rounded-full font-bold text-xl text-white bg-gradient-to-br from-sky-500 to-sky-950 hover:from-sky-600 hover:to-gray-900 transition-all duration-300 hover:scale-105">
-                                Book a Demo
-                            </button>                                </FadeInSlideUp>
+                                    <a href="https://calendly.com/willzhang-utexas/fynopsis-demo">
+                                        <button className="px-6 py-4 rounded-full font-bold text-xl text-white bg-gradient-to-br from-sky-500 to-sky-950 hover:from-sky-600 hover:to-gray-900 transition-all duration-300 hover:scale-105">
+                                            Book a Demo
+                                        </button>
+                                    </a>
+
+                                </FadeInSlideUp>
                             </div>
 
                         </div>
@@ -153,7 +162,7 @@ export default function FrontPage() {
 
 
                     <div className="flex flex-row w-[85%] 2xl:w-[70%] inline-block justify-center items-center">
-                        <div className="flex-1 flex items-center h-[80%] justify-center gap-[50%] flex-col ">
+                        <div className="flex-1 flex items-center h-[80%] justify-center gap-[30%] flex-col ">
                             <div className="w-full flex items-start flex-col">
                                 <FadeInSlideUp>
                                     <h1 className="font-bold text-5xl text-left text-black mb-4">Tools that provide a deeper understanding</h1>
@@ -166,9 +175,12 @@ export default function FrontPage() {
 
 
                             <FadeInSlideUp className="w-full flex justify-start">
-                            <button className="px-6 py-4 rounded-full font-bold text-xl text-white bg-gradient-to-br from-sky-500 to-sky-950 hover:from-sky-600 hover:to-gray-900 transition-all duration-300 hover:scale-105">
-                                Book a Demo
-                            </button>                            </FadeInSlideUp>
+                                <a href="https://calendly.com/willzhang-utexas/fynopsis-demo">
+                                    <button className="px-6 py-4 rounded-full font-bold text-xl text-white bg-gradient-to-br from-sky-500 to-sky-950 hover:from-sky-600 hover:to-gray-900 transition-all duration-300 hover:scale-105">
+                                        Book a Demo
+                                    </button>
+                                </a>
+                            </FadeInSlideUp>
 
                         </div>
                         <div className="flex-1 flex justify-end items-end flex-col gap-6">
@@ -176,28 +188,28 @@ export default function FrontPage() {
                                 <img src={AIDisplay.src} alt="graph" className="w-[100%] h-auto mb-4" />
                             </FadeInSlideUp>
 
-                            <FadeInSlideUp className = "w-full flex mb-2">
+                            <FadeInSlideUp className="w-full flex mb-2">
                                 <UserSearchBubble userSearch={"I want to learn more about Apple's recent deals"} />
                             </FadeInSlideUp>
 
-                            <FadeInSlideUp className = "w-full flex mb-2">
+                            <FadeInSlideUp className="w-full flex mb-2">
                                 <GPTResponse userSearch={"Sure, Apple has been aggressively pursuing sports rights, aiming to bolster its Apple TV+ platform."} />
                             </FadeInSlideUp>
 
-                            <FadeInSlideUp className = "w-full flex mb-2">
+                            <FadeInSlideUp className="w-full flex mb-2">
                                 <UserSearchBubble userSearch={"What sports have they been pushing for?"} />
                             </FadeInSlideUp>
 
-                            <FadeInSlideUp className = "w-full flex mb-2">
+                            <FadeInSlideUp className="w-full flex mb-2">
                                 <GPTResponse userSearch={"They have been looking to acquire the rights to the MLB, FIFA World Cup, and the NBA"} />
                             </FadeInSlideUp>
 
-                            <FadeInSlideUp className = "w-full flex mb-2">
+                            <FadeInSlideUp className="w-full flex mb-2">
                                 <UserSearchBubble userSearch={"Thanks!"} />
                             </FadeInSlideUp>
-                            
 
-                           
+
+
 
                         </div>
 

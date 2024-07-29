@@ -43,7 +43,7 @@ export default function page() {
  return (
    <AmplifyAuthenticator.Provider>
      <Authenticator>
-       <Home/>
+       <FrontPage/>
      </Authenticator>
    </AmplifyAuthenticator.Provider>
  );
