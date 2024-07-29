@@ -7,6 +7,11 @@ import { Send, User } from 'lucide-react';
 import RelevantLink from './RelevantLinks';
 import CustomGraph from './StockGraph';
 import generateRandomStockData from './GenerateRandomStockData';
+import {useState, useRef, useEffect } from 'react';
+import { useAuthenticator } from '@aws-amplify/ui-react';
+import { fetchUserAttributes, FetchUserAttributesOutput } from 'aws-amplify/auth';
+import { fetchAuthSession } from 'aws-amplify/auth';
+import { post } from 'aws-amplify/api';
 
 
 interface StockProps {
@@ -15,7 +20,24 @@ interface StockProps {
   stockDescription: string;
   imageType: 'circular' | 'rectangular';
 }
+type Message = {
+  type: 'user' | 'bot';
+  content: string;
+};
 
+interface ResponseBody {
+  message: string;
+  // add other properties as needed
+}
+
+interface ApiResponse {
+  body: {
+    message: string;
+    input: {
+      query: string;
+    };
+  }
+}
 const Stock: React.FC<StockProps> = ({
   image,
   stockName,
@@ -23,6 +45,145 @@ const Stock: React.FC<StockProps> = ({
   imageType,
 }) => {
   const { data, importantMarkers } = generateRandomStockData();
+
+  const [messages, setMessages] = useState<Message[]>([]);
+
+  const [inputValue, setInputValue] = useState('');
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  // const { user, signOut } = useAuthenticator((context) => [context.user]);
+
+
+  async function handleFetchAccess() {
+    try {
+        const access = (await fetchAuthSession()).tokens?.accessToken?.toString();
+        if (!access) {
+            throw new Error("Token is null or undefined");
+        }
+        return access;
+    } catch (error) {
+        console.log(error);
+    }
+  };
+
+  const handleInputChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    setInputValue(event.target.value);
+  };
+
+  const handleKeyPress = (event: React.KeyboardEvent<HTMLInputElement>) => {
+    if (event.key === 'Enter') {
+      handleSend();
+    }
+  };
+
+  const handleSend = async () => {
+    if (!inputValue.trim()) return;
+
+    const userMessage = inputValue.trim();
+
+    // Clear the input
+    setInputValue('');
+
+    // Add user message to the chat
+    setMessages((prevMessages) => [
+      ...prevMessages,
+      { type: 'user', content: userMessage },
+    ]);
+    
+    const accessTokens = await handleFetchAccess();
+    // console.log(accessTokens + "testing fetch");
+    console.log("requesting information");
+    if (accessTokens) {
+        try {
+          const restOperation = post({
+            apiName: 'testAPI',
+            path: '/postAgent',
+            
+            options: {
+              headers: {
+                Authorization: accessTokens
+              },
+              body: {
+                query: userMessage
+              }
+            }
+          });
+      
+          const { body } = await restOperation.response;
+          // const { body } = await restOperation.response;
+          const responseText = await body.text(); // Get the response as text
+          const responseMain: ApiResponse = JSON.parse(responseText); // Parse the JSON manually
+          console.log(responseText);
+          console.log(responseMain);
+          // const responseBody = response.body;
+          // const botMessage = (responseBody as any).message;
+          // console.log(response);
+
+          console.log('POST call succeeded');
+          if (responseMain) {
+            setMessages((prevMessages) => [
+              ...prevMessages,
+              { type: 'bot', content: responseMain.body.message },
+            ]);
+          }
+          else {
+            setMessages((prevMessages) => [
+              ...prevMessages,
+              { type: 'bot', content: "Failed. Please Refresh." },
+            ]);
+          }
+        } catch (e) {
+          setMessages((prevMessages) => [
+            ...prevMessages,
+            { type: 'bot', content: "Failed. Please Refresh." },
+          ]);
+          console.log('POST call failed: ', e);
+        }
+    } else {
+        setMessages((prevMessages) => [
+          ...prevMessages,
+          { type: 'bot', content: "Failed. Please Refresh." },
+        ]);
+        console.log('Failed to fetch access token.');
+    }
+    
+
+    // Add bot response to the chat
+    
+
+    
+
+    // try {
+    //   const response = await fetch('YOUR_API_ENDPOINT', {
+    //     method: 'POST',
+    //     headers: {
+    //       'Content-Type': 'application/json',
+    //       'Authorization': 'Bearer YOUR_AUTH_TOKEN',
+    //     },
+    //     body: JSON.stringify({ message: userMessage }),
+    //   });
+
+    //   if (response.ok) {
+    //     const data = await response.json();
+    //     const botMessage = data.message; // Adjust based on your API response structure
+
+    //     // Add bot response to the chat
+    //     setMessages((prevMessages) => [
+    //       ...prevMessages,
+    //       { type: 'bot', content: botMessage },
+    //     ]);
+    //   } else {
+    //     console.error('Error:', response.statusText);
+    //   }
+    // } catch (error) {
+    //   console.error('Error:', error);
+    // }
+  };
+  useEffect(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [messages]);
 
   return (
     <div className='w-full h-full flex flex-col 2xl:p-4 font-montserrat'>
@@ -50,19 +211,26 @@ const Stock: React.FC<StockProps> = ({
           <div className="flex relative flex-[3] h-[50%] border-2 rounded-3xl py-2 2xl:py-4 justify-center gap-4">
             <ScrollArea className="h-[calc(100%-40px-0.5rem)] 2xl:h-[calc(100%-60px-0.5rem)] overflow-auto w-full px-4">
               <div className="flex flex-col gap-4 2xl:gap-6">
-                <UserSearchBubble userSearch="When did Apple begin selling the iPhone 7? What was the overall public response?" />
-                <GPTResponse userSearch="Apple began selling the iPhone 7 in September 2016. The overall public response was positive." />
-                <UserSearchBubble userSearch="When did Apple begin selling the iPhone 7? What was the overall public response?" />
-                <GPTResponse userSearch="Apple began selling the iPhone 7 in September 2016. The overall public response was positive." />
-                <UserSearchBubble userSearch="When did Apple begin selling the iPhone 7? What was the overall public response?" />
-                <GPTResponse userSearch="Apple began selling the iPhone 7 in September 2016. The overall public response was positive." />
-                <UserSearchBubble userSearch="When did Apple begin selling the iPhone 7? What was the overall public response?" />
-                <GPTResponse userSearch="Apple began selling the iPhone 7 in September 2016. The overall public response was positive." />
-
+                <GPTResponse userSearch="Hi. Do you have any further questions?" />
+                {/* <UserSearchBubble userSearch="When did Apple begin selling the iPhone 7? What was the overall public response?" /> */}
+                {messages.map((message, index) => (
+                  message.type === 'user' ? (
+                    <UserSearchBubble key={index} userSearch={message.content} />
+                  ) : (
+                    <GPTResponse key={index} userSearch={message.content} />
+                  )
+                ))}
+                <div ref={scrollRef}></div>
               </div>
             </ScrollArea>
-            <input className="inputBar w-[calc(100%-1rem)] absolute border-2 bottom-2 2xl:bottom-4 h-[40px] 2xl:h-[60px] border rounded-full pl-4 bg-transparent text-base" placeholder="Message Fynopsis"></input>
-            <Send className="absolute right-6 bottom-4 2xl:right-8 2xl:bottom-6 h-6 w-6 2xl:h-10 2xl:w-10 text-slate-500"></Send>
+            <input className="inputBar w-[calc(100%-1rem)] absolute border-2 bottom-2 2xl:bottom-4 h-[40px] 2xl:h-[60px] border rounded-full pl-4 bg-transparent text-base" 
+            placeholder="Message Fynopsis"
+            value={inputValue}
+            onChange={handleInputChange}
+            onKeyDown={handleKeyPress}
+            ></input>
+            <Send className="absolute right-6 bottom-4 2xl:right-8 2xl:bottom-6 h-6 w-6 2xl:h-10 2xl:w-10 text-slate-500"
+            onClick={handleSend}></Send>
             <div className="absolute rounded-3xl bottom-[calc(40px+.5rem)] 2xl:bottom-[calc(60px+1rem)] left-0 right-0  h-8 2xl:h-12 bg-gradient-to-t from-slate-50 to-transparent pointer-events-none"></div>
 
           </div>

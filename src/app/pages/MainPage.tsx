@@ -55,7 +55,7 @@ export default function Home() {
   useEffect(() => {
        if (user) {
             handleFetchUserAttributes();
-            handleFetchAuthSession();
+            // handleFetchAuthSession();
             // postTodo();
        }
   }, [user]);
@@ -81,112 +81,69 @@ export default function Home() {
   //   console.log(result);
   // };
 
-  async function postTodo() {
-    const accessTokens = await handleFetchAccess();
-    // console.log(accessTokens + "testing fetch");
-    console.log(accessTokens);
-    if (accessTokens) {
-        // Now you can safely use the accessToken
-        try {
-          const restOperation = post({
-            apiName: 'testAPI',
-            path: '/postAgent',
+  // async function postTodo() {
+  //   const accessTokens = await handleFetchAccess();
+  //   // console.log(accessTokens + "testing fetch");
+  //   console.log(accessTokens);
+  //   if (accessTokens) {
+  //       // Now you can safely use the accessToken
+  //       try {
+  //         const restOperation = post({
+  //           apiName: 'testAPI',
+  //           path: '/postAgent',
             
-            options: {
-              headers: {
-                Authorization: accessTokens
-              },
-              body: {
-                query: 'NVIDIA'
-              }
-            }
-          });
+  //           options: {
+  //             headers: {
+  //               Authorization: accessTokens
+  //             },
+  //             body: {
+  //               query: 'NVIDIA'
+  //             }
+  //           }
+  //         });
       
-          const { body } = await restOperation.response;
-          const response = await body.json();
+  //         const { body } = await restOperation.response;
+  //         const response = await body.json();
       
-          console.log('POST call succeeded');
-          console.log(response);
-        } catch (e) {
-          console.log('POST call failed: ', e);
-        }
-    } else {
-        console.log('Failed to fetch access token.');
-    }
+  //         console.log('POST call succeeded');
+  //         console.log(response);
+  //       } catch (e) {
+  //         console.log('POST call failed: ', e);
+  //       }
+  //   } else {
+  //       console.log('Failed to fetch access token.');
+  //   }
     
-  }
+  // }
+
+
   
-
-  async function getTodo() {
-    
-    const accessTokens = await handleFetchAccess();
-    // console.log(accessTokens + "testing fetch");
-
-    if (accessTokens) {
-        // Now you can safely use the accessToken
-        try {
-          const restOperation = get({ 
-            apiName: 'testAPI',
-            path: '/getTest', 
-            options: {
-              headers: {
-                Authorization: accessTokens
-              }
-            }
-          });
-      
-          const response = await restOperation.response;
-          console.log('GET call succeeded: ', response);
-        } catch (e) {
-          console.log('GET call failed: ', e);
-        }
-    } else {
-        console.log('Failed to fetch access token.');
-    }
-    
-  }
-
-  async function handleFetchAccess() {
-    try {
-        const access = (await fetchAuthSession()).tokens?.accessToken?.toString();
-        if (!access) {
-            throw new Error("Token is null or undefined");
-        }
-        // setAccessToken(access);
-        // console.log(access);
-        return access;
-        
-    } catch (error) {
-        console.log(error);
-    }
-}
 
   async function handleFetchUserAttributes() {
       try {
           const attributes = await fetchUserAttributes();
           setUserAttributes(attributes);
-          console.log(attributes);
       } catch (error) {
           console.log(error);
       }
   }
   
-   async function handleFetchAuthSession() {
-       try {
-           const token = (await fetchAuthSession()).tokens?.idToken?.toString();
-           const access = (await fetchAuthSession()).tokens?.accessToken?.toString();
-           if (!token || !access) {
-               throw new Error("Token is null or undefined");
-           }
-           setAccessToken(access);
-           setAuthToken(token);
-          //  console.log("idToken: " + access);
-          //  console.log("accessToken: " + token);
+  //  async function handleFetchAuthSession() {
+  //      try {
+  //          const token = (await fetchAuthSession()).tokens?.idToken?.toString();
+  //          const access = (await fetchAuthSession()).tokens?.accessToken?.toString();
+  //          if (!token || !access) {
+  //              throw new Error("Token is null or undefined");
+  //          }
+  //          setAccessToken(access);
+  //          setAuthToken(token);
+  //         //  console.log("idToken: " + access);
+  //         //  console.log("accessToken: " + token);
            
-       } catch (error) {
-           console.log(error);
-       }
-   }
+  //      } catch (error) {
+  //          console.log(error);
+  //      }
+  //  }
 
    
 
@@ -371,7 +328,7 @@ export default function Home() {
             <DropdownMenuContent align="end">
               <DropdownMenuLabel>My Account</DropdownMenuLabel>
               <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={postTodo} style={{ cursor: 'pointer' }}>Settings</DropdownMenuItem>
+              <DropdownMenuItem onClick={signOut} style={{ cursor: 'pointer' }}>Settings</DropdownMenuItem>
               <DropdownMenuItem onClick={signOut} style={{ cursor: 'pointer' }}>Support</DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={signOut} style={{ cursor: 'pointer' }}>Logout</DropdownMenuItem>
