@@ -28,7 +28,7 @@ export default function Dashboard() {
                         <Search className="h-4 w-4" />
                         <h1 className="text-lg 2xl:text-xl font-semibold">Recent Searches</h1>
                     </div>
-                    <ScrollArea className="inline-block lg:h-[calc(100vh-215px)] w-[calc(100vw-5%)] md:w-[calc(100vw-250px)] lg:w-full">
+                    <ScrollArea className="inline-block lg:h-[calc(100vh-215px)] w-[calc(100vw-5%)] lg:w-[calc(100vw-250px)] lg:w-full relative">
                         <div className="flex flex-row lg:flex-col lg:space-y-2 w-screen lg:w-full pr-4 pl-4
                         ">
                             {[...Array(8)].map((_, index) => (
@@ -43,6 +43,8 @@ export default function Dashboard() {
                         </div>
                         <ScrollBar orientation="horizontal" className="lg:hidden" />
                         <ScrollBar orientation="vertical" className="hidden lg:flex" />
+                        <div className="lg:hidden flex absolute bottom-0 right-0 h-full w-16 bg-gradient-to-r from-transparent to-white pointer-events-none"></div>
+
                     </ScrollArea>
                 </div>
                 <Separator orientation="vertical" className="h-[90%]  decoration-green-600 hidden lg:block" /> 

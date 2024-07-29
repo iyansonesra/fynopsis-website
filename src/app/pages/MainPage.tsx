@@ -42,6 +42,7 @@ import { fetchUserAttributes, FetchUserAttributesOutput } from 'aws-amplify/auth
 import { fetchAuthSession } from 'aws-amplify/auth'
 import { get } from 'aws-amplify/api';
 import { post } from 'aws-amplify/api';
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 export default function Home() {
 
@@ -163,8 +164,8 @@ export default function Home() {
   
 
   return (
-    <div className="grid max-h-screen w-full md:grid-cols-[220px_1fr] lg:grid-cols-[250px_1fr] xl:grid-cols-[250px_1fr] 2xl:grid-cols-[350px_1fr] overflow-hidden font-montserrat">
-      <div className="hidden border-r bg-muted/40 md:block">
+    <div className="grid max-h-screen w-full lg:grid-cols-[250px_1fr] xl:grid-cols-[250px_1fr] 2xl:grid-cols-[350px_1fr] overflow-hidden font-montserrat">
+      <div className="hidden border-r bg-muted/40 lg:block">
         <div className="flex h-full max-h-screen flex-col gap-2">
           <div className="flex h-14 items-center border-b px-4 lg:h-[60px] lg:px-6 xl:h-[60px] 2xl:h-[90px]">
             <Link href="/" className="flex items-center gap-2 font-semibold">
@@ -236,7 +237,7 @@ export default function Home() {
               <Button
                 variant="outline"
                 size="icon"
-                className="shrink-0 md:hidden"
+                className="shrink-0 lg:hidden"
               >
                 <Menu className="h-5 w-5" />
                 <span className="sr-only">Toggle navigation menu</span>
@@ -335,9 +336,9 @@ export default function Home() {
             </DropdownMenuContent>
           </DropdownMenu>
         </header>
-        <main className="bg-slate-50 flex-grow p-0 overflow-auto">
+        <ScrollArea className="">
         {renderSelectedScreen()}
-        </main>
+        </ScrollArea>
       </div>
     </div>
   );
