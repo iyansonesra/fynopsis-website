@@ -356,7 +356,7 @@ export default function Home() {
               <div className="relative">
                 <div className = "flex flex-col gap-0">
                     <h1 className = "font-semibold text-med mb-0 2xl:text-2xl">Hello, {userAttributes?.given_name}!</h1>
-                    <h1 className = "text-sm -mt-1 text-gray-700 2xl:text-lg">Tuesday, July 6th, 2024</h1>
+                    <h1 className = "text-sm -mt-1 text-gray-700 2xl:text-lg md:flex hidden">Tuesday, July 6th, 2024</h1>
                 </div>
               </div>
             </form>

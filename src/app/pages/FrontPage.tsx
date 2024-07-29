@@ -35,7 +35,7 @@ export default function FrontPage() {
             <div className="fixed top-0 left-0 right-0 h-20 xl:h-24 bg-white bg-opacity-98 w-full flex items-center justify-between 2xl:px-16 xl:px-12 md:px-8 sm:px-4 shadow-md px-4 z-50">
                 <img src={logo.src} alt="logo" className="md:h-8 md:w-auto w-[35%] h-auto" />
                 <div className="h-full flex items-center gap-4">
-                    <button className="xl:h-[50%] h-[60%] inline-block px-6 bg-sky-700 rounded-full font-bold text-xl text-white max-sm:hidden md:flex text-center text-justify justify-center items-center">Book a Demo</button>
+                    <button className="xl:h-[50%] h-[60%] inline-block px-6 bg-gradient-to-br from-sky-500 to-sky-950 hover:from-sky-600 hover:to-gray-900 rounded-full font-bold text-xl text-white max-sm:hidden md:flex text-center text-justify justify-center items-center">Book a Demo</button>
                     <button className="xl:h-[50%] h-[60%]  inline-block px-6 border-sky-700 border-2 rounded-full font-bold text-xl text-sky-700">Sign In</button>
                 </div>
             </div>
@@ -60,7 +60,7 @@ export default function FrontPage() {
                         <h1 className="font-bold text-sky-700">Financial Assistant AI</h1>
                     </div>
                     <h1 className="font-bold text-7xl text-center">
-                        <span className="bg-gradient-to-br from-blue-500 to-black text-transparent bg-clip-text">
+                        <span className="bg-gradient-to-b from-sky-500 to-sky-950 text-transparent bg-clip-text">
                             Never
                         </span>{" "}
                         search again.
@@ -68,7 +68,7 @@ export default function FrontPage() {
                     <h1 className="font-normal text-2xl text-center md:w-[50%] w-[80%]">Revolutionizing financial research with AI-driven, comprehensive company histories and event insights</h1>
                     <FadeInSlideUp>
                         <div className="flex flex-col sm:flex-col md:flex-row floor:flex-col gap-4 mt-4">
-                            <button className="px-6 py-4 rounded-full font-bold text-xl text-white bg-gradient-to-br from-sky-700 to-black hover:from-sky-600 hover:to-gray-900 transition-all duration-300 hover:scale-105">
+                            <button className="px-6 py-4 rounded-full font-bold text-xl text-white bg-gradient-to-br from-sky-500 to-sky-950 hover:from-sky-600 hover:to-gray-900 transition-all duration-300 hover:scale-105">
                                 Book a Demo
                             </button>
 
@@ -101,7 +101,7 @@ export default function FrontPage() {
 
 
 
-                <div className="w-full inline-block flex justify-center flex-col mb-64">
+                <div className="w-full inline-block flex justify-center flex-col mb-64 ">
                     <FadeInSlideUp className="flex justify-center flex-col items-center w-full">
                         <h1 className="text-5xl font-bold w-[70%] xl:w-[80%] text-center mb-4">Instant insights, informed decisions:</h1>
 
@@ -109,7 +109,7 @@ export default function FrontPage() {
 
                     <FadeInSlideUp className="w-auto inline-block flex justify-center flex-col items-center w-full mb-16">
                         <h1 className="font-normal text-5xl text-center text-black">
-                            <span className="bg-gradient-to-br from-blue-500 to-black text-transparent bg-clip-text">
+                            <span className="bg-gradient-to-t from-sky-500 to-sky-950 text-transparent bg-clip-text">
                                 Your
                             </span>{" "}
                             <span className="font-normal">finacial edge.</span>
@@ -117,7 +117,7 @@ export default function FrontPage() {
                     </FadeInSlideUp>
 
                     <div className="w-full inline-block flex justify-center flex-col items-center w-full">
-                        <div className="flex flex-row w-[85%] 2xl:w-[60%] inline-block ">
+                        <div className="flex flex-row w-[85%] 2xl:w-[70%] inline-block ">
                             <div className="flex-1 flex items-center justify-center">
                                 <FadeInSlideUp>
                                     <img src={graphZoom.src} alt="graph" className="w-[90%] h-auto" />
@@ -136,8 +136,9 @@ export default function FrontPage() {
 
 
                                 <FadeInSlideUp className="w-full flex justify-end">
-                                    <button className="xl:h-12 h-12 inline-block px-6 bg-sky-700 rounded-full font-bold text-xl text-white max-sm:hidden md:flex text-center text-justify justify-center items-center">Book a Demo</button>
-                                </FadeInSlideUp>
+                                <button className="px-6 py-4 rounded-full font-bold text-xl text-white bg-gradient-to-br from-sky-500 to-sky-950 hover:from-sky-600 hover:to-gray-900 transition-all duration-300 hover:scale-105">
+                                Book a Demo
+                            </button>                                </FadeInSlideUp>
                             </div>
 
                         </div>
@@ -151,8 +152,8 @@ export default function FrontPage() {
 
 
 
-                    <div className="flex flex-row w-[85%] 2xl:w-[60%] inline-block justify-center items-center">
-                        <div className="flex-1 flex items-center h-[80%] justify-around flex-col ">
+                    <div className="flex flex-row w-[85%] 2xl:w-[70%] inline-block justify-center items-center">
+                        <div className="flex-1 flex items-center h-[80%] justify-center gap-[50%] flex-col ">
                             <div className="w-full flex items-start flex-col">
                                 <FadeInSlideUp>
                                     <h1 className="font-bold text-5xl text-left text-black mb-4">Tools that provide a deeper understanding</h1>
@@ -165,11 +166,12 @@ export default function FrontPage() {
 
 
                             <FadeInSlideUp className="w-full flex justify-start">
-                                <button className="xl:h-12 h-12 inline-block px-6 bg-sky-700 rounded-full font-bold text-xl text-white max-sm:hidden md:flex text-center text-justify justify-center items-center">Book a Demo</button>
-                            </FadeInSlideUp>
+                            <button className="px-6 py-4 rounded-full font-bold text-xl text-white bg-gradient-to-br from-sky-500 to-sky-950 hover:from-sky-600 hover:to-gray-900 transition-all duration-300 hover:scale-105">
+                                Book a Demo
+                            </button>                            </FadeInSlideUp>
 
                         </div>
-                        <div className="flex-1 flex justify-end items-end flex-col p-12">
+                        <div className="flex-1 flex justify-end items-end flex-col gap-6">
                             <FadeInSlideUp>
                                 <img src={AIDisplay.src} alt="graph" className="w-[100%] h-auto mb-4" />
                             </FadeInSlideUp>

@@ -33,8 +33,8 @@ const Stock: React.FC<StockProps> = ({
         <div className="rounded-full border border-1 border-black inline-block px-2 2xl:px-4 text-sm 2xl:text-lg ml-1 mt-2">PUBLIC</div>
       </div>
 
-      <div className='flex flex-[10] flex-row h-[80%] px-4 2xl:gap-8 xl:gap-6'>
-        <div className="flex-[3] flex flex-col w-[60%] h-[90%] xl:h-[85%] 2xl:h-[88%] 2xl:gap-6 xl:gap-4">
+      <div className='flex flex-[10] flex-row h-[80%] px-4 2xl:gap-8 xl:gap-6 gap-4'>
+        <div className="flex-[3] flex flex-col w-[60%] h-[90%] xl:h-[89%] 2xl:h-[88%] 2xl:gap-6 xl:gap-4 gap-2">
           <div className="flex flex-[2] h-[40%] rounded-3xl ">
             <CustomGraph
               data={data}
@@ -68,7 +68,7 @@ const Stock: React.FC<StockProps> = ({
           </div>
         </div>
 
-        <div className="flex-[2] relative flex w-[40%] h-[90%] xl:h-[85%] 2xl:h-[88%]">
+        <div className="flex-[2] relative flex w-[40%] h-[90%] xl:h-[89%] 2xl:h-[88%]">
           <div className="h-full w-full rounded-3xl border-2 flex flex-col">
             <div className="flex-none w-full border-b-2 py-2 px-4 2xl:py-4 2xl:px-8">
               <h1 className="font-normal italic 2xl:text-2xl">April 5, 2019</h1>
