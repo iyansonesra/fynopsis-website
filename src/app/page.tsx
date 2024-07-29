@@ -7,6 +7,7 @@ import  Home  from "./pages/MainPage";
 import FrontPage from "./pages/FrontPage";
 import { Amplify } from "aws-amplify";
 import { Authenticator as AmplifyAuthenticator } from "@aws-amplify/ui-react";
+
 Amplify.configure({
  Auth: {
    Cognito: {
@@ -27,7 +28,7 @@ Amplify.configure({
   REST: {
       testAPI: {
         endpoint:
-          'https://5b0uitw9i8.execute-api.us-east-1.amazonaws.com/test',
+          'https://4s693esbca.execute-api.us-east-1.amazonaws.com/test',
         region: 'us-east-1' // Optional
       }
    }
@@ -39,13 +40,10 @@ Amplify.configure({
 
 export default function page() {
 
-
-
-
  return (
    <AmplifyAuthenticator.Provider>
      <Authenticator>
-       <FrontPage/>
+       <Home/>
      </Authenticator>
    </AmplifyAuthenticator.Provider>
  );
