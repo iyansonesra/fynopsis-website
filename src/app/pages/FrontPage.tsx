@@ -22,13 +22,16 @@ import FadeInSlideUp from './../../components/animation/FadeInSlideUp';
 import AIDisplay from '../assets/AIDisplay.png'
 import UserSearchBubble from "@/components/UserSearchBubble"
 import GPTResponse from "@/components/GPTResponse"
-
+import { useRouter } from 'next/navigation';
 
 
 
 export default function FrontPage() {
+    const router = useRouter();
 
-
+    function signIn() {
+        router.push('/signin')
+    }
 
     return (
         <div className="relative h-screen w-full font-montserrat ">
@@ -38,7 +41,8 @@ export default function FrontPage() {
                     <a href="https://calendly.com/willzhang-utexas/fynopsis-demo" className = "h-full flex items-center">
                         <button className="xl:h-[50%] h-[60%] inline-block px-6 bg-gradient-to-br from-sky-500 to-sky-950 hover:from-sky-600 hover:to-gray-900 rounded-full font-bold text-xl text-white max-sm:hidden md:flex text-center text-justify justify-center items-center">Book a Demo</button>
                     </a>
-                    <button className="xl:h-[50%] h-[60%]  inline-block px-6 border-sky-700 border-2 rounded-full font-bold text-xl text-sky-700">Sign In</button>
+                    <button className="xl:h-[50%] h-[60%]  inline-block px-6 border-sky-700 border-2 rounded-full font-bold text-xl text-sky-700"
+                    onClick={signIn}>Sign In</button>
                 </div>
             </div>
             <div className="h-full w-full flex relative flex-col">
