@@ -44,17 +44,6 @@ export default function FrontPage() {
             <div className="h-full w-full flex relative flex-col">
 
                 <div className="h-40 bg-green-100"></div>
-                {/* <div className = " w-full h-[5rem] bg-blue-50 flex justify-around flex-row items-center px-40">
-                    <h1>Y Combinator</h1>
-                    <h1 className = "font-bold text-sky-700 text-lg">We are participating in YC24!</h1>
-                    <div className = "inline-block bg-sky-700 text-white px-4 py-2 rounded-full font-semibold flex flex-row gap-2 items-center">
-                        <button>Investor? Email Us</button> 
-                        <MoveRight className="w-5 h-5"/>
-                    </div>
-                    
-                    
-                </div> */}
-
 
                 <div className="p-4 inline-block relative mt-16 pt-20 md:pb-36 pb-16 flex-col flex items-center justify-center gap-4 text-center z-0 ">
                     <div className="inline-block px-6 py-2 bg-blue-100 flex items-center justify-center rounded-full flex flex-row gap-2">
