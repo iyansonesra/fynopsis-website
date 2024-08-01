@@ -10,6 +10,7 @@ const config = {
 	],
   prefix: "",
   theme: {
+    
     container: {
       center: true,
       padding: "2rem",
@@ -77,8 +78,10 @@ const config = {
       },
       fontFamily: {
           montserrat: ['Montserrat', 'sans-serif'],
+          poppins: ['Poppins', 'sans-serif'],
+          sans: ['var(--font-poppins)'],
       },
-   
+     
     
     },
   },

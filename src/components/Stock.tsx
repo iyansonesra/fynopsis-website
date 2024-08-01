@@ -1,9 +1,9 @@
 import React from 'react';
 import RecentSearch from './RecentSearch';
-import { ScrollArea } from './ui/scroll-area';
+import { ScrollArea, ScrollBar } from './ui/scroll-area';
 import UserSearchBubble from './UserSearchBubble';
 import GPTResponse from './GPTResponse';
-import { Send, User } from 'lucide-react';
+import { Scroll, Send, User } from 'lucide-react';
 import RelevantLink from './RelevantLinks';
 import CustomGraph from './StockGraph';
 import generateRandomStockData from './GenerateRandomStockData';
@@ -12,6 +12,9 @@ import { useAuthenticator } from '@aws-amplify/ui-react';
 import { fetchUserAttributes, FetchUserAttributesOutput } from 'aws-amplify/auth';
 import { fetchAuthSession } from 'aws-amplify/auth';
 import { post } from 'aws-amplify/api';
+import { Separator } from './ui/separator';
+import IndustryButton from './IndustryButton';
+import StatListing from './StatListing';
 
 
 interface StockProps {
@@ -186,173 +189,86 @@ const Stock: React.FC<StockProps> = ({
   // }, [messages]);
 
   return (
-    <div className='w-full h-screen flex flex-col 2xl:p-4 font-montserrat'>
-      <div className='  flex-row hidden lg:flex lg:flex-1 h-[70px] lg:h-[10%] items-center pl-8 gap-2 2xl:gap-3'>
-        <h1 className="flex flex-col font-semibold text-2xl 2xl:text-4xl">{stockName} </h1>
-        <h1 className="text-2xl font-light 2xl:text-4xl">|</h1>
-        <h1 className="text-2xl font-light 2xl:text-4xl">Apple Inc.</h1>
-        <div className="rounded-full border border-1 border-black inline-block px-2 2xl:px-4 text-sm 2xl:text-lg ml-1 mt-2">PUBLIC</div>
-      </div>
-
-      <div className='hidden lg:flex lg:flex-[10] lg:flex-row flex-col h-[600px] lg:h-[80%] w-full px-4 2xl:gap-8 xl:gap-6 gap-4'>
-        <div className="flex-[3] flex flex-col w-[100%] lg:w-[60%] h-[90%] xl:h-[89%] 2xl:h-[88%] 2xl:gap-6 xl:gap-4 gap-2">
-          <div className="flex flex-[2] h-[40%] rounded-3xl ">
-            <CustomGraph
-              data={data}
-              height="100%"
-              width="100%"
-              gradientColor="#4BC7FD"
-              importantMarkers={importantMarkers}
-              hideXaxis={true}
-              hideYaxis={true}
-            />
-          </div>
-
-          <div className="flex relative flex-[3] h-[50%] border-2 rounded-3xl py-2 2xl:py-4 justify-center gap-4">
-            <ScrollArea className="h-[calc(100%-40px-0.5rem)] 2xl:h-[calc(100%-60px-0.5rem)] overflow-auto w-full px-4">
-              <div className="flex flex-col gap-4 2xl:gap-6">
-                <GPTResponse userSearch="Hi. Do you have any further questions?" />
-                {/* <UserSearchBubble userSearch="When did Apple begin selling the iPhone 7? What was the overall public response?" /> */}
-                {messages.map((message, index) => (
-                  message.type === 'user' ? (
-                    <UserSearchBubble key={index} userSearch={message.content} />
-                  ) : (
-                    <GPTResponse key={index} userSearch={message.content} />
-                  )
-                ))}
-                <div ref={scrollRef}></div>
+    <div className='w-full h-full flex flex-row py-6 px-4 2xl:py-12 2xl:px-8 font-montserrat gap-4'>
+      <div className="flex-[9] flex flex-col">
+        <div className="relative flex-[5]  flex items-end font-sans">
+          <div className="nameAndPrice absolute top-0 left-0 gap-2 flex flex-col">
+            <h1 className="text-3xl font-extralight">Apple Inc. | AAPL</h1>
+            <h1 className="text-5xl font-normal font-montserrat">$122.12</h1>
+            <div className="flex">
+              <div className="bg-red-400 rounded-2xl px-4 py-1">
+                <h1 className="text-white font-montserrat font-semibold text-base">-4.07%</h1>
               </div>
-            </ScrollArea>
-            <input className="inputBar w-[calc(100%-1rem)] absolute border-2 bottom-2 2xl:bottom-4 h-[40px] 2xl:h-[60px] border rounded-full pl-4 bg-transparent text-base"
-              placeholder="Message Fynopsis"
-              value={inputValue}
-              onChange={handleInputChange}
-              onKeyDown={handleKeyPress}
-            ></input>
-            <Send className="absolute right-6 bottom-4 2xl:right-8 2xl:bottom-6 h-6 w-6 2xl:h-10 2xl:w-10 text-slate-500"
-              onClick={handleSend}></Send>
-            <div className="absolute rounded-3xl bottom-[calc(40px+.5rem)] 2xl:bottom-[calc(60px+1rem)] left-0 right-0  h-8 2xl:h-12 bg-gradient-to-t from-slate-50 to-transparent pointer-events-none"></div>
-
+            </div>
           </div>
+
+          <CustomGraph data={data} importantMarkers={importantMarkers} height={'60%'} width={'100%'} gradientColor={'rgb(212,240,255)'} hideXaxis={true} hideYaxis={true} />
         </div>
+        <div className="flex-[4] flex flex-col font-sans">
+          <h1 className="font-semibold">August 28, 2019</h1>
+          <Separator className="decoration-black w-[50%] my-1" />
+          <ScrollArea className='h-24 text-slate-600 text-[.95rem] font-light'>Apple Inc. is a leading American technology company known for designing, manufacturing, and selling consumer electronics, software, and online services. Founded in 1976 by Steve Jobs, Steve Wozniak, and Ronald Wayne, Apple is best known for its innovative products such as the iPhone, iPad, Mac computers, Apple Watch, and Apple TV.</ScrollArea>
 
-        <div className="flex-[2] relative hidden lg:flex w-[40%] h-[90%] xl:h-[89%] 2xl:h-[88%]">
-          <div className="h-full w-full rounded-3xl border-2 flex flex-col">
-            <div className="flex-none w-full border-b-2 py-2 px-4 2xl:py-4 2xl:px-8">
-              <h1 className="font-normal italic 2xl:text-2xl">April 5, 2019</h1>
-              <h1 className="font-bold text-3xl 2xl:text-5xl">45.29 USD</h1>
+          <h1 className="font-semibold">Relevant Links</h1>
+          <div className = "flex inline-block relative">
+          <ScrollArea className="flex flex-row pb-4 pt-2 w-[680px] ">
+            <div className="flex flex-row h-full gap-4 justify-center ">
+              <RelevantLink title={'NY Times | Blah title'} url={''} linkDescription={'blah blah blah blahblah blah blah blah blah blah blah blah Apple blah blah blah blah blah blah blah blah blah iPhone blah'} />
+              <RelevantLink title={'NY Times | Blah title'} url={''} linkDescription={'blah blah blah blahblah blah blah blah blah blah blah blah Apple blah blah blah blah blah blah blah blah blah iPhone blah'} />
+              <RelevantLink title={'NY Times | Blah title'} url={''} linkDescription={'blah blah blah blahblah blah blah blah blah blah blah blah Apple blah blah blah blah blah blah blah blah blah iPhone blah'} />
+              <RelevantLink title={'NY Times | Blah title'} url={''} linkDescription={'blah blah blah blahblah blah blah blah blah blah blah blah Apple blah blah blah blah blah blah blah blah blah iPhone blah'} />
             </div>
-            <div className="flex-none w-full px-4 2xl:px-8 py-2 mb-2">
-              <h1 className='font-medium italic 2xl:text-2xl'>What Happened?</h1>
-              <h1 className="font-normal 2xl:text-lg">Lots of text lots of text Lots of text lots of text Lots of text lots of text Lots of text lots of text Lots of text lots of text Lots of text lots of text.</h1>
-            </div>
-            <div className="flex-grow flex flex-col w-full px-4 2xl:px-8 py-2 overflow-y-auto">
-              <h1 className="flex-none font-medium italic 2xl:text-2xl mb-2">Relevant Links</h1>
-              <ScrollArea className='w-full flex-grow'>
-                <div className="flex flex-col gap-4 2xl:gap-6">
-                  <RelevantLink image='' stockName='Apple Inc.' stockDescription='Apple Inc. is an American multinational technology company that specializes in consumer electronics, computer software, and online services.' width='100%' imageType='rectangular' />
-                  <RelevantLink image='' stockName='Apple Inc.' stockDescription='Apple Inc. is an American multinational technology company that specializes in consumer electronics, computer software, and online services.' width='100%' imageType='rectangular' />
-                  <RelevantLink image='' stockName='Apple Inc.' stockDescription='Apple Inc. is an American multinational technology company that specializes in consumer electronics, computer software, and online services.' width='100%' imageType='rectangular' />
-                  <RelevantLink image='' stockName='Apple Inc.' stockDescription='Apple Inc. is an American multinational technology company that specializes in consumer electronics, computer software, and online services.' width='100%' imageType='rectangular' />
-                  <RelevantLink image='' stockName='Apple Inc.' stockDescription='Apple Inc. is an American multinational technology company that specializes in consumer electronics, computer software, and online services.' width='100%' imageType='rectangular' />
-                  <RelevantLink image='' stockName='Apple Inc.' stockDescription='Apple Inc. is an American multinational technology company that specializes in consumer electronics, computer software, and online services.' width='100%' imageType='rectangular' />
-                  <RelevantLink image='' stockName='Apple Inc.' stockDescription='Apple Inc. is an American multinational technology company that specializes in consumer electronics, computer software, and online services.' width='100%' imageType='rectangular' />
-                  <RelevantLink image='' stockName='Apple Inc.' stockDescription='Apple Inc. is an American multinational technology company that specializes in consumer electronics, computer software, and online services.' width='100%' imageType='rectangular' />
 
-                </div>
-              </ScrollArea>
-            </div>
+
+
+            <ScrollBar orientation="horizontal" />
+          </ScrollArea>
+
+          <div className = "absolute right-0 h-full w-4 bg-gradient-to-l from-white to-transparent"></div>
+          
           </div>
-          <div className="absolute rounded-3xl bottom-2 left-0 right-0  h-8 2xl:h-12 bg-gradient-to-t from-slate-50 to-transparent pointer-events-none"></div>
-
+          
         </div>
       </div>
 
 
-      <div className="smallScreenVersion lg:hidden flex flex-col w-full h-screen overflow-y-auto">
-
-        <div className="w-full min-h-[70px] flex flex-row items-center pl-8 gap-2">
-          <h1 className="flex flex-col font-semibold text-2xl 2xl:text-4xl">{stockName} </h1>
-          <h1 className="text-2xl font-light 2xl:text-4xl">|</h1>
-          <h1 className="text-2xl font-light 2xl:text-4xl">Apple Inc.</h1>
-          <div className="rounded-full border border-1 border-black inline-block px-2 2xl:px-4 text-sm 2xl:text-lg ml-1 mt-2">PUBLIC</div>
-        </div>
-
-        <div className="w-full min-h-[200px] px-8 mb-4">
-          <CustomGraph
-            data={data}
-            height="100%"
-            width="100%"
-            gradientColor="#4BC7FD"
-            importantMarkers={importantMarkers}
-            hideXaxis={true}
-            hideYaxis={true}
-          />
-        </div>
-
-        <div className="w-full min-h-[400px] flex items-start rounded-3xl px-8">
-          <div className="flex-[2] relative flex lg:hidden h-full">
-            <div className="h-full w-full rounded-3xl border-2 flex flex-col">
-              <div className="flex-none w-full border-b-2 py-2 px-4 2xl:py-4 2xl:px-8">
-                <h1 className="font-normal italic 2xl:text-2xl">April 5, 2019</h1>
-                <h1 className="font-bold text-3xl 2xl:text-5xl">45.29 USD</h1>
-              </div>
-              <div className="flex-none w-full px-4 2xl:px-8 py-2 mb-2">
-                <h1 className='font-medium italic 2xl:text-2xl'>What Happened?</h1>
-                <h1 className="font-normal 2xl:text-lg">Lots of text lots os of text Lots of text lots of text Lots of text lots of text.</h1>
-              </div>
-              <div className="flex-grow flex flex-col w-full px-4 2xl:px-8 py-2 overflow-y-auto">
-                <h1 className="flex-none font-medium italic 2xl:text-2xl mb-2">Relevant Links</h1>
-                <ScrollArea className='w-full flex-grow'>
-                  <div className="flex flex-col gap-4 2xl:gap-6">
-                    <RelevantLink image='' stockName='Apple Inc.' stockDescription='Apple Inc. is an American multinational technology company that specializes in consumer electronics, computer software, and online services.' width='100%' imageType='rectangular' />
-                    <RelevantLink image='' stockName='Apple Inc.' stockDescription='Apple Inc. is an American multinational technology company that specializes in consumer electronics, computer software, and online services.' width='100%' imageType='rectangular' />
-                    <RelevantLink image='' stockName='Apple Inc.' stockDescription='Apple Inc. is an American multinational technology company that specializes in consumer electronics, computer software, and online services.' width='100%' imageType='rectangular' />
-                    <RelevantLink image='' stockName='Apple Inc.' stockDescription='Apple Inc. is an American multinational technology company that specializes in consumer electronics, computer software, and online services.' width='100%' imageType='rectangular' />
-                    <RelevantLink image='' stockName='Apple Inc.' stockDescription='Apple Inc. is an American multinational technology company that specializes in consumer electronics, computer software, and online services.' width='100%' imageType='rectangular' />
-                    <RelevantLink image='' stockName='Apple Inc.' stockDescription='Apple Inc. is an American multinational technology company that specializes in consumer electronics, computer software, and online services.' width='100%' imageType='rectangular' />
-                    <RelevantLink image='' stockName='Apple Inc.' stockDescription='Apple Inc. is an American multinational technology company that specializes in consumer electronics, computer software, and online services.' width='100%' imageType='rectangular' />
-                    <RelevantLink image='' stockName='Apple Inc.' stockDescription='Apple Inc. is an American multinational technology company that specializes in consumer electronics, computer software, and online services.' width='100%' imageType='rectangular' />
-
-                  </div>
-                </ScrollArea>
-              </div>
-            </div>
-            <div className="absolute rounded-3xl bottom-2 left-0 right-0  h-8 2xl:h-12 bg-gradient-to-t from-slate-50 to-transparent pointer-events-none"></div>
-
+      <ScrollArea className="flex-[4] font-sans">
+        <div className="flex flex-row justify-between items-center mb-2">
+          <h1 className="font-normal text-lg 2xl:text-2xl">About APPL</h1>
+          <div className="inline-block px-4 border border-black rounded-full">
+            <h1 className="2xl:text-xl">Deal History</h1>
           </div>
         </div>
-        <div className="w-full min-h-[400px] px-8 py-4">
-          <div className="flex relative flex-[3] h-[85%] border-2 rounded-3xl py-2 2xl:py-4 justify-center gap-4">
-            <ScrollArea className="h-[calc(100%-40px-0.5rem)] 2xl:h-[calc(100%-60px-0.5rem)] overflow-auto w-full px-4">
-              <div className="flex flex-col gap-4 2xl:gap-6">
-                <GPTResponse userSearch="Hi. Do you have any further questions?" />
-                {/* <UserSearchBubble userSearch="When did Apple begin selling the iPhone 7? What was the overall public response?" /> */}
-                {messages.map((message, index) => (
-                  message.type === 'user' ? (
-                    <UserSearchBubble key={index} userSearch={message.content} />
-                  ) : (
-                    <GPTResponse key={index} userSearch={message.content} />
-                  )
-                ))}
-                <div ref={scrollRef}></div>
-              </div>
-            </ScrollArea>
-            <input className="inputBar w-[calc(100%-1rem)] absolute border-2 bottom-2 2xl:bottom-4 h-[40px] 2xl:h-[60px] border rounded-full pl-4 bg-transparent text-base"
-              placeholder="Message Fynopsis"
-              value={inputValue}
-              onChange={handleInputChange}
-              onKeyDown={handleKeyPress}
-            ></input>
-            <Send className="absolute right-6 bottom-4 2xl:right-8 2xl:bottom-6 h-6 w-6 2xl:h-10 2xl:w-10 text-slate-500"
-              onClick={handleSend}></Send>
-            <div className="absolute rounded-3xl bottom-[calc(40px+.5rem)] 2xl:bottom-[calc(60px+1rem)] left-0 right-0  h-8 2xl:h-12 bg-gradient-to-t from-slate-50 to-transparent pointer-events-none"></div>
 
+        <div className="h-[1px] w-full bg-slate-200"></div>
+
+        <div className="inline-block flex flex-wrap py-2 2xl:py-4 gap-2">
+          <IndustryButton industryName={'Consumer Electronics'} />
+          <IndustryButton industryName={'Software'} />
+          <IndustryButton industryName={'Cloud'} />
+        </div>
+
+        <div className="description inline-block">
+          <h1 className="text-slate-600 text-[.95rem] font-light mb-4 2xl:mb-6 2xl:text-2xl">Apple Inc. is a leading American technology company known for designing, manufacturing, and selling consumer electronics, software, and online services. Founded in 1976 by Steve Jobs, Steve Wozniak, and Ronald Wayne, Apple is best known for its innovative products such as the iPhone, iPad, Mac computers, Apple Watch, and Apple TV.</h1>
+        </div>
+
+        <div className="stats flex flex-col gap-4 2xl:gap-6 inline-block">
+          <div className="inline-block flex flex-row items-center justify-around w-full">
+            <StatListing statName='Employees' statVal='161,100' />
+            <StatListing statName='CEO' statVal='Tim Cook' />
+          </div>
+
+          <div className="inline-block flex flex-row items-center justify-around w-full">
+            <StatListing statName='Founded' statVal='1976' />
+            <StatListing statName='Based In' statVal='Cupertino, CA' />
+          </div>
+
+          <div className="inline-block flex flex-row items-center justify-around w-full">
+            <StatListing statName='EBITDA' statVal='$129.629B' />
+            <StatListing statName='Enterprise Value' statVal='3.36T' />
           </div>
         </div>
-       
-      </div>
-
+      </ScrollArea>
 
 
     </div>

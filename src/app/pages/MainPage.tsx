@@ -165,7 +165,7 @@ export default function Home() {
 
   return (
     <div className="grid max-h-screen w-full lg:grid-cols-[250px_1fr] xl:grid-cols-[250px_1fr] 2xl:grid-cols-[350px_1fr] overflow-hidden font-montserrat">
-      <div className="hidden border-r bg-muted/40 lg:block">
+      <div className="hidden border-r lg:block">
         <div className="flex h-full max-h-screen flex-col gap-2">
           <div className="flex h-14 items-center border-b px-4 lg:h-[60px] lg:px-6 xl:h-[60px] 2xl:h-[90px]">
             <Link href="/" className="flex items-center gap-2 font-semibold">
@@ -231,95 +231,16 @@ export default function Home() {
         </div>
       </div>
       <div className="flex flex-col">
-        <header className="flex h-14 items-center gap-4 border-b bg-muted/40 px-4 lg:h-[60px] lg:px-6 xl:h-[60px] 2xl:h-[90px]">
-          <Sheet>
-            <SheetTrigger asChild>
-              <Button
-                variant="outline"
-                size="icon"
-                className="shrink-0 lg:hidden"
-              >
-                <Menu className="h-5 w-5" />
-                <span className="sr-only">Toggle navigation menu</span>
-              </Button>
-            </SheetTrigger>
-            <SheetContent side="left" className="flex flex-col">
-              <nav className="grid gap-2 text-lg font-medium">
-                <Link
-                  href="#"
-                  className="flex items-center gap-2 text-lg font-semibold"
-                >
-                  <Package2 className="h-6 w-6" />
-                  <span className="sr-only">Acme Inc</span>
-                </Link>
-                <Link
-                  href="#"
-                  className="mx-[-0.65rem] flex items-center gap-4 rounded-xl px-3 py-2 text-muted-foreground hover:text-foreground"
-                >
-                  {/* <Home className="h-5 w-5" /> */}
-                  Dashboard
-                </Link>
-                <Link
-                  href="#"
-                  className="mx-[-0.65rem] flex items-center gap-4 rounded-xl bg-muted px-3 py-2 text-foreground hover:text-foreground"
-                >
-                  <ShoppingCart className="h-5 w-5" />
-                  Orders
-                  <Badge className="ml-auto flex h-6 w-6 shrink-0 items-center justify-center rounded-full">
-                    6
-                  </Badge>
-                </Link>
-                <Link
-                  href="#"
-                  className="mx-[-0.65rem] flex items-center gap-4 rounded-xl px-3 py-2 text-muted-foreground hover:text-foreground"
-                >
-                  <Package className="h-5 w-5" />
-                  Products
-                </Link>
-                <Link
-                  href="#"
-                  className="mx-[-0.65rem] flex items-center gap-4 rounded-xl px-3 py-2 text-muted-foreground hover:text-foreground"
-                >
-                  <Users className="h-5 w-5" />
-                  Customers
-                </Link>
-                <Link
-                  href="#"
-                  className="mx-[-0.65rem] flex items-center gap-4 rounded-xl px-3 py-2 text-muted-foreground hover:text-foreground"
-                >
-                  <LineChart className="h-5 w-5" />
-                  Analytics
-                </Link>
-              </nav>
-              <div className="mt-auto">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Upgrade to Pro</CardTitle>
-                    <CardDescription>
-                      Unlock all features and get unlimited access to our
-                      support team.
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <Button size="sm" className="w-full">
-                      Upgrade
-                    </Button>
-                  </CardContent>
-                </Card>
-              </div>
-            </SheetContent>
-          </Sheet>
-          <div className="w-full flex-1">
-            <form>
-              <div className="relative">
-                <div className = "flex flex-col gap-0">
-                    <h1 className = "font-semibold text-med mb-0 2xl:text-2xl">Hello, {userAttributes?.given_name}!</h1>
-                    <h1 className = "text-sm -mt-1 text-gray-700 2xl:text-lg md:flex hidden">Tuesday, July 6th, 2024</h1>
-                </div>
-              </div>
-            </form>
-          </div>
-          <DropdownMenu>
+       
+        <ScrollArea className="">
+        {renderSelectedScreen()}
+        </ScrollArea>
+      </div>
+    </div>
+  );
+}
+
+  {/* <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="secondary" size="icon" className="rounded-full">
                 <CircleUser className="h-5 w-5 2xl:h-8 2xl:w-8" />
@@ -334,12 +255,4 @@ export default function Home() {
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={signOut} style={{ cursor: 'pointer' }}>Logout</DropdownMenuItem>
             </DropdownMenuContent>
-          </DropdownMenu>
-        </header>
-        <ScrollArea className="">
-        {renderSelectedScreen()}
-        </ScrollArea>
-      </div>
-    </div>
-  );
-}
+          </DropdownMenu> */}
