@@ -12,8 +12,8 @@ const StatListing: React.FC<StatListingProps> = ({
 }) => {
   return (
     <div className='flex flex-col w-[50%]  items-center px-4 py-1 '>
-        <h1 className = 'text-black font-normal text-sm 2xl:text-xl'>{statName}</h1>
-        <h1 className = 'text-sky-500 font-semibold text-sm 2xl:text-xl'>{statVal}</h1>
+        <h1 className = 'text-black font-normal text-sm 2xl:text-xl text-center'>{statName}</h1>
+        <h1 className = 'text-sky-500 font-semibold text-sm 2xl:text-xl text-center'>{statVal}</h1>
     </div>
   );
 };
