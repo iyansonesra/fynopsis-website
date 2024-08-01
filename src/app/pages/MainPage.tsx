@@ -12,6 +12,7 @@ import {
   ShoppingCart,
   Users,
   Settings as SettingsIcon,
+  LogOut,
 } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -227,6 +228,10 @@ export default function Home() {
                 </Button>
               </CardContent>
             </Card>
+            <button className = "h-12 w-full justify-center flex flex-row items-center gap-2"  onClick={signOut}>
+              <h1 className = "text-red-400">Logout</h1>
+              <LogOut className="h-4 w-4 decoration-red-400" color = {"#E74545"} />
+            </button>
           </div>
         </div>
       </div>
