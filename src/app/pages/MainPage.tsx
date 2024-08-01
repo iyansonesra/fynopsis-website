@@ -30,6 +30,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import { Input } from "@/components/ui/input"
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
 import logo from '../assets/fynopsis_noBG.png'
 import { useState, useEffect } from "react"
@@ -37,7 +38,10 @@ import Dashboard from "./Dashboard";
 import StockSearch from "./StockSearch";
 import Settings from "./Settings";
 import { useAuthenticator } from '@aws-amplify/ui-react';
-import { fetchUserAttributes, FetchUserAttributesOutput, fetchAuthSession } from 'aws-amplify/auth';
+import { fetchUserAttributes, FetchUserAttributesOutput } from 'aws-amplify/auth';
+import { fetchAuthSession } from 'aws-amplify/auth'
+import { get } from 'aws-amplify/api';
+import { post } from 'aws-amplify/api';
 import { ScrollArea } from "@/components/ui/scroll-area";
 
 export default function Home() {
@@ -45,6 +49,8 @@ export default function Home() {
   const [selectedTab, setSelectedTab] = useState("dashboard");
   const { user, signOut } = useAuthenticator((context) => [context.user]);
   const [userAttributes, setUserAttributes] = useState<FetchUserAttributesOutput | null>(null);
+  const [authToken, setAuthToken] = useState<string>("");
+  const [accessToken, setAccessToken] = useState<string>("");
 
 
   useEffect(() => {
@@ -130,8 +136,10 @@ export default function Home() {
   //          if (!token || !access) {
   //              throw new Error("Token is null or undefined");
   //          }
-  //          console.log("idToken: " + access);
-  //          console.log("accessToken: " + token);
+  //          setAccessToken(access);
+  //          setAuthToken(token);
+  //         //  console.log("idToken: " + access);
+  //         //  console.log("accessToken: " + token);
            
   //      } catch (error) {
   //          console.log(error);

@@ -10,7 +10,7 @@ const IndustryButton: React.FC<IndustryButtonProps> = ({
 }) => {
   return (
     <div className='flex inline-block rounded-full bg-sky-100 px-4 py-1 '>
-      <h1 className = 'text-sky-500 font-normal text-xs 2xl:text-lg'>{industryName}</h1>
+      <h1 className = 'text-sky-500 font-normal text-base md:text-xs 2xl:text-lg'>{industryName}</h1>
     </div>
   );
 };

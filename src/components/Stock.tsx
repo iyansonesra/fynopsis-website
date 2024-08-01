@@ -3,7 +3,7 @@ import RecentSearch from './RecentSearch';
 import { ScrollArea, ScrollBar } from './ui/scroll-area';
 import UserSearchBubble from './UserSearchBubble';
 import GPTResponse from './GPTResponse';
-import { Copy, Scroll, Search, Send, User } from 'lucide-react';
+import { Copy, Link, Menu, Scroll, Search, Send, SettingsIcon, User } from 'lucide-react';
 import RelevantLink from './RelevantLinks';
 import CustomGraph from './StockGraph';
 import generateRandomStockData from './GenerateRandomStockData';
@@ -16,6 +16,7 @@ import { Separator } from './ui/separator';
 import IndustryButton from './IndustryButton';
 import StatListing from './StatListing';
 import Deal from './Deal';
+import { Sheet, SheetContent, SheetTrigger } from './ui/sheet';
 
 interface StockProps {
   image: string;
@@ -46,7 +47,8 @@ interface ApiResponse {
 const LearnMoreContent = () => (
   <div className="relative mt-4  w-full flex flex-row justify-center">
     <Search className="h-4 w-4 2xl:h-6 2xl:w-6 absolute left-[15%] self-center decoration-slate-300" />
-    <input className = "w-3/4 h-8 2xl:h-12 2xl:text-lg bg-slate-100 rounded-full pl-12 2xl:pl-16 text-sm" placeholder='Ask a question...'></input>
+    <input className="w-3/4 h-8 2xl:h-12 2xl:text-lg bg-slate-100 rounded-full pl-12 2xl:pl-16 text-sm" placeholder='Ask a question...'></input>
+
   </div>
 );
 
@@ -169,9 +171,40 @@ const Stock: React.FC<StockProps> = ({
       });
   };
 
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
+
+  const MobileSidebar = () => (
+    <Sheet open={isMobileSidebarOpen} onOpenChange={setIsMobileSidebarOpen}>
+      <SheetTrigger asChild>
+        <button className="md:hidden">
+          <Menu className="h-6 w-6 2xl:h-12 2xl:w-12 self-center decoration-slate-300" />
+        </button>
+      </SheetTrigger>
+      <SheetContent side="left" className="w-[300px] sm:w-[400px]">
+        <nav className="flex flex-col gap-4 mt-8">
+          <Link href="#" className="flex items-center gap-2 px-2 py-1 hover:bg-gray-100">
+            {/* <Homer className="h-4 w-4" /> */}
+            <span>Dashboard</span>
+          </Link>
+          <Link href="#" className="flex items-center gap-2 px-2 py-1 hover:bg-gray-100">
+            <Search className="h-4 w-4" />
+            <span>Stock Search</span>
+          </Link>
+          <Link href="#" className="flex items-center gap-2 px-2 py-1 hover:bg-gray-100">
+            <SettingsIcon className="h-4 w-4" />
+            <span>Settings</span>
+          </Link>
+        </nav>
+      </SheetContent>
+    </Sheet>
+  );
+
   return (
-    <div className='w-full h-full flex flex-row py-6 px-4 2xl:py-12 2xl:px-12 font-montserrat gap-4'>
-      <div className="flex-[9] flex flex-col">
+    <div className='w-full h-full flex flex-col md:flex-row md:py-6 md:px-4 2xl:py-12 2xl:px-12 font-montserrat gap-4'>
+
+
+
+      <div className="flex-[9] hidden md:flex flex-col">
         <div className="relative flex-[5] flex items-end font-sans">
           <div className="nameAndPrice absolute top-0 left-0 gap-2 2xl:gap-4 flex flex-col">
             <h1 className="text-3xl font-extralight 2xl:text-4xl">Apple Inc. | AAPL</h1>
@@ -189,9 +222,8 @@ const Stock: React.FC<StockProps> = ({
             <h1 className="font-semibold 2xl:text-2xl">August 28, 2019</h1>
             <button
               onClick={() => setShowLearnMore(!showLearnMore)}
-              className={`px-4 border border-black rounded-full transition-colors ${
-                showLearnMore ? 'bg-black text-white' : 'bg-white text-black'
-              }`}
+              className={`px-4 border border-black rounded-full transition-colors ${showLearnMore ? 'bg-black text-white' : 'bg-white text-black'
+                }`}
             >
               <h1 className="2xl:text-xl">Learn More</h1>
             </button>
@@ -201,13 +233,13 @@ const Stock: React.FC<StockProps> = ({
             <LearnMoreContent />
           ) : (
             <>
-              <ScrollArea className='h-[5rem] text-slate-600 text-[.90rem] font-light 2xl:text-2xl 2xl:h-40 mb-4'>
+              <ScrollArea className='h-[8rem] md:h-[5rem] text-slate-600 text-[.90rem] font-light 2xl:text-2xl 2xl:h-40 mb-4'>
                 Apple Inc. is a leading American technology company known for designing, manufacturing, and selling consumer electronics, software, and online services. Founded in 1976 by Steve Jobs, Steve Wozniak, and Ronald Wayne, Apple is best known for its innovative products such as the iPhone, iPad, Mac computers, Apple Watch, and Apple TV.
               </ScrollArea>
 
               <h1 className="font-semibold 2xl:text-2xl">Relevant Links</h1>
               <div className="flex inline-block relative">
-                <ScrollArea className="flex flex-row pb-4 pt-2 w-[50vw] 2xl:w-[50vw] md:w-[65vw] lg:w-[50vw]">
+                <ScrollArea className="flex flex-row pb-4 pt-2 w-[90vw] md:w-[50vw] 2xl:w-[50vw] md:w-[65vw] lg:w-[50vw]">
                   <div className="flex flex-row h-full gap-4 justify-center ">
                     <RelevantLink title={'NY Times | Blah title'} url={''} linkDescription={'blah blah blah blahblah blah blah blah blah blah blah blah Apple blah blah blah blah blah blah blah blah blah iPhone blah'} />
                     <RelevantLink title={'NY Times | Blah title'} url={''} linkDescription={'blah blah blah blahblah blah blah blah blah blah blah blah Apple blah blah blah blah blah blah blah blah blah iPhone blah'} />
@@ -223,14 +255,13 @@ const Stock: React.FC<StockProps> = ({
         </div>
       </div>
 
-      <ScrollArea className="flex-[4] font-sans">
+      <ScrollArea className="flex-[4] hidden md:flex font-sans">
         <div className="flex flex-row justify-between items-center mb-2">
           <h1 className="font-normal text-lg 2xl:text-2xl">About APPL</h1>
           <button
             onClick={() => setShowDealHistory(!showDealHistory)}
-            className={`px-4 border border-black rounded-full transition-colors ${
-              showDealHistory ? 'bg-black text-white' : 'bg-white text-black'
-            }`}
+            className={`px-4 border border-black rounded-full transition-colors ${showDealHistory ? 'bg-black text-white' : 'bg-white text-black'
+              }`}
           >
             <h1 className="2xl:text-xl">Deal History</h1>
           </button>
@@ -283,6 +314,139 @@ const Stock: React.FC<StockProps> = ({
           </>
         )}
       </ScrollArea>
+
+      <div className="w-full flex md:hidden h-screen overflow-hidden  font-sans"> {/* Added overflow-hidden */}
+     
+
+        <div className="flex w-full flex-col overflow-y-auto overflow-x-hidden px-4 py-6"> {/* Removed inline-block, added overflow-y-auto */}
+        <div className="inline-block w-full mb-2">
+          <MobileSidebar />
+        </div>
+          <div className="nameAndPrice relative  flex flex-col mb-32">
+            <div className="absolute left-0 top-0 gap-1 flex flex-col">
+              <h1 className="text-2xl font-extralight 2xl:text-4xl">Apple Inc. | AAPL</h1>
+              <h1 className="text-4xl font-normal font-montserrat 2xl:text-6xl">$122.12</h1>
+              <div className="flex">
+                <div className="bg-red-400 rounded-2xl px-4 py-1">
+                  <h1 className="text-white font-montserrat font-semibold text-base 2xl:text-xl">-4.07%</h1>
+                </div>
+              </div>
+            </div>
+
+          </div>
+
+          <div className = "graphArea w-full flex inline-block">         
+             <CustomGraph data={data} importantMarkers={importantMarkers} height={'13rem'} width={'100%'} gradientColor={'rgb(212,240,255)'} hideXaxis={true} hideYaxis={true} />
+          </div>
+
+          <div className="w-full flex flex-col font-sans 2xl:gap-2">
+            <div className="flex flex-row justify-between items-center">
+              
+              <h1 className="font-semibold text-lg md:text-base 2xl:text-2xl">August 28, 2019</h1>
+              <button
+                onClick={() => setShowLearnMore(!showLearnMore)}
+                className={`px-4 border border-black rounded-full transition-colors ${showLearnMore ? 'bg-black text-white' : 'bg-white text-black'
+                  }`}
+              >
+                <h1 className="2xl:text-xl">Learn More</h1>
+              </button>
+            </div>
+            <Separator className="decoration-black w-[100%] my-1" />
+            {showLearnMore ? (
+              <>
+                 <LearnMoreContent />
+                 <div className = "h-56 w-full"></div>
+              </>
+            
+            ) : (
+              <>
+                <div className='inline-block text-slate-600 text-[1rem] font-light 2xl:text-2xl 2xl:h-40 mb-4'>
+                  Apple Inc. is a leading American technology company known for designing, manufacturing, and selling consumer electronics, software, and online services. Founded in 1976 by Steve Jobs, Steve Wozniak, and Ronald Wayne, Apple is best known for its innovative products such as the iPhone, iPad, Mac computers, Apple Watch, and Apple TV.
+                </div>
+
+                <h1 className="font-semibold text-lg md:text-base 2xl:text-2xl">Relevant Links</h1>
+                <div className="flex inline-block relative">
+                  <ScrollArea className="flex flex-row pb-4 pt-2 w-[90vw] md:w-[50vw] 2xl:w-[50vw] md:w-[65vw] lg:w-[50vw]">
+                    <div className="flex flex-row h-full gap-4 justify-center ">
+                      <RelevantLink title={'NY Times | Blah title'} url={''} linkDescription={'blah blah blah blahblah blah blah blah blah blah blah blah Apple blah blah blah blah blah blah blah blah blah iPhone blah'} />
+                      <RelevantLink title={'NY Times | Blah title'} url={''} linkDescription={'blah blah blah blahblah blah blah blah blah blah blah blah Apple blah blah blah blah blah blah blah blah blah iPhone blah'} />
+                      <RelevantLink title={'NY Times | Blah title'} url={''} linkDescription={'blah blah blah blahblah blah blah blah blah blah blah blah Apple blah blah blah blah blah blah blah blah blah iPhone blah'} />
+                      <RelevantLink title={'NY Times | Blah title'} url={''} linkDescription={'blah blah blah blahblah blah blah blah blah blah blah blah Apple blah blah blah blah blah blah blah blah blah iPhone blah'} />
+                    </div>
+                    <ScrollBar orientation="horizontal" />
+                  </ScrollArea>
+                  <div className="absolute right-0 h-full w-4 bg-gradient-to-l from-white to-transparent"></div>
+                </div>
+              </>
+            )}
+          </div>
+
+          <div className=" flex flex-col font-sans">
+            <div className="flex flex-row justify-between items-center mb-2">
+              <h1 className="font-normal text-xl md:text-lg 2xl:text-2xl">About APPL</h1>
+              <button
+                onClick={() => setShowDealHistory(!showDealHistory)}
+                className={`px-4 border border-black rounded-full transition-colors ${showDealHistory ? 'bg-black text-white' : 'bg-white text-black'
+                  }`}
+              >
+                <h1 className="2xl:text-xl">Deal History</h1>
+              </button>
+            </div>
+            <Separator className="decoration-black w-[100%] my-1" />
+            {showDealHistory ? (
+              <div className="inline-block flex flex-col mt-2">
+                <div className="flex flex-row items-center justify-end gap-2 mr-2">
+                  <button
+                    onClick={handleCopyAll}
+                    className="flex items-center gap-2 focus:outline-none"
+                    aria-label="Copy all deal information"
+                  >
+                    <Copy size={16} />
+                    <h1 className="text-sm text-black">
+                      {isCopiedAll ? "Copied!" : "Copy All"}
+                    </h1>
+                  </button>
+                </div>
+                {deals.map((deal, index) => (
+                  <Deal key={index} date={deal.date} dealDescription={deal.dealDescription} />
+                ))}
+              </div>
+            ) : (
+              <>
+                <div className="inline-block flex flex-wrap py-2 2xl:py-4 gap-2">
+                  <IndustryButton industryName={'Consumer Electronics'} />
+                  <IndustryButton industryName={'Software'} />
+                  <IndustryButton industryName={'Cloud'} />
+                </div>
+                <div className="description inline-block">
+                  <h1 className="text-slate-600 md:text-[.95rem] font-light mb-4 2xl:mb-6 2xl:text-2xl">
+                    Apple Inc. is a leading American technology company known for designing, manufacturing, and selling consumer electronics, software, and online services. Founded in 1976 by Steve Jobs, Steve Wozniak, and Ronald Wayne, Apple is best known for its innovative products such as the iPhone, iPad, Mac computers, Apple Watch, and Apple TV.
+                  </h1>
+                </div>
+                <div className="stats flex flex-col gap-4 2xl:gap-6 inline-block">
+                  <div className="inline-block flex flex-row items-center justify-around w-full">
+                    <StatListing statName='Employees' statVal='161,100' />
+                    <StatListing statName='CEO' statVal='Tim Cook' />
+                  </div>
+                  <div className="inline-block flex flex-row items-center justify-around w-full">
+                    <StatListing statName='Founded' statVal='1976' />
+                    <StatListing statName='Based In' statVal='Cupertino, CA' />
+                  </div>
+                  <div className="inline-block flex flex-row items-center justify-around w-full">
+                    <StatListing statName='EBITDA' statVal='$129.629B' />
+                    <StatListing statName='Enterprise Value' statVal='3.36T' />
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
+
+
+        </div>
+
+
+      </div>
+
     </div>
   );
 };
