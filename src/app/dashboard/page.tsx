@@ -14,11 +14,18 @@ export default function Dashboard() {
   const router = useRouter();
   useEffect(() => {
     if (!user) {
-        router.push("/");
+        router.push("/signin");
     } 
   }, [user, router]);
 
   return (
-    user ? <Home/> : "Signing out..."
+    user ? 
+    <AmplifyAuthenticator.Provider>
+      <Home/>
+    </AmplifyAuthenticator.Provider> : 
+    <AmplifyAuthenticator.Provider>
+      Checking session...
+    </AmplifyAuthenticator.Provider>
+    
   );
 }

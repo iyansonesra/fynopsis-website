@@ -17,7 +17,17 @@ Amplify.configure({
       // // OPTIONAL - This is used when autoSignIn is enabled for Auth.signUp
       // // 'code' is used for Auth.confirmSignUp, 'link' is used for email link verification
       signUpVerificationMethod: 'code', // 'code' | 'link'
-    }
+      loginWith: { // Optional
+        oauth: {
+          domain: 'fynopsis.auth.us-east-1.amazoncognito.com',
+          scopes: ['openid','email','phone','profile','aws.cognito.signin.user.admin'],
+          redirectSignIn: ['http://localhost:3000/dashboard', 'http://localhost:3000/', 'http://localhost:3000/signin'],
+          redirectSignOut: ['http://localhost:3000'],
+          responseType: 'code',
+        }
+      }
+    },
+    
   },
   API: {
    REST: {
@@ -27,7 +37,7 @@ Amplify.configure({
          region: 'us-east-1' // Optional
        }
     }
-  }
+  },
  });
 
 const ClientComponent = ({ children }: { children: React.ReactNode }) => {

@@ -6,6 +6,7 @@ import {
 } from "@aws-amplify/ui-react";
 import "@aws-amplify/ui-react/styles.css";
 import { Amplify } from "aws-amplify";
+import { signInWithRedirect } from "aws-amplify/auth"
 
 // const userPoolConfig = Amplify.getConfig();
 
@@ -96,13 +97,14 @@ export const Authenticator: React.FC<PropsWithChildren> = ({ children }) => {
 
 
  return (
-   <AmplifyThemeProvider theme={theme}>
+   <AmplifyThemeProvider theme={theme} >
     {/* socialProviders={['google']} */}
      <AmplifyAuthenticator 
        variation="modal"
        signUpAttributes={["given_name", 
         "family_name"
        ]}
+       socialProviders={['google']}
        formFields={{
          signIn: {
            username: {
