@@ -15,7 +15,7 @@ function generateRandomStockData(
     const formattedDate = date.toISOString().split('T')[0];
 
     // Generate a random percentage change between -5% and 5%
-    const changePercentage = (Math.random() - 0.5) * 0.1;
+    const changePercentage = (Math.random() - 0.5) * 0.5;
     const newValue = previousValue * (1 + changePercentage);
 
     data.push({
@@ -34,14 +34,7 @@ function generateRandomStockData(
     markerIndices.add(Math.floor(Math.random() * numPoints));
   }
 
-  // markerIndices.forEach((index) => {
-  //   const dataPoint = data[index];
-  //   importantMarkers.push({
-  //     x: dataPoint.name,
-  //     label: `Event ${index + 1}`,
-  //     explanation: `This is an important event that occurred on ${dataPoint.name}`
-  //   });
-  // });
+
 
   return { data, importantMarkers };
 }

@@ -1,11 +1,11 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import RecentSearch from './RecentSearch';
 import { ScrollArea, ScrollBar } from './ui/scroll-area';
 import UserSearchBubble from './UserSearchBubble';
 import GPTResponse from './GPTResponse';
 import { Copy, Link, Menu, Scroll, Search, Send, SettingsIcon, User } from 'lucide-react';
 import RelevantLink from './RelevantLinks';
-import CustomGraph from './StockGraph';
+import CustomGraph, { DataPoint } from './StockGraph';
 import generateRandomStockData from './GenerateRandomStockData';
 import { useState, useRef, useEffect } from 'react';
 import { useAuthenticator } from '@aws-amplify/ui-react';
@@ -17,6 +17,7 @@ import IndustryButton from './IndustryButton';
 import StatListing from './StatListing';
 import Deal from './Deal';
 import { Sheet, SheetContent, SheetTrigger } from './ui/sheet';
+import { Skeleton } from './ui/skeleton';
 
 interface StockProps {
   image: string;
@@ -58,7 +59,7 @@ const Stock: React.FC<StockProps> = ({
   stockDescription,
   imageType,
 }) => {
-  const { data, importantMarkers } = generateRandomStockData();
+  const { data: originalData, importantMarkers } = useMemo(() => generateRandomStockData(), []); const [data, setData] = useState<DataPoint[]>([]);
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputValue, setInputValue] = useState('');
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -70,6 +71,38 @@ const Stock: React.FC<StockProps> = ({
     // ... add all your deals here
   ]);
   const [isCopiedAll, setIsCopiedAll] = useState(false);
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
+  const [dateInfoLoaded, setDateInfoLoaded] = useState(false);
+  const [aboutInfoLoaded, setAboutInfoLoaded] = useState(false);
+  const [statInfoLoaded, setStatInfoLoaded] = useState(false);
+
+
+  useEffect(() => {
+    if (isInitialLoad) {
+      // Create horizontal line data
+      const horizontalLineData: DataPoint[] = originalData.map(point => ({
+        ...point,
+        uv: originalData[0].uv / 2, // Use the first value for a straight line
+        pv: originalData[0].pv / 2,
+        amt: originalData[0].amt / 2,
+      }));
+
+      // Set initial data to horizontal line
+      setData(horizontalLineData);
+
+      // After 2 seconds, switch to original data
+      const timer = setTimeout(() => {
+        setData(originalData);
+        setIsInitialLoad(false);
+        setDateInfoLoaded(true);
+        setAboutInfoLoaded(true);
+        setStatInfoLoaded(true);
+      }, 2000);
+
+      // Clean up timer
+      return () => clearTimeout(timer);
+    }
+  }, [isInitialLoad, originalData]);
 
   async function handleFetchAccess() {
     try {
@@ -233,9 +266,25 @@ const Stock: React.FC<StockProps> = ({
             <LearnMoreContent />
           ) : (
             <>
-              <ScrollArea className='h-[8rem] md:h-[5rem] text-slate-600 text-[.90rem] font-light 2xl:text-2xl 2xl:h-40 mb-4'>
-                Apple Inc. is a leading American technology company known for designing, manufacturing, and selling consumer electronics, software, and online services. Founded in 1976 by Steve Jobs, Steve Wozniak, and Ronald Wayne, Apple is best known for its innovative products such as the iPhone, iPad, Mac computers, Apple Watch, and Apple TV.
-              </ScrollArea>
+              {dateInfoLoaded ? (
+                <ScrollArea className='h-[8rem] md:h-[5rem] text-slate-600 text-[.90rem] font-light 2xl:text-2xl 2xl:h-40 mb-4'>
+                  Apple Inc. is a leading American technology company known for designing, manufacturing, and selling consumer electronics, software, and online services. Founded in 1976 by Steve Jobs, Steve Wozniak, and Ronald Wayne, Apple is best known for its innovative products such as the iPhone, iPad, Mac computers, Apple Watch, and Apple TV.
+                </ScrollArea>
+
+              ) : (
+                <>
+                  <div className="flex flex-col gap-2 mb-4 mt-2">
+                    <Skeleton className="w-[90%] h-4 rounded-full" />
+                    <Skeleton className="w-full h-4 rounded-full" />
+                    <Skeleton className="w-[80%] h-4 rounded-full" />
+                  </div>
+
+
+                </>
+
+
+              )}
+
 
               <h1 className="font-semibold 2xl:text-2xl">Relevant Links</h1>
               <div className="flex inline-block relative">
@@ -292,23 +341,39 @@ const Stock: React.FC<StockProps> = ({
               <IndustryButton industryName={'Software'} />
               <IndustryButton industryName={'Cloud'} />
             </div>
-            <div className="description inline-block">
-              <h1 className="text-slate-600 text-[.95rem] font-light mb-4 2xl:mb-6 2xl:text-2xl">
-                Apple Inc. is a leading American technology company known for designing, manufacturing, and selling consumer electronics, software, and online services. Founded in 1976 by Steve Jobs, Steve Wozniak, and Ronald Wayne, Apple is best known for its innovative products such as the iPhone, iPad, Mac computers, Apple Watch, and Apple TV.
-              </h1>
-            </div>
+
+            {dateInfoLoaded ? (
+                 <div className="description inline-block">
+                 <h1 className="text-slate-600 text-[.95rem] font-light mb-4 2xl:mb-6 2xl:text-2xl">
+                   Apple Inc. is a leading American technology company known for designing, manufacturing, and selling consumer electronics, software, and online services. Founded in 1976 by Steve Jobs, Steve Wozniak, and Ronald Wayne, Apple is best known for its innovative products such as the iPhone, iPad, Mac computers, Apple Watch, and Apple TV.
+                 </h1>
+               </div>
+
+              ) : (
+                <>
+                  <div className="flex flex-col gap-2 mb-4 mt-2">
+                    <Skeleton className="w-[90%] h-4 rounded-full" />
+                    <Skeleton className="w-full h-4 rounded-full" />
+                    <Skeleton className="w-[90%] h-4 rounded-full" />
+                    <Skeleton className="w-[85%] h-4 rounded-full" />
+                    <Skeleton className="w-[100%] h-4 rounded-full" />
+                    <Skeleton className="w-[70%] h-4 rounded-full" />
+                  </div>
+                </>
+              )}
+           
             <div className="stats flex flex-col gap-4 2xl:gap-6 inline-block">
               <div className="inline-block flex flex-row items-center justify-around w-full">
-                <StatListing statName='Employees' statVal='161,100' />
-                <StatListing statName='CEO' statVal='Tim Cook' />
+                <StatListing statName='Employees' statVal='161,100' isLoading = {!statInfoLoaded} />
+                <StatListing statName='CEO' statVal='Tim Cook' isLoading = {!statInfoLoaded} />
               </div>
               <div className="inline-block flex flex-row items-center justify-around w-full">
-                <StatListing statName='Founded' statVal='1976' />
-                <StatListing statName='Based In' statVal='Cupertino, CA' />
+                <StatListing statName='Founded' statVal='1976' isLoading = {!statInfoLoaded} />
+                <StatListing statName='Based In' statVal='Cupertino, CA' isLoading = {!statInfoLoaded}/>
               </div>
               <div className="inline-block flex flex-row items-center justify-around w-full">
-                <StatListing statName='EBITDA' statVal='$129.629B' />
-                <StatListing statName='Enterprise Value' statVal='3.36T' />
+                <StatListing statName='EBITDA' statVal='$129.629B'isLoading = {!statInfoLoaded} />
+                <StatListing statName='Enterprise Value' statVal='3.36T' isLoading = {!statInfoLoaded}/>
               </div>
             </div>
           </>
@@ -316,12 +381,12 @@ const Stock: React.FC<StockProps> = ({
       </ScrollArea>
 
       <div className="w-full flex md:hidden h-screen overflow-hidden  font-sans"> {/* Added overflow-hidden */}
-     
+
 
         <div className="flex w-full flex-col overflow-y-auto overflow-x-hidden px-4 py-6"> {/* Removed inline-block, added overflow-y-auto */}
-        <div className="inline-block w-full mb-2">
-          <MobileSidebar />
-        </div>
+          <div className="inline-block w-full mb-2">
+            <MobileSidebar />
+          </div>
           <div className="nameAndPrice relative  flex flex-col mb-32">
             <div className="absolute left-0 top-0 gap-1 flex flex-col">
               <h1 className="text-2xl font-extralight 2xl:text-4xl">Apple Inc. | AAPL</h1>
@@ -335,13 +400,13 @@ const Stock: React.FC<StockProps> = ({
 
           </div>
 
-          <div className = "graphArea w-full flex inline-block">         
-             <CustomGraph data={data} importantMarkers={importantMarkers} height={'13rem'} width={'100%'} gradientColor={'rgb(212,240,255)'} hideXaxis={true} hideYaxis={true} />
+          <div className="graphArea w-full flex inline-block">
+            <CustomGraph data={data} importantMarkers={importantMarkers} height={'60%'} width={'100%'} gradientColor={'rgb(212,240,255)'} hideXaxis={true} hideYaxis={true} />
           </div>
 
           <div className="w-full flex flex-col font-sans 2xl:gap-2">
             <div className="flex flex-row justify-between items-center">
-              
+
               <h1 className="font-semibold text-lg md:text-base 2xl:text-2xl">August 28, 2019</h1>
               <button
                 onClick={() => setShowLearnMore(!showLearnMore)}
@@ -354,12 +419,13 @@ const Stock: React.FC<StockProps> = ({
             <Separator className="decoration-black w-[100%] my-1" />
             {showLearnMore ? (
               <>
-                 <LearnMoreContent />
-                 <div className = "h-56 w-full"></div>
+                <LearnMoreContent />
+                <div className="h-56 w-full"></div>
               </>
-            
+
             ) : (
               <>
+
                 <div className='inline-block text-slate-600 text-[1rem] font-light 2xl:text-2xl 2xl:h-40 mb-4'>
                   Apple Inc. is a leading American technology company known for designing, manufacturing, and selling consumer electronics, software, and online services. Founded in 1976 by Steve Jobs, Steve Wozniak, and Ronald Wayne, Apple is best known for its innovative products such as the iPhone, iPad, Mac computers, Apple Watch, and Apple TV.
                 </div>
