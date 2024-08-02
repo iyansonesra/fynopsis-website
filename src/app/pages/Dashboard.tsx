@@ -11,6 +11,11 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 
 import { Separator } from "@/components/ui/separator"
 import RecentNews from "@/components/RecentNews"
+import CustomGraph, { DataPoint } from "@/components/StockGraph"
+import { useMemo, useState } from "react"
+import generateRandomStockData from "@/components/GenerateRandomStockData"
+const { data, importantMarkers } = generateRandomStockData();
+
 
 export default function Dashboard() {
     
@@ -18,7 +23,9 @@ export default function Dashboard() {
         <div className=" flex flex-row h-screen w-full p-2 lg:p-4 xl:p-8 2xl:p-10 gap-8 font-montserrat">
             <div className="smallerCompAndRecentNews flex-[5]  flex flex-col gap-8 h-[90%]">
                 <div className="smallerComp flex-[1] rounded-2xl flex flex-row gap-8 h-[30%]">
-                    <div className="firstComp flex-[2] bg-white rounded-2xl border"></div>
+                    <div className="firstComp flex-[2] bg-white rounded-2xl border">
+                        {/* <CustomGraph data={data} height={"100%"} width={"100%"} gradientColor={"black"} importantMarkers={[]} /> */}
+                    </div>
                     <div className="secondComp flex-[1] bg-white rounded-2xl border"></div>
                 </div>
                 <div className="recentNews flex-[2] 2xl:flex-[3] rounded-2xl border bg-white flex flex-col h-[70%]">

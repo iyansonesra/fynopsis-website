@@ -19,6 +19,7 @@ import Deal from './Deal';
 import { Sheet, SheetContent, SheetTrigger } from './ui/sheet';
 import { Skeleton } from './ui/skeleton';
 
+
 interface StockProps {
   image: string;
   stockName: string;
@@ -75,6 +76,11 @@ const Stock: React.FC<StockProps> = ({
   const [dateInfoLoaded, setDateInfoLoaded] = useState(false);
   const [aboutInfoLoaded, setAboutInfoLoaded] = useState(false);
   const [statInfoLoaded, setStatInfoLoaded] = useState(false);
+  const [relevantLinksLoaded, setRelevantLinksLoaded] = useState(false);
+  const [industryButtonLoaded, setIndustryButtonLoaded] = useState(false);
+  const [selectedTimeframe, setSelectedTimeframe] = useState('MAX');
+
+
 
 
   useEffect(() => {
@@ -97,6 +103,8 @@ const Stock: React.FC<StockProps> = ({
         setDateInfoLoaded(true);
         setAboutInfoLoaded(true);
         setStatInfoLoaded(true);
+        setRelevantLinksLoaded(true);
+        setIndustryButtonLoaded(true);
       }, 2000);
 
       // Clean up timer
@@ -234,9 +242,6 @@ const Stock: React.FC<StockProps> = ({
 
   return (
     <div className='w-full h-full flex flex-col md:flex-row md:py-6 md:px-4 2xl:py-12 2xl:px-12 font-montserrat gap-4'>
-
-
-
       <div className="flex-[9] hidden md:flex flex-col">
         <div className="relative flex-[5] flex items-end font-sans">
           <div className="nameAndPrice absolute top-0 left-0 gap-2 2xl:gap-4 flex flex-col">
@@ -248,6 +253,23 @@ const Stock: React.FC<StockProps> = ({
               </div>
             </div>
           </div>
+
+          <div className="timeframe absolute top-0 right-0 gap-2 2xl:gap-4 flex flex-row inline-block">
+  {['1D', '5D', '1M', '6M', '1Y', '5Y', 'MAX'].map((frame) => (
+    <div 
+      key={frame} 
+      className="relative cursor-pointer"
+      onClick={() => setSelectedTimeframe(frame)}
+    >
+      <h1 className={`font-normal ${selectedTimeframe === frame ? 'text-sky-500' : 'text-slate-500'}`}>
+        {frame}
+      </h1>
+      {selectedTimeframe === frame && (
+        <div className="absolute bottom-0 left-0 w-full h-0.5 bg-sky-500 transition-all duration-300"></div>
+      )}
+    </div>
+  ))}
+</div>
           <CustomGraph data={data} importantMarkers={importantMarkers} height={'60%'} width={'100%'} gradientColor={'rgb(212,240,255)'} hideXaxis={true} hideYaxis={true} />
         </div>
         <div className="flex-[4] w-full flex flex-col font-sans 2xl:gap-2">
@@ -290,10 +312,10 @@ const Stock: React.FC<StockProps> = ({
               <div className="flex inline-block relative">
                 <ScrollArea className="flex flex-row pb-4 pt-2 w-[90vw] md:w-[50vw] 2xl:w-[50vw] md:w-[65vw] lg:w-[50vw]">
                   <div className="flex flex-row h-full gap-4 justify-center ">
-                    <RelevantLink title={'NY Times | Blah title'} url={''} linkDescription={'blah blah blah blahblah blah blah blah blah blah blah blah Apple blah blah blah blah blah blah blah blah blah iPhone blah'} />
-                    <RelevantLink title={'NY Times | Blah title'} url={''} linkDescription={'blah blah blah blahblah blah blah blah blah blah blah blah Apple blah blah blah blah blah blah blah blah blah iPhone blah'} />
-                    <RelevantLink title={'NY Times | Blah title'} url={''} linkDescription={'blah blah blah blahblah blah blah blah blah blah blah blah Apple blah blah blah blah blah blah blah blah blah iPhone blah'} />
-                    <RelevantLink title={'NY Times | Blah title'} url={''} linkDescription={'blah blah blah blahblah blah blah blah blah blah blah blah Apple blah blah blah blah blah blah blah blah blah iPhone blah'} />
+                    <RelevantLink title={'NY Times | Blah title'} url={''} linkDescription={'blah blah blah blahblah blah blah blah blah blah blah blah Apple blah blah blah blah blah blah blah blah blah iPhone blah'}  isLoading={!relevantLinksLoaded}/>
+                    <RelevantLink title={'NY Times | Blah title'} url={''} linkDescription={'blah blah blah blahblah blah blah blah blah blah blah blah Apple blah blah blah blah blah blah blah blah blah iPhone blah'}  isLoading={!relevantLinksLoaded}/>
+                    <RelevantLink title={'NY Times | Blah title'} url={''} linkDescription={'blah blah blah blahblah blah blah blah blah blah blah blah Apple blah blah blah blah blah blah blah blah blah iPhone blah'}  isLoading={!relevantLinksLoaded}/>
+                    <RelevantLink title={'NY Times | Blah title'} url={''} linkDescription={'blah blah blah blahblah blah blah blah blah blah blah blah Apple blah blah blah blah blah blah blah blah blah iPhone blah'}  isLoading={!relevantLinksLoaded}/>
                   </div>
                   <ScrollBar orientation="horizontal" />
                 </ScrollArea>
@@ -337,9 +359,9 @@ const Stock: React.FC<StockProps> = ({
         ) : (
           <>
             <div className="inline-block flex flex-wrap py-2 2xl:py-4 gap-2">
-              <IndustryButton industryName={'Consumer Electronics'} />
-              <IndustryButton industryName={'Software'} />
-              <IndustryButton industryName={'Cloud'} />
+              <IndustryButton industryName={'Consumer Electronics'} isLoading = {!industryButtonLoaded}/>
+              <IndustryButton industryName={'Software'} isLoading = {!industryButtonLoaded}/>
+              <IndustryButton industryName={'Cloud'} isLoading = {!industryButtonLoaded}/>
             </div>
 
             {dateInfoLoaded ? (

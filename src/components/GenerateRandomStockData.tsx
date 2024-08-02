@@ -1,7 +1,7 @@
 import { DataPoint, ImportantMarker } from './StockGraph';
 
 function generateRandomStockData(
-  numPoints: number = 30,
+  numPoints: number = 2190,
   numMarkers: number = 3
 ): { data: DataPoint[], importantMarkers: ImportantMarker[] } {
   const data: DataPoint[] = [];
@@ -15,7 +15,7 @@ function generateRandomStockData(
     const formattedDate = date.toISOString().split('T')[0];
 
     // Generate a random percentage change between -5% and 5%
-    const changePercentage = (Math.random() - 0.5) * 0.5;
+    const changePercentage = (Math.random() - 0.5) * 0.1;
     const newValue = previousValue * (1 + changePercentage);
 
     data.push({
