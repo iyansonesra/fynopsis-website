@@ -37,6 +37,8 @@ interface CustomGraphProps {
     importantMarkers: ImportantMarker[];
     hideXaxis?: boolean;
     hideYaxis?: boolean;
+    selectedMarkerDate: string | null;
+    onMarkerSelect: (date: string | null) => void;
 }
 
 interface CustomTooltipProps {
@@ -110,10 +112,12 @@ const CustomGraph: React.FC<CustomGraphProps> = ({
     gradientColor,
     importantMarkers,
     hideXaxis = false,
-    hideYaxis = false
+    hideYaxis = false,
+    selectedMarkerDate,
+    onMarkerSelect
 }) => {
 
-    const [selectedMarkerDate, setSelectedMarkerDate] = useState<string | null>(null);
+    // const [selectedMarkerDate, setSelectedMarkerDate] = useState<string | null>(null);
     const [recentNewsDate, setRecentNewsDate] = useState<string>("Recent News");
 
     const MarkerLine: React.FC<MarkerLineProps> = ({ marker, chartDimensions, isSelected, onSelect }) => {
@@ -140,7 +144,7 @@ const CustomGraph: React.FC<CustomGraphProps> = ({
                 {/* Invisible larger clickable area */}
                 <rect
                     x={xPosition - clickableAreaSize / 2}
-                    y={chartDimensions.height - 80 - (clickableAreaSize - iconSize) / 2}
+                    y={chartDimensions.height - 30 - (clickableAreaSize - iconSize) / 2}
                     width={clickableAreaSize}
                     height={clickableAreaSize}
                     fill="transparent"
@@ -175,12 +179,10 @@ const CustomGraph: React.FC<CustomGraphProps> = ({
     }, [selectedMarkerDate]);
 
     const handleMarkerSelect = (marker: ImportantMarker) => {
-        if (selectedMarker === marker) {
-            setSelectedMarker(null);
-            setSelectedMarkerDate(null);
+        if (selectedMarkerDate === marker.date) {
+            onMarkerSelect(null);
         } else {
-            setSelectedMarker(marker);
-            setSelectedMarkerDate(marker.date);
+            onMarkerSelect(marker.date);
         }
     };
 

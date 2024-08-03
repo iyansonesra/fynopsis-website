@@ -134,6 +134,10 @@ const Stock: React.FC<StockProps> = ({
   const [recentNewsDate, setRecentNewsDate] = useState<string>("Recent News");
 
 
+  const handleMarkerSelect = (date: string | null) => {
+    setSelectedMarkerDate(date);
+  };
+
 
   useEffect(() => {
     const filteredData = filterDataByTimeframe(allData, selectedTimeframe);
@@ -291,6 +295,7 @@ const Stock: React.FC<StockProps> = ({
   useEffect(() => {
     // Send initial query when component mounts
     handleSendQuery(`Provide a brief summary about ${companyName}. Please keep it anywhere from 3-5 sentences maximum.`);
+    handleStockData();
   }, [companyName]);
 
   const handleCopyAll = () => {
@@ -375,6 +380,8 @@ const Stock: React.FC<StockProps> = ({
             gradientColor={'rgb(52, 128, 235)'}
             hideXaxis={true}
             hideYaxis={true}
+            selectedMarkerDate={selectedMarkerDate}
+            onMarkerSelect={handleMarkerSelect}
           />
         </div>
         <div className="flex-[4] w-full flex flex-col font-sans 2xl:gap-2">
@@ -382,7 +389,7 @@ const Stock: React.FC<StockProps> = ({
             <h1 className="font-semibold 2xl:text-2xl">
               {selectedMarkerDate
                 ? format(new Date(selectedMarkerDate), 'MMMM d, yyyy')
-                : recentNewsDate}
+                : "Recent News"}
             </h1>
             <button
               onClick={() => setShowLearnMore(!showLearnMore)}
