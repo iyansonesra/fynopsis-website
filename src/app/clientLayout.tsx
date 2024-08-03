@@ -20,7 +20,7 @@ Amplify.configure({
       loginWith: { // Optional
         oauth: {
           domain: 'fynopsis.auth.us-east-1.amazoncognito.com',
-          scopes: ['openid','email','phone','profile','aws.cognito.signin.user.admin'],
+          scopes: ['aws.cognito.signin.user.admin'],
           redirectSignIn: ['http://localhost:3000/dashboard', 'http://localhost:3000/', 'http://localhost:3000/signin'],
           redirectSignOut: ['http://localhost:3000'],
           responseType: 'code',
