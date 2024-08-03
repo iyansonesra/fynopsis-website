@@ -18,6 +18,34 @@ import StatListing from './StatListing';
 import Deal from './Deal';
 import { Sheet, SheetContent, SheetTrigger } from './ui/sheet';
 import { Skeleton } from './ui/skeleton';
+import { subDays, subMonths, subYears, parseISO } from 'date-fns';
+
+export function filterDataByTimeframe(data: DataPoint[], timeframe: string): DataPoint[] {
+  const endDate = parseISO(data[data.length - 1].name);
+  let startDate: Date;
+
+  switch (timeframe) {
+    case '1W':
+      startDate = subDays(endDate, 6);
+      break;
+    case '1M':
+      startDate = subMonths(endDate, 1);
+      break;
+    case '6M':
+      startDate = subMonths(endDate, 6);
+      break;
+    case '1Y':
+      startDate = subYears(endDate, 1);
+      break;
+    case '5Y':
+      startDate = subYears(endDate, 5);
+      break;
+    default: // 'MAX'
+      return data;
+  }
+
+  return data.filter(item => parseISO(item.name) >= startDate);
+}
 
 
 interface StockProps {
@@ -60,7 +88,6 @@ const Stock: React.FC<StockProps> = ({
   stockDescription,
   imageType,
 }) => {
-  const { data: originalData, importantMarkers } = useMemo(() => generateRandomStockData(), []); const [data, setData] = useState<DataPoint[]>([]);
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputValue, setInputValue] = useState('');
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -80,25 +107,32 @@ const Stock: React.FC<StockProps> = ({
   const [industryButtonLoaded, setIndustryButtonLoaded] = useState(false);
   const [selectedTimeframe, setSelectedTimeframe] = useState('MAX');
 
+  const { data: allData, importantMarkers } = useMemo(() => generateRandomStockData(), []);
+  const [displayedData, setDisplayedData] = useState(allData);
 
+
+  useEffect(() => {
+    const filteredData = filterDataByTimeframe(allData, selectedTimeframe);
+    setDisplayedData(filteredData);
+  }, [selectedTimeframe, allData]);
 
 
   useEffect(() => {
     if (isInitialLoad) {
       // Create horizontal line data
-      const horizontalLineData: DataPoint[] = originalData.map(point => ({
+      const horizontalLineData: DataPoint[] = allData.map(point => ({
         ...point,
-        uv: originalData[0].uv / 2, // Use the first value for a straight line
-        pv: originalData[0].pv / 2,
-        amt: originalData[0].amt / 2,
+        uv: allData[0].uv / 2, // Use the first value for a straight line
+        pv: allData[0].pv / 2,
+        amt: allData[0].amt / 2,
       }));
 
       // Set initial data to horizontal line
-      setData(horizontalLineData);
+      setDisplayedData(horizontalLineData);
 
       // After 2 seconds, switch to original data
       const timer = setTimeout(() => {
-        setData(originalData);
+        setDisplayedData(allData);
         setIsInitialLoad(false);
         setDateInfoLoaded(true);
         setAboutInfoLoaded(true);
@@ -110,7 +144,7 @@ const Stock: React.FC<StockProps> = ({
       // Clean up timer
       return () => clearTimeout(timer);
     }
-  }, [isInitialLoad, originalData]);
+  }, [isInitialLoad, allData]);
 
   async function handleFetchAccess() {
     try {
@@ -255,23 +289,31 @@ const Stock: React.FC<StockProps> = ({
           </div>
 
           <div className="timeframe absolute top-0 right-0 gap-2 2xl:gap-4 flex flex-row inline-block">
-  {['1D', '5D', '1M', '6M', '1Y', '5Y', 'MAX'].map((frame) => (
-    <div 
-      key={frame} 
-      className="relative cursor-pointer"
-      onClick={() => setSelectedTimeframe(frame)}
-    >
-      <h1 className={`font-normal ${selectedTimeframe === frame ? 'text-sky-500' : 'text-slate-500'}`}>
-        {frame}
-      </h1>
-      {selectedTimeframe === frame && (
-        <div className="absolute bottom-0 left-0 w-full h-0.5 bg-sky-500 transition-all duration-300"></div>
-      )}
-    </div>
-  ))}
-</div>
-          <CustomGraph data={data} importantMarkers={importantMarkers} height={'60%'} width={'100%'} gradientColor={'rgb(212,240,255)'} hideXaxis={true} hideYaxis={true} />
-        </div>
+            {['1W', '1M', '6M', '1Y', '5Y', 'MAX'].map((frame) => (
+              <div
+                key={frame}
+                className="relative cursor-pointer"
+                onClick={() => setSelectedTimeframe(frame)}
+              >
+                <h1 className={`font-normal ${selectedTimeframe === frame ? 'text-blue-500' : 'text-slate-500'}`}>
+                  {frame}
+                </h1>
+                {selectedTimeframe === frame && (
+                  <div className="absolute bottom-0 left-0 w-full h-0.5 bg-blue-500 transition-all duration-300"></div>
+                )}
+              </div>
+            ))}
+          </div>
+          <CustomGraph
+            data={displayedData}
+            importantMarkers={importantMarkers}
+            height={'60%'}
+            width={'100%'}
+            gradientColor={'rgb(52, 128, 235)'}
+            hideXaxis={true}
+            hideYaxis={true}
+          />   
+         </div>
         <div className="flex-[4] w-full flex flex-col font-sans 2xl:gap-2">
           <div className="flex flex-row justify-between">
             <h1 className="font-semibold 2xl:text-2xl">August 28, 2019</h1>
@@ -312,10 +354,10 @@ const Stock: React.FC<StockProps> = ({
               <div className="flex inline-block relative">
                 <ScrollArea className="flex flex-row pb-4 pt-2 w-[90vw] md:w-[50vw] 2xl:w-[50vw] md:w-[65vw] lg:w-[50vw]">
                   <div className="flex flex-row h-full gap-4 justify-center ">
-                    <RelevantLink title={'NY Times | Blah title'} url={''} linkDescription={'blah blah blah blahblah blah blah blah blah blah blah blah Apple blah blah blah blah blah blah blah blah blah iPhone blah'}  isLoading={!relevantLinksLoaded}/>
-                    <RelevantLink title={'NY Times | Blah title'} url={''} linkDescription={'blah blah blah blahblah blah blah blah blah blah blah blah Apple blah blah blah blah blah blah blah blah blah iPhone blah'}  isLoading={!relevantLinksLoaded}/>
-                    <RelevantLink title={'NY Times | Blah title'} url={''} linkDescription={'blah blah blah blahblah blah blah blah blah blah blah blah Apple blah blah blah blah blah blah blah blah blah iPhone blah'}  isLoading={!relevantLinksLoaded}/>
-                    <RelevantLink title={'NY Times | Blah title'} url={''} linkDescription={'blah blah blah blahblah blah blah blah blah blah blah blah Apple blah blah blah blah blah blah blah blah blah iPhone blah'}  isLoading={!relevantLinksLoaded}/>
+                    <RelevantLink title={'NY Times | Blah title'} url={''} linkDescription={'blah blah blah blahblah blah blah blah blah blah blah blah Apple blah blah blah blah blah blah blah blah blah iPhone blah'} isLoading={!relevantLinksLoaded} />
+                    <RelevantLink title={'NY Times | Blah title'} url={''} linkDescription={'blah blah blah blahblah blah blah blah blah blah blah blah Apple blah blah blah blah blah blah blah blah blah iPhone blah'} isLoading={!relevantLinksLoaded} />
+                    <RelevantLink title={'NY Times | Blah title'} url={''} linkDescription={'blah blah blah blahblah blah blah blah blah blah blah blah Apple blah blah blah blah blah blah blah blah blah iPhone blah'} isLoading={!relevantLinksLoaded} />
+                    <RelevantLink title={'NY Times | Blah title'} url={''} linkDescription={'blah blah blah blahblah blah blah blah blah blah blah blah Apple blah blah blah blah blah blah blah blah blah iPhone blah'} isLoading={!relevantLinksLoaded} />
                   </div>
                   <ScrollBar orientation="horizontal" />
                 </ScrollArea>
@@ -359,43 +401,43 @@ const Stock: React.FC<StockProps> = ({
         ) : (
           <>
             <div className="inline-block flex flex-wrap py-2 2xl:py-4 gap-2">
-              <IndustryButton industryName={'Consumer Electronics'} isLoading = {!industryButtonLoaded}/>
-              <IndustryButton industryName={'Software'} isLoading = {!industryButtonLoaded}/>
-              <IndustryButton industryName={'Cloud'} isLoading = {!industryButtonLoaded}/>
+              <IndustryButton industryName={'Consumer Electronics'} isLoading={!industryButtonLoaded} />
+              <IndustryButton industryName={'Software'} isLoading={!industryButtonLoaded} />
+              <IndustryButton industryName={'Cloud'} isLoading={!industryButtonLoaded} />
             </div>
 
             {dateInfoLoaded ? (
-                 <div className="description inline-block">
-                 <h1 className="text-slate-600 text-[.95rem] font-light mb-4 2xl:mb-6 2xl:text-2xl">
-                   Apple Inc. is a leading American technology company known for designing, manufacturing, and selling consumer electronics, software, and online services. Founded in 1976 by Steve Jobs, Steve Wozniak, and Ronald Wayne, Apple is best known for its innovative products such as the iPhone, iPad, Mac computers, Apple Watch, and Apple TV.
-                 </h1>
-               </div>
+              <div className="description inline-block">
+                <h1 className="text-slate-600 text-[.95rem] font-light mb-4 2xl:mb-6 2xl:text-2xl">
+                  Apple Inc. is a leading American technology company known for designing, manufacturing, and selling consumer electronics, software, and online services. Founded in 1976 by Steve Jobs, Steve Wozniak, and Ronald Wayne, Apple is best known for its innovative products such as the iPhone, iPad, Mac computers, Apple Watch, and Apple TV.
+                </h1>
+              </div>
 
-              ) : (
-                <>
-                  <div className="flex flex-col gap-2 mb-4 mt-2">
-                    <Skeleton className="w-[90%] h-4 rounded-full" />
-                    <Skeleton className="w-full h-4 rounded-full" />
-                    <Skeleton className="w-[90%] h-4 rounded-full" />
-                    <Skeleton className="w-[85%] h-4 rounded-full" />
-                    <Skeleton className="w-[100%] h-4 rounded-full" />
-                    <Skeleton className="w-[70%] h-4 rounded-full" />
-                  </div>
-                </>
-              )}
-           
+            ) : (
+              <>
+                <div className="flex flex-col gap-2 mb-4 mt-2">
+                  <Skeleton className="w-[90%] h-4 rounded-full" />
+                  <Skeleton className="w-full h-4 rounded-full" />
+                  <Skeleton className="w-[90%] h-4 rounded-full" />
+                  <Skeleton className="w-[85%] h-4 rounded-full" />
+                  <Skeleton className="w-[100%] h-4 rounded-full" />
+                  <Skeleton className="w-[70%] h-4 rounded-full" />
+                </div>
+              </>
+            )}
+
             <div className="stats flex flex-col gap-4 2xl:gap-6 inline-block">
               <div className="inline-block flex flex-row items-center justify-around w-full">
-                <StatListing statName='Employees' statVal='161,100' isLoading = {!statInfoLoaded} />
-                <StatListing statName='CEO' statVal='Tim Cook' isLoading = {!statInfoLoaded} />
+                <StatListing statName='Employees' statVal='161,100' isLoading={!statInfoLoaded} />
+                <StatListing statName='CEO' statVal='Tim Cook' isLoading={!statInfoLoaded} />
               </div>
               <div className="inline-block flex flex-row items-center justify-around w-full">
-                <StatListing statName='Founded' statVal='1976' isLoading = {!statInfoLoaded} />
-                <StatListing statName='Based In' statVal='Cupertino, CA' isLoading = {!statInfoLoaded}/>
+                <StatListing statName='Founded' statVal='1976' isLoading={!statInfoLoaded} />
+                <StatListing statName='Based In' statVal='Cupertino, CA' isLoading={!statInfoLoaded} />
               </div>
               <div className="inline-block flex flex-row items-center justify-around w-full">
-                <StatListing statName='EBITDA' statVal='$129.629B'isLoading = {!statInfoLoaded} />
-                <StatListing statName='Enterprise Value' statVal='3.36T' isLoading = {!statInfoLoaded}/>
+                <StatListing statName='EBITDA' statVal='$129.629B' isLoading={!statInfoLoaded} />
+                <StatListing statName='Enterprise Value' statVal='3.36T' isLoading={!statInfoLoaded} />
               </div>
             </div>
           </>
@@ -423,8 +465,15 @@ const Stock: React.FC<StockProps> = ({
           </div>
 
           <div className="graphArea w-full flex inline-block">
-            <CustomGraph data={data} importantMarkers={importantMarkers} height={'60%'} width={'100%'} gradientColor={'rgb(212,240,255)'} hideXaxis={true} hideYaxis={true} />
-          </div>
+          <CustomGraph
+            data={displayedData}
+            importantMarkers={importantMarkers}
+            height={'60%'}
+            width={'100%'}
+            gradientColor={'rgb(212,240,255)'}
+            hideXaxis={true}
+            hideYaxis={true}
+          />            </div>
 
           <div className="w-full flex flex-col font-sans 2xl:gap-2">
             <div className="flex flex-row justify-between items-center">

@@ -1,18 +1,20 @@
+import { addDays, subYears, format } from 'date-fns';
 import { DataPoint, ImportantMarker } from './StockGraph';
 
 function generateRandomStockData(
-  numPoints: number = 2190,
+  numYears: number = 5,
   numMarkers: number = 3
 ): { data: DataPoint[], importantMarkers: ImportantMarker[] } {
+  const endDate = new Date();
+  const startDate = subYears(endDate, numYears);
   const data: DataPoint[] = [];
   const importantMarkers: ImportantMarker[] = [];
 
-  // Generate random stock data
+  let currentDate = startDate;
   let previousValue = 100; // Starting stock value
-  for (let i = 0; i < numPoints; i++) {
-    const date = new Date();
-    date.setDate(date.getDate() - (numPoints - i));
-    const formattedDate = date.toISOString().split('T')[0];
+
+  while (currentDate <= endDate) {
+    const formattedDate = format(currentDate, 'yyyy-MM-dd');
 
     // Generate a random percentage change between -5% and 5%
     const changePercentage = (Math.random() - 0.5) * 0.1;
@@ -26,14 +28,14 @@ function generateRandomStockData(
     });
 
     previousValue = newValue;
+    currentDate = addDays(currentDate, 1);
   }
 
   // Generate important markers
   const markerIndices = new Set<number>();
   while (markerIndices.size < numMarkers) {
-    markerIndices.add(Math.floor(Math.random() * numPoints));
+    markerIndices.add(Math.floor(Math.random() * data.length));
   }
-
 
 
   return { data, importantMarkers };

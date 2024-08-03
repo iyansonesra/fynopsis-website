@@ -24,15 +24,25 @@ interface CustomGraphProps {
     hideYaxis?: boolean;
 }
 
-const CustomTooltip = ({ active, payload, label, percentageChange }) => {
+interface CustomTooltipProps {
+    active?: boolean;
+    payload?: any[];
+    label?: string;
+    percentageChange: string | null;
+}
+
+const CustomTooltip: React.FC<CustomTooltipProps> = ({ active, payload, label, percentageChange }) => {
     if (active && payload && payload.length) {
+        const data = payload[0].payload;
         return (
-            <div className="custom-tooltip inline-block bg-white border-sky-300 border-2 rounded-full px-4 py-2">
-                <p className="label">{`$${payload[0].value}`}</p>
+            <div className="custom-tooltip inline-block bg-white border-sky-300 border-2 rounded-lg px-4 py-2">
+                <p className="label font-bold">{`Date: ${data.name}`}</p>
+                <p className="value">{`Value: $${data.uv.toFixed(2)}`}</p>
+                <p className="pv">{`PV: ${data.pv}`}</p>
+                <p className="amt">{`AMT: ${data.amt}`}</p>
                 {percentageChange !== null && (
                     <p className="percentage-change">{`Change: ${percentageChange}`}</p>
                 )}
-                {/* <p className="intro">{getIntroOfPage(label)}</p> */}
             </div>
         );
     }
@@ -173,7 +183,10 @@ const CustomGraph: React.FC<CustomGraphProps> = ({
                             </clipPath>
                         )}
                     </defs>
-                    <Tooltip content={<CustomTooltip percentageChange={percentageChange} />} />
+                    <Tooltip
+                        content={<CustomTooltip percentageChange={percentageChange} />}
+                        cursor={{ stroke: '#ccc', strokeWidth: 1 }}
+                    />
                     {!hideXaxis && <XAxis dataKey="name" />}
                     {!hideYaxis && <YAxis />}
                     <Area
