@@ -4,6 +4,11 @@ import { format, parse, isWithinInterval, differenceInDays } from 'date-fns';
 import { MoveDown, MoveUp, ChartNoAxesCombined } from 'lucide-react';
 
 
+
+
+
+
+
 interface MarkerLineProps {
     marker: ImportantMarker;
     chartDimensions: { width: number; height: number };
@@ -108,44 +113,49 @@ const CustomGraph: React.FC<CustomGraphProps> = ({
     hideYaxis = false
 }) => {
 
+    const [selectedMarkerDate, setSelectedMarkerDate] = useState<string | null>(null);
+    const [recentNewsDate, setRecentNewsDate] = useState<string>("Recent News");
+
     const MarkerLine: React.FC<MarkerLineProps> = ({ marker, chartDimensions, isSelected, onSelect }) => {
         const markerDate = parse(marker.date, 'yyyy-MM-dd', new Date());
         const startDate = parse(data[0].name, 'yyyy-MM-dd', new Date());
         const endDate = parse(data[data.length - 1].name, 'yyyy-MM-dd', new Date());
-      
+
         const totalDays = differenceInDays(endDate, startDate);
         const markerDays = differenceInDays(markerDate, startDate);
-      
+
         const xPosition = (markerDays / totalDays) * chartDimensions.width;
-      
+
         const handleClick = () => {
-          onSelect(marker);
+            onSelect(marker);
+            setSelectedMarkerDate(marker.date); // Update the selected marker date
         };
-      
+
         const iconSize = 24; // Adjust as needed
         const clickableAreaSize = 40; // Larger than the icon for easier clicking
-      
+
+
         return (
-          <g onClick={handleClick} style={{ cursor: 'pointer' }}>
-            {/* Invisible larger clickable area */}
-            <rect
-              x={xPosition - clickableAreaSize / 2}
-              y={chartDimensions.height - 80 - (clickableAreaSize - iconSize) / 2}
-              width={clickableAreaSize}
-              height={clickableAreaSize}
-              fill="transparent"
-            />
-            
-            {/* Visible icon */}
-            <ChartNoAxesCombined
-              x={xPosition - iconSize / 2}
-              y={chartDimensions.height - 80}
-              size={iconSize}
-              color={isSelected ? '#3b82f6' : '#888'}
-            />
-          </g>
+            <g onClick={handleClick} style={{ cursor: 'pointer' }}>
+                {/* Invisible larger clickable area */}
+                <rect
+                    x={xPosition - clickableAreaSize / 2}
+                    y={chartDimensions.height - 80 - (clickableAreaSize - iconSize) / 2}
+                    width={clickableAreaSize}
+                    height={clickableAreaSize}
+                    fill="transparent"
+                />
+
+                {/* Visible icon */}
+                <ChartNoAxesCombined
+                    x={xPosition - iconSize / 2}
+                    y={chartDimensions.height - 80}
+                    size={iconSize}
+                    color={isSelected ? '#3b82f6' : '#888'}
+                />
+            </g>
         );
-      };
+    };
     const [dragStart, setDragStart] = useState<DataPoint | null>(null);
     const [dragEnd, setDragEnd] = useState<DataPoint | null>(null);
     const [percentageChange, setPercentageChange] = useState<string | null>(null);
@@ -156,8 +166,22 @@ const CustomGraph: React.FC<CustomGraphProps> = ({
     const [isDragging, setIsDragging] = useState(false);
     const [selectedMarker, setSelectedMarker] = useState<ImportantMarker | null>(null);
 
+    useEffect(() => {
+        if (!selectedMarkerDate) {
+            // Here you would typically fetch the most recent news date
+            // For now, we'll just set it to "Recent News"
+            setRecentNewsDate("Recent News");
+        }
+    }, [selectedMarkerDate]);
+
     const handleMarkerSelect = (marker: ImportantMarker) => {
-        setSelectedMarker(marker === selectedMarker ? null : marker);
+        if (selectedMarker === marker) {
+            setSelectedMarker(null);
+            setSelectedMarkerDate(null);
+        } else {
+            setSelectedMarker(marker);
+            setSelectedMarkerDate(marker.date);
+        }
     };
 
 

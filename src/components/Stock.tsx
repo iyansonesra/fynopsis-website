@@ -21,6 +21,8 @@ import { set } from 'react-hook-form';
 import { Skeleton } from './ui/skeleton';
 import { subDays, subMonths, subYears, parseISO } from 'date-fns';
 import { ReferenceArea } from 'recharts';
+import { format } from 'date-fns';
+
 
 
 export function filterDataByTimeframe(data: DataPoint[], timeframe: string): DataPoint[] {
@@ -128,6 +130,8 @@ const Stock: React.FC<StockProps> = ({
   const [displayedData, setDisplayedData] = useState(allData);
   const [aboutCompanyText, setAboutCompanyText] = useState<string>();
   const [isLoadingAboutText, setIsLoadingAboutText] = useState(true);
+  const [selectedMarkerDate, setSelectedMarkerDate] = useState<string | null>(null);
+  const [recentNewsDate, setRecentNewsDate] = useState<string>("Recent News");
 
 
 
@@ -335,11 +339,14 @@ const Stock: React.FC<StockProps> = ({
         </div>
         <div className="flex-[4] w-full flex flex-col font-sans 2xl:gap-2">
           <div className="flex flex-row justify-between">
-            <h1 className="font-semibold 2xl:text-2xl">August 28, 2019</h1>
+            <h1 className="font-semibold 2xl:text-2xl">
+              {selectedMarkerDate
+                ? format(new Date(selectedMarkerDate), 'MMMM d, yyyy')
+                : recentNewsDate}
+            </h1>
             <button
               onClick={() => setShowLearnMore(!showLearnMore)}
-              className={`px-4 border border-black rounded-full transition-colors ${showLearnMore ? 'bg-black text-white' : 'bg-white text-black'
-                }`}
+              className={`px-4 border border-black rounded-full transition-colors ${showLearnMore ? 'bg-black text-white' : 'bg-white text-black'}`}
             >
               <h1 className="2xl:text-xl">Learn More</h1>
             </button>
@@ -437,19 +444,19 @@ const Stock: React.FC<StockProps> = ({
             </div>
 
             {isLoadingAboutText ? (
-            <div className="flex flex-col gap-2 mb-4 mt-2">
-              <Skeleton className="w-[90%] h-4 rounded-full" />
-              <Skeleton className="w-full h-4 rounded-full" />
-              <Skeleton className="w-[90%] h-4 rounded-full" />
-              <Skeleton className="w-[85%] h-4 rounded-full" />
-              <Skeleton className="w-[100%] h-4 rounded-full" />
-              <Skeleton className="w-[70%] h-4 rounded-full" />
-            </div>
-          ) : (
-            <h1 className="text-slate-600 text-[.95rem] font-light mb-4 2xl:mb-6 2xl:text-2xl">
-              {aboutCompanyText || "No information available."}
-            </h1>
-          )}
+              <div className="flex flex-col gap-2 mb-4 mt-2">
+                <Skeleton className="w-[90%] h-4 rounded-full" />
+                <Skeleton className="w-full h-4 rounded-full" />
+                <Skeleton className="w-[90%] h-4 rounded-full" />
+                <Skeleton className="w-[85%] h-4 rounded-full" />
+                <Skeleton className="w-[100%] h-4 rounded-full" />
+                <Skeleton className="w-[70%] h-4 rounded-full" />
+              </div>
+            ) : (
+              <h1 className="text-slate-600 text-[.95rem] font-light mb-4 2xl:mb-6 2xl:text-2xl">
+                {aboutCompanyText || "No information available."}
+              </h1>
+            )}
 
             <div className="stats flex flex-col gap-4 2xl:gap-6 inline-block">
               <div className="inline-block flex flex-row items-center justify-around w-full">
@@ -545,8 +552,8 @@ const Stock: React.FC<StockProps> = ({
               <>
                 {dateInfoLoaded ? (
                   <ScrollArea className='h-[8rem] md:h-[5rem] text-slate-600 text-[.90rem] font-light 2xl:text-2xl 2xl:h-40 mb-4'>
-                    {answer}               
-                     </ScrollArea>
+                    {answer}
+                  </ScrollArea>
                 ) : (
                   <>
                     <div className="flex flex-col gap-2 mb-4 mt-2">
