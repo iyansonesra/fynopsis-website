@@ -3,7 +3,7 @@ import { DataPoint, ImportantMarker } from './StockGraph';
 
 function generateRandomStockData(
   numYears: number = 5,
-  numMarkers: number = 3
+  numMarkers: number = 2
 ): { data: DataPoint[], importantMarkers: ImportantMarker[] } {
   const endDate = new Date();
   const startDate = subYears(endDate, numYears);
@@ -31,12 +31,25 @@ function generateRandomStockData(
     currentDate = addDays(currentDate, 1);
   }
 
-  // Generate important markers
-  const markerIndices = new Set<number>();
-  while (markerIndices.size < numMarkers) {
-    markerIndices.add(Math.floor(Math.random() * data.length));
+  // Generate the specified number of important markers
+  const usedIndices = new Set<number>();
+  for (let i = 0; i < numMarkers; i++) {
+    let markerIndex: number;
+    do {
+      markerIndex = Math.floor(Math.random() * data.length);
+    } while (usedIndices.has(markerIndex));
+
+    usedIndices.add(markerIndex);
+    const markerDate = data[markerIndex].name;
+    importantMarkers.push({
+      date: markerDate,
+      label: `Event ${i + 1}`,
+      explanation: `This is important event ${i + 1} in the stock's history.`
+    });
   }
 
+  // Sort markers by date
+  importantMarkers.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
   return { data, importantMarkers };
 }

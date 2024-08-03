@@ -1,7 +1,15 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
-import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceLine, TooltipProps } from 'recharts';
-import { format, parse } from 'date-fns';
-import { MoveDown, MoveUp } from 'lucide-react';
+import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceLine, TooltipProps, ReferenceArea } from 'recharts';
+import { format, parse, isWithinInterval, differenceInDays } from 'date-fns';
+import { MoveDown, MoveUp, ChartNoAxesCombined } from 'lucide-react';
+
+
+interface MarkerLineProps {
+    marker: ImportantMarker;
+    chartDimensions: { width: number; height: number };
+    isSelected: boolean;
+    onSelect: (marker: ImportantMarker) => void;
+}
 
 export interface DataPoint {
     name: string;
@@ -11,7 +19,7 @@ export interface DataPoint {
 }
 
 export interface ImportantMarker {
-    x: string;
+    date: string;
     label: string;
     explanation: string;
 }
@@ -34,6 +42,8 @@ interface CustomTooltipProps {
     dragStart: DataPoint | null;
     dragEnd: DataPoint | null;
 }
+
+
 
 const CustomTooltip: React.FC<CustomTooltipProps> = ({ active, payload, label, percentageChange, dragStart, dragEnd }) => {
     if (active && payload && payload.length) {
@@ -97,13 +107,59 @@ const CustomGraph: React.FC<CustomGraphProps> = ({
     hideXaxis = false,
     hideYaxis = false
 }) => {
+
+    const MarkerLine: React.FC<MarkerLineProps> = ({ marker, chartDimensions, isSelected, onSelect }) => {
+        const markerDate = parse(marker.date, 'yyyy-MM-dd', new Date());
+        const startDate = parse(data[0].name, 'yyyy-MM-dd', new Date());
+        const endDate = parse(data[data.length - 1].name, 'yyyy-MM-dd', new Date());
+      
+        const totalDays = differenceInDays(endDate, startDate);
+        const markerDays = differenceInDays(markerDate, startDate);
+      
+        const xPosition = (markerDays / totalDays) * chartDimensions.width;
+      
+        const handleClick = () => {
+          onSelect(marker);
+        };
+      
+        const iconSize = 24; // Adjust as needed
+        const clickableAreaSize = 40; // Larger than the icon for easier clicking
+      
+        return (
+          <g onClick={handleClick} style={{ cursor: 'pointer' }}>
+            {/* Invisible larger clickable area */}
+            <rect
+              x={xPosition - clickableAreaSize / 2}
+              y={chartDimensions.height - 80 - (clickableAreaSize - iconSize) / 2}
+              width={clickableAreaSize}
+              height={clickableAreaSize}
+              fill="transparent"
+            />
+            
+            {/* Visible icon */}
+            <ChartNoAxesCombined
+              x={xPosition - iconSize / 2}
+              y={chartDimensions.height - 80}
+              size={iconSize}
+              color={isSelected ? '#3b82f6' : '#888'}
+            />
+          </g>
+        );
+      };
     const [dragStart, setDragStart] = useState<DataPoint | null>(null);
     const [dragEnd, setDragEnd] = useState<DataPoint | null>(null);
     const [percentageChange, setPercentageChange] = useState<string | null>(null);
     const [chartDimensions, setChartDimensions] = useState<{ width: number, height: number }>({ width: 0, height: 0 });
     const containerRef = useRef<HTMLDivElement>(null);
+    const chartRef = useRef<any>(null);
     const [selectedRange, setSelectedRange] = useState<{ start: number; end: number } | null>(null);
     const [isDragging, setIsDragging] = useState(false);
+    const [selectedMarker, setSelectedMarker] = useState<ImportantMarker | null>(null);
+
+    const handleMarkerSelect = (marker: ImportantMarker) => {
+        setSelectedMarker(marker === selectedMarker ? null : marker);
+    };
+
 
     const handleMouseDown = useCallback((chartState: any) => {
         if (chartState && chartState.activePayload && chartState.activePayload[0]) {
@@ -156,10 +212,6 @@ const CustomGraph: React.FC<CustomGraphProps> = ({
         setSelectedRange(null);
     }, []);
 
-
-
-
-
     useEffect(() => {
         const updateDimensions = () => {
             if (containerRef.current) {
@@ -176,10 +228,6 @@ const CustomGraph: React.FC<CustomGraphProps> = ({
     }, []);
 
 
-    useEffect(() => {
-        console.log('Data:', data);
-        console.log('Important Markers:', importantMarkers);
-    }, [data, importantMarkers]);
 
     const getHighlightColor = () => {
         if (percentageChange === null) return gradientColor;
@@ -187,12 +235,14 @@ const CustomGraph: React.FC<CustomGraphProps> = ({
         return (percentageChangeNumber >= 0) ? '#4CAF50' : '#F44336'; // Green for positive, Red for negative
     };
 
+
+
     return (
         <div ref={containerRef} style={{ width, height, position: 'relative' }}>
             <ResponsiveContainer width="100%" height="100%">
                 <AreaChart
                     data={data}
-                    margin={{ top: 10, right: 0, left: 0, bottom: 0 }}
+                    margin={{ top: 0, right: 0, left: 0, bottom: 30 }}
                     onMouseDown={handleMouseDown}
                     onMouseMove={handleMouseMove}
                     onMouseUp={handleMouseUp}
@@ -220,6 +270,17 @@ const CustomGraph: React.FC<CustomGraphProps> = ({
                             </clipPath>
                         )}
                     </defs>
+                    <svg>
+                        {importantMarkers.map((marker, index) => (
+                            <MarkerLine
+                                key={index}
+                                marker={marker}
+                                chartDimensions={chartDimensions}
+                                isSelected={marker === selectedMarker}
+                                onSelect={handleMarkerSelect}
+                            />
+                        ))}
+                    </svg>
                     <Tooltip
                         content={<CustomTooltip
                             percentageChange={percentageChange}
@@ -251,8 +312,12 @@ const CustomGraph: React.FC<CustomGraphProps> = ({
                     )}
                     {dragStart && isDragging && <ReferenceLine x={dragStart.name} stroke="#8884d8" />}
                     {dragEnd && isDragging && <ReferenceLine x={dragEnd.name} stroke="#8884d8" />}
+                    <h1 className="text-black">yo</h1>
+
+
                 </AreaChart>
             </ResponsiveContainer>
+
         </div>
     );
 }

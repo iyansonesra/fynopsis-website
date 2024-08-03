@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useCallback, useMemo } from 'react';
 import RecentSearch from './RecentSearch';
 import { ScrollArea, ScrollBar } from './ui/scroll-area';
 import UserSearchBubble from './UserSearchBubble';
@@ -20,6 +20,8 @@ import { Sheet, SheetContent, SheetTrigger } from './ui/sheet';
 import { set } from 'react-hook-form';
 import { Skeleton } from './ui/skeleton';
 import { subDays, subMonths, subYears, parseISO } from 'date-fns';
+import { ReferenceArea } from 'recharts';
+
 
 export function filterDataByTimeframe(data: DataPoint[], timeframe: string): DataPoint[] {
   const endDate = parseISO(data[data.length - 1].name);
@@ -51,7 +53,7 @@ export function filterDataByTimeframe(data: DataPoint[], timeframe: string): Dat
 
 interface StockProps {
   image: string;
-  stockName: string;
+  companyName: string;
   stockDescription: string;
   imageType: 'circular' | 'rectangular';
 }
@@ -95,13 +97,13 @@ const LearnMoreContent: React.FC<InputProps> = ({ value, onChange, onKeyDown }) 
 
 const Stock: React.FC<StockProps> = ({
   image,
-  stockName,
+  companyName,
   stockDescription,
   imageType,
 }) => {
   const [answer, setAnswer] = useState<string>();
   const [query, setQuery] = useState<string>();
-  const [companyName, setCompanyName] = useState<string>('-');
+  // const [companyName, setCompanyName] = useState<string>('-');
   const [companyDescription, setCompanyDescription] = useState<string>();
 
   const [inputValue, setInputValue] = useState('');
@@ -122,8 +124,11 @@ const Stock: React.FC<StockProps> = ({
   const [industryButtonLoaded, setIndustryButtonLoaded] = useState(false);
   const [selectedTimeframe, setSelectedTimeframe] = useState('MAX');
 
-  const { data: allData, importantMarkers } = useMemo(() => generateRandomStockData(), []);
+  const { data: allData, importantMarkers } = useMemo(() => generateRandomStockData(5), []);
   const [displayedData, setDisplayedData] = useState(allData);
+  const [aboutCompanyText, setAboutCompanyText] = useState<string>();
+  const [isLoadingAboutText, setIsLoadingAboutText] = useState(true);
+
 
 
   useEffect(() => {
@@ -182,97 +187,13 @@ const Stock: React.FC<StockProps> = ({
       if (!inputValue.trim()) return;
       const userMessage = inputValue.trim();
       setInputValue('');
-      // await handleSendCompanyName(userMessage);
       await handleSendQuery(userMessage);
-      // await handleSendCompanyDesc(companyName);
     }
   };
 
-  const handleSendCompanyDesc = async (userMessage: string) => {
-    const accessTokens = await handleFetchAccess();
-    console.log("requesting Info");
-    if (accessTokens) {
-      try {
-
-        const restOperationCompanyDescription = await post({
-          apiName: 'testAPI',
-          path: '/postAgent',
-          options: {
-            headers: {
-              Authorization: accessTokens
-            },
-            body: {
-              query: "Give me a general 3 sentence description about the company the user is asking about: " + userMessage
-            }
-          }
-        });
-        const { body: bodyDesc } = await restOperationCompanyDescription.response;
-        const responseTextDesc = await bodyDesc.text();
-        const responseMainDesc: ApiResponse = JSON.parse(responseTextDesc);
-
-        console.log(responseTextDesc);
-        console.log(responseMainDesc);
-
-        console.log('POST call succeeded');
-        if (responseMainDesc) {
-          setCompanyDescription(responseMainDesc.body.message);
-        }
-        else {
-          setCompanyDescription("Failed. Please Refresh.");
-        }
-      } catch (e) {
-        setCompanyDescription("Failed. Please Refresh.");
-        console.log('POST call failed: ', e);
-      }
-    } else {
-      setCompanyDescription("Failed. Please Refresh.");
-      console.log('Failed to fetch access token.');
-    }
-
-  }
-
-  const handleSendCompanyName = async (userMessage: string) => {
-    const accessTokens = await handleFetchAccess();
-    console.log("requesting Info");
-    if (accessTokens) {
-      try {
-
-        const restOperationCompany = await post({
-          apiName: 'testAPI',
-          path: '/postAgent',
-          options: {
-            headers: {
-              Authorization: accessTokens
-            },
-            body: {
-              query: "What company is the user requesting information about in their query? Reply with just the company name. Their query is " + userMessage
-            }
-          }
-        });
-        const { body } = await restOperationCompany.response;
-        const responseText = await body.text();
-        const responseMain: ApiResponse = JSON.parse(responseText);
-
-        console.log(responseText);
-        console.log(responseMain);
-
-        setCompanyName(responseMain.body.message);
-
-      } catch (e) {
-        setAnswer("Failed. Please Refresh.");
-        console.log('POST call failed: ', e);
-      }
-    } else {
-      setAnswer("Failed. Please Refresh.");
-      console.log('Failed to fetch access token.');
-    }
-
-  }
-
   const handleSendQuery = async (userMessage: string) => {
-
-    setQuery(userMessage);
     console.log("requesting Info");
+    setIsLoadingAboutText(true);
 
     const accessTokens = await handleFetchAccess();
     if (accessTokens) {
@@ -290,29 +211,43 @@ const Stock: React.FC<StockProps> = ({
           }
         });
 
-
         const { body } = await restOperation.response;
         const responseText = await body.text();
-        const responseMain: ApiResponse = JSON.parse(responseText);
-        console.log(responseText);
-        console.log(responseMain);
+        console.log('Raw response:', responseText);
 
-        console.log('POST call succeeded');
-        if (responseMain) {
-          setAnswer(responseMain.body.message);
-        }
-        else {
-          setAnswer("Failed. Please Refresh.");
+        const responseMain = JSON.parse(responseText);
+        console.log('Parsed response:', responseMain);
+
+        if (responseMain && responseMain.body) {
+          const innerBody = JSON.parse(responseMain.body);
+          console.log('Inner body:', innerBody);
+
+          if (innerBody && innerBody.message) {
+            setAboutCompanyText(innerBody.message);
+          } else {
+            setAboutCompanyText("Failed to parse company information. Please try again.");
+          }
+        } else {
+          setAboutCompanyText("Failed to fetch company information. Please try again.");
         }
       } catch (e) {
-        setAnswer("Failed. Please Refresh.");
-        console.log('POST call failed: ', e);
+        console.error('POST call failed: ', e);
+        setAboutCompanyText("An error occurred while fetching company information. Please try again.");
+      } finally {
+        setIsLoadingAboutText(false);
       }
     } else {
-      setAnswer("Failed. Please Refresh.");
+      setAboutCompanyText("Failed to authenticate. Please refresh and try again.");
+      setIsLoadingAboutText(false);
       console.log('Failed to fetch access token.');
     }
   };
+
+
+  useEffect(() => {
+    // Send initial query when component mounts
+    handleSendQuery(`Provide a brief summary about ${companyName}. Please keep it anywhere from 3-5 sentences maximum.`);
+  }, [companyName]);
 
   const handleCopyAll = () => {
     const allDealsText = deals.map(deal => `${deal.date}\n${deal.dealDescription}`).join('\n\n');
@@ -459,6 +394,8 @@ const Stock: React.FC<StockProps> = ({
             </>
           )}
         </div>
+
+
       </div>
 
       <ScrollArea className="flex-[4] hidden md:flex font-sans">
@@ -499,25 +436,20 @@ const Stock: React.FC<StockProps> = ({
               <IndustryButton industryName={'Cloud'} isLoading={!industryButtonLoaded} />
             </div>
 
-            {dateInfoLoaded ? (
-              <div className="description inline-block">
-                <h1 className="text-slate-600 text-[.95rem] font-light mb-4 2xl:mb-6 2xl:text-2xl">
-                  Apple Inc. is a leading American technology company known for designing, manufacturing, and selling consumer electronics, software, and online services. Founded in 1976 by Steve Jobs, Steve Wozniak, and Ronald Wayne, Apple is best known for its innovative products such as the iPhone, iPad, Mac computers, Apple Watch, and Apple TV.
-                </h1>
-              </div>
-
-            ) : (
-              <>
-                <div className="flex flex-col gap-2 mb-4 mt-2">
-                  <Skeleton className="w-[90%] h-4 rounded-full" />
-                  <Skeleton className="w-full h-4 rounded-full" />
-                  <Skeleton className="w-[90%] h-4 rounded-full" />
-                  <Skeleton className="w-[85%] h-4 rounded-full" />
-                  <Skeleton className="w-[100%] h-4 rounded-full" />
-                  <Skeleton className="w-[70%] h-4 rounded-full" />
-                </div>
-              </>
-            )}
+            {isLoadingAboutText ? (
+            <div className="flex flex-col gap-2 mb-4 mt-2">
+              <Skeleton className="w-[90%] h-4 rounded-full" />
+              <Skeleton className="w-full h-4 rounded-full" />
+              <Skeleton className="w-[90%] h-4 rounded-full" />
+              <Skeleton className="w-[85%] h-4 rounded-full" />
+              <Skeleton className="w-[100%] h-4 rounded-full" />
+              <Skeleton className="w-[70%] h-4 rounded-full" />
+            </div>
+          ) : (
+            <h1 className="text-slate-600 text-[.95rem] font-light mb-4 2xl:mb-6 2xl:text-2xl">
+              {aboutCompanyText || "No information available."}
+            </h1>
+          )}
 
             <div className="stats flex flex-col gap-4 2xl:gap-6 inline-block">
               <div className="inline-block flex flex-row items-center justify-around w-full">
@@ -540,11 +472,11 @@ const Stock: React.FC<StockProps> = ({
       <div className="w-full flex md:hidden h-screen overflow-hidden  font-sans"> {/* Added overflow-hidden */}
 
 
-        <div className="flex w-full flex-col overflow-y-auto overflow-x-hidden px-4 py-6"> {/* Removed inline-block, added overflow-y-auto */}
+        <div className="flex w-full flex-col overflow-y-auto overflow-x-hidden px-4 py-6 "> {/* Removed inline-block, added overflow-y-auto */}
           <div className="inline-block w-full mb-2">
             <MobileSidebar />
           </div>
-          <div className="nameAndPrice relative  flex flex-col mb-32">
+          <div className="nameAndPrice relative  flex flex-col mb-32 ">
             <div className="absolute left-0 top-0 gap-1 flex flex-col">
               <h1 className="text-2xl font-extralight 2xl:text-4xl">{companyName}</h1>
               <h1 className="text-4xl font-normal font-montserrat 2xl:text-6xl">$122.12</h1>
@@ -554,10 +486,6 @@ const Stock: React.FC<StockProps> = ({
                 </div>
               </div>
             </div>
-
-          </div>
-
-          <div className="graphArea w-full h-48 flex inline-block bg-red-100">
             <div className="timeframe absolute top-0 right-0 gap-2 2xl:gap-4 flex flex-row inline-block  ">
               {['1W', '1M', '6M', '1Y', '5Y', 'MAX'].map((frame) => (
                 <div
@@ -574,15 +502,21 @@ const Stock: React.FC<StockProps> = ({
                 </div>
               ))}
             </div>
+
+          </div>
+
+          <div className="graphArea w-full min-h-[15rem] flex inline-block">
+
             <CustomGraph
               data={displayedData}
               importantMarkers={importantMarkers}
-              height={'60%'}
+              height={'100%'}
               width={'100%'}
               gradientColor={'rgb(52, 128, 235)'}
               hideXaxis={true}
               hideYaxis={true}
-            />             </div>
+            />
+          </div>
 
           <div className="w-full flex flex-col font-sans 2xl:gap-2">
             <div className="flex flex-row justify-between items-center">
@@ -609,10 +543,22 @@ const Stock: React.FC<StockProps> = ({
 
             ) : (
               <>
-
-                <div className='inline-block text-slate-600 text-[1rem] font-light 2xl:text-2xl 2xl:h-40 mb-4'>
+                {dateInfoLoaded ? (
+                  <ScrollArea className='h-[8rem] md:h-[5rem] text-slate-600 text-[.90rem] font-light 2xl:text-2xl 2xl:h-40 mb-4'>
+                    {answer}               
+                     </ScrollArea>
+                ) : (
+                  <>
+                    <div className="flex flex-col gap-2 mb-4 mt-2">
+                      <Skeleton className="w-[90%] h-4 rounded-full" />
+                      <Skeleton className="w-full h-4 rounded-full" />
+                      <Skeleton className="w-[80%] h-4 rounded-full" />
+                    </div>
+                  </>
+                )}
+                {/* <div className='inline-block text-slate-600 text-[1rem] font-light 2xl:text-2xl 2xl:h-40 mb-4'>
                   {answer}
-                </div>
+                </div> */}
 
                 <h1 className="font-semibold text-lg md:text-base 2xl:text-2xl">Relevant Links</h1>
                 <div className="flex inline-block relative">
