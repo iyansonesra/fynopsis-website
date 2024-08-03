@@ -182,9 +182,9 @@ const Stock: React.FC<StockProps> = ({
       if (!inputValue.trim()) return;
       const userMessage = inputValue.trim();
       setInputValue('');
-      await handleSendCompanyName(userMessage);
+      // await handleSendCompanyName(userMessage);
       await handleSendQuery(userMessage);
-      await handleSendCompanyDesc(companyName);
+      // await handleSendCompanyDesc(companyName);
     }
   };
 
