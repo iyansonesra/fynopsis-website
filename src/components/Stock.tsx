@@ -84,11 +84,11 @@ interface InputProps {
 const LearnMoreContent: React.FC<InputProps> = ({ value, onChange, onKeyDown }) => (
   <div className="relative mt-4  w-full flex flex-row justify-center">
     <Search className="h-4 w-4 2xl:h-6 2xl:w-6 absolute left-[15%] self-center decoration-slate-300" />
-    <input 
-    value={value}
-    onChange={onChange}
-    onKeyDown={onKeyDown}
-    className="w-3/4 h-8 2xl:h-12 2xl:text-lg bg-slate-100 rounded-full pl-12 2xl:pl-16 text-sm" placeholder='Ask a question...'></input>
+    <input
+      value={value}
+      onChange={onChange}
+      onKeyDown={onKeyDown}
+      className="w-3/4 h-8 2xl:h-12 2xl:text-lg bg-slate-100 rounded-full pl-12 2xl:pl-16 text-sm" placeholder='Ask a question...'></input>
 
   </div>
 );
@@ -103,7 +103,7 @@ const Stock: React.FC<StockProps> = ({
   const [query, setQuery] = useState<string>();
   const [companyName, setCompanyName] = useState<string>('-');
   const [companyDescription, setCompanyDescription] = useState<string>();
-  
+
   const [inputValue, setInputValue] = useState('');
   const scrollRef = useRef<HTMLDivElement>(null);
   const [showDealHistory, setShowDealHistory] = useState(false);
@@ -270,7 +270,7 @@ const Stock: React.FC<StockProps> = ({
   }
 
   const handleSendQuery = async (userMessage: string) => {
-    
+
     setQuery(userMessage);
     console.log("requesting Info");
 
@@ -396,8 +396,8 @@ const Stock: React.FC<StockProps> = ({
             gradientColor={'rgb(52, 128, 235)'}
             hideXaxis={true}
             hideYaxis={true}
-          />   
-         </div>
+          />
+        </div>
         <div className="flex-[4] w-full flex flex-col font-sans 2xl:gap-2">
           <div className="flex flex-row justify-between">
             <h1 className="font-semibold 2xl:text-2xl">August 28, 2019</h1>
@@ -413,12 +413,12 @@ const Stock: React.FC<StockProps> = ({
           {showLearnMore ? (
             <div className="relative mt-4  w-full flex flex-row justify-center">
               <Search className="h-4 w-4 2xl:h-6 2xl:w-6 absolute left-[15%] self-center decoration-slate-300" />
-              <input 
-              type="text"
-              value={inputValue}
-              onChange={handleInputChange}
-              onKeyDown={handleKeyPress}
-              className="w-3/4 h-8 2xl:h-12 2xl:text-lg bg-slate-100 rounded-full pl-12 2xl:pl-16 text-sm" placeholder='Ask a question...'></input>
+              <input
+                type="text"
+                value={inputValue}
+                onChange={handleInputChange}
+                onKeyDown={handleKeyPress}
+                className="w-3/4 h-8 2xl:h-12 2xl:text-lg bg-slate-100 rounded-full pl-12 2xl:pl-16 text-sm" placeholder='Ask a question...'></input>
 
             </div>
           ) : (
@@ -557,16 +557,32 @@ const Stock: React.FC<StockProps> = ({
 
           </div>
 
-          <div className="graphArea w-full flex inline-block">
-          <CustomGraph
-            data={displayedData}
-            importantMarkers={importantMarkers}
-            height={'60%'}
-            width={'100%'}
-            gradientColor={'rgb(212,240,255)'}
-            hideXaxis={true}
-            hideYaxis={true}
-          />            </div>
+          <div className="graphArea w-full h-48 flex inline-block bg-red-100">
+            <div className="timeframe absolute top-0 right-0 gap-2 2xl:gap-4 flex flex-row inline-block  ">
+              {['1W', '1M', '6M', '1Y', '5Y', 'MAX'].map((frame) => (
+                <div
+                  key={frame}
+                  className="relative cursor-pointer"
+                  onClick={() => setSelectedTimeframe(frame)}
+                >
+                  <h1 className={`font-normal ${selectedTimeframe === frame ? 'text-blue-500' : 'text-slate-500'}`}>
+                    {frame}
+                  </h1>
+                  {selectedTimeframe === frame && (
+                    <div className="absolute bottom-0 left-0 w-full h-0.5 bg-blue-500 transition-all duration-300"></div>
+                  )}
+                </div>
+              ))}
+            </div>
+            <CustomGraph
+              data={displayedData}
+              importantMarkers={importantMarkers}
+              height={'60%'}
+              width={'100%'}
+              gradientColor={'rgb(52, 128, 235)'}
+              hideXaxis={true}
+              hideYaxis={true}
+            />             </div>
 
           <div className="w-full flex flex-col font-sans 2xl:gap-2">
             <div className="flex flex-row justify-between items-center">
@@ -583,10 +599,10 @@ const Stock: React.FC<StockProps> = ({
             <Separator className="decoration-black w-[100%] my-1" />
             {showLearnMore ? (
               <>
-                <LearnMoreContent 
-                value={inputValue}
-                onChange={handleInputChange}
-                onKeyDown={handleKeyPress}
+                <LearnMoreContent
+                  value={inputValue}
+                  onChange={handleInputChange}
+                  onKeyDown={handleKeyPress}
                 />
                 <div className="h-56 w-full"></div>
               </>
