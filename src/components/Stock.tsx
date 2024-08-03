@@ -17,6 +17,7 @@ import IndustryButton from './IndustryButton';
 import StatListing from './StatListing';
 import Deal from './Deal';
 import { Sheet, SheetContent, SheetTrigger } from './ui/sheet';
+import { set } from 'react-hook-form';
 import { Skeleton } from './ui/skeleton';
 
 
@@ -46,10 +47,20 @@ interface ApiResponse {
   }
 }
 
-const LearnMoreContent = () => (
+interface InputProps {
+  value: string;
+  onChange: (event: React.ChangeEvent<HTMLInputElement>) => void;
+  onKeyDown: (event: React.KeyboardEvent<HTMLInputElement>) => void;
+}
+
+const LearnMoreContent: React.FC<InputProps> = ({ value, onChange, onKeyDown }) => (
   <div className="relative mt-4  w-full flex flex-row justify-center">
     <Search className="h-4 w-4 2xl:h-6 2xl:w-6 absolute left-[15%] self-center decoration-slate-300" />
-    <input className="w-3/4 h-8 2xl:h-12 2xl:text-lg bg-slate-100 rounded-full pl-12 2xl:pl-16 text-sm" placeholder='Ask a question...'></input>
+    <input 
+    value={value}
+    onChange={onChange}
+    onKeyDown={onKeyDown}
+    className="w-3/4 h-8 2xl:h-12 2xl:text-lg bg-slate-100 rounded-full pl-12 2xl:pl-16 text-sm" placeholder='Ask a question...'></input>
 
   </div>
 );
@@ -61,7 +72,11 @@ const Stock: React.FC<StockProps> = ({
   imageType,
 }) => {
   const { data: originalData, importantMarkers } = useMemo(() => generateRandomStockData(), []); const [data, setData] = useState<DataPoint[]>([]);
-  const [messages, setMessages] = useState<Message[]>([]);
+  const [answer, setAnswer] = useState<string>();
+  const [query, setQuery] = useState<string>();
+  const [companyName, setCompanyName] = useState<string>('-');
+  const [companyDescription, setCompanyDescription] = useState<string>();
+  
   const [inputValue, setInputValue] = useState('');
   const scrollRef = useRef<HTMLDivElement>(null);
   const [showDealHistory, setShowDealHistory] = useState(false);
@@ -128,24 +143,104 @@ const Stock: React.FC<StockProps> = ({
     setInputValue(event.target.value);
   };
 
-  const handleKeyPress = (event: React.KeyboardEvent<HTMLInputElement>) => {
+  const handleKeyPress = async (event: React.KeyboardEvent<HTMLInputElement>) => {
     if (event.key === 'Enter') {
-      handleSend();
+      if (!inputValue.trim()) return;
+      const userMessage = inputValue.trim();
+      setInputValue('');
+      await handleSendCompanyName(userMessage);
+      await handleSendQuery(userMessage);
+      await handleSendCompanyDesc(companyName);
     }
   };
 
-  const handleSend = async () => {
-    if (!inputValue.trim()) return;
+  const handleSendCompanyDesc = async (userMessage: string) => {
+    const accessTokens = await handleFetchAccess();
+    console.log("requesting Info");
+    if (accessTokens) {
+      try {
 
-    const userMessage = inputValue.trim();
-    setInputValue('');
-    setMessages((prevMessages) => [
-      ...prevMessages,
-      { type: 'user', content: userMessage },
-    ]);
+        const restOperationCompanyDescription = await post({
+          apiName: 'testAPI',
+          path: '/postAgent',
+          options: {
+            headers: {
+              Authorization: accessTokens
+            },
+            body: {
+              query: "Give me a general 3 sentence description about the company the user is asking about: " + userMessage
+            }
+          }
+        });
+        const { body: bodyDesc } = await restOperationCompanyDescription.response;
+        const responseTextDesc = await bodyDesc.text();
+        const responseMainDesc: ApiResponse = JSON.parse(responseTextDesc);
+
+        console.log(responseTextDesc);
+        console.log(responseMainDesc);
+
+        console.log('POST call succeeded');
+        if (responseMainDesc) {
+          setCompanyDescription(responseMainDesc.body.message);
+        }
+        else {
+          setCompanyDescription("Failed. Please Refresh.");
+        }
+      } catch (e) {
+        setCompanyDescription("Failed. Please Refresh.");
+        console.log('POST call failed: ', e);
+      }
+    } else {
+      setCompanyDescription("Failed. Please Refresh.");
+      console.log('Failed to fetch access token.');
+    }
+
+  }
+
+  const handleSendCompanyName = async (userMessage: string) => {
+    const accessTokens = await handleFetchAccess();
+    console.log("requesting Info");
+    if (accessTokens) {
+      try {
+
+        const restOperationCompany = await post({
+          apiName: 'testAPI',
+          path: '/postAgent',
+          options: {
+            headers: {
+              Authorization: accessTokens
+            },
+            body: {
+              query: "What company is the user requesting information about in their query? Reply with just the company name. Their query is " + userMessage
+            }
+          }
+        });
+        const { body } = await restOperationCompany.response;
+        const responseText = await body.text();
+        const responseMain: ApiResponse = JSON.parse(responseText);
+
+        console.log(responseText);
+        console.log(responseMain);
+
+        setCompanyName(responseMain.body.message);
+
+      } catch (e) {
+        setAnswer("Failed. Please Refresh.");
+        console.log('POST call failed: ', e);
+      }
+    } else {
+      setAnswer("Failed. Please Refresh.");
+      console.log('Failed to fetch access token.');
+    }
+
+  }
+
+  const handleSendQuery = async (userMessage: string) => {
+    
+    setQuery(userMessage);
+    console.log("requesting Info");
 
     const accessTokens = await handleFetchAccess();
-    console.log("requesting information");
     if (accessTokens) {
       try {
         const restOperation = post({
@@ -161,6 +256,7 @@ const Stock: React.FC<StockProps> = ({
           }
         });
 
+
         const { body } = await restOperation.response;
         const responseText = await body.text();
         const responseMain: ApiResponse = JSON.parse(responseText);
@@ -169,29 +265,17 @@ const Stock: React.FC<StockProps> = ({
 
         console.log('POST call succeeded');
         if (responseMain) {
-          setMessages((prevMessages) => [
-            ...prevMessages,
-            { type: 'bot', content: responseMain.body.message },
-          ]);
+          setAnswer(responseMain.body.message);
         }
         else {
-          setMessages((prevMessages) => [
-            ...prevMessages,
-            { type: 'bot', content: "Failed. Please Refresh." },
-          ]);
+          setAnswer("Failed. Please Refresh.");
         }
       } catch (e) {
-        setMessages((prevMessages) => [
-          ...prevMessages,
-          { type: 'bot', content: "Failed. Please Refresh." },
-        ]);
+        setAnswer("Failed. Please Refresh.");
         console.log('POST call failed: ', e);
       }
     } else {
-      setMessages((prevMessages) => [
-        ...prevMessages,
-        { type: 'bot', content: "Failed. Please Refresh." },
-      ]);
+      setAnswer("Failed. Please Refresh.");
       console.log('Failed to fetch access token.');
     }
   };
@@ -245,7 +329,7 @@ const Stock: React.FC<StockProps> = ({
       <div className="flex-[9] hidden md:flex flex-col">
         <div className="relative flex-[5] flex items-end font-sans">
           <div className="nameAndPrice absolute top-0 left-0 gap-2 2xl:gap-4 flex flex-col">
-            <h1 className="text-3xl font-extralight 2xl:text-4xl">Apple Inc. | AAPL</h1>
+            <h1 className="text-3xl font-extralight 2xl:text-4xl">{companyName}</h1>
             <h1 className="text-5xl font-normal font-montserrat 2xl:text-6xl">$122.12</h1>
             <div className="flex">
               <div className="bg-red-400 rounded-2xl px-4 py-1">
@@ -285,7 +369,16 @@ const Stock: React.FC<StockProps> = ({
           </div>
           <Separator className="decoration-black w-[100%] my-1" />
           {showLearnMore ? (
-            <LearnMoreContent />
+            <div className="relative mt-4  w-full flex flex-row justify-center">
+              <Search className="h-4 w-4 2xl:h-6 2xl:w-6 absolute left-[15%] self-center decoration-slate-300" />
+              <input 
+              type="text"
+              value={inputValue}
+              onChange={handleInputChange}
+              onKeyDown={handleKeyPress}
+              className="w-3/4 h-8 2xl:h-12 2xl:text-lg bg-slate-100 rounded-full pl-12 2xl:pl-16 text-sm" placeholder='Ask a question...'></input>
+
+            </div>
           ) : (
             <>
               {dateInfoLoaded ? (
@@ -328,7 +421,7 @@ const Stock: React.FC<StockProps> = ({
 
       <ScrollArea className="flex-[4] hidden md:flex font-sans">
         <div className="flex flex-row justify-between items-center mb-2">
-          <h1 className="font-normal text-lg 2xl:text-2xl">About APPL</h1>
+          <h1 className="font-normal text-lg 2xl:text-2xl">About {companyName}</h1>
           <button
             onClick={() => setShowDealHistory(!showDealHistory)}
             className={`px-4 border border-black rounded-full transition-colors ${showDealHistory ? 'bg-black text-white' : 'bg-white text-black'
@@ -411,7 +504,7 @@ const Stock: React.FC<StockProps> = ({
           </div>
           <div className="nameAndPrice relative  flex flex-col mb-32">
             <div className="absolute left-0 top-0 gap-1 flex flex-col">
-              <h1 className="text-2xl font-extralight 2xl:text-4xl">Apple Inc. | AAPL</h1>
+              <h1 className="text-2xl font-extralight 2xl:text-4xl">{companyName}</h1>
               <h1 className="text-4xl font-normal font-montserrat 2xl:text-6xl">$122.12</h1>
               <div className="flex">
                 <div className="bg-red-400 rounded-2xl px-4 py-1">
@@ -441,7 +534,11 @@ const Stock: React.FC<StockProps> = ({
             <Separator className="decoration-black w-[100%] my-1" />
             {showLearnMore ? (
               <>
-                <LearnMoreContent />
+                <LearnMoreContent 
+                value={inputValue}
+                onChange={handleInputChange}
+                onKeyDown={handleKeyPress}
+                />
                 <div className="h-56 w-full"></div>
               </>
 
@@ -449,7 +546,7 @@ const Stock: React.FC<StockProps> = ({
               <>
 
                 <div className='inline-block text-slate-600 text-[1rem] font-light 2xl:text-2xl 2xl:h-40 mb-4'>
-                  Apple Inc. is a leading American technology company known for designing, manufacturing, and selling consumer electronics, software, and online services. Founded in 1976 by Steve Jobs, Steve Wozniak, and Ronald Wayne, Apple is best known for its innovative products such as the iPhone, iPad, Mac computers, Apple Watch, and Apple TV.
+                  {answer}
                 </div>
 
                 <h1 className="font-semibold text-lg md:text-base 2xl:text-2xl">Relevant Links</h1>
