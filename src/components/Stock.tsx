@@ -99,7 +99,6 @@ const Stock: React.FC<StockProps> = ({
   stockDescription,
   imageType,
 }) => {
-  const { data: originalData, importantMarkers } = useMemo(() => generateRandomStockData(), []); const [data, setData] = useState<DataPoint[]>([]);
   const [answer, setAnswer] = useState<string>();
   const [query, setQuery] = useState<string>();
   const [companyName, setCompanyName] = useState<string>('-');

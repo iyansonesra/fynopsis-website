@@ -1,5 +1,7 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceLine, TooltipProps } from 'recharts';
+import { format, parse } from 'date-fns';
+import { MoveDown, MoveUp } from 'lucide-react';
 
 export interface DataPoint {
     name: string;
@@ -29,20 +31,55 @@ interface CustomTooltipProps {
     payload?: any[];
     label?: string;
     percentageChange: string | null;
+    dragStart: DataPoint | null;
+    dragEnd: DataPoint | null;
 }
 
-const CustomTooltip: React.FC<CustomTooltipProps> = ({ active, payload, label, percentageChange }) => {
+const CustomTooltip: React.FC<CustomTooltipProps> = ({ active, payload, label, percentageChange, dragStart, dragEnd }) => {
     if (active && payload && payload.length) {
         const data = payload[0].payload;
+
+        // Parse the date string and format it
+        const date = parse(data.name, 'yyyy-MM-dd', new Date());
+        const formattedDate = format(date, 'MMMM d, yyyy');
+
+        let tooltipContent;
+        if (percentageChange !== null && dragStart && dragEnd) {
+            const startDate = parse(dragStart.name, 'yyyy-MM-dd', new Date());
+            const endDate = parse(dragEnd.name, 'yyyy-MM-dd', new Date());
+            const formattedStartDate = format(startDate, 'MMMM d, yyyy');
+            const formattedEndDate = format(endDate, 'MMMM d, yyyy');
+
+            const percentageChangeNum = parseFloat(percentageChange);
+            const isPositive = percentageChangeNum >= 0;
+            const color = isPositive ? 'text-green-500' : 'text-red-500';
+            const Arrow = isPositive ? MoveUp : MoveDown;
+
+            tooltipContent = (
+                <>
+                    <div className="flex flex-row gap-2 items-center">
+                        <p className={`percentage-change font-bold ${color}`}>{`${percentageChange}`}</p>
+                        <Arrow size={16} className={color} />
+                        <p className="date-range text-sm">{`${formattedStartDate} - ${formattedEndDate}`}</p>
+                    </div>
+
+                </>
+            );
+        } else {
+            tooltipContent = (
+                <>
+                    <div className="flex flex-row gap-2 items-center">
+                        <p className="value font-bold">{`${data.uv.toFixed(2)} USD`}</p>
+                        <p className="label italic">{formattedDate}</p>
+                    </div>
+
+                </>
+            );
+        }
+
         return (
-            <div className="custom-tooltip inline-block bg-white border-sky-300 border-2 rounded-lg px-4 py-2">
-                <p className="label font-bold">{`Date: ${data.name}`}</p>
-                <p className="value">{`Value: $${data.uv.toFixed(2)}`}</p>
-                <p className="pv">{`PV: ${data.pv}`}</p>
-                <p className="amt">{`AMT: ${data.amt}`}</p>
-                {percentageChange !== null && (
-                    <p className="percentage-change">{`Change: ${percentageChange}`}</p>
-                )}
+            <div className="custom-tooltip flex flex-col gap-2 inline-block bg-white border-sky-300 border-2 rounded-lg px-4 py-2">
+                {tooltipContent}
             </div>
         );
     }
@@ -184,7 +221,11 @@ const CustomGraph: React.FC<CustomGraphProps> = ({
                         )}
                     </defs>
                     <Tooltip
-                        content={<CustomTooltip percentageChange={percentageChange} />}
+                        content={<CustomTooltip
+                            percentageChange={percentageChange}
+                            dragStart={dragStart}
+                            dragEnd={dragEnd}
+                        />}
                         cursor={{ stroke: '#ccc', strokeWidth: 1 }}
                     />
                     {!hideXaxis && <XAxis dataKey="name" />}
