@@ -191,6 +191,46 @@ const Stock: React.FC<StockProps> = ({
     }
   };
 
+  const handleStockData = async () => {
+    console.log("requesting Stock Info");
+    setIsLoadingAboutText(true);
+
+    const accessTokens = await handleFetchAccess();
+    if (accessTokens) {
+      try {
+        const restOperation = post({
+          apiName: 'testAPI',
+          path: '/postStockData',
+          options: {
+            headers: {
+              Authorization: accessTokens
+            },
+            body: {
+              company: companyName
+            }
+          }
+        });
+
+        const { body } = await restOperation.response;
+        const responseText = await body.text();
+        console.log('Raw response:', responseText);
+
+        const responseMain = JSON.parse(responseText);
+        console.log('Parsed response:', responseMain);
+
+      } catch (e) {
+        console.error('POST call failed: ', e);
+        setAboutCompanyText("An error occurred while fetching company information. Please try again.");
+      } finally {
+        setIsLoadingAboutText(false);
+      }
+    } else {
+      setAboutCompanyText("Failed to authenticate. Please refresh and try again.");
+      setIsLoadingAboutText(false);
+      console.log('Failed to fetch access token.');
+    }
+  };
+
   const handleSendQuery = async (userMessage: string) => {
     console.log("requesting Info");
     setIsLoadingAboutText(true);
