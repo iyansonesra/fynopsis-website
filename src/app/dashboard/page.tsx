@@ -10,6 +10,7 @@ import Home from "../pages/MainPage";
 
 export default function Dashboard() {
   const { user } = useAuthenticator();
+  
 
   const router = useRouter();
   useEffect(() => {

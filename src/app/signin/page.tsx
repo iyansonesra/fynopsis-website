@@ -10,8 +10,9 @@ import SignInDetails from "./SignInDetails";
 
 
 
-
 export default function Signin() {
+
+  console.log(process.env.NEXT_PUBLIC_USER_POOL_CLIENT_ID);
   
 
  return (

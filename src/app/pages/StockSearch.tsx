@@ -13,11 +13,11 @@ export default function Dashboard() {
     const [searchInput, setSearchInput] = useState('');
     const [showStock, setShowStock] = useState(false);
 
-    const handleInputChange = (e) => {
+    const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         setSearchInput(e.target.value);
     };
 
-    const handleKeyPress = (e) => {
+    const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
         if (e.key === 'Enter' && searchInput.trim() !== '') {
             setShowStock(true);
         }

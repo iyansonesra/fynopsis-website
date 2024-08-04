@@ -7,10 +7,10 @@ Amplify.configure({
   Auth: {
     Cognito: {
       //  Amazon Cognito User Pool ID
-      userPoolId: 'us-east-1_TkLDTNi2B',
+      userPoolId: process.env.NEXT_PUBLIC_USER_POOL_ID,
       // OPTIONAL - Amazon Cognito Web Client ID (26-char alphanumeric string)
       
-      userPoolClientId: '6gljb1n6e47mcua7itafoigeag',
+      userPoolClientId: process.env.NEXT_PUBLIC_USER_POOL_CLIENT_ID,
       // REQUIRED only for Federated Authentication - Amazon Cognito Identity Pool ID
       // identityPoolId: 'XX-XXXX-X:XXXXXXXX-XXXX-1234-abcd-1234567890ab',
       // OPTIONAL - Set to true to use your identity pool's unauthenticated role when user is not logged in
@@ -40,6 +40,7 @@ Amplify.configure({
     }
   },
  });
+
 
 const ClientComponent = ({ children }: { children: React.ReactNode }) => {
   return (

@@ -472,7 +472,7 @@ const Stock: React.FC<StockProps> = ({
   //   return markerData;
   // }
 
-
+  
   const handleStockData = async () => {
     console.log("requesting Stock Info");
     setIsLoadingAboutText(true);
