@@ -29,6 +29,7 @@
     "react-animate-on-scroll": "^2.1.9",
     "react-dom": "^18",
     "react-hook-form": "^7.52.1",
+    "react-markdown": "^9.0.1",
     "react-scroll-motion": "^0.3.3",
     "recharts": "^2.12.7",
     "tailwind-merge": "^2.4.0",

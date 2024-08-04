@@ -9,6 +9,7 @@ Amplify.configure({
       //  Amazon Cognito User Pool ID
       userPoolId: 'us-east-1_TkLDTNi2B',
       // OPTIONAL - Amazon Cognito Web Client ID (26-char alphanumeric string)
+      
       userPoolClientId: '6gljb1n6e47mcua7itafoigeag',
       // REQUIRED only for Federated Authentication - Amazon Cognito Identity Pool ID
       // identityPoolId: 'XX-XXXX-X:XXXXXXXX-XXXX-1234-abcd-1234567890ab',

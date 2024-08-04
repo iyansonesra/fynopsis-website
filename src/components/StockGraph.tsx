@@ -1,7 +1,8 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
-import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceLine, TooltipProps, ReferenceArea } from 'recharts';
+import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceLine, TooltipProps, ReferenceArea, Label } from 'recharts';
 import { format, parse, isWithinInterval, differenceInDays } from 'date-fns';
 import { MoveDown, MoveUp, ChartNoAxesCombined } from 'lucide-react';
+
 
 
 
@@ -52,57 +53,7 @@ interface CustomTooltipProps {
 
 
 
-const CustomTooltip: React.FC<CustomTooltipProps> = ({ active, payload, label, percentageChange, dragStart, dragEnd }) => {
-    if (active && payload && payload.length) {
-        const data = payload[0].payload;
 
-        // Parse the date string and format it
-        const date = parse(data.name, 'yyyy-MM-dd', new Date());
-        const formattedDate = format(date, 'MMMM d, yyyy');
-
-        let tooltipContent;
-        if (percentageChange !== null && dragStart && dragEnd) {
-            const startDate = parse(dragStart.name, 'yyyy-MM-dd', new Date());
-            const endDate = parse(dragEnd.name, 'yyyy-MM-dd', new Date());
-            const formattedStartDate = format(startDate, 'MMMM d, yyyy');
-            const formattedEndDate = format(endDate, 'MMMM d, yyyy');
-
-            const percentageChangeNum = parseFloat(percentageChange);
-            const isPositive = percentageChangeNum >= 0;
-            const color = isPositive ? 'text-green-500' : 'text-red-500';
-            const Arrow = isPositive ? MoveUp : MoveDown;
-
-            tooltipContent = (
-                <>
-                    <div className="flex flex-row gap-2 items-center">
-                        <p className={`percentage-change font-bold ${color}`}>{`${percentageChange}`}</p>
-                        <Arrow size={16} className={color} />
-                        <p className="date-range text-sm">{`${formattedStartDate} - ${formattedEndDate}`}</p>
-                    </div>
-
-                </>
-            );
-        } else {
-            tooltipContent = (
-                <>
-                    <div className="flex flex-row gap-2 items-center">
-                        <p className="value font-bold">{`${data.uv.toFixed(2)} USD`}</p>
-                        <p className="label italic">{formattedDate}</p>
-                    </div>
-
-                </>
-            );
-        }
-
-        return (
-            <div className="custom-tooltip flex flex-col gap-2 inline-block bg-white border-sky-300 border-2 rounded-lg px-4 py-2">
-                {tooltipContent}
-            </div>
-        );
-    }
-
-    return null;
-};
 
 
 const CustomGraph: React.FC<CustomGraphProps> = ({
@@ -119,6 +70,80 @@ const CustomGraph: React.FC<CustomGraphProps> = ({
 
     // const [selectedMarkerDate, setSelectedMarkerDate] = useState<string | null>(null);
     const [recentNewsDate, setRecentNewsDate] = useState<string>("Recent News");
+    const [yDomain, setYDomain] = useState<[number, number] | undefined>(undefined);
+    const [normalizedData, setNormalizedData] = useState<DataPoint[]>([]);
+
+    const CustomTooltip: React.FC<CustomTooltipProps> = ({ active, payload, label, percentageChange, dragStart, dragEnd }) => {
+        if (active && payload && payload.length) {
+          const normalizedDataPoint = payload[0].payload;
+          const originalDataPoint = data.find(d => d.name === normalizedDataPoint.name);
+          
+          if (!originalDataPoint) return null;
+      
+          const date = parse(originalDataPoint.name, 'yyyy-MM-dd', new Date());
+          const formattedDate = format(date, 'MMMM d, yyyy');
+      
+          let tooltipContent;
+          if (percentageChange !== null && dragStart && dragEnd) {
+            const startDate = parse(dragStart.name, 'yyyy-MM-dd', new Date());
+            const endDate = parse(dragEnd.name, 'yyyy-MM-dd', new Date());
+            const formattedStartDate = format(startDate, 'MMMM d, yyyy');
+            const formattedEndDate = format(endDate, 'MMMM d, yyyy');
+      
+            const percentageChangeNum = parseFloat(percentageChange);
+            const isPositive = percentageChangeNum >= 0;
+            const color = isPositive ? 'text-green-500' : 'text-red-500';
+            const Arrow = isPositive ? MoveUp : MoveDown;
+      
+            tooltipContent = (
+              <>
+                <div className="flex flex-row gap-2 items-center">
+                  <p className={`percentage-change font-bold ${color}`}>{`${percentageChange}`}</p>
+                  <Arrow size={16} className={color} />
+                  <p className="date-range text-sm">{`${formattedStartDate} - ${formattedEndDate}`}</p>
+                </div>
+              </>
+            );
+          } else {
+            tooltipContent = (
+              <>
+                <div className="flex flex-row gap-2 items-center">
+                  <p className="value font-bold">{`${originalDataPoint.uv.toFixed(2)} USD`}</p>
+                  <p className="label italic">{formattedDate}</p>
+                </div>
+              </>
+            );
+          }
+      
+          return (
+            <div className="custom-tooltip flex flex-col gap-2 inline-block bg-white border-sky-300 border-2 rounded-lg px-4 py-2">
+              {tooltipContent}
+            </div>
+          );
+        }
+      
+        return null;
+      };
+
+    useEffect(() => {
+        setNormalizedData(normalizeData(data));
+    }, [data]);
+
+    const normalizeData = (data: DataPoint[]): DataPoint[] => {
+        if (data.length === 0) return [];
+
+        const values = data.map(d => d.uv);
+        const minValue = Math.min(...values);
+        const maxValue = Math.max(...values);
+        const range = maxValue - minValue;
+
+        return data.map(point => ({
+            ...point,
+            uv: range === 0 ? 0.5 : (point.uv - minValue) / range
+        }));
+    };
+
+
 
     const MarkerLine: React.FC<MarkerLineProps> = ({ marker, chartDimensions, isSelected, onSelect }) => {
         const markerDate = parse(marker.date, 'yyyy-MM-dd', new Date());
@@ -129,14 +154,13 @@ const CustomGraph: React.FC<CustomGraphProps> = ({
         const markerDays = differenceInDays(markerDate, startDate);
 
         const xPosition = (markerDays / totalDays) * chartDimensions.width;
-
         const handleClick = () => {
             onSelect(marker);
-            setSelectedMarkerDate(marker.date); // Update the selected marker date
         };
 
-        const iconSize = 24; // Adjust as needed
-        const clickableAreaSize = 40; // Larger than the icon for easier clicking
+        const iconSize = 24;
+        const clickableAreaSize = 40;
+        const bottomMargin = 40; // Match this with the AreaChart bottom margin
 
 
         return (
@@ -144,7 +168,7 @@ const CustomGraph: React.FC<CustomGraphProps> = ({
                 {/* Invisible larger clickable area */}
                 <rect
                     x={xPosition - clickableAreaSize / 2}
-                    y={chartDimensions.height - 30 - (clickableAreaSize - iconSize) / 2}
+                    y={chartDimensions.height - bottomMargin + (bottomMargin - clickableAreaSize) / 2}
                     width={clickableAreaSize}
                     height={clickableAreaSize}
                     fill="transparent"
@@ -153,7 +177,7 @@ const CustomGraph: React.FC<CustomGraphProps> = ({
                 {/* Visible icon */}
                 <ChartNoAxesCombined
                     x={xPosition - iconSize / 2}
-                    y={chartDimensions.height - 80}
+                    y={chartDimensions.height - bottomMargin + (bottomMargin - iconSize) / 2}
                     size={iconSize}
                     color={isSelected ? '#3b82f6' : '#888'}
                 />
@@ -163,12 +187,13 @@ const CustomGraph: React.FC<CustomGraphProps> = ({
     const [dragStart, setDragStart] = useState<DataPoint | null>(null);
     const [dragEnd, setDragEnd] = useState<DataPoint | null>(null);
     const [percentageChange, setPercentageChange] = useState<string | null>(null);
-    const [chartDimensions, setChartDimensions] = useState<{ width: number, height: number }>({ width: 0, height: 0 });
+    const [chartDimensions, setChartDimensions] = useState<{ width: number, height: number }>({ width: 1, height: 1 });
     const containerRef = useRef<HTMLDivElement>(null);
     const chartRef = useRef<any>(null);
     const [selectedRange, setSelectedRange] = useState<{ start: number; end: number } | null>(null);
     const [isDragging, setIsDragging] = useState(false);
-    const [selectedMarker, setSelectedMarker] = useState<ImportantMarker | null>(null);
+
+
 
     useEffect(() => {
         if (!selectedMarkerDate) {
@@ -189,46 +214,53 @@ const CustomGraph: React.FC<CustomGraphProps> = ({
 
     const handleMouseDown = useCallback((chartState: any) => {
         if (chartState && chartState.activePayload && chartState.activePayload[0]) {
-            const startPoint = chartState.activePayload[0].payload;
-            setDragStart(startPoint);
+          const normalizedStartPoint = chartState.activePayload[0].payload;
+          const originalStartPoint = data.find(d => d.name === normalizedStartPoint.name);
+          if (originalStartPoint) {
+            setDragStart(originalStartPoint);
             setDragEnd(null);
             setPercentageChange(null);
             setIsDragging(true);
-            setSelectedRange({ start: data.findIndex(item => item.name === startPoint.name), end: -1 });
+            setSelectedRange({ start: data.findIndex(item => item.name === originalStartPoint.name), end: -1 });
+          }
         }
-    }, [data]);
+      }, [data]);
 
-    const handleMouseMove = useCallback((movePoint: any) => {
+      const handleMouseMove = useCallback((movePoint: any) => {
         if (isDragging && dragStart && movePoint && movePoint.activePayload && movePoint.activePayload[0]) {
-            const currentPoint = movePoint.activePayload[0].payload;
-            setDragEnd(currentPoint);
-
+          const normalizedCurrentPoint = movePoint.activePayload[0].payload;
+          const originalCurrentPoint = data.find(d => d.name === normalizedCurrentPoint.name);
+          
+          if (originalCurrentPoint) {
+            setDragEnd(originalCurrentPoint);
+      
             const startIndex = data.findIndex(item => item.name === dragStart.name);
-            const endIndex = data.findIndex(item => item.name === currentPoint.name);
-
+            const endIndex = data.findIndex(item => item.name === originalCurrentPoint.name);
+      
             const [startPoint, endPoint] = startIndex <= endIndex
-                ? [dragStart, currentPoint]
-                : [currentPoint, dragStart];
-
+              ? [dragStart, originalCurrentPoint]
+              : [originalCurrentPoint, dragStart];
+      
             setSelectedRange({ start: Math.min(startIndex, endIndex), end: Math.max(startIndex, endIndex) });
-
+      
             const startValue = startPoint.uv;
             const endValue = endPoint.uv;
-
+      
             if (typeof startValue === 'number' && typeof endValue === 'number') {
-                if (startValue !== 0) {
-                    const change = ((endValue - startValue) / Math.abs(startValue)) * 100;
-                    setPercentageChange(change.toFixed(2) + '%');
-                } else if (endValue !== 0) {
-                    setPercentageChange('∞%');
-                } else {
-                    setPercentageChange('0%');
-                }
+              if (startValue !== 0) {
+                const change = ((endValue - startValue) / Math.abs(startValue)) * 100;
+                setPercentageChange(change.toFixed(2) + '%');
+              } else if (endValue !== 0) {
+                setPercentageChange('∞%');
+              } else {
+                setPercentageChange('0%');
+              }
             } else {
-                setPercentageChange('N/A');
+              setPercentageChange('N/A');
             }
+          }
         }
-    }, [isDragging, dragStart, data]);
+      }, [isDragging, dragStart, data]);
 
     const handleMouseUp = useCallback(() => {
         setIsDragging(false);
@@ -263,12 +295,14 @@ const CustomGraph: React.FC<CustomGraphProps> = ({
 
 
 
+
+
     return (
         <div ref={containerRef} style={{ width, height, position: 'relative' }}>
             <ResponsiveContainer width="100%" height="100%">
                 <AreaChart
-                    data={data}
-                    margin={{ top: 0, right: 0, left: 0, bottom: 30 }}
+                    data={normalizedData}
+                    margin={{ top: 0, right: 0, left: 0, bottom: 40 }}
                     onMouseDown={handleMouseDown}
                     onMouseMove={handleMouseMove}
                     onMouseUp={handleMouseUp}
@@ -302,7 +336,7 @@ const CustomGraph: React.FC<CustomGraphProps> = ({
                                 key={index}
                                 marker={marker}
                                 chartDimensions={chartDimensions}
-                                isSelected={marker === selectedMarker}
+                                isSelected={selectedMarkerDate === marker.date}
                                 onSelect={handleMarkerSelect}
                             />
                         ))}
@@ -316,13 +350,29 @@ const CustomGraph: React.FC<CustomGraphProps> = ({
                         cursor={{ stroke: '#ccc', strokeWidth: 1 }}
                     />
                     {!hideXaxis && <XAxis dataKey="name" />}
-                    {!hideYaxis && <YAxis />}
+                    {!hideYaxis && (
+                        <YAxis
+                            domain={yDomain}
+                            tickFormatter={(value) => value.toFixed(2)}
+                            allowDataOverflow={true}
+                            allowDecimals={true}
+                        >
+                            <Label
+                                value="Price (USD)"
+                                angle={-90}
+                                position="insideLeft"
+                                style={{ textAnchor: 'middle' }}
+                            />
+                        </YAxis>
+                    )}
                     <Area
                         type="monotone"
                         dataKey="uv"
                         stroke={gradientColor}
                         fillOpacity={1}
                         fill="url(#fadedColorUv)"
+                        yAxisId={0}
+                        domain={[0, 1]}
                     />
                     {selectedRange && (
                         <Area
