@@ -151,14 +151,10 @@ export default function Home() {
 
   const renderSelectedScreen = () => {
     switch (selectedTab) {
-      case "dashboard":
-        return <Dashboard />
       case "stockSearch":
         return <StockSearch />
-      case "settings":
-        return <Settings />
       default:
-        return <Dashboard />
+        return <StockSearch />
     }
   }
 
@@ -184,16 +180,6 @@ export default function Home() {
             <Link
               href="#"
               className={`flex items-center gap-3 rounded-lg px-3 py-2 transition-all hover:text-primary ${
-                selectedTab === "dashboard" ? "bg-muted text-primary" : "text-muted-foreground"
-              }`}
-              onClick={() => setSelectedTab("dashboard")}
-            >
-              <Homer className="h-4 w-4 2xl:h-6 2xl:w-6" />
-              Dashboard
-            </Link>
-            <Link
-              href="#"
-              className={`flex items-center gap-3 rounded-lg px-3 py-2 transition-all hover:text-primary ${
                 selectedTab === "stockSearch" ? "bg-muted text-primary" : "text-muted-foreground"
               }`}
               onClick={() => setSelectedTab("stockSearch")}
@@ -201,20 +187,10 @@ export default function Home() {
               <Search className="h-4 w-4 2xl:h-6 2xl:w-6" />
               Stock Search
             </Link>
-            <Link
-              href="#"
-              className={`flex items-center gap-3 rounded-lg px-3 py-2 transition-all hover:text-primary ${
-                selectedTab === "settings" ? "bg-muted text-primary" : "text-muted-foreground"
-              }`}
-              onClick={() => setSelectedTab("settings")}
-            >
-              <SettingsIcon className="h-4 w-4 2xl:h-6 2xl:w-6" />
-              Settings
-            </Link>
             </nav>
           </div>
           <div className="mt-auto p-4">
-            <Card x-chunk="dashboard-02-chunk-0">
+            {/* <Card x-chunk="dashboard-02-chunk-0">
               <CardHeader className="p-2 pt-0 md:p-4">
                 <CardTitle>Upgrade to Pro</CardTitle>
                 <CardDescription>
@@ -227,7 +203,7 @@ export default function Home() {
                   Upgrade
                 </Button>
               </CardContent>
-            </Card>
+            </Card> */}
             <button className = "h-12 w-full justify-center flex flex-row items-center gap-2"  onClick={signOut}>
               <h1 className = "text-red-400">Logout</h1>
               <LogOut className="h-4 w-4 decoration-red-400" color = {"#E74545"} />

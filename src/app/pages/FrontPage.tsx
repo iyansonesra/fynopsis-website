@@ -89,7 +89,7 @@ export default function FrontPage() {
                             <img
                                 src={demo1.src}
                                 alt="demo"
-                                className="w-[85%] h-auto rounded-3xl z-10 relative mx-auto"
+                                className="w-[90%] h-auto rounded-3xl z-10 relative mx-auto"
                             />
                         </div>
                     </FadeInSlideUp>
