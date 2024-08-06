@@ -256,33 +256,36 @@ const Stock: React.FC<StockProps> = ({
   const [ticker, setTicker] = useState<string>("-");
   const [isStockDataLoading, setIsStockDataLoading] = useState(true);
   const [sector, setSector] = useState<string>("-");
+  const [percentChange, setPercentChange] = useState<number>(0);
+
+
 
   const extractRelevantLinks = (content: string): { title: string; url: string }[] => {
     // console.log("Original content:", content);
-  
+
     const sourcesSection = content.split('Sources:')[1];
     if (!sourcesSection) {
       // console.log("No 'Sources:' section found.");
       return [];
     }
-  
+
     // console.log("Sources section:", sourcesSection);
-  
+
     // Updated regex pattern to match the new format
     const links = sourcesSection.match(/\d+\.\s"(.+?)"\s\[(.+?)\]/g) || [];
     // console.log("Matched links:", links);
-  
+
     const extractedLinks = links.map(link => {
       // Updated regex to capture title and URL in the new format
       const [, title, url] = link.match(/\d+\.\s"(.+?)"\s\[(.+?)\]/) || [];
       return { title, url };
     });
-  
+
     // console.log("Extracted links:", extractedLinks);
-  
+
     return extractedLinks;
   };
-  
+
   // Test the function with the provided example
   const testContent = `Some content here...
   
@@ -290,7 +293,7 @@ const Stock: React.FC<StockProps> = ({
   1. "LPL Financial fined $5.5M by FINRA over transaction supervision lapses" [https://www.complianceweek.com/regulatory-enforcement/lpl-financial-fined-55m-by-finra-over-transaction-supervision-lapses/34078.article]
   2. "Smooth transition expected at LPL Financial under new CEO Dan Arnold" [https://www.investmentnews.com/industry-news/archive/smooth-transition-expected-at-lpl-financial-under-new-ceo-dan-arnold-70027]
   3. "LPL Financial's new CEO Dan Arnold to receive big pay hike in 2017" [https://www.investmentnews.com/industry-news/news/lpl-financials-new-ceo-dan-arnold-to-receive-big-pay-hike-in-2017-70225]`;
-  
+
   // console.log("Test result:", extractRelevantLinks(testContent));
 
 
@@ -474,7 +477,7 @@ const Stock: React.FC<StockProps> = ({
   //   return markerData;
   // }
 
-  
+
   const handleStockData = async () => {
     // console.log("requesting Stock Info");
     setIsLoadingAboutText(true);
@@ -504,6 +507,7 @@ const Stock: React.FC<StockProps> = ({
 
         if (responseMain && responseMain.body) {
           const innerBody = responseMain.body;
+          console.log(innerBody);
           if (innerBody && innerBody.message && innerBody.message.info) {
             const info = innerBody.message.info;
 
@@ -514,10 +518,15 @@ const Stock: React.FC<StockProps> = ({
             setBasedIn(info.city ? `${info.city}, ${info.state}` : "-");
             setEbitda(formatLargeNumber(info.ebitda) || "-");
             setEnterpriseValue(formatLargeNumber(info.enterpriseValue) || "-");
-            setOpen(info.regularMarketOpen || "0");
+            setOpen(info.currentPrice || "0");
             setLongName(info.longName || "-");
             setTicker(info.symbol || "-");
             setSector(info.sector || "-");
+           
+            const currentPrice = info.currentPrice || 1;
+            const previousClose = info.previousClose || 1;
+            const calculatedPercentChange = ((currentPrice - previousClose) / previousClose) * 100;
+          setPercentChange(calculatedPercentChange);
 
             setIsStockDataLoading(false);
 
@@ -718,50 +727,28 @@ const Stock: React.FC<StockProps> = ({
 
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
 
-  const MobileSidebar = () => (
-    <Sheet open={isMobileSidebarOpen} onOpenChange={setIsMobileSidebarOpen}>
-      <SheetTrigger asChild>
-        <button className="md:hidden">
-          <Menu className="h-6 w-6 2xl:h-12 2xl:w-12 self-center decoration-slate-300" />
-        </button>
-      </SheetTrigger>
-      <SheetContent side="left" className="w-[300px] sm:w-[400px]">
-        <nav className="flex flex-col gap-4 mt-8">
-          <Link href="#" className="flex items-center gap-2 px-2 py-1 hover:bg-gray-100">
-            {/* <Homer className="h-4 w-4" /> */}
-            <span>Dashboard</span>
-          </Link>
-          <Link href="#" className="flex items-center gap-2 px-2 py-1 hover:bg-gray-100">
-            <Search className="h-4 w-4" />
-            <span>Stock Search</span>
-          </Link>
-          <Link href="#" className="flex items-center gap-2 px-2 py-1 hover:bg-gray-100">
-            <SettingsIcon className="h-4 w-4" />
-            <span>Settings</span>
-          </Link>
-        </nav>
-      </SheetContent>
-    </Sheet>
-  );
+
 
   return (
     <div className='w-full h-full flex flex-col md:flex-row py-12 px-4 2xl:py-12 2xl:px-12 font-montserrat gap-4'>
-       <button 
-            onClick={onBack} 
-            className="absolute top-[1%] left-[1%] p-2 text-black hover:text-blue-700"
-            aria-label="Go back to stock search"
-          >
-            <ArrowLeft className="h-6 w-6 2xl:h-8 2xl:w-8" />
-          </button>
+      <button
+        onClick={onBack}
+        className="absolute top-[1%] left-[1%] p-2 text-black hover:text-blue-700"
+        aria-label="Go back to stock search"
+      >
+        <ArrowLeft className="h-6 w-6 2xl:h-8 2xl:w-8 dark:text-slate-200" />
+      </button>
       <div className="flex-[9] flex flex-col">
         <div className="relative inline-block flex flex-col items-start font-sans ">
-       
+
           <div className="nameAndPrice relative top-0 left-0 gap-2 2xl:gap-4 flex flex-col">
             <h1 className="text-3xl font-extralight 2xl:text-4xl">{longName} | {ticker}</h1>
             <h1 className="text-5xl font-normal font-montserrat 2xl:text-6xl">${open}</h1>
             <div className="flex">
-              <div className="bg-red-400 rounded-2xl px-4 py-1">
-                <h1 className="text-white font-montserrat font-semibold text-base 2xl:text-xl">-4.07%</h1>
+              <div className={`flex ${percentChange >= 0 ? 'bg-green-400' : 'bg-red-400'} rounded-2xl px-4 py-1`}>
+                <h1 className="text-white font-montserrat font-semibold text-base 2xl:text-xl">
+                  {percentChange >= 0 ? '+' : ''}{percentChange.toFixed(2)}%
+                </h1>
               </div>
             </div>
           </div>
@@ -806,7 +793,7 @@ const Stock: React.FC<StockProps> = ({
             </h1>
             <button
               onClick={() => setShowLearnMore(!showLearnMore)}
-              className={`px-4 border border-black rounded-full transition-colors ${showLearnMore ? 'bg-black text-white' : 'bg-white text-black'}`}
+              className={`px-4 border border-black rounded-full transition-colors ${showLearnMore ? 'bg-sky-700 text-sky-100' : 'bg-transparent text-sky-700 border-sky-700'}`}
             >
               <h1 className="2xl:text-xl">Learn More</h1>
             </button>
@@ -826,7 +813,7 @@ const Stock: React.FC<StockProps> = ({
           ) : (
             <>
               {dateInfoLoaded ? (
-                <ScrollArea className='h-[12rem] md:h-[12rem] text-slate-600 text-[.8rem] font-light 2xl:text-xl mb-4'>
+                <ScrollArea className='h-[12rem] md:h-[12rem] text-slate-600 text-[.8rem] font-light dark:text-slate-200 2xl:text-xl mb-4'>
                   {selectedMarkerDate ? (
                     isLoadingMarkerData ? (
                       <Skeleton className="w-full h-full rounded" />
@@ -870,7 +857,7 @@ const Stock: React.FC<StockProps> = ({
                   </div>
                   <ScrollBar orientation="horizontal" />
                 </ScrollArea>
-                <div className="absolute right-0 h-full w-4 bg-gradient-to-l from-white to-transparent"></div>
+                <div className="dark:hidden absolute right-0 h-full w-4 bg-gradient-to-l from-white to-transparent dark:from-black dark:to-transparent"></div>
               </div>
             </>
           )}
@@ -884,7 +871,7 @@ const Stock: React.FC<StockProps> = ({
           <h1 className="font-normal text-lg 2xl:text-2xl">About {longName}</h1>
           <button
             onClick={() => setShowDealHistory(!showDealHistory)}
-            className={`px-4 border border-black rounded-full transition-colors ${showDealHistory ? 'bg-black text-white' : 'bg-white text-black'
+            className={`px-4 border border-black  rounded-full transition-colors ${!showDealHistory ? 'dark:border-sky-700 dark:text-sky-700 dark:bg-transparent' : 'bg-sky-700 text-sky-100'
               }`}
           >
             <h1 className="2xl:text-xl">Deal History</h1>
@@ -900,7 +887,7 @@ const Stock: React.FC<StockProps> = ({
                 aria-label="Copy all deal information"
               >
                 <Copy size={16} />
-                <h1 className="text-sm text-black">
+                <h1 className="text-sm text-black dark:text-white">
                   {isCopiedAll ? "Copied!" : "Copy All"}
                 </h1>
               </button>
@@ -926,7 +913,7 @@ const Stock: React.FC<StockProps> = ({
                 <Skeleton className="w-[70%] h-4 rounded-full" />
               </div>
             ) : (
-              <h1 className="text-slate-600 text-[.95rem] font-light mb-4 2xl:mb-6 2xl:text-xl">
+              <h1 className="text-slate-600 text-[.95rem] font-light dark:text-slate-200 mb-4 2xl:mb-6 2xl:text-xl">
                 {aboutCompanyText || "No information available."}
               </h1>
             )}
@@ -949,7 +936,7 @@ const Stock: React.FC<StockProps> = ({
         )}
       </div>
 
-      
+
     </div>
   );
 };

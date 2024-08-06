@@ -15,8 +15,8 @@ const IndustryButton: React.FC<IndustryButtonProps> = ({
       {isLoading ? (
         <Skeleton className="h-8 w-24 md:h-6 md:w-20 2xl:h-10 2xl:w-28 rounded-full" />
       ) : (
-        <div className='flex rounded-full bg-sky-100 px-4 py-1'>
-          <h1 className='text-sky-500 font-normal text-base md:text-xs 2xl:text-lg'>
+        <div className='flex rounded-full bg-sky-100 dark:bg-sky-700 px-4 py-1'>
+          <h1 className='text-sky-500 dark:text-sky-100 font-normal text-base md:text-xs 2xl:text-lg'>
             {industryName}
           </h1>
         </div>

@@ -33,7 +33,7 @@ const Deal: React.FC<DealProps> = ({
     return (
         <div className="flex flex-col w-full rounded-2xl overflow-hidden py-2 pl-4 pr-2">
             <div className="flex flex-row items-center">
-                <h1 className="text-sm text-black truncate 2xl:text-lg">{date}</h1>
+                <h1 className="text-sm text-black truncate 2xl:text-lg dark:text-white">{date}</h1>
                 {isCopied ? (
                     <span className="ml-2 text-xs text-green-600">Copied!</span>
                 ) : (
@@ -46,7 +46,7 @@ const Deal: React.FC<DealProps> = ({
                     </button>
                 )}
             </div>
-            <p className="text-xs text-slate-500 overflow-hidden line-clamp-2 2xl:text-base mb-2">
+            <p className="text-xs text-slate-500 dark:text-slate-300 overflow-hidden line-clamp-2 2xl:text-base mb-2">
                 {dealDescription}
             </p>
             <Separator />

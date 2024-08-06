@@ -16,7 +16,7 @@ const StatListing: React.FC<StatListingProps> = ({
     return (
 
         <div className='flex flex-col w-[50%] items-center px-4 py-1 '>
-            <h1 className='text-black font-normal text-base md:text-sm 2xl:text-xl text-center'>{statName}</h1>
+            <h1 className='text-black font-normal text-base md:text-sm 2xl:text-xl text-center dark:text-white'>{statName}</h1>
 
             {isLoading ? (
                 <Skeleton className='w-[70%] h-4 mt-1 rounded-full' />) :

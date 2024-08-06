@@ -125,7 +125,7 @@ export default function StockSearch({ setSelectedTab }) {
                 <div className="relative w-[70%] lg:w-[60%] ">
                     <input
                         type="text"
-                        className="searchBar bg-slate-200 w-full 2xl:h-[4.5rem] lg:h-[3.5rem] h-[2.5rem] 2xl:text-xl text-lg rounded-full pl-12 lg:pl-16 xl:pl-20 2xl:pl-24"
+                        className="searchBar bg-slate-200 dark:bg-transparent dark:border-slate-400 dark:border-2 w-full 2xl:h-[4.5rem] lg:h-[3.5rem] h-[2.5rem] 2xl:text-xl text-lg rounded-full pl-12 lg:pl-16 xl:pl-20 2xl:pl-24"
                         placeholder="Search for a stock"
                         value={searchInput}
                         onChange={handleInputChange}

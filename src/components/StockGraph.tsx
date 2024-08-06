@@ -97,7 +97,7 @@ const CustomGraph: React.FC<CustomGraphProps> = ({
       
             tooltipContent = (
               <>
-                <div className="flex flex-row gap-2 items-center">
+                <div className="flex flex-row gap-2 items-center bg-transparent">
                   <p className={`percentage-change font-bold ${color}`}>{`${percentageChange}`}</p>
                   <Arrow size={16} className={color} />
                   <p className="date-range text-sm">{`${formattedStartDate} - ${formattedEndDate}`}</p>
@@ -116,7 +116,7 @@ const CustomGraph: React.FC<CustomGraphProps> = ({
           }
       
           return (
-            <div className="custom-tooltip flex flex-col gap-2 inline-block bg-white border-sky-300 border-2 rounded-lg px-4 py-2">
+            <div className="custom-tooltip flex flex-col gap-2 inline-block bg-transparent border-sky-300 dark:border-sky-700 border-2 rounded-lg px-4 py-2">
               {tooltipContent}
             </div>
           );
