@@ -1,0 +1,19 @@
+version: "3.9"
+services:
+  nextjs:
+    image: oronila/nextjs:latest
+    container_name: nextjs
+    build: ./
+    ports:
+      - "3000:3000"
+    restart: always
+  nginx:
+    image: oronila/nginx:latest
+    container_name: nginx
+    build: ./nginx
+    ports:
+      - "80:80"
+    #   - "443:443"
+    # volumes:
+    #   - /etc/ssl:/etc/nginx/ssl:ro
+    restart: always

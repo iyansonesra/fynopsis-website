@@ -372,7 +372,6 @@ const CustomGraph: React.FC<CustomGraphProps> = ({
                         fillOpacity={1}
                         fill="url(#fadedColorUv)"
                         yAxisId={0}
-                        domain={[0, 1]}
                     />
                     {selectedRange && (
                         <Area

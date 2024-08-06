@@ -256,19 +256,19 @@ const Stock: React.FC<StockProps> = ({
   const [sector, setSector] = useState<string>("-");
 
   const extractRelevantLinks = (content: string): { title: string; url: string }[] => {
-    console.log("Original content:", content);
+    // console.log("Original content:", content);
   
     const sourcesSection = content.split('Sources:')[1];
     if (!sourcesSection) {
-      console.log("No 'Sources:' section found.");
+      // console.log("No 'Sources:' section found.");
       return [];
     }
   
-    console.log("Sources section:", sourcesSection);
+    // console.log("Sources section:", sourcesSection);
   
     // Updated regex pattern to match the new format
     const links = sourcesSection.match(/\d+\.\s"(.+?)"\s\[(.+?)\]/g) || [];
-    console.log("Matched links:", links);
+    // console.log("Matched links:", links);
   
     const extractedLinks = links.map(link => {
       // Updated regex to capture title and URL in the new format
@@ -276,7 +276,7 @@ const Stock: React.FC<StockProps> = ({
       return { title, url };
     });
   
-    console.log("Extracted links:", extractedLinks);
+    // console.log("Extracted links:", extractedLinks);
   
     return extractedLinks;
   };
@@ -289,7 +289,7 @@ const Stock: React.FC<StockProps> = ({
   2. "Smooth transition expected at LPL Financial under new CEO Dan Arnold" [https://www.investmentnews.com/industry-news/archive/smooth-transition-expected-at-lpl-financial-under-new-ceo-dan-arnold-70027]
   3. "LPL Financial's new CEO Dan Arnold to receive big pay hike in 2017" [https://www.investmentnews.com/industry-news/news/lpl-financials-new-ceo-dan-arnold-to-receive-big-pay-hike-in-2017-70225]`;
   
-  console.log("Test result:", extractRelevantLinks(testContent));
+  // console.log("Test result:", extractRelevantLinks(testContent));
 
 
   const generateFlatLineData = (length: number): DataPoint[] => {
@@ -369,7 +369,7 @@ const Stock: React.FC<StockProps> = ({
       }
       return access;
     } catch (error) {
-      console.log(error);
+      // console.log(error);
     }
   };
 
@@ -474,7 +474,7 @@ const Stock: React.FC<StockProps> = ({
 
   
   const handleStockData = async () => {
-    console.log("requesting Stock Info");
+    // console.log("requesting Stock Info");
     setIsLoadingAboutText(true);
 
     const accessTokens = await handleFetchAccess();
@@ -495,10 +495,10 @@ const Stock: React.FC<StockProps> = ({
 
         const { body } = await restOperation.response;
         const responseText = await body.text();
-        console.log('Raw response:', responseText);
+        // console.log('Raw response:', responseText);
 
         const responseMain = JSON.parse(responseText);
-        console.log('Parsed response:', responseMain);
+        // console.log('Parsed response:', responseMain);
 
         if (responseMain && responseMain.body) {
           const innerBody = responseMain.body;
@@ -540,7 +540,7 @@ const Stock: React.FC<StockProps> = ({
         } else {
         }
       } catch (e) {
-        console.error('POST call failed: ', e);
+        // console.error('POST call failed: ', e);
         setAboutCompanyText("An error occurred while fetching company information. Please try again.");
         setIsStockDataLoading(false);
       } finally {
@@ -550,12 +550,12 @@ const Stock: React.FC<StockProps> = ({
     } else {
       setAboutCompanyText("Failed to authenticate. Please refresh and try again.");
       setIsLoadingAboutText(false);
-      console.log('Failed to fetch access token.');
+      // console.log('Failed to fetch access token.');
     }
   };
 
   const handleSendQuery = async (userMessage: string) => {
-    console.log("requesting Info");
+    // console.log("requesting Info");
     setIsLoadingAboutText(true);
 
     const accessTokens = await handleFetchAccess();
@@ -576,14 +576,14 @@ const Stock: React.FC<StockProps> = ({
 
         const { body } = await restOperation.response;
         const responseText = await body.text();
-        console.log('Raw response:', responseText);
+        // console.log('Raw response:', responseText);
 
         const responseMain = JSON.parse(responseText);
-        console.log('Parsed response:', responseMain);
+        // console.log('Parsed response:', responseMain);
 
         if (responseMain && responseMain.body) {
           const innerBody = JSON.parse(responseMain.body);
-          console.log('Inner body:', innerBody);
+          // console.log('Inner body:', innerBody);
 
           if (innerBody && innerBody.message) {
             setAboutCompanyText(innerBody.message);
@@ -594,7 +594,7 @@ const Stock: React.FC<StockProps> = ({
           setAboutCompanyText("Failed to fetch company information. Please try again.");
         }
       } catch (e) {
-        console.error('POST call failed: ', e);
+        // console.error('POST call failed: ', e);
         setAboutCompanyText("An error occurred while fetching company information. Please try again.");
       } finally {
         setIsLoadingAboutText(false);
@@ -602,7 +602,7 @@ const Stock: React.FC<StockProps> = ({
     } else {
       setAboutCompanyText("Failed to authenticate. Please refresh and try again.");
       setIsLoadingAboutText(false);
-      console.log('Failed to fetch access token.');
+      // console.log('Failed to fetch access token.');
     }
   };
 
@@ -624,12 +624,12 @@ const Stock: React.FC<StockProps> = ({
 
         const fetchPromises = markerDates.map(async (marker) => {
           const formattedDate = format(new Date(marker), 'MMMM yyyy');
-          console.log("Making request for date " + formattedDate);
+          // console.log("Making request for date " + formattedDate);
 
           try {
             const accessToken = await handleFetchAccess();
             if (!accessToken) {
-              console.error('Failed to fetch access token.');
+              // console.error('Failed to fetch access token.');
               return null;
             }
 
@@ -671,7 +671,7 @@ const Stock: React.FC<StockProps> = ({
             }
             return null;
           } catch (error) {
-            console.error(`Error fetching data for marker ${formattedDate}:`, error);
+            // console.error(`Error fetching data for marker ${formattedDate}:`, error);
             return null;
           }
         });
@@ -703,14 +703,14 @@ const Stock: React.FC<StockProps> = ({
     navigator.clipboard.writeText(allDealsText)
       .then(() => {
         setIsCopiedAll(true);
-        console.log('All deals copied to clipboard');
+        // console.log('All deals copied to clipboard');
 
         setTimeout(() => {
           setIsCopiedAll(false);
         }, 2000);
       })
       .catch(err => {
-        console.error('Failed to copy text: ', err);
+        // console.error('Failed to copy text: ', err);
       });
   };
 
@@ -985,6 +985,8 @@ const Stock: React.FC<StockProps> = ({
               gradientColor={'rgb(52, 128, 235)'}
               hideXaxis={true}
               hideYaxis={true}
+              selectedMarkerDate={selectedMarkerDate} // Add this line
+              onMarkerSelect={handleMarkerSelect} // Add this line
             />
           </div>
 

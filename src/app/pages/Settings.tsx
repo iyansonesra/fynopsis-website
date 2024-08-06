@@ -21,7 +21,7 @@ export default function Settings() {
 
     return (
         <div className="flex flex-col h-screen w-full">
-            <Stock image={""} stockName={"AAPL"} stockDescription={""} imageType={"circular"} />
+            {/* <Stock image={""} stockName={"AAPL"} stockDescription={""} imageType={"circular"} /> */}
         </div>
     )
 }

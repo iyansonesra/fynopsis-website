@@ -3,6 +3,10 @@ import { Amplify } from "aws-amplify";
 import { Authenticator as AmplifyAuthenticator } from "@aws-amplify/ui-react";
  
 
+if (!process.env.NEXT_PUBLIC_USER_POOL_ID || !process.env.NEXT_PUBLIC_USER_POOL_CLIENT_ID) {
+  throw new Error('Environment variables NEXT_PUBLIC_USER_POOL_ID and NEXT_PUBLIC_USER_POOL_CLIENT_ID must be set');
+}
+
 Amplify.configure({
   Auth: {
     Cognito: {
@@ -20,10 +24,10 @@ Amplify.configure({
       signUpVerificationMethod: 'code', // 'code' | 'link'
       loginWith: { // Optional
         oauth: {
-          domain: 'fynopsis.auth.us-east-1.amazoncognito.com',
+          domain: 'fynopsis-dev.auth.us-east-1.amazoncognito.com',  // auth.fynopsis.ai
           scopes: ['aws.cognito.signin.user.admin'],
-          redirectSignIn: ['http://localhost:3000/dashboard', 'http://localhost:3000/', 'http://localhost:3000/signin'],
-          redirectSignOut: ['http://localhost:3000'],
+          redirectSignIn: ['http://localhost:3000/signin'], // https://fynopsis.ai/signin
+          redirectSignOut: ['http://localhost:3000'], // https://fynopsis.ai
           responseType: 'code',
         }
       }
