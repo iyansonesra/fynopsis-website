@@ -31,6 +31,16 @@
     --chart-5: 27 87% 67%;
   }
 
+  :root {
+    --font-montserrat: var(--font-montserrat), sans-serif;
+    --font-poppins: var(--font-poppins), sans-serif;
+    --font-inter: var(--font-inter), sans-serif;
+  }
+  
+  body {
+    font-family: var(--font-montserrat);
+  }
+
   .dark {
     --background: 222.2 84% 4.9%;
     --foreground: 210 40% 98%;

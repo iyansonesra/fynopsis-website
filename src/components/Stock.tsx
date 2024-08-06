@@ -3,7 +3,7 @@ import RecentSearch from './RecentSearch';
 import { ScrollArea, ScrollBar } from './ui/scroll-area';
 import UserSearchBubble from './UserSearchBubble';
 import GPTResponse from './GPTResponse';
-import { Copy, Link, Menu, Scroll, Search, Send, SettingsIcon, User } from 'lucide-react';
+import { ArrowLeft, Copy, Link, Menu, Scroll, Search, Send, SettingsIcon, User } from 'lucide-react';
 import RelevantLink from './RelevantLinks';
 import CustomGraph, { DataPoint, ImportantMarker } from './StockGraph';
 import generateRandomStockData from './GenerateRandomStockData';
@@ -154,6 +154,7 @@ interface StockProps {
   companyName: string;
   stockDescription: string;
   imageType: 'circular' | 'rectangular';
+  onBack: () => void;
 }
 
 type Message = {
@@ -204,6 +205,7 @@ const Stock: React.FC<StockProps> = ({
   companyName,
   stockDescription,
   imageType,
+  onBack,
 }) => {
   const [answer, setAnswer] = useState<string>();
   const [query, setQuery] = useState<string>();
@@ -743,9 +745,17 @@ const Stock: React.FC<StockProps> = ({
   );
 
   return (
-    <div className='w-full h-full flex flex-col md:flex-row md:py-6 md:px-4 2xl:py-12 2xl:px-12 font-montserrat gap-4'>
-      <div className="flex-[9] hidden md:flex flex-col">
-        <div className="relative inline-block flex flex-col items-start font-sans">
+    <div className='w-full h-full flex flex-col md:flex-row py-12 px-4 2xl:py-12 2xl:px-12 font-montserrat gap-4'>
+       <button 
+            onClick={onBack} 
+            className="absolute top-[1%] left-[1%] p-2 text-black hover:text-blue-700"
+            aria-label="Go back to stock search"
+          >
+            <ArrowLeft className="h-6 w-6 2xl:h-8 2xl:w-8" />
+          </button>
+      <div className="flex-[9] flex flex-col">
+        <div className="relative inline-block flex flex-col items-start font-sans ">
+       
           <div className="nameAndPrice relative top-0 left-0 gap-2 2xl:gap-4 flex flex-col">
             <h1 className="text-3xl font-extralight 2xl:text-4xl">{longName} | {ticker}</h1>
             <h1 className="text-5xl font-normal font-montserrat 2xl:text-6xl">${open}</h1>
@@ -869,7 +879,7 @@ const Stock: React.FC<StockProps> = ({
 
       </div>
 
-      <ScrollArea className="flex-[4] hidden md:flex font-sans">
+      <div className="flex-[4] flex font-sans flex-col">
         <div className="flex flex-row justify-between items-center mb-2">
           <h1 className="font-normal text-lg 2xl:text-2xl">About {longName}</h1>
           <button
@@ -937,184 +947,9 @@ const Stock: React.FC<StockProps> = ({
             </div>
           </>
         )}
-      </ScrollArea>
-
-      <div className="w-full flex md:hidden h-screen overflow-hidden  font-sans"> {/* Added overflow-hidden */}
-
-
-        <div className="flex w-full flex-col overflow-y-auto overflow-x-hidden px-4 py-6 "> {/* Removed inline-block, added overflow-y-auto */}
-          <div className="inline-block w-full mb-2">
-            <MobileSidebar />
-          </div>
-          <div className="nameAndPrice relative  flex flex-col mb-32 ">
-            <div className="absolute left-0 top-0 gap-1 flex flex-col">
-              <h1 className="text-2xl font-extralight 2xl:text-4xl">{companyName}</h1>
-              <h1 className="text-4xl font-normal font-montserrat 2xl:text-6xl">$122.12</h1>
-              <div className="flex">
-                <div className="bg-red-400 rounded-2xl px-4 py-1">
-                  <h1 className="text-white font-montserrat font-semibold text-base 2xl:text-xl">-4.07%</h1>
-                </div>
-              </div>
-            </div>
-            <div className="timeframe absolute top-0 right-0 gap-2 2xl:gap-4 flex flex-row inline-block  ">
-              {['1W', '1M', '6M', '1Y', '5Y', 'MAX'].map((frame) => (
-                <div
-                  key={frame}
-                  className="relative cursor-pointer"
-                  onClick={() => setSelectedTimeframe(frame)}
-                >
-                  <h1 className={`font-normal ${selectedTimeframe === frame ? 'text-blue-500' : 'text-slate-500'}`}>
-                    {frame}
-                  </h1>
-                  {selectedTimeframe === frame && (
-                    <div className="absolute bottom-0 left-0 w-full h-0.5 bg-blue-500 transition-all duration-300"></div>
-                  )}
-                </div>
-              ))}
-            </div>
-
-          </div>
-
-          <div className="graphArea w-full min-h-[15rem] flex inline-block">
-
-            <CustomGraph
-              data={displayedData}
-              importantMarkers={importantMarkers}
-              height={'100%'}
-              width={'100%'}
-              gradientColor={'rgb(52, 128, 235)'}
-              hideXaxis={true}
-              hideYaxis={true}
-              selectedMarkerDate={selectedMarkerDate} // Add this line
-              onMarkerSelect={handleMarkerSelect} // Add this line
-            />
-          </div>
-
-          <div className="w-full flex flex-col font-sans 2xl:gap-2">
-            <div className="flex flex-row justify-between items-center">
-
-              <h1 className="font-semibold text-lg md:text-base 2xl:text-2xl">August 28, 2019</h1>
-              <button
-                onClick={() => setShowLearnMore(!showLearnMore)}
-                className={`px-4 border border-black rounded-full transition-colors ${showLearnMore ? 'bg-black text-white' : 'bg-white text-black'
-                  }`}
-              >
-                <h1 className="2xl:text-xl">Learn More</h1>
-              </button>
-            </div>
-            <Separator className="decoration-black w-[100%] my-1" />
-            {showLearnMore ? (
-              <>
-                <LearnMoreContent
-                  value={inputValue}
-                  onChange={handleInputChange}
-                  onKeyDown={handleKeyPress}
-                />
-                <div className="h-56 w-full"></div>
-              </>
-
-            ) : (
-              <>
-                {dateInfoLoaded ? (
-                  <ScrollArea className='h-[8rem] md:h-[5rem] text-slate-600 text-[.90rem] font-light 2xl:text-2xl 2xl:h-40 mb-4'>
-                    {answer}
-                  </ScrollArea>
-                ) : (
-                  <>
-                    <div className="flex flex-col gap-2 mb-4 mt-2">
-                      <Skeleton className="w-[90%] h-4 rounded-full" />
-                      <Skeleton className="w-full h-4 rounded-full" />
-                      <Skeleton className="w-[80%] h-4 rounded-full" />
-                    </div>
-                  </>
-                )}
-                {/* <div className='inline-block text-slate-600 text-[1rem] font-light 2xl:text-2xl 2xl:h-40 mb-4'>
-                  {answer}
-                </div> */}
-
-                <h1 className="font-semibold text-lg md:text-base 2xl:text-2xl">Relevant Links</h1>
-                <div className="flex inline-block relative">
-                  <ScrollArea className="flex flex-row pb-4 pt-2 w-[90vw] md:w-[50vw] 2xl:w-[50vw] md:w-[65vw] lg:w-[50vw]">
-                    <div className="flex flex-row h-full gap-4 justify-center ">
-                      <RelevantLink title={'NY Times | Blah title'} url={''} linkDescription={'blah blah blah blahblah blah blah blah blah blah blah blah Apple blah blah blah blah blah blah blah blah blah iPhone blah'} />
-                      <RelevantLink title={'NY Times | Blah title'} url={''} linkDescription={'blah blah blah blahblah blah blah blah blah blah blah blah Apple blah blah blah blah blah blah blah blah blah iPhone blah'} />
-                      <RelevantLink title={'NY Times | Blah title'} url={''} linkDescription={'blah blah blah blahblah blah blah blah blah blah blah blah Apple blah blah blah blah blah blah blah blah blah iPhone blah'} />
-                      <RelevantLink title={'NY Times | Blah title'} url={''} linkDescription={'blah blah blah blahblah blah blah blah blah blah blah blah Apple blah blah blah blah blah blah blah blah blah iPhone blah'} />
-                    </div>
-                    <ScrollBar orientation="horizontal" />
-                  </ScrollArea>
-                  <div className="absolute right-0 h-full w-4 bg-gradient-to-l from-white to-transparent"></div>
-                </div>
-              </>
-            )}
-          </div>
-
-          <div className=" flex flex-col font-sans">
-            <div className="flex flex-row justify-between items-center mb-2">
-              <h1 className="font-normal text-xl md:text-lg 2xl:text-2xl">About APPL</h1>
-              <button
-                onClick={() => setShowDealHistory(!showDealHistory)}
-                className={`px-4 border border-black rounded-full transition-colors ${showDealHistory ? 'bg-black text-white' : 'bg-white text-black'
-                  }`}
-              >
-                <h1 className="2xl:text-xl">Deal History</h1>
-              </button>
-            </div>
-            <Separator className="decoration-black w-[100%] my-1" />
-            {showDealHistory ? (
-              <div className="inline-block flex flex-col mt-2">
-                <div className="flex flex-row items-center justify-end gap-2 mr-2">
-                  <button
-                    onClick={handleCopyAll}
-                    className="flex items-center gap-2 focus:outline-none"
-                    aria-label="Copy all deal information"
-                  >
-                    <Copy size={16} />
-                    <h1 className="text-sm text-black">
-                      {isCopiedAll ? "Copied!" : "Copy All"}
-                    </h1>
-                  </button>
-                </div>
-                {deals.map((deal, index) => (
-                  <Deal key={index} date={deal.date} dealDescription={deal.dealDescription} />
-                ))}
-              </div>
-            ) : (
-              <>
-                <div className="inline-block flex flex-wrap py-2 2xl:py-4 gap-2">
-                  <IndustryButton industryName={'Consumer Electronics'} />
-                  <IndustryButton industryName={'Software'} />
-                  <IndustryButton industryName={'Cloud'} />
-                </div>
-                <div className="description inline-block">
-                  <h1 className="text-slate-600 md:text-[.95rem] font-light mb-4 2xl:mb-6 2xl:text-2xl">
-                    Apple Inc. is a leading American technology company known for designing, manufacturing, and selling consumer electronics, software, and online services. Founded in 1976 by Steve Jobs, Steve Wozniak, and Ronald Wayne, Apple is best known for its innovative products such as the iPhone, iPad, Mac computers, Apple Watch, and Apple TV.
-                  </h1>
-                </div>
-                <div className="stats flex flex-col gap-4 2xl:gap-6 inline-block">
-                  <div className="inline-block flex flex-row items-center justify-around w-full">
-                    <StatListing statName='Employees' statVal={numEmployees} isLoading={numEmployees === "0"} />
-                    <StatListing statName='CEO' statVal={ceo} isLoading={ceo === "-"} />
-                  </div>
-                  <div className="inline-block flex flex-row items-center justify-around w-full">
-                    <StatListing statName='Founded' statVal={founded} isLoading={founded === "-"} />
-                    <StatListing statName='Based In' statVal={basedIn} isLoading={basedIn === "-"} />
-                  </div>
-                  <div className="inline-block flex flex-row items-center justify-around w-full">
-                    <StatListing statName='EBITDA' statVal={ebitda} isLoading={ebitda === "-"} />
-                    <StatListing statName='Enterprise Value' statVal={enterpriseValue} isLoading={enterpriseValue === "-"} />
-                  </div>
-                </div>
-              </>
-            )}
-          </div>
-
-
-        </div>
-
-
       </div>
 
+      
     </div>
   );
 };

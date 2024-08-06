@@ -4,16 +4,25 @@ import "./globals.css";
 import { Amplify } from "aws-amplify";
 import { Authenticator as AmplifyAuthenticator } from "@aws-amplify/ui-react";
 import ClientComponent from "./clientLayout";
-const mont = Montserrat({ subsets: ["latin"] });
+
+const montserrat = Montserrat({ 
+  subsets: ["latin"],
+  display: 'swap',
+  variable: '--font-montserrat',
+});
+
 const poppins = Poppins({
   weight: ['100', '200', '300', '400', '500', '600', '700', '800', '900'],
   subsets: ['latin'],
+  display: 'swap',
   variable: '--font-poppins',
-})
-const inter = Inter({ subsets: ["latin"] });
+});
 
-
- 
+const inter = Inter({ 
+  subsets: ["latin"],
+  display: 'swap',
+  variable: '--font-inter',
+});
 
 export const metadata: Metadata = {
   title: "Fynopsis",
@@ -25,19 +34,18 @@ export const metadata: Metadata = {
   },
 };
 
-
 export default function RootLayout({
- children,
+  children,
 }: Readonly<{
- children: React.ReactNode;
+  children: React.ReactNode;
 }>) {
- return (
-   <html lang="en">
-     <body className={`${poppins.variable} font-sans`}>
-      <ClientComponent>
-        {children}
-      </ClientComponent>
+  return (
+    <html lang="en">
+      <body className={`${montserrat.variable} ${poppins.variable} ${inter.variable} font-sans`}>
+        <ClientComponent>
+          {children}
+        </ClientComponent>
       </body>
-   </html>
- );
+    </html>
+  );
 }
