@@ -38,16 +38,16 @@ export default function FrontPage() {
             <div className="fixed top-0 left-0 right-0 h-16 md:h-20 xl:h-24 bg-white bg-opacity-98 w-full flex items-center justify-between 2xl:px-16 xl:px-12 md:px-8 sm:px-4 shadow-md px-4 z-50">
                 <img src={logo.src} alt="logo" className="md:h-8 md:w-auto w-[35%] h-auto" />
                 <div className="h-full flex items-center gap-4">
-                    <a href="https://calendly.com/willzhang-utexas/fynopsis-demo" className = "h-full flex items-center">
+                    <a href="https://calendly.com/willzhang-utexas/fynopsis-demo" className="h-full flex items-center">
                         <button className="xl:h-[50%] h-[60%] inline-block px-6 bg-gradient-to-br from-sky-500 to-sky-950 hover:from-sky-600 hover:to-gray-900 rounded-full font-bold text-xl text-white max-sm:hidden md:flex text-center text-justify justify-center items-center">Book a Demo</button>
                     </a>
                     <button className="xl:h-[50%] h-[60%]  inline-block px-6 border-sky-700 border-2 rounded-full font-bold text-xl text-sky-700"
-                    onClick={signIn}>Sign In</button>
+                        onClick={signIn}>Sign In</button>
                 </div>
             </div>
             <div className="h-full w-full flex relative flex-col ">
 
-            
+
 
                 <div className="p-4 inline-block relative mt-16 pt-20 md:pb-36 pb-16 flex-col flex items-center justify-center gap-4 text-center z-0">
                     <div className="inline-block px-6 py-1 md:py-2 flex items-center justify-center rounded-full flex flex-row gap-2 bg-blue-100">
@@ -61,21 +61,21 @@ export default function FrontPage() {
                         search again.
                     </h1>
                     <h1 className="font-normal text-base md:text-2xl text-center md:w-[50%] w-[96%]">Revolutionizing financial research with AI-driven, comprehensive company histories and event insights</h1>
-                    <FadeInSlideUp>
-                        <div className="flex flex-col sm:flex-col md:flex-row floor:flex-col gap-4 mt-4">
-                            <a href="https://calendly.com/willzhang-utexas/fynopsis-demo">
-                                <button className="px-6 py-4 rounded-full font-bold text-base md:text-xl text-white bg-gradient-to-br from-sky-500 to-sky-950 hover:from-sky-600 hover:to-gray-900 transition-all duration-300 hover:scale-105">
-                                    Book a Demo
-                                </button>
+                    <FadeInSlideUp className="flex flex-col sm:flex-col md:flex-row floor:flex-col gap-4 mt-4 z-10">
 
-                            </a>
-
-                            <button className="px-6 py-4 rounded-full font-bold text-base md:text-xl border-2 transition-all duration-300 hover:scale-105">
-                                <span className="bg-gradient-to-br from-sky-700 to-black bg-clip-text text-transparent">
-                                    See how it works
-                                </span>
+                        <a href="https://calendly.com/willzhang-utexas/fynopsis-demo">
+                            <button className="px-6 py-4 rounded-full font-bold text-xl text-white bg-gradient-to-br from-sky-500 to-sky-950 hover:from-sky-600 hover:to-gray-900 transition-all duration-300 hover:scale-105">
+                                Book a Demo
                             </button>
-                        </div>
+                        </a>
+
+
+                        <button className="w-full md:w-auto px-6 py-4 rounded-full font-bold text-base md:text-xl border-2 transition-all duration-300 hover:scale-105">
+                            <span className="bg-gradient-to-br from-sky-700 to-black bg-clip-text text-transparent">
+                                See how it works
+                            </span>
+                        </button>
+
                     </FadeInSlideUp>
 
                     <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[300px] h-[300px] bg-blue-300 rounded-full opacity-30 blur-[150px] z-0"></div>
@@ -117,7 +117,7 @@ export default function FrontPage() {
                     <div className="w-full inline-block flex justify-center flex-col items-center w-full">
                         <div className="flex flex-col md:flex-row w-[85%] 2xl:w-[70%] inline-block ">
                             <div className="flex-1 flex justify-center mb-4 md:mb-0">
-                                <FadeInSlideUp className = " flex justify-center">
+                                <FadeInSlideUp className=" flex justify-center">
                                     <img src={graphZoom.src} alt="graph" className="w-[90%] h-auto" />
                                 </FadeInSlideUp>
                             </div>
@@ -203,12 +203,12 @@ export default function FrontPage() {
                         </div>
 
                         <FadeInSlideUp className="w-full md:hidden justify-center flex md:justify-start mb-4 md:mb-0">
-                                <a href="https://calendly.com/willzhang-utexas/fynopsis-demo">
-                                    <button className="px-6 py-4 rounded-full font-bold text-xl text-white bg-gradient-to-br from-sky-500 to-sky-950 hover:from-sky-600 hover:to-gray-900 transition-all duration-300 hover:scale-105">
-                                        Book a Demo
-                                    </button>
-                                </a>
-                            </FadeInSlideUp>
+                            <a href="https://calendly.com/willzhang-utexas/fynopsis-demo">
+                                <button className="px-6 py-4 rounded-full font-bold text-xl text-white bg-gradient-to-br from-sky-500 to-sky-950 hover:from-sky-600 hover:to-gray-900 transition-all duration-300 hover:scale-105">
+                                    Book a Demo
+                                </button>
+                            </a>
+                        </FadeInSlideUp>
 
                     </div>
 

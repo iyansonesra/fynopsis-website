@@ -297,7 +297,7 @@ const Stock: React.FC<StockProps> = ({
   const generateFlatLineData = (length: number): DataPoint[] => {
     const flatLineData: DataPoint[] = [];
     const baseDate = new Date();
-    const baseValue = 100; // You can adjust this value as needed
+    const baseValue = 0; // You can adjust this value as needed
 
     for (let i = 0; i < length; i++) {
       flatLineData.push({
