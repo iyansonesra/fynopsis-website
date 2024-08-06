@@ -15,7 +15,7 @@ import { MoveRight, Search, Sparkle, Star, User } from "lucide-react"
 import PinnedCompany from "@/components/PinnedCompanies"
 import React, { useRef, useEffect, useState } from 'react';
 import Stock from "@/components/Stock"
-import logo from "../assets/full_logo.png"
+import logo from "../assets/fynopsis_noBG.png"
 import demo1 from "../assets/demo_page.png"
 import graphZoom from '../assets/graphZoom.png'
 import FadeInSlideUp from './../../components/animation/FadeInSlideUp';
@@ -26,7 +26,10 @@ import { useRouter } from 'next/navigation';
 
 
 
+
 export default function FrontPage() {
+
+
     const router = useRouter();
 
     function signIn() {
@@ -35,14 +38,22 @@ export default function FrontPage() {
 
     return (
         <div className="relative h-screen w-full flex flex-col justify-center font-montserrat ">
-            <div className="fixed top-0 left-0 right-0 h-16 md:h-20 xl:h-24 bg-white bg-opacity-98 w-full flex items-center justify-between 2xl:px-16 xl:px-12 md:px-8 sm:px-4 shadow-md px-4 z-50">
-                <img src={logo.src} alt="logo" className="md:h-8 md:w-auto w-[35%] h-auto" />
+            <div className="fixed top-0 left-0 right-0 h-20 md:h-20 xl:h-24 bg-white dark:bg-slate-900 bg-opacity-98 w-full flex items-center justify-between 2xl:px-16 xl:px-12 md:px-8 sm:px-4 shadow-md px-4 z-50">
+                <div className="flex flex-row items-center">
+                    <img src={logo.src} alt="logo" className="md:h-12 md:w-auto w-[10%] h-auto" />
+                    <h1 className="font-bold text-xl sm:text-2xl md:text-3xl">Fynopsis</h1>
+                </div>
+
                 <div className="h-full flex items-center gap-4">
                     <a href="https://calendly.com/willzhang-utexas/fynopsis-demo" className="h-full flex items-center">
-                        <button className="xl:h-[50%] h-[60%] inline-block px-6 bg-gradient-to-br from-sky-500 to-sky-950 hover:from-sky-600 hover:to-gray-900 rounded-full font-bold text-xl text-white max-sm:hidden md:flex text-center text-justify justify-center items-center">Book a Demo</button>
+                        <button className="inline-block px-6 py-2 bg-gradient-to-br from-sky-500 to-sky-950 hover:from-sky-600 hover:to-gray-900 rounded-full font-bold text-xl text-white max-sm:hidden md:flex text-center text-justify justify-center items-center">Book a Demo</button>
                     </a>
-                    <button className="xl:h-[50%] h-[60%]  inline-block px-6 border-sky-700 border-2 rounded-full font-bold text-xl text-sky-700"
-                        onClick={signIn}>Sign In</button>
+                    <button
+                        className="inline-block whitespace-nowrap px-4 sm:px-6 py-2 border-sky-700 border-2 rounded-full font-bold text-md sm:text-base md:text-xl text-sky-700"
+                        onClick={signIn}
+                    >
+                        Sign In
+                    </button>
                 </div>
             </div>
             <div className="h-full w-full flex relative flex-col ">
@@ -71,7 +82,7 @@ export default function FrontPage() {
 
 
                         <button className="w-full md:w-auto px-6 py-4 rounded-full font-bold text-base md:text-xl border-2 transition-all duration-300 hover:scale-105">
-                            <span className="bg-gradient-to-br from-sky-700 to-black bg-clip-text text-transparent">
+                            <span className="bg-gradient-to-br from-sky-700 to-black dark:to-white dark:border-sky-700 bg-clip-text text-transparent">
                                 See how it works
                             </span>
                         </button>
@@ -110,7 +121,7 @@ export default function FrontPage() {
                             <span className="bg-gradient-to-t from-sky-500 to-sky-950 text-transparent bg-clip-text">
                                 Your
                             </span>{" "}
-                            <span className="font-normal">finacial edge.</span>
+                            <span className="font-normal dark:text-white">finacial edge.</span>
                         </h1>
                     </FadeInSlideUp>
 
@@ -124,11 +135,11 @@ export default function FrontPage() {
                             <div className="flex-1 flex items-center justify-around flex-col">
                                 <div className="w-full flex items-center md:items-end flex-col mb-4 md:mb-0">
                                     <FadeInSlideUp>
-                                        <h1 className="font-bold text-3xl md:text-5xl text-center md:text-right text-black mb-4"> Graphs that give meaning.</h1>
+                                        <h1 className="font-bold text-3xl md:text-5xl text-center md:text-right text-black dark:text-white mb-4"> Graphs that give meaning.</h1>
                                     </FadeInSlideUp>
 
                                     <FadeInSlideUp>
-                                        <h1 className="font-normal text-lg md:text-xl text-center md:text-right text-black">Visualize events with rich context, understanding impacts at a glance</h1>
+                                        <h1 className="font-normal text-lg md:text-xl text-center md:text-right text-black dark:text-white">Visualize events with rich context, understanding impacts at a glance</h1>
                                     </FadeInSlideUp>
                                 </div>
 
@@ -158,11 +169,11 @@ export default function FrontPage() {
                         <div className="flex-1 flex items-center h-[80%] justify-center gap-[30%] flex-col ">
                             <div className="w-full flex items-center md:items-start flex-col mb-4 md:mb-0">
                                 <FadeInSlideUp>
-                                    <h1 className="font-bold text-3xl md:text-5xl text-center md:text-left text-black mb-1 md:mb-4">Tools that provide a deeper understanding</h1>
+                                    <h1 className="font-bold text-3xl md:text-5xl text-center md:text-left text-black dark:text-white mb-1 md:mb-4">Tools that provide a deeper understanding</h1>
                                 </FadeInSlideUp>
 
                                 <FadeInSlideUp>
-                                    <h1 className="font-normal text-xl text-center md:text-left text-black">Dig deep into the specifics with our GPT Chat Bot</h1>
+                                    <h1 className="font-normal text-xl text-center md:text-left text-black dark:text-white">Dig deep into the specifics with our GPT Chat Bot</h1>
                                 </FadeInSlideUp>
                             </div>
 
