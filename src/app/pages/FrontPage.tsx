@@ -11,7 +11,7 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 import { Separator } from "@/components/ui/separator"
 import RecentNews from "@/components/RecentNews"
 import RecentSearch from "@/components/RecentSearch"
-import { MoveRight, Search, Sparkle, Star, User } from "lucide-react"
+import { Instagram, Linkedin, MoveRight, Search, Sparkle, Star, User } from "lucide-react"
 import PinnedCompany from "@/components/PinnedCompanies"
 import React, { useRef, useEffect, useState } from 'react';
 import Stock from "@/components/Stock"
@@ -160,7 +160,7 @@ export default function FrontPage() {
 
                 </div>
 
-                <div className="w-full inline-block flex justify-center items-center flex-col mb-24 md:mb-64">
+                <div className="w-full inline-block flex justify-center items-center flex-col mb-24">
 
 
 
@@ -223,6 +223,33 @@ export default function FrontPage() {
 
                     </div>
 
+
+
+                </div>
+
+                <Separator className="decoration-black w-[100%]" />
+
+                <div className="w-full inline-block flex justify-center items-center flex-col">
+                    <div className="flex flex-row py-12 gap-64">
+                        <div className="flex flex-row items-center">
+                            <img src={logo.src} alt="logo" className="md:h-6 md:w-auto w-[10%] h-auto" />
+                            <h1 className="font-bold text-xl sm:text-2xl md:text-lg">Fynopsis</h1>
+                        </div>
+
+                        <div className="flex flex-row items-center gap-4">
+                            <Instagram className="w-6 h-6 text-black dark:text-white" />
+                            <Linkedin className="w-6 h-6 text-black dark:text-white" />
+                        </div>
+                    </div>
+
+
+                    <Separator className="decoration-black w-[45%]" />
+                    <div className="flex flex-row gap-6 py-4">
+
+                        <h1>© 2024 Fynopsis All rights reserved.</h1>
+                        <h1>Privacy Policy</h1>
+                        <h1>Terms of Service</h1>
+                    </div>
 
 
                 </div>
