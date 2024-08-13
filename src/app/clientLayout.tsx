@@ -16,7 +16,7 @@ Amplify.configure({
       
       userPoolClientId: process.env.NEXT_PUBLIC_USER_POOL_CLIENT_ID,
       // REQUIRED only for Federated Authentication - Amazon Cognito Identity Pool ID
-      // identityPoolId: 'XX-XXXX-X:XXXXXXXX-XXXX-1234-abcd-1234567890ab',
+      identityPoolId: 'us-east-1:e905629f-9f02-4ff7-b6de-6f9f24233685',
       // OPTIONAL - Set to true to use your identity pool's unauthenticated role when user is not logged in
       // allowGuestAccess: true,
       // // OPTIONAL - This is used when autoSignIn is enabled for Auth.signUp
@@ -24,7 +24,7 @@ Amplify.configure({
       signUpVerificationMethod: 'code', // 'code' | 'link'
       loginWith: { // Optional
         oauth: {
-          domain: 'fynopsis-dev.auth.us-east-1.amazoncognito.com',  // auth.fynopsis.ai
+          domain: 'https://fynopsis.auth.us-east-1.amazoncognito.com',  // auth.fynopsis.ai
           scopes: ['aws.cognito.signin.user.admin'],
           redirectSignIn: ['http://localhost:3000/signin'], // https://fynopsis.ai/signin
           redirectSignOut: ['http://localhost:3000'], // https://fynopsis.ai
@@ -38,7 +38,7 @@ Amplify.configure({
    REST: {
        testAPI: {
          endpoint:
-           'https://4s693esbca.execute-api.us-east-1.amazonaws.com/test',
+           'https://4s693esbca.execute-api.us-east-1.amazonaws.com/test', // main
          region: 'us-east-1' // Optional
        }
     }
