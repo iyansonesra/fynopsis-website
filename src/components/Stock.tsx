@@ -5,7 +5,7 @@ import UserSearchBubble from './UserSearchBubble';
 import GPTResponse from './GPTResponse';
 import { ArrowLeft, Copy, Link, Menu, Scroll, Search, Send, SettingsIcon, User } from 'lucide-react';
 import RelevantLink from './RelevantLinks';
-import CustomGraph, { DataPoint, ImportantMarker } from './StockGraph';
+import CustomGraph from './StockGraph';
 import generateRandomStockData from './GenerateRandomStockData';
 import { useState, useRef, useEffect } from 'react';
 import { useAuthenticator } from '@aws-amplify/ui-react';
@@ -24,130 +24,24 @@ import { ReferenceArea } from 'recharts';
 import { format } from 'date-fns';
 import { startOfMonth, startOfWeek, } from 'date-fns';
 import ReactMarkdown from 'react-markdown';
+import {
+  parseHistoryData,
+  findTopVolumeMonths,
+  formatNumber,
+  filterDataByTimeframe,
+  extractRelevantLinks,
+  generateFlatLineData,
+  createHandleMarkerSelect,
+  DataPoint,
+  ImportantMarker,
+  handleFetchAccess,
+  handleInputChange,
+  handleKeyPress,
+  formatLargeNumber,
+  handleStockData,
+  handleSendQuery
+} from '../components/utils/StockUtils';
 
-
-const parseHistoryData = (history: any): { dataPoints: DataPoint[], monthlyData: any[] } => {
-  const dataPoints: DataPoint[] = [];
-  const monthlyData: { [key: string]: { volume: number, date: string, days: number } } = {};
-
-  const entries = Object.entries(history);
-
-  entries.forEach(([dateString, data]: [string, any]) => {
-    const date = parseISO(dateString);
-    const monthKey = format(date, 'yyyy-MM');
-
-    dataPoints.push({
-      name: format(date, 'yyyy-MM-dd'),
-      uv: data.Close,
-      pv: data.Volume,
-      amt: data.High - data.Low,
-    });
-
-    if (!monthlyData[monthKey]) {
-      monthlyData[monthKey] = { volume: 0, date: dateString, days: 0 };
-    }
-    monthlyData[monthKey].volume += data.Volume;
-    monthlyData[monthKey].days += 1;
-  });
-
-  return {
-    dataPoints,
-    monthlyData: Object.entries(monthlyData).map(([month, data]) => ({
-      month,
-      volume: data.volume,
-      date: data.date,
-      avgDailyVolume: data.volume / data.days
-    }))
-  };
-};
-
-const findTopVolumeMonths = (monthlyData: any[]): ImportantMarker[] => {
-  // Sort the data chronologically
-  const sortedData = [...monthlyData].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-
-  const totalMonths = sortedData.length;
-  const groupSize = Math.ceil(totalMonths / 5);
-
-  // console.log('Total months:', totalMonths);
-  // console.log('Group size:', groupSize);
-
-  const topMonths = [];
-  for (let i = 0; i < 5; i++) {
-    const startIndex = i * groupSize;
-    const endIndex = Math.min((i + 1) * groupSize, totalMonths);
-    const group = sortedData.slice(startIndex, endIndex);
-
-    // console.log(`\nGroup ${i + 1} (${group[0].month} to ${group[group.length - 1].month}):`);
-    group.forEach(item => {
-      // console.log(`  ${item.month}: Total Volume: ${formatNumber(item.volume)}, Avg Daily: ${formatNumber(item.avgDailyVolume)}`);
-    });
-
-    if (group.length > 0) {
-      const topMonth = group.reduce((max, current) => (current.volume > max.volume ? current : max), group[0]);
-      topMonths.push(topMonth);
-      // console.log(`Top month for group ${i + 1}: ${topMonth.month} with total volume ${formatNumber(topMonth.volume)} and avg daily volume ${formatNumber(topMonth.avgDailyVolume)}`);
-    }
-  }
-
-  // console.log('\nSelected top months:');
-  topMonths.forEach(month => {
-    // console.log(`${month.month}: Total Volume: ${formatNumber(month.volume)}, Avg Daily: ${formatNumber(month.avgDailyVolume)}`);
-  });
-
-  return topMonths.map(item => ({
-    date: `${item.month}-01`,
-    label: `High Volume Month`,
-    explanation: `Total trading volume of ${formatNumber(item.volume)} shares in ${format(parseISO(item.date), 'MMMM yyyy')}, with an average daily volume of ${formatNumber(item.avgDailyVolume)}.`
-  }));
-};
-
-const formatNumber = (num: number): string => {
-  if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M';
-  if (num >= 1000) return (num / 1000).toFixed(1) + 'K';
-  return num.toString();
-};
-
-export function filterDataByTimeframe(data: DataPoint[], timeframe: string): DataPoint[] {
-  const endDate = parseISO(data[data.length - 1].name);
-  let startDate: Date;
-  let interval: number = 1; // Default to daily
-
-  switch (timeframe) {
-    case '1W':
-      startDate = subDays(endDate, 7);
-      break;
-    case '1M':
-      startDate = subMonths(endDate, 1);
-      break;
-    case '6M':
-      startDate = subMonths(endDate, 6);
-      break;
-    case '1Y':
-      startDate = subYears(endDate, 1);
-      break;
-    case '5Y':
-      startDate = subYears(endDate, 5);
-      break;
-    case 'MAX':
-      startDate = parseISO(data[0].name);
-      interval = 30; // Monthly for MAX
-      break;
-    default:
-      return data;
-  }
-
-  return data.filter((item, index) => {
-    const itemDate = parseISO(item.name);
-    return itemDate >= startDate && index % interval === 0;
-  });
-}
-
-
-
-interface MarkerData {
-  date: string;
-  response: any; // Replace 'any' with the actual type of your response
-}
 
 interface StockProps {
   image: string;
@@ -155,25 +49,6 @@ interface StockProps {
   stockDescription: string;
   imageType: 'circular' | 'rectangular';
   onBack: () => void;
-}
-
-type Message = {
-  type: 'user' | 'bot';
-  content: string;
-};
-
-interface ResponseBody {
-  message: string;
-  // add other properties as needed
-}
-
-interface ApiResponse {
-  body: {
-    message: string;
-    input: {
-      query: string;
-    };
-  }
 }
 
 interface MarkerResponse {
@@ -188,18 +63,6 @@ interface InputProps {
   onKeyDown: (event: React.KeyboardEvent<HTMLInputElement>) => void;
 }
 
-const LearnMoreContent: React.FC<InputProps> = ({ value, onChange, onKeyDown }) => (
-  <div className="relative mt-4  w-full flex flex-row justify-center">
-    <Search className="h-4 w-4 2xl:h-6 2xl:w-6 absolute left-[15%] self-center decoration-slate-300" />
-    <input
-      value={value}
-      onChange={onChange}
-      onKeyDown={onKeyDown}
-      className="w-3/4 h-8 2xl:h-12 2xl:text-lg bg-slate-100 rounded-full pl-12 2xl:pl-16 text-sm" placeholder='Ask a question...'></input>
-
-  </div>
-);
-
 const Stock: React.FC<StockProps> = ({
   image,
   companyName,
@@ -211,7 +74,6 @@ const Stock: React.FC<StockProps> = ({
   const [query, setQuery] = useState<string>();
   // const [companyName, setCompanyName] = useState<string>('-');
   const [companyDescription, setCompanyDescription] = useState<string>();
-
   const [inputValue, setInputValue] = useState('');
   const scrollRef = useRef<HTMLDivElement>(null);
   const [showDealHistory, setShowDealHistory] = useState(false);
@@ -221,30 +83,22 @@ const Stock: React.FC<StockProps> = ({
     { date: 'August 28, 2019', dealDescription: 'blah blah blah blah blah blah blah blah blah blahblah blah b' },
     // ... add all your deals here
   ]);
-
   const dataFetchedRef = useRef(false);
   const [isCopiedAll, setIsCopiedAll] = useState(false);
   const [isInitialLoad, setIsInitialLoad] = useState(true);
   const [dateInfoLoaded, setDateInfoLoaded] = useState(false);
-  const [aboutInfoLoaded, setAboutInfoLoaded] = useState(false);
-  const [statInfoLoaded, setStatInfoLoaded] = useState(false);
   const [relevantLinks, setRelevantLinks] = useState<{ title: string; url: string }[]>([]);
-
   const [relevantLinksLoaded, setRelevantLinksLoaded] = useState(false);
   const [industryButtonLoaded, setIndustryButtonLoaded] = useState(false);
   const [selectedTimeframe, setSelectedTimeframe] = useState('MAX');
   const [markerResponses, setMarkerResponses] = useState<MarkerResponse[]>([]);
   const [isLoadingMarkerData, setIsLoadingMarkerData] = useState(false);
-
-
   const { data: allData } = useMemo(() => generateRandomStockData(5), []);
   const [importantMarkers, setImportantMarkers] = useState<ImportantMarker[]>([]);
-
   const [displayedData, setDisplayedData] = useState(allData);
   const [aboutCompanyText, setAboutCompanyText] = useState<string>();
   const [isLoadingAboutText, setIsLoadingAboutText] = useState(true);
   const [selectedMarkerDate, setSelectedMarkerDate] = useState<string | null>(null);
-  const [recentNewsDate, setRecentNewsDate] = useState<string>("Recent News");
   const [numEmployees, setNumEmployees] = useState<string>("0");
   const [ceo, setCeo] = useState<string>("-");
   const [founded, setFounded] = useState<string>("-");
@@ -254,75 +108,10 @@ const Stock: React.FC<StockProps> = ({
   const [open, setOpen] = useState("0");
   const [longName, setLongName] = useState<string>("-");
   const [ticker, setTicker] = useState<string>("-");
-  const [isStockDataLoading, setIsStockDataLoading] = useState(true);
   const [sector, setSector] = useState<string>("-");
   const [percentChange, setPercentChange] = useState<number>(0);
-
-
-
-  const extractRelevantLinks = (content: string): { title: string; url: string }[] => {
-    // console.log("Original content:", content);
-
-    const sourcesSection = content.split('Sources:')[1];
-    if (!sourcesSection) {
-      // console.log("No 'Sources:' section found.");
-      return [];
-    }
-
-    // console.log("Sources section:", sourcesSection);
-
-    // Updated regex pattern to match the new format
-    const links = sourcesSection.match(/\d+\.\s"(.+?)"\s\[(.+?)\]/g) || [];
-    // console.log("Matched links:", links);
-
-    const extractedLinks = links.map(link => {
-      // Updated regex to capture title and URL in the new format
-      const [, title, url] = link.match(/\d+\.\s"(.+?)"\s\[(.+?)\]/) || [];
-      return { title, url };
-    });
-
-    // console.log("Extracted links:", extractedLinks);
-
-    return extractedLinks;
-  };
-
-  // Test the function with the provided example
-  const testContent = `Some content here...
-  
-  Sources:
-  1. "LPL Financial fined $5.5M by FINRA over transaction supervision lapses" [https://www.complianceweek.com/regulatory-enforcement/lpl-financial-fined-55m-by-finra-over-transaction-supervision-lapses/34078.article]
-  2. "Smooth transition expected at LPL Financial under new CEO Dan Arnold" [https://www.investmentnews.com/industry-news/archive/smooth-transition-expected-at-lpl-financial-under-new-ceo-dan-arnold-70027]
-  3. "LPL Financial's new CEO Dan Arnold to receive big pay hike in 2017" [https://www.investmentnews.com/industry-news/news/lpl-financials-new-ceo-dan-arnold-to-receive-big-pay-hike-in-2017-70225]`;
-
-  // console.log("Test result:", extractRelevantLinks(testContent));
-
-
-  const generateFlatLineData = (length: number): DataPoint[] => {
-    const flatLineData: DataPoint[] = [];
-    const baseDate = new Date();
-    const baseValue = 0; // You can adjust this value as needed
-
-    for (let i = 0; i < length; i++) {
-      flatLineData.push({
-        name: format(subDays(baseDate, length - i - 1), 'yyyy-MM-dd'),
-        uv: baseValue,
-        pv: baseValue,
-        amt: baseValue,
-      });
-    }
-
-    return flatLineData;
-  };
-
   const [stockHistory, setStockHistory] = useState<DataPoint[]>(() => generateFlatLineData(100)); // 100 is an arbitrary number of data points
-
-
-
-
-  const handleMarkerSelect = (date: string | null) => {
-    setSelectedMarkerDate(date);
-  };
-
+  const handleMarkerSelect = createHandleMarkerSelect(setSelectedMarkerDate);
 
   useEffect(() => {
     const filteredData = filterDataByTimeframe(allData, selectedTimeframe);
@@ -355,8 +144,6 @@ const Stock: React.FC<StockProps> = ({
         // setDisplayedData(allData);
         setIsInitialLoad(false);
         setDateInfoLoaded(true);
-        setAboutInfoLoaded(true);
-        setStatInfoLoaded(true);
         setRelevantLinksLoaded(true);
         setIndustryButtonLoaded(true);
       }, 2000);
@@ -366,265 +153,51 @@ const Stock: React.FC<StockProps> = ({
     }
   }, [isInitialLoad, allData]);
 
-  async function handleFetchAccess() {
-    try {
-      const access = (await fetchAuthSession()).tokens?.accessToken?.toString();
-      if (!access) {
-        throw new Error("Token is null or undefined");
-      }
-      return access;
-    } catch (error) {
-      // console.log(error);
-    }
-  };
+  const handleInputChangeWrapper = handleInputChange(setInputValue);
 
-  const handleInputChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    setInputValue(event.target.value);
-  };
+  const handleKeyPressWrapper = (event: React.KeyboardEvent<HTMLInputElement>) =>
+    handleKeyPress(inputValue, setInputValue, handleSendQueryWrapper)(event);
 
-  const handleKeyPress = async (event: React.KeyboardEvent<HTMLInputElement>) => {
-    if (event.key === 'Enter') {
-      if (!inputValue.trim()) return;
-      const userMessage = inputValue.trim();
-      setInputValue('');
-      await handleSendQuery(userMessage);
-    }
-  };
+  const handleSendQueryWrapper = (userMessage: string) =>
+    handleSendQuery(userMessage, setIsLoadingAboutText, setAboutCompanyText);
 
-  const formatLargeNumber = (num: number | undefined | null): string => {
-    if (num === undefined || num === null) {
-      return 'N/A'; // or return any default value you prefer
-    }
+  const handleStockDataWrapper = () =>
+    handleStockData(
+      companyName,
+      setIsLoadingAboutText,
+      (info) => {
+        setNumEmployees(formatLargeNumber(info.fullTimeEmployees) || "0");
+        setCeo(info.companyOfficers[0]?.name || "-");
+        setFounded(info.yearBorn || "-");
+        setBasedIn(info.city ? `${info.city}, ${info.state}` : "-");
+        setEbitda(formatLargeNumber(info.ebitda) || "-");
+        setEnterpriseValue(formatLargeNumber(info.enterpriseValue) || "-");
+        setOpen(info.currentPrice || "0");
+        setLongName(info.longName || "-");
+        setTicker(info.symbol || "-");
+        setSector(info.sector || "-");
 
-    if (num >= 1000000000000) { // Trillion
-      return (num / 1000000000000).toFixed(2) + 'T';
-    } else if (num >= 1000000000) { // Billion
-      return (num / 1000000000).toFixed(2) + 'B';
-    } else if (num >= 1000000) { // Million
-      return (num / 1000000).toFixed(2) + ' M';
-    } else if (num >= 1000) { // Thousand
-      return (num / 1000).toFixed(2) + 'K';
-    } else {
-      return num.toString();
-    }
-  };
-
-
-  // async function fetchMarkerData(markers: string[]): Promise<MarkerData[]> {
-  //   const accessToken = await handleFetchAccess(); // Assuming this function exists
-
-  //   if (!accessToken) {
-  //     console.error('Failed to fetch access token.');
-  //     return [];
-  //   }
-
-  //   const markerData: MarkerData[] = [];
-
-
-  //   for (const marker of markers) {
-  //     setIsLoadingMarkerData(true);
-  //     console.log("Making request for date " + format(new Date(marker), 'MMMM yyyy'));
-  //     const formattedDate = format(new Date(marker), 'MMMM yyyy');
-
-  //     try {
-  //       const restOperation = post({
-  //         apiName: 'testAPI',
-  //         path: '/postAgent', // Adjust this path as needed
-  //         options: {
-  //           headers: {
-  //             Authorization: accessToken
-  //           },
-  //           body: {
-  //             query: "Give me a 3-5 sentence description of the most important news near the date of " + formattedDate + " on the company " + companyName
-  //           }
-  //         }
-  //       });
-
-  //       const { body } = await restOperation.response;
-  //       const responseText = await body.text();
-  //       const responseMain = JSON.parse(responseText);
-
-  //       console.log('Parsed response:', responseMain);
-
-  //       if (responseMain && responseMain.body) {
-  //         const innerBody = JSON.parse(responseMain.body);
-  //         console.log('Inner body:', innerBody);
-
-  //         if (innerBody && innerBody.message) {
-  //           setMarkerResponses(prev => [...prev, { date: marker, content: innerBody.message }]);
-
-  //         } else {
-  //           setAboutCompanyText("Failed to parse company information. Please try again.");
-  //         }
-  //       } else {
-  //         setAboutCompanyText("Failed to fetch company information. Please try again.");
-  //       }
-
-
-
-  //     } catch (error) {
-  //       console.error(`Error fetching data for marker ${formattedDate}:`, error);
-  //       markerData.push({
-  //         date: marker,
-  //         response: null
-  //       });
-
-  //     } finally {
-  //       setIsLoadingMarkerData(false);
-  //     }
-  //   }
-
-  //   return markerData;
-  // }
-
-
-  const handleStockData = async () => {
-    // console.log("requesting Stock Info");
-    setIsLoadingAboutText(true);
-
-    const accessTokens = await handleFetchAccess();
-    if (accessTokens) {
-      try {
-        const restOperation = post({
-          apiName: 'testAPI',
-          path: '/postStockData',
-          options: {
-            headers: {
-              Authorization: accessTokens
-            },
-            body: {
-              company: companyName
-            }
-          }
-        });
-
-        const { body } = await restOperation.response;
-        const responseText = await body.text();
-        // console.log('Raw response:', responseText);
-
-        const responseMain = JSON.parse(responseText);
-        // console.log('Parsed response:', responseMain);
-
-        if (responseMain && responseMain.body) {
-          const innerBody = responseMain.body;
-          console.log(innerBody);
-          if (innerBody && innerBody.message && innerBody.message.info) {
-            const info = innerBody.message.info;
-
-            // Set state variables with the extracted data
-            setNumEmployees(formatLargeNumber(info.fullTimeEmployees) || "0");
-            setCeo(info.companyOfficers[0]?.name || "-");
-            setFounded(info.yearBorn || "-");
-            setBasedIn(info.city ? `${info.city}, ${info.state}` : "-");
-            setEbitda(formatLargeNumber(info.ebitda) || "-");
-            setEnterpriseValue(formatLargeNumber(info.enterpriseValue) || "-");
-            setOpen(info.currentPrice || "0");
-            setLongName(info.longName || "-");
-            setTicker(info.symbol || "-");
-            setSector(info.sector || "-");
-           
-            const currentPrice = info.currentPrice || 1;
-            const previousClose = info.previousClose || 1;
-            const calculatedPercentChange = ((currentPrice - previousClose) / previousClose) * 100;
-          setPercentChange(calculatedPercentChange);
-
-            setIsStockDataLoading(false);
-
-
-            // Set about company text
-            if (innerBody && innerBody.message && innerBody.message.history) {
-              const { dataPoints, monthlyData } = parseHistoryData(innerBody.message.history);
-              setStockHistory(dataPoints);
-              const filteredData = filterDataByTimeframe(dataPoints, selectedTimeframe);
-              setDisplayedData(filteredData);
-
-              // Find top 5 volume months and set as important markers
-              const topVolumeMarkers = findTopVolumeMonths(monthlyData);
-              setImportantMarkers(topVolumeMarkers);
-
-            }
-
-
-          } else {
-
-          }
-        } else {
-        }
-      } catch (e) {
-        // console.error('POST call failed: ', e);
-        setAboutCompanyText("An error occurred while fetching company information. Please try again.");
-        setIsStockDataLoading(false);
-      } finally {
-        setIsLoadingAboutText(false);
-        setIsStockDataLoading(false);
-      }
-    } else {
-      setAboutCompanyText("Failed to authenticate. Please refresh and try again.");
-      setIsLoadingAboutText(false);
-      // console.log('Failed to fetch access token.');
-    }
-  };
-
-  const handleSendQuery = async (userMessage: string) => {
-    // console.log("requesting Info");
-    setIsLoadingAboutText(true);
-
-    const accessTokens = await handleFetchAccess();
-    if (accessTokens) {
-      try {
-        const restOperation = post({
-          apiName: 'testAPI',
-          path: '/postAgent',
-          options: {
-            headers: {
-              Authorization: accessTokens
-            },
-            body: {
-              query: userMessage
-            }
-          }
-        });
-
-        const { body } = await restOperation.response;
-        const responseText = await body.text();
-        // console.log('Raw response:', responseText);
-
-        const responseMain = JSON.parse(responseText);
-        // console.log('Parsed response:', responseMain);
-
-        if (responseMain && responseMain.body) {
-          const innerBody = JSON.parse(responseMain.body);
-          // console.log('Inner body:', innerBody);
-
-          if (innerBody && innerBody.message) {
-            setAboutCompanyText(innerBody.message);
-          } else {
-            setAboutCompanyText("Failed to parse company information. Please try again.");
-          }
-        } else {
-          setAboutCompanyText("Failed to fetch company information. Please try again.");
-        }
-      } catch (e) {
-        // console.error('POST call failed: ', e);
-        setAboutCompanyText("An error occurred while fetching company information. Please try again.");
-      } finally {
-        setIsLoadingAboutText(false);
-      }
-    } else {
-      setAboutCompanyText("Failed to authenticate. Please refresh and try again.");
-      setIsLoadingAboutText(false);
-      // console.log('Failed to fetch access token.');
-    }
-  };
+        const currentPrice = info.currentPrice || 1;
+        const previousClose = info.previousClose || 1;
+        const calculatedPercentChange = ((currentPrice - previousClose) / previousClose) * 100;
+        setPercentChange(calculatedPercentChange);
+      },
+      setStockHistory,
+      setDisplayedData,
+      setImportantMarkers,
+      selectedTimeframe,
+      parseHistoryData,
+      filterDataByTimeframe,
+      findTopVolumeMonths
+    );
 
 
   useEffect(() => {
     // Send initial query when component mounts
     setStockHistory(generateFlatLineData(100))
-    handleSendQuery(`Provide a brief summary about ${longName}. Please keep it anywhere from 3-5 sentences maximum.`);
-    handleStockData();
+    handleSendQuery(`Provide a brief summary about ${longName}...`, setIsLoadingAboutText, setAboutCompanyText);
+    handleStockDataWrapper();
   }, [longName]);
-
 
   useEffect(() => {
 
@@ -725,12 +298,8 @@ const Stock: React.FC<StockProps> = ({
       });
   };
 
-  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
-
-
-
   return (
-    <div className='w-full h-full flex flex-col md:flex-row py-12 px-4 2xl:py-12 2xl:px-12 font-montserrat gap-4'>
+    <div className='w-full h-full flex flex-col md:flex-row py-12 px-4 2xl:py-12 2xl:px-12 font-montserrat gap-4 '>
       <button
         onClick={onBack}
         className="absolute top-[1%] left-[1%] p-2 text-black hover:text-blue-700"
@@ -738,7 +307,7 @@ const Stock: React.FC<StockProps> = ({
       >
         <ArrowLeft className="h-6 w-6 2xl:h-8 2xl:w-8 dark:text-slate-200" />
       </button>
-      <div className="flex-[9] flex flex-col">
+      <div className="flex-[9] flex flex-col ">
         <div className="relative inline-block flex flex-col items-start font-sans ">
 
           <div className="nameAndPrice relative top-0 left-0 gap-2 2xl:gap-4 flex flex-col">
@@ -805,8 +374,8 @@ const Stock: React.FC<StockProps> = ({
               <input
                 type="text"
                 value={inputValue}
-                onChange={handleInputChange}
-                onKeyDown={handleKeyPress}
+                onChange={handleInputChangeWrapper}
+                onKeyDown={handleKeyPressWrapper}
                 className="w-3/4 h-8 2xl:h-12 2xl:text-lg bg-slate-100 rounded-full pl-12 2xl:pl-16 text-sm" placeholder='Ask a question...'></input>
 
             </div>
@@ -867,8 +436,8 @@ const Stock: React.FC<StockProps> = ({
       </div>
 
       <div className="flex-[4] flex font-sans flex-col">
-        <div className="flex flex-row justify-between items-center mb-2">
-          <h1 className="font-normal text-lg 2xl:text-2xl">About {longName}</h1>
+         <div className="flex flex-row justify-between items-center mb-2 ">
+          <h1 className="font-normal text-lg 2xl:text-xl">About {longName}</h1>
           <button
             onClick={() => setShowDealHistory(!showDealHistory)}
             className={`px-4 border border-black  rounded-full transition-colors ${!showDealHistory ? 'dark:border-sky-700 dark:text-sky-700 dark:bg-transparent' : 'bg-sky-700 text-sky-100'
@@ -877,7 +446,9 @@ const Stock: React.FC<StockProps> = ({
             <h1 className="2xl:text-xl">Deal History</h1>
           </button>
         </div>
+       
         <Separator className="decoration-black w-[100%] my-1" />
+        
         {showDealHistory ? (
           <div className="inline-block flex flex-col mt-2">
             <div className="flex flex-row items-center justify-end gap-2 mr-2">
@@ -914,7 +485,7 @@ const Stock: React.FC<StockProps> = ({
               </div>
             ) : (
               <h1 className="text-slate-600 text-[.95rem] font-light dark:text-slate-200 mb-4 2xl:mb-6 2xl:text-xl">
-                {aboutCompanyText || "No information available."}
+                {/* {aboutCompanyText || "No information available."} */}
               </h1>
             )}
 
