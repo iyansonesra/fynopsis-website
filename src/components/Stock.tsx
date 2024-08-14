@@ -24,6 +24,8 @@ import { ReferenceArea } from 'recharts';
 import { format } from 'date-fns';
 import { startOfMonth, startOfWeek, } from 'date-fns';
 import ReactMarkdown from 'react-markdown';
+import { get } from 'aws-amplify/api';
+import { put } from 'aws-amplify/api';
 import {
   parseHistoryData,
   findTopVolumeMonths,
@@ -49,6 +51,7 @@ interface StockProps {
   stockDescription: string;
   imageType: 'circular' | 'rectangular';
   onBack: () => void;
+  
 }
 
 interface MarkerResponse {
@@ -62,6 +65,10 @@ interface InputProps {
   onChange: (event: React.ChangeEvent<HTMLInputElement>) => void;
   onKeyDown: (event: React.KeyboardEvent<HTMLInputElement>) => void;
 }
+
+let searchCount = 0;
+
+
 
 const Stock: React.FC<StockProps> = ({
   image,
@@ -112,6 +119,31 @@ const Stock: React.FC<StockProps> = ({
   const [percentChange, setPercentChange] = useState<number>(0);
   const [stockHistory, setStockHistory] = useState<DataPoint[]>(() => generateFlatLineData(100)); // 100 is an arbitrary number of data points
   const handleMarkerSelect = createHandleMarkerSelect(setSelectedMarkerDate);
+
+  async function putSearches(searchTerm: any) {
+    if(searchTerm === '-' || searchCount > 0) return;
+    try {
+      searchCount++;
+        const restOperation = put({
+            apiName: 'testAPI',
+            path: '/passSearchesTest', // Adjust this path as needed
+            options: {
+                body: {
+                    recent_search: searchTerm // Use the input parameter here
+                }
+            }
+        });
+        
+        const { body } = await restOperation.response;
+        const responseText = await body.text();
+  
+        const responseMain = JSON.parse(responseText);
+        console.log('Recent searches:', responseMain);
+    } catch (error) {
+        console.error('Error fetching recent searches:', error);
+    }
+  }
+  
 
   useEffect(() => {
     const filteredData = filterDataByTimeframe(allData, selectedTimeframe);
@@ -176,7 +208,9 @@ const Stock: React.FC<StockProps> = ({
         setLongName(info.longName || "-");
         setTicker(info.symbol || "-");
         setSector(info.sector || "-");
-
+        putSearches(info.longName || "-");
+        console.log(searchCount);
+       
         const currentPrice = info.currentPrice || 1;
         const previousClose = info.previousClose || 1;
         const calculatedPercentChange = ((currentPrice - previousClose) / previousClose) * 100;
@@ -197,7 +231,18 @@ const Stock: React.FC<StockProps> = ({
     setStockHistory(generateFlatLineData(100))
     handleSendQuery(`Provide a brief summary about ${longName}...`, setIsLoadingAboutText, setAboutCompanyText);
     handleStockDataWrapper();
+
+   
   }, [longName]);
+
+  const resetSearchCount = () => {
+    searchCount = 0;
+  };
+
+  const handleBack = () => {
+    resetSearchCount();
+    onBack();
+  };
 
   useEffect(() => {
 
@@ -301,7 +346,7 @@ const Stock: React.FC<StockProps> = ({
   return (
     <div className='w-full h-full flex flex-col md:flex-row py-12 px-4 2xl:py-12 2xl:px-12 font-montserrat gap-4 '>
       <button
-        onClick={onBack}
+         onClick={handleBack}
         className="absolute top-[1%] left-[1%] p-2 text-black hover:text-blue-700"
         aria-label="Go back to stock search"
       >

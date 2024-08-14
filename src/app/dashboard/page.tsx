@@ -98,8 +98,6 @@ export default function Dashboard() {
   return (
     user ? 
     <AmplifyAuthenticator.Provider>
-      <Button onMouseDown={putSearches}>test Put</Button>
-      <Button onMouseDown={getRecentSearches}>test Fetch</Button>
       <Home/>
     </AmplifyAuthenticator.Provider> : 
     <AmplifyAuthenticator.Provider>
