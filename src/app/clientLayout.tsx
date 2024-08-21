@@ -1,11 +1,43 @@
 "use client";
 import { Amplify } from "aws-amplify";
 import { Authenticator as AmplifyAuthenticator } from "@aws-amplify/ui-react";
- 
+import { Inter, Montserrat, Poppins } from "next/font/google";
+import { ThemeProvider, createTheme } from '@mui/material/styles';
+
 
 if (!process.env.NEXT_PUBLIC_USER_POOL_ID || !process.env.NEXT_PUBLIC_USER_POOL_CLIENT_ID) {
   throw new Error('Environment variables NEXT_PUBLIC_USER_POOL_ID and NEXT_PUBLIC_USER_POOL_CLIENT_ID must be set');
 }
+
+const montserrat = Montserrat({
+  subsets: ["latin"],
+  display: 'swap',
+  variable: '--font-montserrat',
+});
+
+const poppins = Poppins({
+  weight: ['100', '200', '300', '400', '500', '600', '700', '800', '900'],
+  subsets: ['latin'],
+  display: 'swap',
+  variable: '--font-poppins',
+});
+
+const inter = Inter({
+  subsets: ["latin"],
+  display: 'swap',
+  variable: '--font-inter',
+});
+
+const theme = createTheme({
+  typography: {
+    allVariants: {
+      fontFamily: montserrat.style.fontFamily,
+      textTransform: 'none',
+      fontSize: 16,
+    },
+  },
+  
+});
 
 Amplify.configure({
   Auth: {
@@ -13,7 +45,7 @@ Amplify.configure({
       //  Amazon Cognito User Pool ID
       userPoolId: process.env.NEXT_PUBLIC_USER_POOL_ID,
       // OPTIONAL - Amazon Cognito Web Client ID (26-char alphanumeric string)
-      
+
       userPoolClientId: process.env.NEXT_PUBLIC_USER_POOL_CLIENT_ID,
       // REQUIRED only for Federated Authentication - Amazon Cognito Identity Pool ID
       identityPoolId: 'us-east-1:e905629f-9f02-4ff7-b6de-6f9f24233685',
@@ -32,25 +64,29 @@ Amplify.configure({
         }
       }
     },
-    
+
   },
   API: {
-   REST: {
-       testAPI: {
-         endpoint:
-           'https://4s693esbca.execute-api.us-east-1.amazonaws.com/test', // main
-         region: 'us-east-1' // Optional
-       }
+    REST: {
+      testAPI: {
+        endpoint:
+          'https://4s693esbca.execute-api.us-east-1.amazonaws.com/test', // main
+        region: 'us-east-1' // Optional
+      }
     }
   },
- });
+});
 
 
 const ClientComponent = ({ children }: { children: React.ReactNode }) => {
   return (
-    <AmplifyAuthenticator.Provider>
-      {children}
-    </AmplifyAuthenticator.Provider>
+    <ThemeProvider theme = {theme}>
+
+
+      <AmplifyAuthenticator.Provider>
+        {children}
+      </AmplifyAuthenticator.Provider>
+    </ThemeProvider>
   );
 };
 export default ClientComponent;

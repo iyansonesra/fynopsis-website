@@ -4,8 +4,9 @@ import "./globals.css";
 import { Amplify } from "aws-amplify";
 import { Authenticator as AmplifyAuthenticator } from "@aws-amplify/ui-react";
 import ClientComponent from "./clientLayout";
+import { ThemeProvider, createTheme } from '@mui/material/styles';
 
-const montserrat = Montserrat({ 
+const montserrat = Montserrat({
   subsets: ["latin"],
   display: 'swap',
   variable: '--font-montserrat',
@@ -18,11 +19,12 @@ const poppins = Poppins({
   variable: '--font-poppins',
 });
 
-const inter = Inter({ 
+const inter = Inter({
   subsets: ["latin"],
   display: 'swap',
   variable: '--font-inter',
 });
+
 
 export const metadata: Metadata = {
   title: "Fynopsis",
@@ -41,11 +43,11 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={`${montserrat.variable} ${poppins.variable} ${inter.variable} font-sans`}>
-        <ClientComponent>
-          {children}
-        </ClientComponent>
-      </body>
+        <body className={`${montserrat.variable} ${poppins.variable} ${inter.variable} font-sans`}>
+          <ClientComponent>
+            {children}
+          </ClientComponent>
+        </body>
     </html>
   );
 }

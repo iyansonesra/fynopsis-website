@@ -13,6 +13,7 @@ import { useState, useEffect } from "react"
 import Dashboard from "./Dashboard";
 import StockSearch from "./StockSearch";
 import Settings from "./Settings";
+import IndustryPage from "./IndustryPage";
 import { useAuthenticator } from '@aws-amplify/ui-react';
 import { Sun, Moon } from "lucide-react";
 import { fetchUserAttributes, FetchUserAttributesOutput } from 'aws-amplify/auth';
@@ -46,6 +47,8 @@ export default function Home() {
         return <StockSearch setSelectedTab={setSelectedTab} />
       case "settings":
         return <Settings setSelectedTab={setSelectedTab} />
+      case "industryPage":
+        return <IndustryPage setSelectedTab={setSelectedTab}/>
       default:
         return <StockSearch setSelectedTab={setSelectedTab} />
     }
@@ -101,6 +104,16 @@ export default function Home() {
               >
                 <SettingsIcon className="h-4 w-4 2xl:h-6 2xl:w-6" />
                 Settings
+              </Link>
+
+              <Link
+                href="#"
+                className={`flex items-center gap-3 rounded-lg px-3 py-2 transition-all hover:text-primary ${selectedTab === "settings" ? "bg-muted text-primary" : "text-muted-foreground"
+                  }`}
+                onClick={() => setSelectedTab("industryPage")}
+              >
+                <SettingsIcon className="h-4 w-4 2xl:h-6 2xl:w-6" />
+                Industry
               </Link>
             </nav>
           </div>
