@@ -12,7 +12,7 @@ export default function IndustryPage({ setSelectedTab }) {
 
     return (
         <div className = "flex flex-col h-screen w-full">
-            <Industry industryName={'Mobile Phones'} company='Nvidia'>
+            <Industry industryName={'Dairy'} company='Trumoo'>
                 
             </Industry>
         </div>

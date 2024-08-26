@@ -135,6 +135,7 @@ export interface DataPoint {
     setAboutCompanyText: React.Dispatch<React.SetStateAction<string>>
   ) => {
     setIsLoadingAboutText(true);
+    console.log("yo");
   
     const accessTokens = await handleFetchAccess();
     if (accessTokens) {
@@ -158,6 +159,7 @@ export interface DataPoint {
   
         if (responseMain && responseMain.body) {
           const innerBody = JSON.parse(responseMain.body);
+         
           if (innerBody && innerBody.message) {
             setAboutCompanyText(innerBody.message);
           } else {
