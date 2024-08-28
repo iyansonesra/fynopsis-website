@@ -12,7 +12,7 @@ import { Skeleton } from './ui/skeleton';
 
 
 
-interface GPTResponseProps {
+interface IndustryProps {
     industryName: string;
     company: string;
 }
@@ -82,7 +82,7 @@ const TimeSelector = ({ timeFrame, setTimeFrame }) => {
 };
 
 
-const Industry: React.FC<GPTResponseProps> = ({
+const Industry: React.FC<IndustryProps> = ({
     industryName,
     company
 }) => {
@@ -104,6 +104,41 @@ const Industry: React.FC<GPTResponseProps> = ({
     const [regInnovData, setRegInnovData] = useState([]);
     const [regInnovLoading, setRegInnovLoading] = useState(true);
     const [selectedRegInnov, setSelectedRegInnov] = useState(null);
+    const [loadingProgress, setLoadingProgress] = useState(0);
+    const [isOverallLoading, setIsOverallLoading] = useState(true);
+    const [isActualLoadingComplete, setIsActualLoadingComplete] = useState(false);
+
+    const startArtificialLoading = () => {
+        const totalDuration = 120000; // 2 minutes in milliseconds
+        const interval = 1000; // Update every second
+        const incrementPerInterval = 99 / (totalDuration / interval); // Cap at 99%
+    
+        const timer = setInterval(() => {
+            setLoadingProgress((prevProgress) => {
+                const newProgress = prevProgress + incrementPerInterval;
+                return newProgress >= 99 ? 99 : newProgress;
+            });
+        }, interval);
+    
+        return timer;
+    };
+
+    const quickRampUp = () => {
+        const rampUpDuration = 2000; // 2 seconds for quick ramp-up
+        const interval = 50; // Update every 50ms for smoother animation
+        const incrementPerInterval = (99 - loadingProgress) / (rampUpDuration / interval);
+    
+        const timer = setInterval(() => {
+            setLoadingProgress((prevProgress) => {
+                const newProgress = prevProgress + incrementPerInterval;
+                if (newProgress >= 99 || isActualLoadingComplete) {
+                    clearInterval(timer);
+                    return isActualLoadingComplete ? 100 : 99;
+                }
+                return newProgress;
+            });
+        }, interval);
+    };
 
     const handleRegInnovClick = (item) => {
         setSelectedRegInnov(item);
@@ -186,7 +221,7 @@ const Industry: React.FC<GPTResponseProps> = ({
                             Authorization: accessTokens
                         },
                         body: {
-                            query: `As a financial analysis agent, provide a concise yet comprehensive summary (3-5 sentences MAXIMUM) of the most significant events and news within the ${timeframe} period that could have impacted the ${industryName} industry. Please remove any fluff such as "In the past six months, the mobile phone industry has seen significant developments", I just want pure facts. The response should be in paragraph format, not a list. The following is an example: Apple has emerged as the top smartphone vendor, surpassing Samsung for the first time in 12 years. Global smartphone shipments decreased by 4% in 2023 but rebounded with a 9% increase in Q2 2024, indicating a possible recovery trend. Additionally, mobile phone exports from India surged by 39% in early 2024, driven primarily by iPhone production. However, challenges remain, with consumers reportedly holding onto their devices longer than before, reflecting market saturation and economic pressures.`
+                            query: `As a financial analysis agent, provide a concise yet comprehensive summary (3-5 sentences MAXIMUM) of the most significant events and news within the ${timeframe} period that could have impacted the Dairy industry. Please remove any fluff such as "In the past six months, the mobile phone industry has seen significant developments", I just want pure facts. The response should be in paragraph format, not a list. The following is an example: Apple has emerged as the top smartphone vendor, surpassing Samsung for the first time in 12 years. Global smartphone shipments decreased by 4% in 2023 but rebounded with a 9% increase in Q2 2024, indicating a possible recovery trend. Additionally, mobile phone exports from India surged by 39% in early 2024, driven primarily by iPhone production. However, challenges remain, with consumers reportedly holding onto their devices longer than before, reflecting market saturation and economic pressures.`
                         }
                     }
                 });
@@ -349,6 +384,7 @@ Ensure that the values are accurate and up-to-date. The MCAP should be a dollar 
         }
     }
 
+
     async function queryRegulationsInnovations(industry: string) {
         console.log("called queryRegulations");
         const accessTokens = await handleFetchAccess();
@@ -439,8 +475,14 @@ Long Description: In a significant move affecting the dairy industry, the US Con
         setSimilarCompaniesLoading(true);
         setIndustryMetricsLoading(true);  // Add this line
         setRegInnovLoading(true);
+        setIsOverallLoading(true);
+        setIsActualLoadingComplete(false);
+
+
 
         const startTime = performance.now();
+        const loadingTimer = startArtificialLoading();
+
 
         const promises = [
             infoQuery('24 hours'),
@@ -464,8 +506,6 @@ Long Description: In a significant move affecting the dairy industry, the US Con
                 setIndustryInfoYear(infoYear);
 
                 
-
-
 
                 if (majorPlayersInfo) {
                     const parsedPlayers = parseMajorPlayers(majorPlayersInfo);
@@ -505,8 +545,13 @@ Long Description: In a significant move affecting the dairy industry, the US Con
                 setIndustryMetricsLoading(false);  // Add this line
                 setRegInnovLoading(false);
 
+                if (!isLoading && !isMajorPlayersLoading && !similarCompaniesLoading && !industryMetricsLoading && !regInnovLoading) {
+                    console.log("success!!!!!");
+                    clearInterval(loadingTimer);
+                    setLoadingProgress(100);
+                }
 
-
+                
 
             })
             .catch((error) => {
@@ -514,9 +559,27 @@ Long Description: In a significant move affecting the dairy industry, the US Con
                 setIsLoading(false);
                 setIsMajorPlayersLoading(false);
                 setSimilarCompaniesLoading(false);
-                setIndustryMetricsLoading(false);  // Add this line
+                setIndustryMetricsLoading(false);
+                setRegInnovLoading(false);
+            })
+            .finally(() => {
+                setIsOverallLoading(false);
+                setIsActualLoadingComplete(true);
+                clearInterval(loadingTimer);
+                if (loadingProgress < 99) {
+                    quickRampUp();
+                }
             });
+
+            return () => clearInterval(loadingTimer);
+
     }, []);
+
+    useEffect(() => {
+        if (isActualLoadingComplete && loadingProgress >= 99) {
+            setLoadingProgress(100);
+        }
+    }, [isActualLoadingComplete, loadingProgress]);
 
     function parseRegInnovData(response) {
         const parsedResponse = JSON.parse(response);
@@ -535,7 +598,11 @@ Long Description: In a significant move affecting the dairy industry, the US Con
     }
 
     const SideScreen = ({ item, onClose }) => (
-        <div className="fixed right-0 top-0 h-full w-1/3 bg-white dark:bg-slate-800 p-4 shadow-lg transform transition-transform duration-300 ease-in-out" style={{ transform: item ? 'translateX(0)' : 'translateX(100%)' }}>
+        <div 
+            className={`fixed right-0 top-0 h-full w-1/3 bg-white dark:bg-slate-800 p-4 shadow-lg transform transition-transform duration-300 ease-in-out ${
+                item ? 'translate-x-0' : 'translate-x-full'
+            }`}
+        >
             {item && (
                 <>
                     <button onClick={onClose} className="absolute top-4 right-4">Close</button>
@@ -547,11 +614,23 @@ Long Description: In a significant move affecting the dairy industry, the US Con
         </div>
     );
 
+    const LoadingOverlay = ({ progress }) => (
+        <div className="absolute inset-0 bg-white flex items-center justify-center z-50">
+            <div className="bg-white dark:bg-slate-800 p-6 rounded-lg shadow-lg w-80">
+                <div className="w-full bg-gray-200 rounded-full h-2.5 mb-4">
+                    <div className="bg-blue-600 h-2.5 rounded-full" style={{ width: `${Math.min(progress, 99)}%` }}></div>
+                </div>
+                <p className="text-center text-sm font-semibold">{Math.min(Math.round(progress), 99)}% Complete</p>
+            </div>
+        </div>
+    );
+
 
 
     return (
         <div className='w-full h-full flex flex-col  py-12 px-4 2xl:py-12 2xl:px-12 font-montserrat gap-4'>
-            <h1 className="text-3xl font-bold 2xl:text-4xl">{industryName} </h1>
+            {loadingProgress < 100 && <LoadingOverlay progress={loadingProgress} />}
+            <h1 className="text-3xl font-bold 2xl:text-4xl">{industryName}</h1>
 
             <div className="flex flex-row">
                 <div className="flex flex-[2] flex-col w-[66%]">
@@ -619,7 +698,7 @@ Long Description: In a significant move affecting the dairy industry, the US Con
                         )}
                     </div>
 
-                    <h1 className="font-bold mb-1 2xl:text-xl">Similar Companies to...</h1>
+                    <h1 className="font-bold mb-1 2xl:text-xl">Similar Companies to {company}</h1>
                     <Separator className="w-36 mb-4"></Separator>
                     <div className="w-full flex-wrap flex gap-x-8 gap-y-6 mb-6">
                         {similarCompaniesLoading ? (
@@ -667,10 +746,10 @@ Long Description: In a significant move affecting the dairy industry, the US Con
                 </div>
             </div>
 
-            <SideScreen 
-            item={selectedRegInnov} 
-            onClose={() => setSelectedRegInnov(null)} 
-        />
+            <SideScreen
+                item={selectedRegInnov}
+                onClose={() => setSelectedRegInnov(null)}
+            />
         </div>
     );
 };

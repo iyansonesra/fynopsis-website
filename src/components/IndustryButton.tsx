@@ -1,27 +1,24 @@
-import React from 'react';
-import { Skeleton } from './ui/skeleton';
+import { Skeleton } from "./ui/skeleton";
 
 interface IndustryButtonProps {
   industryName: string;
-  isLoading?: boolean;
+  isLoading: boolean;
+  onClick: () => void;
 }
 
-const IndustryButton: React.FC<IndustryButtonProps> = ({
-  industryName,
-  isLoading = false
-}) => {
+const IndustryButton: React.FC<IndustryButtonProps> = ({ industryName, isLoading, onClick }) => {
   return (
-    <div className='relative inline-block'>
+    <button
+      onClick={onClick}
+      className="px-4 py-1 border border-black rounded-full transition-colors hover:bg-gray-100"
+      disabled={isLoading}
+    >
       {isLoading ? (
-        <Skeleton className="h-8 w-24 md:h-6 md:w-20 2xl:h-10 2xl:w-28 rounded-full" />
+        <Skeleton className="w-20 h-4" />
       ) : (
-        <div className='flex rounded-full bg-sky-100 dark:bg-sky-700 px-4 py-1'>
-          <h1 className='text-sky-500 dark:text-sky-100 font-normal text-base md:text-xs 2xl:text-lg'>
-            {industryName}
-          </h1>
-        </div>
+        <h1 className="text-sm">{industryName}</h1>
       )}
-    </div>
+    </button>
   );
 };
 

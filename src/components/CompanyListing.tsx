@@ -11,9 +11,12 @@ interface CompanyListingProps {
 }
 
 function ensureFullUrl(url: string): string {
-    if (url.startsWith('http://') || url.startsWith('https://')) {
-        return url;
+    if(url) {
+        if (url.startsWith('http://') || url.startsWith('https://')) {
+            return url;
+        }
     }
+   
     return `https://${url}`;
 }
 
@@ -38,8 +41,6 @@ const CompanyListing: React.FC<CompanyListingProps> = ({
                         <UsersRound size={12}  color="#2c6d30" strokeWidth={3}/>
                         <h1 className = "text-[.7rem] font-medium text-green-700">{numEmployees}</h1>
                     </div>
-
-                    
                 </div>
 
                 <div className = "flex flex-row gap-4">

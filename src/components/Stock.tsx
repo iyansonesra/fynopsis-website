@@ -43,6 +43,7 @@ import {
   handleStockData,
   handleSendQuery
 } from '../components/utils/StockUtils';
+import Industry from './Industry';
 
 
 interface StockProps {
@@ -119,6 +120,12 @@ const Stock: React.FC<StockProps> = ({
   const [percentChange, setPercentChange] = useState<number>(0);
   const [stockHistory, setStockHistory] = useState<DataPoint[]>(() => generateFlatLineData(100)); // 100 is an arbitrary number of data points
   const handleMarkerSelect = createHandleMarkerSelect(setSelectedMarkerDate);
+
+  const [showIndustry, setShowIndustry] = useState(false);
+
+  const handleIndustryClick = () => {
+    setShowIndustry(true);
+  };
 
   async function putSearches(searchTerm: any) {
     if(searchTerm === '-' || searchCount > 0) return;
@@ -229,7 +236,7 @@ const Stock: React.FC<StockProps> = ({
   useEffect(() => {
     // Send initial query when component mounts
     setStockHistory(generateFlatLineData(100))
-    handleSendQuery(`Provide a brief summary about ${longName}...`, setIsLoadingAboutText, setAboutCompanyText);
+    handleSendQuery(`Provide a brief summary about ${longName}... (ensure that it is a maximum of 3 sentences long)`, setIsLoadingAboutText, setAboutCompanyText);
     handleStockDataWrapper();
 
    
@@ -515,8 +522,11 @@ const Stock: React.FC<StockProps> = ({
         ) : (
           <>
             <div className="inline-block flex flex-wrap py-2 2xl:py-4 gap-2">
-              <IndustryButton industryName={sector} isLoading={!industryButtonLoaded} />
-
+              <IndustryButton 
+                industryName={sector} 
+                isLoading={!industryButtonLoaded} 
+                onClick={handleIndustryClick}
+              />
             </div>
 
             {isLoadingAboutText ? (
@@ -530,7 +540,7 @@ const Stock: React.FC<StockProps> = ({
               </div>
             ) : (
               <h1 className="text-slate-600 text-[.95rem] font-light dark:text-slate-200 mb-4 2xl:mb-6 2xl:text-xl">
-                {/* {aboutCompanyText || "No information available."} */}
+                {aboutCompanyText || "No information available."}
               </h1>
             )}
 
@@ -540,17 +550,18 @@ const Stock: React.FC<StockProps> = ({
                 <StatListing statName='CEO' statVal={ceo} isLoading={ceo === "-"} />
               </div>
               <div className="inline-block flex flex-row items-center justify-around w-full">
-                <StatListing statName='Founded' statVal={founded} isLoading={founded === "-"} />
-                <StatListing statName='Based In' statVal={basedIn} isLoading={basedIn === "-"} />
-              </div>
-              <div className="inline-block flex flex-row items-center justify-around w-full">
                 <StatListing statName='EBITDA' statVal={ebitda} isLoading={ebitda === "-"} />
                 <StatListing statName='Enterprise Value' statVal={enterpriseValue} isLoading={enterpriseValue === "-"} />
+              </div>
+              <div className="inline-block flex flex-row items-center justify-around w-full">
+                <StatListing statName='Based In' statVal={basedIn} isLoading={basedIn === "-"} />
               </div>
             </div>
           </>
         )}
       </div>
+
+    
 
 
     </div>
