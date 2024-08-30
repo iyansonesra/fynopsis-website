@@ -17,6 +17,7 @@ import { CodeSquare } from 'lucide-react';
 interface IndustryProps {
     industryName: string;
     company: string;
+    onBack: () => void;
 }
 
 export async function handleFetchAccess() {
@@ -95,7 +96,8 @@ interface Company {
 
 const Industry: React.FC<IndustryProps> = ({
     industryName,
-    company
+    company,
+    onBack
 }) => {
 
 
@@ -128,14 +130,14 @@ const Industry: React.FC<IndustryProps> = ({
         const totalDuration = 120000; // 2 minutes in milliseconds
         const interval = 1000; // Update every second
         const incrementPerInterval = 99 / (totalDuration / interval); // Cap at 99%
-    
+
         const timer = setInterval(() => {
             setLoadingProgress((prevProgress) => {
                 const newProgress = prevProgress + incrementPerInterval;
                 return newProgress >= 99 ? 99 : newProgress;
             });
         }, interval);
-    
+
         return timer;
     };
 
@@ -143,7 +145,7 @@ const Industry: React.FC<IndustryProps> = ({
         const rampUpDuration = 2000; // 2 seconds for quick ramp-up
         const interval = 50; // Update every 50ms for smoother animation
         const incrementPerInterval = (99 - loadingProgress) / (rampUpDuration / interval);
-    
+
         const timer = setInterval(() => {
             setLoadingProgress((prevProgress) => {
                 const newProgress = prevProgress + incrementPerInterval;
@@ -199,27 +201,27 @@ const Industry: React.FC<IndustryProps> = ({
     function parseIndustryMetrics(metricsString: string) {
         try {
             const parsedMetrics = JSON.parse(metricsString);
-            
+
             // If the response is wrapped in a 'message' field, parse it
             const metrics = parsedMetrics.message ? JSON.parse(parsedMetrics.message) : parsedMetrics;
-    
+
             const mcap = parseFloat(metrics.MCAP);
             const cagr = parseFloat(metrics.CAGR);
-    
+
             if (isNaN(mcap) || isNaN(cagr)) {
                 throw new Error('Invalid numeric values');
             }
-    
+
             // MCAP should be a large number (assuming it's in USD)
             if (mcap < 1000000) { // Assuming MCAP should be at least 1 million
                 throw new Error('MCAP value seems too low');
             }
-    
+
             // CAGR should be a percentage between -100 and 100
             if (cagr < -100 || cagr > 100) {
                 throw new Error('CAGR value out of expected range');
             }
-    
+
             return {
                 mcap: formatNumber(mcap),
                 cagr: formatNumber(cagr, true)
@@ -423,20 +425,20 @@ Please ensure the information is accurate and up-to-date. Sort the list by date,
         try {
             const parsedResponse = JSON.parse(response);
             console.log("Parsed response:", parsedResponse);
-    
+
             // The actual data is nested in a JSON string inside the "message" field
             const messageContent = JSON.parse(parsedResponse.message);
             console.log("Parsed message content:", messageContent);
-    
+
             const companies = messageContent.companies || [];
-    
+
             if (!Array.isArray(companies)) {
                 console.error('Unexpected response structure:', messageContent);
                 return [];
             }
-    
+
             console.log("Companies:", companies);
-    
+
             return companies.map(company => {
                 return {
                     "Company Name": company["Company Name"] || '',
@@ -449,7 +451,7 @@ Please ensure the information is accurate and up-to-date. Sort the list by date,
             console.error('Error parsing response:', error);
             return [];
         }
-        
+
     }
 
     function formatNumber(num: number, isPercentage = false) {
@@ -507,7 +509,7 @@ Please ensure the information is accurate and up-to-date. Sort the list by date,
                 setIndustryInfo6Month(info6Month);
                 setIndustryInfoYear(infoYear);
 
-                
+
 
                 if (majorPlayersInfo) {
                     const parsedPlayers = parseMajorPlayers(majorPlayersInfo);
@@ -553,7 +555,7 @@ Please ensure the information is accurate and up-to-date. Sort the list by date,
                     setLoadingProgress(100);
                 }
 
-                
+
 
             })
             .catch((error) => {
@@ -573,7 +575,7 @@ Please ensure the information is accurate and up-to-date. Sort the list by date,
                 }
             });
 
-            return () => clearInterval(loadingTimer);
+        return () => clearInterval(loadingTimer);
 
     }, []);
 
@@ -586,17 +588,17 @@ Please ensure the information is accurate and up-to-date. Sort the list by date,
     function parseRegInnovData(response: string) {
         try {
             const parsedResponse = JSON.parse(response);
-            
+
             // If the response is already an array, use it directly
             // Otherwise, try to parse the 'message' field if it exists
             const items = Array.isArray(parsedResponse) ? parsedResponse :
-                          (parsedResponse.message ? JSON.parse(parsedResponse.message) : []);
-    
+                (parsedResponse.message ? JSON.parse(parsedResponse.message) : []);
+
             if (!Array.isArray(items)) {
                 console.error('Unexpected response structure:', parsedResponse);
                 return [];
             }
-    
+
             return items.map(item => ({
                 Type: item.Type || '',
                 Date: item.Date || '',
@@ -609,16 +611,17 @@ Please ensure the information is accurate and up-to-date. Sort the list by date,
         }
     }
 
-    const SideScreen = ({ item, onClose }: { item: { 
-        Type: string, 
-        Date: string, 
-        ShortDescription: string,
-        LongDescription: string 
-    } | null, onClose: () => void }) => (
-        <div 
-            className={`fixed right-0 top-0 h-full w-1/3 bg-white dark:bg-slate-800 p-4 shadow-lg transform transition-transform duration-300 ease-in-out ${
-                item ? 'translate-x-0' : 'translate-x-full'
-            }`}
+    const SideScreen = ({ item, onClose }: {
+        item: {
+            Type: string,
+            Date: string,
+            ShortDescription: string,
+            LongDescription: string
+        } | null, onClose: () => void
+    }) => (
+        <div
+            className={`fixed right-0 top-0 h-full w-1/3 bg-white dark:bg-slate-800 p-4 shadow-lg transform transition-transform duration-300 ease-in-out ${item ? 'translate-x-0' : 'translate-x-full'
+                }`}
         >
             {item && (
                 <>
@@ -714,26 +717,30 @@ Please ensure the information is accurate and up-to-date. Sort the list by date,
                             <p>No major players found.</p>
                         )}
                     </div>
+                    {company === '' ? <></> : (
+                        <>
+                            <h1 className="font-bold mb-1 2xl:text-xl">Similar Companies to {company}</h1>
+                            <Separator className="w-36 mb-4"></Separator>
+                            <div className="w-full flex-wrap flex gap-x-8 gap-y-6 mb-6">
+                                {similarCompaniesLoading ? (
+                                    <p>Loading similar companies...</p>
+                                ) : similarCompanies.length > 0 ? (
+                                    similarCompanies.map((company, index) => (
+                                        <CompanyListing
+                                            key={index}
+                                            url={company['Company URL']}
+                                            name={company['Company Name']}
+                                            numEmployees={company['Number of Employees']}
+                                            linkedIn={company['LinkedIn URL']}
+                                        />
+                                    ))
+                                ) : (
+                                    <p>No similar companies found.</p>
+                                )}
+                            </div>
+                        </>
+                    )}
 
-                    <h1 className="font-bold mb-1 2xl:text-xl">Similar Companies to {company}</h1>
-                    <Separator className="w-36 mb-4"></Separator>
-                    <div className="w-full flex-wrap flex gap-x-8 gap-y-6 mb-6">
-                        {similarCompaniesLoading ? (
-                            <p>Loading similar companies...</p>
-                        ) : similarCompanies.length > 0 ? (
-                            similarCompanies.map((company, index) => (
-                                <CompanyListing
-                                    key={index}
-                                    url={company['Company URL']}
-                                    name={company['Company Name']}
-                                    numEmployees={company['Number of Employees']}
-                                    linkedIn={company['LinkedIn URL']}
-                                />
-                            ))
-                        ) : (
-                            <p>No similar companies found.</p>
-                        )}
-                    </div>
                 </div>
 
                 <div className="flex-[1] w-[33%]">

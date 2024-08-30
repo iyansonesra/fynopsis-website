@@ -382,7 +382,6 @@ const CustomGraph: React.FC<CustomGraphProps> = ({
                             fill="url(#highlightGradient)"
                             clipPath="url(#selectedClip)"
                             isAnimationActive={false} // Add this line
-
                         />
                     )}
                     {dragStart && isDragging && <ReferenceLine x={dragStart.name} stroke="#8884d8" />}

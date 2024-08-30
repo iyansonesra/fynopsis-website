@@ -136,6 +136,7 @@ export interface DataPoint {
   ) => {
     setIsLoadingAboutText(true);
     console.log("yo");
+    console.log(userMessage);
   
     const accessTokens = await handleFetchAccess();
     if (accessTokens) {
@@ -162,6 +163,7 @@ export interface DataPoint {
          
           if (innerBody && innerBody.message) {
             setAboutCompanyText(innerBody.message);
+            setIsLoadingAboutText(false);
           } else {
             setAboutCompanyText("Failed to parse company information. Please try again.");
           }
@@ -171,7 +173,7 @@ export interface DataPoint {
       } catch (e) {
         setAboutCompanyText("An error occurred while fetching company information. Please try again.");
       } finally {
-        setIsLoadingAboutText(false);
+        
       }
     } else {
       setAboutCompanyText("Failed to authenticate. Please refresh and try again.");

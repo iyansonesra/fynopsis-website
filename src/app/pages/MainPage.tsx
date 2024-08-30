@@ -99,7 +99,7 @@ export default function Home() {
 
               <Link
                 href="#"
-                className={`flex items-center gap-3 rounded-lg px-3 py-2 transition-all hover:text-primary ${selectedTab === "settings" ? "bg-muted text-primary" : "text-muted-foreground"
+                className={`flex items-center gap-3 rounded-lg px-3 py-2 transition-all hover:text-primary ${selectedTab === "stockSearch" ? "text-muted-foreground" : "bg-muted text-primary" 
                   }`}
                 onClick={() => setSelectedTab("industryPage")}
               >
@@ -107,7 +107,7 @@ export default function Home() {
                 Industry
               </Link>
 
-              <Link
+              {/* <Link
                 href="#"
                 className={`flex items-center gap-3 rounded-lg px-3 py-2 transition-all hover:text-primary ${selectedTab === "settings" ? "bg-muted text-primary" : "text-muted-foreground"
                   }`}
@@ -115,7 +115,7 @@ export default function Home() {
               >
                 <SettingsIcon className="h-4 w-4 2xl:h-6 2xl:w-6" />
                 Settings
-              </Link>
+              </Link> */}
 
              
             </nav>

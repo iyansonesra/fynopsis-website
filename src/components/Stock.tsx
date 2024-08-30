@@ -26,6 +26,7 @@ import { startOfMonth, startOfWeek, } from 'date-fns';
 import ReactMarkdown from 'react-markdown';
 import { get } from 'aws-amplify/api';
 import { put } from 'aws-amplify/api';
+import { CircularProgress } from '@mui/material';
 import {
   parseHistoryData,
   findTopVolumeMonths,
@@ -52,7 +53,7 @@ interface StockProps {
   stockDescription: string;
   imageType: 'circular' | 'rectangular';
   onBack: () => void;
-  
+
 }
 
 interface MarkerResponse {
@@ -120,37 +121,91 @@ const Stock: React.FC<StockProps> = ({
   const [percentChange, setPercentChange] = useState<number>(0);
   const [stockHistory, setStockHistory] = useState<DataPoint[]>(() => generateFlatLineData(100)); // 100 is an arbitrary number of data points
   const handleMarkerSelect = createHandleMarkerSelect(setSelectedMarkerDate);
-
+  const [qLoading, setQLoading] = useState(false);
+  const [questionResponse, setQuestionResponse] = useState('');
   const [showIndustry, setShowIndustry] = useState(false);
 
+  const handleInputChangeQ = (event: React.ChangeEvent<HTMLInputElement>) => {
+    setInputValue(event.target.value);
+  };
+
+  const handleKeyPressQ = async (event: React.KeyboardEvent<HTMLInputElement>) => {
+    if (event.key === 'Enter') {
+      await handleSendQuestion();
+    }
+  };
+
+  const handleSendQuestion = async () => {
+    if (!inputValue.trim()) return;
+
+    setQLoading(true);
+    setQuestionResponse('');
+
+    try {
+      const accessToken = await handleFetchAccess();
+      if (!accessToken) {
+        console.error('Failed to fetch access token.');
+        return;
+      }
+
+      const restOperation = post({
+        apiName: 'testAPI',
+        path: '/postAgent',
+        options: {
+          headers: {
+            Authorization: accessToken
+          },
+          body: {
+            query: `The following question is in relation to ${longName} (make sure to answer with a maximum of 3-4 sentences): ${inputValue}`
+          }
+        }
+      });
+
+      const { body } = await restOperation.response;
+      const responseText = await body.text();
+      const responseMain = JSON.parse(responseText);
+
+      if (responseMain && responseMain.body) {
+        const innerBody = JSON.parse(responseMain.body);
+        if (innerBody && innerBody.message) {
+          setQuestionResponse(innerBody.message);
+        }
+      }
+    } catch (error) {
+      console.error('Error sending query:', error);
+      setQuestionResponse('An error occurred while processing your question.');
+    } finally {
+      setQLoading(false);
+    }
+  };
   const handleIndustryClick = () => {
     setShowIndustry(true);
   };
 
   async function putSearches(searchTerm: any) {
-    if(searchTerm === '-' || searchCount > 0) return;
+    if (searchTerm === '-' || searchCount > 0) return;
     try {
       searchCount++;
-        const restOperation = put({
-            apiName: 'testAPI',
-            path: '/passSearchesTest', // Adjust this path as needed
-            options: {
-                body: {
-                    recent_search: searchTerm // Use the input parameter here
-                }
-            }
-        });
-        
-        const { body } = await restOperation.response;
-        const responseText = await body.text();
-  
-        const responseMain = JSON.parse(responseText);
-        console.log('Recent searches:', responseMain);
+      const restOperation = put({
+        apiName: 'testAPI',
+        path: '/passSearchesTest', // Adjust this path as needed
+        options: {
+          body: {
+            recent_search: searchTerm // Use the input parameter here
+          }
+        }
+      });
+
+      const { body } = await restOperation.response;
+      const responseText = await body.text();
+
+      const responseMain = JSON.parse(responseText);
+      console.log('Recent searches:', responseMain);
     } catch (error) {
-        console.error('Error fetching recent searches:', error);
+      console.error('Error fetching recent searches:', error);
     }
   }
-  
+
 
   useEffect(() => {
     const filteredData = filterDataByTimeframe(allData, selectedTimeframe);
@@ -198,7 +253,7 @@ const Stock: React.FC<StockProps> = ({
     handleKeyPress(inputValue, setInputValue, handleSendQueryWrapper)(event);
 
   const handleSendQueryWrapper = (userMessage: string) =>
-      handleSendQuery(userMessage, setIsLoadingAboutText as React.Dispatch<React.SetStateAction<boolean>>, setAboutCompanyText as React.Dispatch<React.SetStateAction<string>>);
+    handleSendQuery(userMessage, setIsLoadingAboutText as React.Dispatch<React.SetStateAction<boolean>>, setAboutCompanyText as React.Dispatch<React.SetStateAction<string>>);
 
   const handleStockDataWrapper = () =>
     handleStockData(
@@ -217,7 +272,7 @@ const Stock: React.FC<StockProps> = ({
         setSector(info.sector || "-");
         putSearches(info.longName || "-");
         console.log(searchCount);
-       
+
         const currentPrice = info.currentPrice || 1;
         const previousClose = info.previousClose || 1;
         const calculatedPercentChange = ((currentPrice - previousClose) / previousClose) * 100;
@@ -236,10 +291,15 @@ const Stock: React.FC<StockProps> = ({
   useEffect(() => {
     // Send initial query when component mounts
     setStockHistory(generateFlatLineData(100))
-    handleSendQuery(`Provide a brief summary about ${longName}... (ensure that it is a maximum of 3 sentences long)`, setIsLoadingAboutText as React.Dispatch<React.SetStateAction<boolean>>, setAboutCompanyText as React.Dispatch<React.SetStateAction<string>>);
     handleStockDataWrapper();
 
-   
+
+  }, [longName]);
+
+  useEffect(() => {
+    if (longName !== "-") {
+      handleSendQuery(`Provide a brief summary about ${longName}... (ensure that it is a maximum of 3 sentences long)`, setIsLoadingAboutText as React.Dispatch<React.SetStateAction<boolean>>, setAboutCompanyText as React.Dispatch<React.SetStateAction<string>>);
+    }
   }, [longName]);
 
   const resetSearchCount = () => {
@@ -353,7 +413,7 @@ const Stock: React.FC<StockProps> = ({
   return (
     <div className='w-full h-full flex flex-col md:flex-row py-12 px-4 2xl:py-12 2xl:px-12 font-montserrat gap-4 '>
       <button
-         onClick={handleBack}
+        onClick={handleBack}
         className="absolute top-[1%] left-[1%] p-2 text-black hover:text-blue-700"
         aria-label="Go back to stock search"
       >
@@ -421,14 +481,26 @@ const Stock: React.FC<StockProps> = ({
           </div>
           <Separator className="decoration-black w-[100%] my-1" />
           {showLearnMore ? (
-            <div className="relative mt-4  w-full flex flex-row justify-center">
-              <Search className="h-4 w-4 2xl:h-6 2xl:w-6 absolute left-[15%] self-center decoration-slate-300" />
+            <div className="relative mt-4  w-full flex flex-col  items-center">
+              <Search className="h-4 w-4 2xl:h-6 2xl:w-6 absolute left-[15%] justify-self-center top-4 decoration-slate-300" />
               <input
                 type="text"
                 value={inputValue}
-                onChange={handleInputChangeWrapper}
-                onKeyDown={handleKeyPressWrapper}
-                className="w-3/4 h-8 2xl:h-12 2xl:text-lg bg-slate-100 rounded-full pl-12 2xl:pl-16 text-sm" placeholder='Ask a question...'></input>
+                onChange={handleInputChangeQ}
+                onKeyDown={handleKeyPressQ}
+                className="w-3/4 h-12 2xl:h-14 2xl:text-lg bg-slate-100 rounded-full pl-12 2xl:pl-16 text-sm"
+                placeholder='Ask a question...'
+              />
+
+              {qLoading ? (
+                <div className="mt-4 flex justify-center">
+                  <CircularProgress />
+                </div>
+              ) : questionResponse ? (
+                <div className="mt-2 p-4 rounded-lg text-left w-full">
+                  <p className="text-sm 2xl:text-base">{questionResponse}</p>
+                </div>
+              ) : null}
 
             </div>
           ) : (
@@ -488,7 +560,7 @@ const Stock: React.FC<StockProps> = ({
       </div>
 
       <div className="flex-[4] flex font-sans flex-col">
-         <div className="flex flex-row justify-between items-center mb-2 ">
+        <div className="flex flex-row justify-between items-center mb-2 ">
           <h1 className="font-normal text-lg 2xl:text-xl">About {longName}</h1>
           <button
             onClick={() => setShowDealHistory(!showDealHistory)}
@@ -498,9 +570,9 @@ const Stock: React.FC<StockProps> = ({
             <h1 className="2xl:text-xl">Deal History</h1>
           </button>
         </div>
-       
+
         <Separator className="decoration-black w-[100%] my-1" />
-        
+
         {showDealHistory ? (
           <div className="inline-block flex flex-col mt-2">
             <div className="flex flex-row items-center justify-end gap-2 mr-2">
@@ -522,9 +594,9 @@ const Stock: React.FC<StockProps> = ({
         ) : (
           <>
             <div className="inline-block flex flex-wrap py-2 2xl:py-4 gap-2">
-              <IndustryButton 
-                industryName={sector} 
-                isLoading={!industryButtonLoaded} 
+              <IndustryButton
+                industryName={sector}
+                isLoading={!industryButtonLoaded}
                 onClick={handleIndustryClick}
               />
             </div>
@@ -561,7 +633,7 @@ const Stock: React.FC<StockProps> = ({
         )}
       </div>
 
-    
+
 
 
     </div>

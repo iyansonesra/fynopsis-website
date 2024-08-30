@@ -15,7 +15,7 @@ import { useAuthenticator } from '@aws-amplify/ui-react';
 import Link from 'next/link';
 import { get } from 'aws-amplify/api';
 
-function timeSince(dateString) {
+function timeSince(dateString: string | number | Date) {
     // Set the current date to August 14, 2024, at 5:43 PM CST
     const now = new Date('2024-08-14T22:43:00Z'); // 5:43 PM CST in UTC
     const date = new Date(dateString);
@@ -45,14 +45,19 @@ function timeSince(dateString) {
     return "just now";
 }
 
-export default function StockSearch({ setSelectedTab }) {
+export default function StockSearch({ setSelectedTab }: { setSelectedTab: React.Dispatch<React.SetStateAction<string>> }) {
     const [searchInput, setSearchInput] = useState('');
     const [showStock, setShowStock] = useState(false);
     const [userAttributes, setUserAttributes] = useState<FetchUserAttributesOutput | null>(null);
     const { user, signOut } = useAuthenticator((context) => [context.user]);
-    const [recentSearches, setRecentSearches] = useState([]);
+    interface RecentSearch {
+        value: string;
+        timestamp: string;
+    }
+    
+    const [recentSearches, setRecentSearches] = useState<RecentSearch[]>([]);
     const [isLoading, setIsLoading] = useState(true);
-    const [error, setError] = useState(null);
+    const [error, setError] = useState<string | null>(null);
 
     async function getRecentSearches() {
         setIsLoading(true);
@@ -72,7 +77,7 @@ export default function StockSearch({ setSelectedTab }) {
             setRecentSearches(searches);
         } catch (error) {
             console.error('Error fetching recent searches:', error);
-            setError('Failed to fetch recent searches. Please try again later.');
+            setError("Failed to fetch recent searches. Please try again later.");
         } finally {
             setIsLoading(false);
         }
@@ -104,7 +109,7 @@ export default function StockSearch({ setSelectedTab }) {
         }
     };
 
-    const handleTabChange = (tab) => {
+    const handleTabChange = (tab: React.SetStateAction<string>) => {
         if (setSelectedTab) {
             setSelectedTab(tab);
         }
@@ -115,7 +120,7 @@ export default function StockSearch({ setSelectedTab }) {
         setSearchInput('');
     };
 
-    const handleRecentSearchClick = (search) => {
+    const handleRecentSearchClick = (search: { value: string }) => {
         setSearchInput(search.value);
         setShowStock(true);
     };

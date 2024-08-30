@@ -6,7 +6,7 @@ import logo from "../assets/fynopsis_noBG.png";
 import { useAuthenticator } from '@aws-amplify/ui-react';
 import { fetchUserAttributes, FetchUserAttributesOutput } from 'aws-amplify/auth';
 
-export default function Settings({ setSelectedTab }) {
+export default function Settings({ setSelectedTab }: { setSelectedTab: (tab: string) => void }) {
     const { user, signOut } = useAuthenticator((context) => [context.user]);
     const [userAttributes, setUserAttributes] = useState<FetchUserAttributesOutput | null>(null);
 
@@ -25,7 +25,7 @@ export default function Settings({ setSelectedTab }) {
             console.log(error);
         }
     }
-    const handleTabChange = (tab) => {
+    const handleTabChange = (tab: string) => {
         if (setSelectedTab) {
             setSelectedTab(tab);
         }

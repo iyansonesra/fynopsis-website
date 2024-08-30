@@ -77,7 +77,7 @@ const CompetitorTable: React.FC<CompetitorTableProps> = ({ competitors, onCompet
     };
 
     return (
-        <StyledTableContainer component={Paper} className='dark:bg-darkBg dark:text-white' >
+        <StyledTableContainer className='dark:bg-darkBg dark:text-white' >
             <Table sx={{ width: '150%',}} aria-label="competitor table" >
                 <TableHead>
                     <TableRow>

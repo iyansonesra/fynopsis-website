@@ -9,8 +9,10 @@ import { useAuthenticator } from '@aws-amplify/ui-react';
 import Link from 'next/link';
 import Industry from '@/components/Industry';
 
-export default function IndustrySearch({ setSelectedTab }) {
+export default function IndustrySearch({ setSelectedTab }: { setSelectedTab: React.Dispatch<React.SetStateAction<string>> }) {
     const [searchInput, setSearchInput] = useState('');
+    const [companyInput, setCompanyInput] = useState('');
+
     const [showIndustry, setShowIndustry] = useState(false);
     const [userAttributes, setUserAttributes] = useState<FetchUserAttributesOutput | null>(null);
     const { user, signOut } = useAuthenticator((context) => [context.user]);
@@ -34,7 +36,17 @@ export default function IndustrySearch({ setSelectedTab }) {
         }
     };
 
-    const handleTabChange = (tab) => {
+    const handleInputChange2 = (e: React.ChangeEvent<HTMLInputElement>) => {
+        setCompanyInput(e.target.value);
+    };
+
+    const handleKeyPress2 = (e: React.KeyboardEvent<HTMLInputElement>) => {
+        if (e.key === 'Enter' && searchInput.trim() !== '') {
+            setShowIndustry(true);
+        }
+    };
+
+    const handleTabChange = (tab: React.SetStateAction<string>) => {
         if (setSelectedTab) {
             setSelectedTab(tab);
         }
@@ -50,7 +62,7 @@ export default function IndustrySearch({ setSelectedTab }) {
             <div className="flex flex-col h-screen w-full">
                 <Industry
                     industryName={searchInput}
-                    company={''}
+                    company={companyInput}
                     onBack={handleBack}
                 />
             </div>
@@ -108,13 +120,22 @@ export default function IndustrySearch({ setSelectedTab }) {
                         </Sheet>
                     </div>
 
-                    <div className="relative w-[70%] lg:w-[60%] ">
+                    <div className="flex flex-row gap-4 relative w-[70%] lg:w-[60%] ">
                         <input
                             type="text"
-                            className="searchBar bg-slate-200 dark:bg-transparent dark:border-slate-400 dark:border-2 w-full 2xl:h-[4.5rem] lg:h-[3.5rem] h-[2.5rem] 2xl:text-xl text-lg rounded-full pl-12 lg:pl-16 xl:pl-20 2xl:pl-24"
+                            className="searchBar bg-slate-200 dark:bg-transparent dark:border-slate-400 dark:border-2 w-96 2xl:h-[4.5rem] lg:h-[3.5rem] h-[2.5rem] 2xl:text-xl text-lg rounded-full pl-12 lg:pl-16 xl:pl-20 2xl:pl-24"
                             placeholder="Search for an industry"
                             value={searchInput}
                             onChange={handleInputChange}
+                            onKeyPress={handleKeyPress}
+                        />
+
+                        <input
+                            type="text"
+                            className="searchBar bg-slate-200 dark:bg-transparent dark:border-slate-400 dark:border-2 w-48 2xl:h-[4.5rem] lg:h-[3.5rem] h-[2.5rem] 2xl:text-xl text-base rounded-full pl-4"
+                            placeholder="Company (optional)"
+                            value={companyInput}
+                            onChange={handleInputChange2}
                             onKeyPress={handleKeyPress}
                         />
                         <Search className="h-4 w-4 lg:h-6 lg:w-6 2xl:h-8 2xl:w-8 absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400" />
