@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import logo from '../app/assets/fynopsis_noBG.png'
-import { Select, MenuItem, FormControl } from '@mui/material';
+import { Select, MenuItem, FormControl, SelectChangeEvent } from '@mui/material';
 import { styled } from '@mui/material/styles';
 import { Separator } from './ui/separator';
 import CompanyListing from './CompanyListing';
@@ -60,9 +60,12 @@ const StyledSelect = styled(Select)(({ theme }) => ({
     },
 }));
 
-const TimeSelector = ({ timeFrame, setTimeFrame }) => {
-    const handleChange = (event) => {
-        setTimeFrame(event.target.value);
+const TimeSelector = ({ timeFrame, setTimeFrame }: {
+    timeFrame: string;
+    setTimeFrame: (value: string) => void;
+}) => {
+    const handleChange = (event: SelectChangeEvent<unknown>) => {
+        setTimeFrame(event.target.value as string);
     };
 
     return (
@@ -83,6 +86,12 @@ const TimeSelector = ({ timeFrame, setTimeFrame }) => {
     );
 };
 
+interface Company {
+    "Company Name": string;
+    "Company URL": string;
+    "LinkedIn URL": string;
+    "Number of Employees": string;
+}
 
 const Industry: React.FC<IndustryProps> = ({
     industryName,
@@ -96,16 +105,21 @@ const Industry: React.FC<IndustryProps> = ({
     const [industryInfoYear, setIndustryInfoYear] = useState('');
     const [isLoading, setIsLoading] = useState(true);
     const [timeFrame, setTimeFrame] = useState('24 hours');
-    const [majorPlayers, setMajorPlayers] = useState([]);
+    const [majorPlayers, setMajorPlayers] = useState<Company[]>([]);
     const [isMajorPlayersLoading, setIsMajorPlayersLoading] = useState(true);
-    const [similarCompanies, setSimilarCompanies] = useState([]);
+    const [similarCompanies, setSimilarCompanies] = useState<Company[]>([]);
     const [similarCompaniesLoading, setSimilarCompaniesLoading] = useState(true);
     const [mcap, setMcap] = useState('');
     const [cagr, setCagr] = useState('');
     const [industryMetricsLoading, setIndustryMetricsLoading] = useState(true);
-    const [regInnovData, setRegInnovData] = useState([]);
+    const [regInnovData, setRegInnovData] = useState<Array<{ Type: string; Date: string; ShortDescription: string; LongDescription: string }>>([]);
     const [regInnovLoading, setRegInnovLoading] = useState(true);
-    const [selectedRegInnov, setSelectedRegInnov] = useState(null);
+    const [selectedRegInnov, setSelectedRegInnov] = useState<{
+        Type: string;
+        Date: string;
+        ShortDescription: string;
+        LongDescription: string;
+    } | null>(null);
     const [loadingProgress, setLoadingProgress] = useState(0);
     const [isOverallLoading, setIsOverallLoading] = useState(true);
     const [isActualLoadingComplete, setIsActualLoadingComplete] = useState(false);
@@ -142,7 +156,12 @@ const Industry: React.FC<IndustryProps> = ({
         }, interval);
     };
 
-    const handleRegInnovClick = (item) => {
+    const handleRegInnovClick = (item: {
+        Type: string;
+        Date: string;
+        ShortDescription: string;
+        LongDescription: string;
+    }) => {
         setSelectedRegInnov(item);
     };
 
@@ -177,7 +196,7 @@ const Industry: React.FC<IndustryProps> = ({
         }
     };
 
-    function parseIndustryMetrics(metricsString) {
+    function parseIndustryMetrics(metricsString: string) {
         try {
             const parsedMetrics = JSON.parse(metricsString);
             
@@ -399,7 +418,7 @@ Please ensure the information is accurate and up-to-date. Sort the list by date,
         }
     }
 
-    function parseMajorPlayers(response) {
+    function parseMajorPlayers(response: string) {
         // console.log("Response: " + response);
         try {
             const parsedResponse = JSON.parse(response);
@@ -433,7 +452,7 @@ Please ensure the information is accurate and up-to-date. Sort the list by date,
         
     }
 
-    function formatNumber(num, isPercentage = false) {
+    function formatNumber(num: number, isPercentage = false) {
         if (isPercentage) {
             return num.toFixed(1) + '%';
         }
@@ -508,7 +527,7 @@ Please ensure the information is accurate and up-to-date. Sort the list by date,
 
                 if (regInnovInfo) {
                     const parsedRegInnovData = parseRegInnovData(regInnovInfo);
-                    setRegInnovData(parsedRegInnovData);
+                    setRegInnovData(parsedRegInnovData as never[]);
                 }
 
 
@@ -564,7 +583,7 @@ Please ensure the information is accurate and up-to-date. Sort the list by date,
         }
     }, [isActualLoadingComplete, loadingProgress]);
 
-    function parseRegInnovData(response) {
+    function parseRegInnovData(response: string) {
         try {
             const parsedResponse = JSON.parse(response);
             
@@ -590,7 +609,12 @@ Please ensure the information is accurate and up-to-date. Sort the list by date,
         }
     }
 
-    const SideScreen = ({ item, onClose }) => (
+    const SideScreen = ({ item, onClose }: { item: { 
+        Type: string, 
+        Date: string, 
+        ShortDescription: string,
+        LongDescription: string 
+    } | null, onClose: () => void }) => (
         <div 
             className={`fixed right-0 top-0 h-full w-1/3 bg-white dark:bg-slate-800 p-4 shadow-lg transform transition-transform duration-300 ease-in-out ${
                 item ? 'translate-x-0' : 'translate-x-full'
@@ -601,13 +625,13 @@ Please ensure the information is accurate and up-to-date. Sort the list by date,
                     <button onClick={onClose} className="absolute top-4 right-4">Close</button>
                     <h2 className="text-xl font-bold mb-2">{item.Type}</h2>
                     <p className="text-sm mb-4">{item.Date}</p>
-                    <p>{item['Long Description']}</p>
+                    <p>{item['LongDescription']}</p>
                 </>
             )}
         </div>
     );
 
-    const LoadingOverlay = ({ progress }) => (
+    const LoadingOverlay = ({ progress }: { progress: number }) => (
         <div className="absolute inset-0 bg-white flex items-center justify-center z-50">
             <div className="bg-white dark:bg-slate-800 p-6 rounded-lg shadow-lg w-80">
                 <div className="w-full bg-gray-200 rounded-full h-2.5 mb-4">

@@ -198,7 +198,7 @@ const Stock: React.FC<StockProps> = ({
     handleKeyPress(inputValue, setInputValue, handleSendQueryWrapper)(event);
 
   const handleSendQueryWrapper = (userMessage: string) =>
-    handleSendQuery(userMessage, setIsLoadingAboutText, setAboutCompanyText);
+      handleSendQuery(userMessage, setIsLoadingAboutText as React.Dispatch<React.SetStateAction<boolean>>, setAboutCompanyText as React.Dispatch<React.SetStateAction<string>>);
 
   const handleStockDataWrapper = () =>
     handleStockData(
@@ -236,7 +236,7 @@ const Stock: React.FC<StockProps> = ({
   useEffect(() => {
     // Send initial query when component mounts
     setStockHistory(generateFlatLineData(100))
-    handleSendQuery(`Provide a brief summary about ${longName}... (ensure that it is a maximum of 3 sentences long)`, setIsLoadingAboutText, setAboutCompanyText);
+    handleSendQuery(`Provide a brief summary about ${longName}... (ensure that it is a maximum of 3 sentences long)`, setIsLoadingAboutText as React.Dispatch<React.SetStateAction<boolean>>, setAboutCompanyText as React.Dispatch<React.SetStateAction<string>>);
     handleStockDataWrapper();
 
    
