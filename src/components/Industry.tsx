@@ -8,6 +8,8 @@ import RegInnov from './RegInnov';
 import { post } from 'aws-amplify/api';
 import { fetchAuthSession } from 'aws-amplify/auth';
 import { Skeleton } from './ui/skeleton';
+import { ConsoleLogger } from 'aws-amplify/utils';
+import { CodeSquare } from 'lucide-react';
 
 
 
@@ -177,27 +179,28 @@ const Industry: React.FC<IndustryProps> = ({
 
     function parseIndustryMetrics(metricsString) {
         try {
-            const parsedMetrics = JSON.parse(metricsString).message.split('\n');
-            const mcapValue = parsedMetrics[0].split(': ')[1];
-            const cagrValue = parsedMetrics[1].split(': ')[1];
-
-            const mcap = parseFloat(mcapValue);
-            const cagr = parseFloat(cagrValue);
-
+            const parsedMetrics = JSON.parse(metricsString);
+            
+            // If the response is wrapped in a 'message' field, parse it
+            const metrics = parsedMetrics.message ? JSON.parse(parsedMetrics.message) : parsedMetrics;
+    
+            const mcap = parseFloat(metrics.MCAP);
+            const cagr = parseFloat(metrics.CAGR);
+    
             if (isNaN(mcap) || isNaN(cagr)) {
                 throw new Error('Invalid numeric values');
             }
-
+    
             // MCAP should be a large number (assuming it's in USD)
             if (mcap < 1000000) { // Assuming MCAP should be at least 1 million
                 throw new Error('MCAP value seems too low');
             }
-
+    
             // CAGR should be a percentage between -100 and 100
             if (cagr < -100 || cagr > 100) {
                 throw new Error('CAGR value out of expected range');
             }
-
+    
             return {
                 mcap: formatNumber(mcap),
                 cagr: formatNumber(cagr, true)
@@ -252,29 +255,15 @@ const Industry: React.FC<IndustryProps> = ({
                             Authorization: accessTokens
                         },
                         body: {
-                            query: `As a financial analysis agent, provide a detailed list of the 5-6 major companies in the ${industry} industry. For each company, include the following information (ensure that the entire LinkedIn URL is returned and accurate):
-    
-    Company Name:
-    Company URL:
-    LinkedIn URL:
-    Number of Employees:
-    
-    Please ensure the information is accurate and up-to-date and that no paragraphs are returned before or after the list of major players. Format the response as a list with each company's details clearly separated. The following is an example:
-    
-    Company Name: Apple Inc.
-    Company URL: apple.com
-    LinkedIn URL: linkedin.com/apple
-    Number of Employees: 147,000
-    
-    Company Name: Samsung Electronics
-    Company URL: samsung.com
-    LinkedIn URL: linkedin.com/samsung
-    Number of Employees: 287,000
-    
-    Company Name: Huawei Technologies
-    Company URL: huawei.com
-    LinkedIn URL: linkedin.com/huawei
-    Number of Employees: 194,000`
+                            query: `As a financial analysis agent, provide a detailed list of the 5-6 major companies in the ${industry} industry. For each company, include the following information:
+
+Company Name
+Company URL
+LinkedIn URL
+Number of Employees
+
+Please ensure the information is accurate and up-to-date. Return the response in JSON format, with an array of company objects. Each object should have the properties: "Company Name", "Company URL", "LinkedIn URL", and "Number of Employees". The response should not include any additional text before or after the JSON data. Here's an example of the expected format:
+{"companies": [{"Company Name": "Apple Inc.", "Company URL": "apple.com", "LinkedIn URL": "linkedin.com/company/apple", "Number of Employees": 147000}, {"Company Name": "Samsung Electronics", "Company URL": "samsung.com", "LinkedIn URL": "linkedin.com/company/samsung-electronics", "Number of Employees": 287000}]}`
                         }
                     }
                 });
@@ -306,28 +295,14 @@ const Industry: React.FC<IndustryProps> = ({
                         },
                         body: {
                             query: `As a financial analysis agent, provide a detailed list of 5-6 companies similar to ${company}. For each company, include the following information (ensure that the entire LinkedIn URL is returned and accurate):
-    
-    Company Name:
-    Company URL:
-    LinkedIn URL:
-    Number of Employees:
-    
-    Please ensure the information is accurate and up-to-date and that no paragraphs are returned before or after the list of major players. Format the response as a list with each company's details clearly separated. The following is an example:
-    
-    Company Name: Apple Inc.
-    Company URL: apple.com
-    LinkedIn URL: linkedin.com/apple
-    Number of Employees: 147,000
-    
-    Company Name: Samsung Electronics
-    Company URL: samsung.com
-    LinkedIn URL: linkedin.com/samsung
-    Number of Employees: 287,000
-    
-    Company Name: Huawei Technologies
-    Company URL: huawei.com
-    LinkedIn URL: linkedin.com/huawei
-    Number of Employees: 194,000`
+
+                            Company Name
+                            Company URL
+                            LinkedIn URL
+                            Number of Employees
+                            
+                            Please ensure the information is accurate and up-to-date. Return the response in JSON format, with an array of company objects. Each object should have the properties: "Company Name", "Company URL", "LinkedIn URL", and "Number of Employees". The response should not include any additional text before or after the JSON data. Here's an example of the expected format:
+                            {"companies": [{"Company Name": "Apple Inc.", "Company URL": "apple.com", "LinkedIn URL": "linkedin.com/company/apple", "Number of Employees": 147000}, {"Company Name": "Samsung Electronics", "Company URL": "samsung.com", "LinkedIn URL": "linkedin.com/company/samsung-electronics", "Number of Employees": 287000}]}`
                         }
                     }
                 });
@@ -360,12 +335,11 @@ const Industry: React.FC<IndustryProps> = ({
                             Authorization: accessTokens
                         },
                         body: {
-                            query: `As a financial analysis agent, provide the current market capitalization (MCAP) and compound annual growth rate (CAGR) for the ${industry} industry. Please provide only the numbers without any additional text or explanation. Format the response as follows:
+                            query: `As a financial analysis agent, provide the current market capitalization (MCAP) and compound annual growth rate (CAGR) for the ${industry} industry. Please return the response in JSON format with the following structure:
 
-MCAP: [value in USD]
-CAGR: [value as percentage]
+{"MCAP": [value in USD], "CAGR": [value as percentage]}
 
-Ensure that the values are accurate and up-to-date. The MCAP should be a dollar amount (e.g., 109000000000 for 109 billion USD) and the CAGR should be a percentage (e.g., 5.2 for 5.2%).`
+Ensure that the values are accurate and up-to-date. The MCAP should be a dollar amount (e.g., 109000000000 for 109 billion USD) and the CAGR should be a percentage (e.g., 5.2 for 5.2%). The response should not include any additional text before or after the JSON data.`
                         }
                     }
                 });
@@ -398,19 +372,15 @@ Ensure that the values are accurate and up-to-date. The MCAP should be a dollar 
                             Authorization: accessTokens
                         },
                         body: {
-                            query: `As a financial analysis agent, provide a list of 5-6 recent regulations and innovations in the ${industry} industry. For each item, include the following information:
+                            query: `As a financial analysis agent, provide a list of 5-6 recent regulations and innovations in the ${industry} industry. Return the response in JSON format as an array of objects. Each object should have the following properties:
 
-Type: [Regulation or Innovation]
-Date: [MM/DD/YYYY]
-Short Description: [One-sentence description]
-Long Description: [A paragraph or two with more details]
+Type: "Regulation" or "Innovation"
+Date: In "MM/DD/YYYY" format
+ShortDescription: A one-sentence description
+LongDescription: A paragraph or two with more details
 
-Please ensure the information is accurate and up-to-date. Format the response as a list with each item's details clearly separated. Sort the list by date, with the most recent items first. MAKE SURE NOT TO LIST THEM WITH DASHES (-), you must follow the format. Here is an example:
-
-Type: Regulation
-Date: 05/13/2023
-Short Description: US Congress has lifted import tariffs on dairy products from China and Russia.
-Long Description: In a significant move affecting the dairy industry, the US Congress has approved legislation to remove import tariffs on dairy products originating from China and Russia. This decision is expected to lead to an unprecedented influx of milk, cheese, and other dairy products into US markets. The policy change aims to increase competition and potentially lower prices for consumers, but it has raised concerns among domestic dairy farmers about the impact on their businesses. Industry analysts predict this could reshape the landscape of the US dairy market over the coming years.`
+Please ensure the information is accurate and up-to-date. Sort the list by date, with the most recent items first. The response should not include any additional text before or after the JSON data. Here's an example of the expected format:
+[{"Type": "Regulation", "Date": "05/13/2023", "ShortDescription": "US Congress has lifted import tariffs on dairy products from China and Russia.", "LongDescription": "In a significant move affecting the dairy industry, the US Congress has approved legislation to remove import tariffs on dairy products originating from China and Russia. This decision is expected to lead to an unprecedented influx of milk, cheese, and other dairy products into US markets. The policy change aims to increase competition and potentially lower prices for consumers, but it has raised concerns among domestic dairy farmers about the impact on their businesses. Industry analysts predict this could reshape the landscape of the US dairy market over the coming years."}, {"Type": "Innovation", "Date": "04/02/2023", "ShortDescription": "New probiotic yogurt with extended shelf life developed.", "LongDescription": "A team of food scientists has successfully created a new probiotic yogurt that maintains its beneficial bacterial cultures for up to six months without refrigeration. This breakthrough is expected to revolutionize yogurt distribution and accessibility, especially in regions with limited cold storage capabilities. The innovation involves a novel encapsulation technique that protects the probiotic bacteria from environmental stressors, allowing them to remain viable for extended periods at room temperature. This development could significantly expand the global market for probiotic dairy products and improve access to nutritious foods in developing countries."}]`
                         }
                     }
                 });
@@ -430,24 +400,37 @@ Long Description: In a significant move affecting the dairy industry, the US Con
     }
 
     function parseMajorPlayers(response) {
-        const parsedResponse = JSON.parse(response);
-        const message = parsedResponse.message;
-        const companies = message.trim().split('\n\n');
-
-        return companies.map(company => {
-            const lines = company.split('\n');
-            const companyData = {};
-            lines.forEach(line => {
-                const [key, value] = line.split(': ');
-                if (key.trim() === 'Number of Employees') {
-                    const numEmployees = parseInt(value.replace(/,/g, ''), 10);
-                    companyData[key.trim()] = formatNumber(numEmployees);
-                } else {
-                    companyData[key.trim()] = value.trim();
-                }
+        // console.log("Response: " + response);
+        try {
+            const parsedResponse = JSON.parse(response);
+            console.log("Parsed response:", parsedResponse);
+    
+            // The actual data is nested in a JSON string inside the "message" field
+            const messageContent = JSON.parse(parsedResponse.message);
+            console.log("Parsed message content:", messageContent);
+    
+            const companies = messageContent.companies || [];
+    
+            if (!Array.isArray(companies)) {
+                console.error('Unexpected response structure:', messageContent);
+                return [];
+            }
+    
+            console.log("Companies:", companies);
+    
+            return companies.map(company => {
+                return {
+                    "Company Name": company["Company Name"] || '',
+                    "Company URL": company["Company URL"] || '',
+                    "LinkedIn URL": company["LinkedIn URL"] || '',
+                    "Number of Employees": formatNumber(company["Number of Employees"])
+                };
             });
-            return companyData;
-        });
+        } catch (error) {
+            console.error('Error parsing response:', error);
+            return [];
+        }
+        
     }
 
     function formatNumber(num, isPercentage = false) {
@@ -582,19 +565,29 @@ Long Description: In a significant move affecting the dairy industry, the US Con
     }, [isActualLoadingComplete, loadingProgress]);
 
     function parseRegInnovData(response) {
-        const parsedResponse = JSON.parse(response);
-        const message = parsedResponse.message;
-        const items = message.trim().split('\n\n');
-
-        return items.map(item => {
-            const lines = item.split('\n');
-            const itemData = {};
-            lines.forEach(line => {
-                const [key, value] = line.split(': ');
-                itemData[key.trim()] = value.trim();
-            });
-            return itemData;
-        });
+        try {
+            const parsedResponse = JSON.parse(response);
+            
+            // If the response is already an array, use it directly
+            // Otherwise, try to parse the 'message' field if it exists
+            const items = Array.isArray(parsedResponse) ? parsedResponse :
+                          (parsedResponse.message ? JSON.parse(parsedResponse.message) : []);
+    
+            if (!Array.isArray(items)) {
+                console.error('Unexpected response structure:', parsedResponse);
+                return [];
+            }
+    
+            return items.map(item => ({
+                Type: item.Type || '',
+                Date: item.Date || '',
+                ShortDescription: item.ShortDescription || '',
+                LongDescription: item.LongDescription || ''
+            }));
+        } catch (error) {
+            console.error('Error parsing response:', error);
+            return [];
+        }
     }
 
     const SideScreen = ({ item, onClose }) => (
@@ -735,8 +728,8 @@ Long Description: In a significant move affecting the dairy industry, the US Con
                                 key={index}
                                 type={item.Type}
                                 date={item.Date}
-                                info={item['Short Description']}
-                                longInfo={item['Long Description']}
+                                info={item['ShortDescription']}
+                                longInfo={item['LongDescription']}
                                 onClick={() => handleRegInnovClick(item)}
                             />
                         ))
