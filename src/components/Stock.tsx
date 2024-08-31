@@ -488,7 +488,7 @@ const Stock: React.FC<StockProps> = ({
                 value={inputValue}
                 onChange={handleInputChangeQ}
                 onKeyDown={handleKeyPressQ}
-                className="w-3/4 h-12 2xl:h-14 2xl:text-lg bg-slate-100 dark:bg-slate-900 rounded-full pl-12 2xl:pl-16 text-sm"
+                className="w-3/4 h-12 2xl:h-14 2xl:text-lg bg-slate-100 dark:bg-slate-900 border-slate-100 border rounded-full pl-12 2xl:pl-16 text-sm"
                 placeholder='Ask a question...'
               />
 

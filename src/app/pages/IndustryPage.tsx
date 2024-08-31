@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
-import { Search, Menu, LogOut, SettingsIcon } from "lucide-react";
+import { Search, Menu, LogOut, SettingsIcon, Factory } from "lucide-react";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import logo from "../assets/fynopsis_noBG.png";
 import { fetchUserAttributes, FetchUserAttributesOutput } from 'aws-amplify/auth';
@@ -72,7 +72,7 @@ export default function IndustrySearch({ setSelectedTab }: { setSelectedTab: Rea
     return (
         <ScrollArea className="h-screen w-full sans-serif">
             <div className="flex flex-col min-h-screen w-full xl:px-4 2xl:px-8 ">
-                <div className="flex-none w-full inline-block py-4 2xl:py-8 xl:py-6 flex justify-center items-center relative">
+                <div className="flex-none w-full inline-block py-4 2xl:py-8 xl:py-6 flex justify-center  relative">
                     {/* Menu icon and Sheet for smaller screens */}
                     <div className="absolute left-4 lg:hidden">
                         <Sheet>
@@ -91,22 +91,24 @@ export default function IndustrySearch({ setSelectedTab }: { setSelectedTab: Rea
                                     <h2 className="text-lg font-semibold px-4">Menu</h2>
                                     <div className="flex-1">
                                         <nav className="grid items-start px-2 lg:text-base xl:text-lg 2xl:text-2xl font-medium lg:px-4">
+                                        <Link
+                                                href="#"
+                                                className="flex items-center gap-3 rounded-lg px-3 py-2 transition-all hover:text-primary"
+                                                onClick={() => handleTabChange("stockSearch")}
+                                            >
+                                                <Search className="h-4 w-4 2xl:h-6 2xl:w-6" />
+                                                Stock Search
+                                            </Link>
                                             <Link
                                                 href="#"
                                                 className="flex items-center gap-3 rounded-lg px-3 py-2 transition-all hover:text-primary"
                                                 onClick={() => handleTabChange("industrySearch")}
                                             >
-                                                <Search className="h-4 w-4 2xl:h-6 2xl:w-6" />
+                                                <Factory className="h-4 w-4 2xl:h-6 2xl:w-6" />
                                                 Industry Search
                                             </Link>
-                                            <Link
-                                                href="#"
-                                                className="flex items-center gap-3 rounded-lg px-3 py-2 transition-all hover:text-primary"
-                                                onClick={() => handleTabChange("settings")}
-                                            >
-                                                <SettingsIcon className="h-4 w-4 2xl:h-6 2xl:w-6" />
-                                                Settings
-                                            </Link>
+
+                                           
                                         </nav>
                                     </div>
                                     <div className="absolute bottom-0 w-full flex">
@@ -120,10 +122,10 @@ export default function IndustrySearch({ setSelectedTab }: { setSelectedTab: Rea
                         </Sheet>
                     </div>
 
-                    <div className="flex flex-row gap-4 relative w-[70%] lg:w-[60%] ">
+                    <div className="flex flex-col items-center md:justify-center md:flex-row gap-4 relative w-[80%] lg:w-[100%] ">
                         <input
                             type="text"
-                            className="searchBar bg-slate-200 dark:bg-transparent dark:border-slate-400 dark:border-2 w-96 2xl:h-[4.5rem] lg:h-[3.5rem] h-[2.5rem] 2xl:text-xl text-lg rounded-full pl-12 lg:pl-16 xl:pl-20 2xl:pl-24"
+                            className="searchBar bg-slate-200 dark:bg-transparent dark:border-slate-400 dark:border-2 w-[80%] md:w-[50%] 2xl:h-[4.5rem] lg:h-[3.5rem] md:h-[3rem] h-[2.5rem] 2xl:text-xl lg:text-base md:text-sm text-xs rounded-full pl-10 sm:pl-12 md:pl-16 2xl:pl-20"
                             placeholder="Search for an industry"
                             value={searchInput}
                             onChange={handleInputChange}
@@ -132,13 +134,13 @@ export default function IndustrySearch({ setSelectedTab }: { setSelectedTab: Rea
 
                         <input
                             type="text"
-                            className="searchBar bg-slate-200 dark:bg-transparent dark:border-slate-400 dark:border-2 w-48 2xl:h-[4.5rem] lg:h-[3.5rem] h-[2.5rem] 2xl:text-xl text-base rounded-full pl-4"
+                            className="searchBar bg-slate-200 dark:bg-transparent dark:border-slate-400 dark:border-2 w-[50%] md:w-[25%] 2xl:h-[4.5rem] lg:h-[3.5rem] md:h-[3rem] h-[2.5rem] 2xl:text-xl lg:text-base md:text-sm text-xs rounded-full text-center"
                             placeholder="Company (optional)"
                             value={companyInput}
                             onChange={handleInputChange2}
                             onKeyPress={handleKeyPress}
                         />
-                        <Search className="h-4 w-4 lg:h-6 lg:w-6 2xl:h-8 2xl:w-8 absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                        <Search className="h-4 w-4 lg:h-6 lg:w-6 2xl:h-8 2xl:w-8 absolute left-[14%] md:top-1/2 top-[20%] transform -translate-y-1/2 text-gray-400" />
                     </div>
                 </div>
                 {/* Add your industry search content here if needed */}

@@ -10,7 +10,7 @@ const IndustryButton: React.FC<IndustryButtonProps> = ({ industryName, isLoading
   return (
     <button
       onClick={onClick}
-      className="px-4 py-1 border border-black rounded-full transition-colors hover:bg-gray-100"
+      className="px-4 py-1 border border-black dark:border-none dark:bg-sky-700 rounded-full transition-colors hover:bg-gray-100"
       disabled={isLoading}
     >
       {isLoading ? (

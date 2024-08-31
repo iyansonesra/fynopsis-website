@@ -5,7 +5,7 @@ import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import RecentNews from "@/components/RecentNews";
 import RecentSearch from "@/components/RecentSearch";
-import { Search, Menu, LogOut, SettingsIcon } from "lucide-react";
+import { Search, Menu, LogOut, SettingsIcon, Factory } from "lucide-react";
 import PinnedCompany from "@/components/PinnedCompanies";
 import Stock from '@/components/Stock';
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
@@ -174,10 +174,10 @@ export default function StockSearch({ setSelectedTab }: { setSelectedTab: React.
                                             <Link
                                                 href="#"
                                                 className="flex items-center gap-3 rounded-lg px-3 py-2 transition-all hover:text-primary"
-                                                onClick={() => handleTabChange("settings")}
+                                                onClick={() => handleTabChange("industryPage")}
                                             >
-                                                <SettingsIcon className="h-4 w-4 2xl:h-6 2xl:w-6" />
-                                                Settings
+                                                <Factory className="h-4 w-4 2xl:h-6 2xl:w-6" />
+                                                Industry Search
                                             </Link>
                                         </nav>
                                     </div>
