@@ -293,10 +293,6 @@ const CustomGraph: React.FC<CustomGraphProps> = ({
         return (percentageChangeNumber >= 0) ? '#4CAF50' : '#F44336'; // Green for positive, Red for negative
     };
 
-
-
-
-
     return (
         <div ref={containerRef} style={{ width, height, position: 'relative' }}>
             <ResponsiveContainer width="100%" height="100%">

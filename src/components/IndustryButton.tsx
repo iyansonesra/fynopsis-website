@@ -10,11 +10,11 @@ const IndustryButton: React.FC<IndustryButtonProps> = ({ industryName, isLoading
   return (
     <button
       onClick={onClick}
-      className="px-4 py-1 border border-black dark:border-none dark:bg-sky-700 rounded-full transition-colors hover:bg-gray-100"
+      className="px-4 py-1 dark:border-none dark:bg-sky-700 bg-slate-100 rounded-full transition-colors hover:bg-gray-100"
       disabled={isLoading}
     >
       {isLoading ? (
-        <Skeleton className="w-20 h-4" />
+        <Skeleton className="w-20 h-6 p-0 dark:bg-sky-700 rounded-full" />
       ) : (
         <h1 className="text-sm">{industryName}</h1>
       )}

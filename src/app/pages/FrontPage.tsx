@@ -37,8 +37,8 @@ export default function FrontPage() {
     }
 
     return (
-        <div className="relative h-screen w-full flex flex-col justify-center sans-serif select-none ">
-            <div className="fixed top-0 left-0 right-0 h-20 md:h-20 xl:h-24 bg-white dark:bg-slate-900 bg-opacity-98 w-full flex items-center justify-between 2xl:px-16 xl:px-12 md:px-8 sm:px-4 shadow-md px-4 z-50">
+        <div className="relative h-screen w-full flex flex-col justify-center sans-serif ">
+            <div className="fixed top-0 left-0 right-0 h-20 md:h-20 xl:h-24 bg-white dark:bg-slate-900 bg-opacity-98 w-full flex items-center justify-between 2xl:px-16 xl:px-12 md:px-8 sm:px-4 shadow-md px-4 z-50  select-none">
                 <div className="flex flex-row items-center">
                     <img src={logo.src} alt="logo" className="md:h-12 md:w-auto w-[10%] h-auto" />
                     <h1 className="font-semibold text-xl sm:text-2xl md:text-3xl">Fynopsis</h1>

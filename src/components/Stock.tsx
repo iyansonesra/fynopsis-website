@@ -82,9 +82,7 @@ const Stock: React.FC<StockProps> = ({
   const [answer, setAnswer] = useState<string>();
   const [query, setQuery] = useState<string>();
   // const [companyName, setCompanyName] = useState<string>('-');
-  const [companyDescription, setCompanyDescription] = useState<string>();
   const [inputValue, setInputValue] = useState('');
-  const scrollRef = useRef<HTMLDivElement>(null);
   const [showDealHistory, setShowDealHistory] = useState(false);
   const [showLearnMore, setShowLearnMore] = useState(false);
   const [deals, setDeals] = useState([
@@ -97,7 +95,6 @@ const Stock: React.FC<StockProps> = ({
   const [isInitialLoad, setIsInitialLoad] = useState(true);
   const [dateInfoLoaded, setDateInfoLoaded] = useState(false);
   const [relevantLinks, setRelevantLinks] = useState<{ title: string; url: string }[]>([]);
-  const [relevantLinksLoaded, setRelevantLinksLoaded] = useState(false);
   const [industryButtonLoaded, setIndustryButtonLoaded] = useState(false);
   const [selectedTimeframe, setSelectedTimeframe] = useState('MAX');
   const [markerResponses, setMarkerResponses] = useState<MarkerResponse[]>([]);
@@ -124,6 +121,9 @@ const Stock: React.FC<StockProps> = ({
   const [qLoading, setQLoading] = useState(false);
   const [questionResponse, setQuestionResponse] = useState('');
   const [showIndustry, setShowIndustry] = useState(false);
+  const [recentNews, setRecentNews] = useState(false);
+  const [recentNewsSources, setRecentNewsSources] = useState<{ title: string; url: string }[]>([]);
+  const [isLoadingRecentNews, setIsLoadingRecentNews] = useState(true);
 
   const handleInputChangeQ = (event: React.ChangeEvent<HTMLInputElement>) => {
     setInputValue(event.target.value);
@@ -234,16 +234,7 @@ const Stock: React.FC<StockProps> = ({
       setDisplayedData(horizontalLineData);
 
       // After 2 seconds, switch to original data
-      const timer = setTimeout(() => {
-        // setDisplayedData(allData);
-        setIsInitialLoad(false);
-        setDateInfoLoaded(true);
-        setRelevantLinksLoaded(true);
-        setIndustryButtonLoaded(true);
-      }, 2000);
-
-      // Clean up timer
-      return () => clearTimeout(timer);
+   
     }
   }, [isInitialLoad, allData]);
 
@@ -286,7 +277,6 @@ const Stock: React.FC<StockProps> = ({
       filterDataByTimeframe,
       findTopVolumeMonths
     );
-
 
   useEffect(() => {
     // Send initial query when component mounts
@@ -377,13 +367,69 @@ const Stock: React.FC<StockProps> = ({
 
         setMarkerResponses(prev => [...prev, ...validResponses]);
         setIsLoadingMarkerData(false);
+        setDateInfoLoaded(true);
         dataFetchedRef.current = true;
       }
     }
 
-
     fetchMarkerData();
   }, [importantMarkers, companyName]);
+
+  const fetchRecentNews = async () => {
+    setIsLoadingRecentNews(true);
+    try {
+      const accessToken = await handleFetchAccess();
+      if (!accessToken) {
+        console.error('Failed to fetch access token.');
+        return;
+      }
+
+      const restOperation = post({
+        apiName: 'testAPI',
+        path: '/postAgent',
+        options: {
+          headers: {
+            Authorization: accessToken
+          },
+          body: {
+            query: `Provide a brief summary of the most recent news (last 7 days) for ${longName}. Include any significant events, financial updates, or market trends that could impact the stock. Limit the response to 3-4 sentences.
+
+            After your summary, you must provide a "Sources:" section with 1-3 relevant links to news articles from the provided data, formatted exactly as follows:
+            Sources:
+            1. "Title of Article 1" [URL1]
+            2. "Title of Article 2" [URL2]
+            3. "Title of Article 3" [URL3]`
+          }
+        }
+      });
+
+      const { body } = await restOperation.response;
+      const responseText = await body.text();
+      const responseMain = JSON.parse(responseText);
+
+      if (responseMain && responseMain.body) {
+        const innerBody = JSON.parse(responseMain.body);
+        if (innerBody && innerBody.message) {
+          const links = extractRelevantLinks(innerBody.message);
+          const contentWithoutSources = innerBody.message.split('Sources:')[0].trim();
+          setRecentNews(contentWithoutSources);
+          setRecentNewsSources(links);
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching recent news:', error);
+      setRecentNews('Unable to fetch recent news at this time.');
+      setRecentNewsSources([]);
+    } finally {
+      setIsLoadingRecentNews(false);
+    }
+  };
+
+  useEffect(() => {
+    if (longName !== "-") {
+      fetchRecentNews();
+    }
+  }, [longName]);
 
   useEffect(() => {
     if (selectedMarkerDate) {
@@ -468,13 +514,13 @@ const Stock: React.FC<StockProps> = ({
         <div className="flex-[4] w-full flex flex-col font-sans 2xl:gap-2">
           <div className="flex flex-row justify-between">
             <h1 className="font-semibold 2xl:text-2xl">
-              {selectedMarkerDate
+              {showLearnMore ? "Learn More" : selectedMarkerDate
                 ? format(new Date(selectedMarkerDate), 'MMMM d, yyyy')
                 : "Recent News"}
             </h1>
             <button
               onClick={() => setShowLearnMore(!showLearnMore)}
-              className={`px-4 border border-black rounded-full transition-colors ${showLearnMore ? 'bg-sky-700 text-sky-100' : 'bg-transparent text-sky-700 border-sky-700'}`}
+              className={`px-4 border border-black rounded-full transition-colors ${showLearnMore ? 'bg-sky-700 text-sky-100 border-none' : 'bg-transparent dark:text-sky-700 dark:border-sky-700'}`}
             >
               <h1 className="2xl:text-xl">Learn More</h1>
             </button>
@@ -506,22 +552,26 @@ const Stock: React.FC<StockProps> = ({
           ) : (
             <>
               {dateInfoLoaded ? (
-                <ScrollArea className='h-[12rem] md:h-[12rem] text-slate-600 text-[.8rem] font-light dark:text-slate-200 2xl:text-xl mb-4'>
-                  {selectedMarkerDate ? (
-                    isLoadingMarkerData ? (
-                      <Skeleton className="w-full h-full rounded" />
-                    ) : (
-                      <ReactMarkdown>
-                        {markerResponses.find(response => response.date === selectedMarkerDate)?.content ||
-                          "No information available for this date."
-                        }
-                      </ReactMarkdown>
-
-
-                    )
-                  ) : (
-                    "Select a date to view information."
-                  )}
+                <ScrollArea className='h-[12rem] md:h-[12rem] items-center justify-center text-slate-600 text-[.8rem] flex font-light dark:text-slate-200 2xl:text-xl mb-4'>
+                 {selectedMarkerDate ? (
+                isLoadingMarkerData ? (
+                  <div className="w-full h-[12rem] md:h-[12rem] flex items-center justify-center">
+                    <CircularProgress />
+                  </div>
+                ) : (
+                  <ReactMarkdown>
+                    {markerResponses.find(response => response.date === selectedMarkerDate)?.content ||
+                      "No information available for this date."
+                    }
+                  </ReactMarkdown>
+                )
+              ) : isLoadingRecentNews ? (
+                <div className="w-full h-[12rem] md:h-[12rem] flex items-center justify-center">
+                  <CircularProgress />
+                </div>
+              ) : (
+                <ReactMarkdown>{recentNews || "No recent news available."}</ReactMarkdown>
+              )}
                 </ScrollArea>
               ) : (
                 <>
@@ -538,15 +588,27 @@ const Stock: React.FC<StockProps> = ({
               <div className="flex inline-block relative">
                 <ScrollArea className="flex flex-row pb-4 pt-2 w-[90vw] md:w-[50vw] 2xl:w-[50vw] md:w-[65vw] lg:w-[50vw]">
                   <div className="flex flex-row h-full gap-4 justify-center ">
-                    {relevantLinks.map((link, index) => (
-                      <RelevantLink
-                        key={index}
-                        title={link.title}
-                        url={link.url}
-                        linkDescription=""
-                        isLoading={!relevantLinksLoaded}
-                      />
-                    ))}
+
+                    {dateInfoLoaded ? (
+                      relevantLinks.map((link, index) => (
+                        <RelevantLink
+                          key={index}
+                          title={link.title}
+                          url={link.url}
+                          linkDescription=""
+                          isLoading={false}
+                        />
+                      ))
+                    ) : (
+                      // Show skeletons while loading
+                      Array(3).fill(null).map((_, index) => (
+                        <div key={index} className="flex flex-col items-center justify-center w-48 h-24 bg-gray-100 dark:bg-slate-700 rounded-lg p-2">
+                          <Skeleton className="w-3/4 h-4 mb-2 rounded-full" />
+                          <Skeleton className="w-full h-3 rounded-full" />
+                          <Skeleton className="w-2/3 h-3 mt-1 rounded-full" />
+                        </div>
+                      ))
+                    )}
                   </div>
                   <ScrollBar orientation="horizontal" />
                 </ScrollArea>
@@ -593,10 +655,10 @@ const Stock: React.FC<StockProps> = ({
           </div>
         ) : (
           <>
-            <div className="inline-block flex flex-wrap py-2 2xl:py-4 gap-2">
+            <div className="inline-block flex flex-wrap py-2 gap-2">
               <IndustryButton
                 industryName={sector}
-                isLoading={!industryButtonLoaded}
+                isLoading={sector === "-"}
                 onClick={handleIndustryClick}
               />
             </div>
