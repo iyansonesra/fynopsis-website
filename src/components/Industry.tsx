@@ -648,7 +648,7 @@ Please ensure the information is accurate and up-to-date. Sort the list by date,
 
 
     return (
-        <div className='w-full h-full flex flex-col  py-12 px-4 2xl:py-12 2xl:px-12 font-montserrat gap-4'>
+        <div className='w-full h-full flex flex-col  py-12 px-4 2xl:py-12 2xl:px-12 gap-4 sans-serif'>
             {loadingProgress < 100 && <LoadingOverlay progress={loadingProgress} />}
             <h1 className="text-3xl font-bold 2xl:text-4xl">{industryName}</h1>
 

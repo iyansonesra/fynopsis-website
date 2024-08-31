@@ -411,7 +411,7 @@ const Stock: React.FC<StockProps> = ({
   };
 
   return (
-    <div className='w-full h-full flex flex-col md:flex-row py-12 px-4 2xl:py-12 2xl:px-12 font-montserrat gap-4 '>
+    <div className='w-full h-full flex flex-col md:flex-row py-12 px-4 2xl:py-12 2xl:px-12 sans-serif gap-4 '>
       <button
         onClick={handleBack}
         className="absolute top-[1%] left-[1%] p-2 text-black hover:text-blue-700"
@@ -488,7 +488,7 @@ const Stock: React.FC<StockProps> = ({
                 value={inputValue}
                 onChange={handleInputChangeQ}
                 onKeyDown={handleKeyPressQ}
-                className="w-3/4 h-12 2xl:h-14 2xl:text-lg bg-slate-100 rounded-full pl-12 2xl:pl-16 text-sm"
+                className="w-3/4 h-12 2xl:h-14 2xl:text-lg bg-slate-100 dark:bg-slate-900 rounded-full pl-12 2xl:pl-16 text-sm"
                 placeholder='Ask a question...'
               />
 

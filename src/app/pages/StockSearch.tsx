@@ -140,7 +140,7 @@ export default function StockSearch({ setSelectedTab }: { setSelectedTab: React.
     }
 
     return (
-        <ScrollArea className="h-screen w-full">
+        <ScrollArea className="h-screen w-full sans-serif">
 
 
             <div className="flex flex-col min-h-screen w-full xl:px-4 2xl:px-8 ">

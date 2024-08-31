@@ -70,7 +70,7 @@ export default function IndustrySearch({ setSelectedTab }: { setSelectedTab: Rea
     }
 
     return (
-        <ScrollArea className="h-screen w-full">
+        <ScrollArea className="h-screen w-full sans-serif">
             <div className="flex flex-col min-h-screen w-full xl:px-4 2xl:px-8 ">
                 <div className="flex-none w-full inline-block py-4 2xl:py-8 xl:py-6 flex justify-center items-center relative">
                     {/* Menu icon and Sheet for smaller screens */}

@@ -37,19 +37,19 @@ export default function FrontPage() {
     }
 
     return (
-        <div className="relative h-screen w-full flex flex-col justify-center font-montserrat ">
+        <div className="relative h-screen w-full flex flex-col justify-center sans-serif select-none ">
             <div className="fixed top-0 left-0 right-0 h-20 md:h-20 xl:h-24 bg-white dark:bg-slate-900 bg-opacity-98 w-full flex items-center justify-between 2xl:px-16 xl:px-12 md:px-8 sm:px-4 shadow-md px-4 z-50">
                 <div className="flex flex-row items-center">
                     <img src={logo.src} alt="logo" className="md:h-12 md:w-auto w-[10%] h-auto" />
-                    <h1 className="font-bold text-xl sm:text-2xl md:text-3xl">Fynopsis</h1>
+                    <h1 className="font-semibold text-xl sm:text-2xl md:text-3xl">Fynopsis</h1>
                 </div>
 
                 <div className="h-full flex items-center gap-4">
                     <a href="https://calendly.com/willzhang-utexas/fynopsis-demo" className="h-full flex items-center">
-                        <button className="inline-block px-6 py-2 bg-gradient-to-br from-sky-500 to-sky-950 hover:from-sky-600 hover:to-gray-900 rounded-full font-bold text-xl text-white max-sm:hidden md:flex text-center text-justify justify-center items-center">Book a Demo</button>
+                        <button className="inline-block px-6 py-2 bg-gradient-to-br from-sky-500 to-sky-950 hover:from-sky-600 hover:to-gray-900 rounded-full font-semibold text-xl text-white max-sm:hidden md:flex text-center text-justify justify-center items-center">Book a Demo</button>
                     </a>
                     <button
-                        className="inline-block whitespace-nowrap px-4 sm:px-6 py-2 border-sky-700 border-2 rounded-full font-bold text-md sm:text-base md:text-xl text-sky-700"
+                        className="inline-block whitespace-nowrap px-4 sm:px-6 py-2 border-sky-700 border-2 rounded-full font-semibold text-md sm:text-base md:text-xl text-sky-700"
                         onClick={signIn}
                     >
                         Sign In
@@ -63,9 +63,9 @@ export default function FrontPage() {
                 <div className="p-4 inline-block relative mt-16 pt-20 md:pb-36 pb-16 flex-col flex items-center justify-center gap-4 text-center z-0">
                     <div className="inline-block px-6 py-1 md:py-2 flex items-center justify-center rounded-full flex flex-row gap-2 bg-blue-100">
                         <Sparkle className="w-4 w-4 md:w-5 md:h-5 text-blue-500" />
-                        <h1 className="font-bold text-sky-700 text-sm md:text-base">Financial Assistant AI</h1>
+                        <h1 className="font-semibold text-sky-700 text-sm md:text-base">Financial Assistant AI</h1>
                     </div>
-                    <h1 className="font-bold text-5xl md:text-7xl text-center">
+                    <h1 className="font-semibold text-5xl md:text-7xl text-center">
                         <span className="bg-gradient-to-b from-sky-500 to-sky-950 text-transparent bg-clip-text">
                             Never
                         </span>{" "}
@@ -75,13 +75,13 @@ export default function FrontPage() {
                     <FadeInSlideUp className="flex flex-col sm:flex-col md:flex-row floor:flex-col gap-4 mt-4 z-10">
 
                         <a href="https://calendly.com/willzhang-utexas/fynopsis-demo">
-                            <button className="px-6 py-4 rounded-full font-bold text-xl text-white bg-gradient-to-br from-sky-500 to-sky-950 hover:from-sky-600 hover:to-gray-900 transition-all duration-300 hover:scale-105">
+                            <button className="px-6 py-4 rounded-full font-semibold text-xl text-white bg-gradient-to-br from-sky-500 to-sky-950 hover:from-sky-600 hover:to-gray-900 transition-all duration-300 hover:scale-105">
                                 Book a Demo
                             </button>
                         </a>
 
 
-                        <button className="w-full md:w-auto px-6 py-4 rounded-full font-bold text-base md:text-xl border-2 transition-all duration-300 hover:scale-105">
+                        <button className="w-full md:w-auto px-6 py-4 rounded-full font-semibold text-base md:text-xl border-2 transition-all duration-300 hover:scale-105">
                             <span className="bg-gradient-to-br from-sky-700 to-black dark:to-white dark:border-sky-700 bg-clip-text text-transparent">
                                 See how it works
                             </span>
@@ -112,8 +112,7 @@ export default function FrontPage() {
 
                 <div className="w-full inline-block flex justify-center flex-col mb-24 md:mb-64 ">
                     <FadeInSlideUp className="flex justify-center flex-col items-center w-full">
-                        <h1 className="text-3xl md:text-5xl font-bold w-[95%] md:w-[70%] xl:w-[80%] text-center mb-1 md:mb-4">Instant insights, informed decisions:</h1>
-
+                        <h1 className="text-3xl md:text-5xl font-semibold w-[95%] md:w-[70%] xl:w-[80%] text-center mb-1 md:mb-4">Instant insights, informed decisions:</h1>
                     </FadeInSlideUp>
 
                     <FadeInSlideUp className="w-auto inline-block flex justify-center flex-col items-center w-full mb-16">
@@ -121,7 +120,7 @@ export default function FrontPage() {
                             <span className="bg-gradient-to-t from-sky-500 to-sky-950 text-transparent bg-clip-text">
                                 Your
                             </span>{" "}
-                            <span className="font-normal dark:text-white">finacial edge.</span>
+                            <span className="font-normal dark:text-white">financial edge.</span>
                         </h1>
                     </FadeInSlideUp>
 
@@ -133,9 +132,9 @@ export default function FrontPage() {
                                 </FadeInSlideUp>
                             </div>
                             <div className="flex-1 flex items-center justify-around flex-col">
-                                <div className="w-full flex items-center md:items-end flex-col mb-4 md:mb-0">
+                                <div className="w-full flex items-right md:items-end flex-col mb-4 md:mb-0">
                                     <FadeInSlideUp>
-                                        <h1 className="font-bold text-3xl md:text-5xl text-center md:text-right text-black dark:text-white mb-4"> Graphs that give meaning.</h1>
+                                        <h1 className="font-semibold text-3xl md:text-5xl text-center md:text-right text-black dark:text-white mb-4"> Graphs that give meaning.</h1>
                                     </FadeInSlideUp>
 
                                     <FadeInSlideUp>
@@ -146,7 +145,7 @@ export default function FrontPage() {
 
                                 <FadeInSlideUp className="w-full flex justify-center md:justify-end">
                                     <a href="https://calendly.com/willzhang-utexas/fynopsis-demo">
-                                        <button className="px-6 py-4 rounded-full font-bold text-xl text-white bg-gradient-to-br from-sky-500 to-sky-950 hover:from-sky-600 hover:to-gray-900 transition-all duration-300 hover:scale-105">
+                                        <button className="px-6 py-4 rounded-full font-semibold text-xl text-white bg-gradient-to-br from-sky-500 to-sky-950 hover:from-sky-600 hover:to-gray-900 transition-all duration-300 hover:scale-105">
                                             Book a Demo
                                         </button>
                                     </a>
@@ -169,7 +168,7 @@ export default function FrontPage() {
                         <div className="flex-1 flex items-center h-[80%] justify-center gap-[30%] flex-col ">
                             <div className="w-full flex items-center md:items-start flex-col mb-4 md:mb-0">
                                 <FadeInSlideUp>
-                                    <h1 className="font-bold text-3xl md:text-5xl text-center md:text-left text-black dark:text-white mb-1 md:mb-4">Tools that provide a deeper understanding</h1>
+                                    <h1 className="font-semibold text-3xl md:text-5xl text-center md:text-left text-black dark:text-white mb-1 md:mb-4">Tools that provide a deeper understanding</h1>
                                 </FadeInSlideUp>
 
                                 <FadeInSlideUp>
@@ -180,7 +179,7 @@ export default function FrontPage() {
 
                             <FadeInSlideUp className="w-full md:flex justify-center hidden md:justify-start mb-4 md:mb-0">
                                 <a href="https://calendly.com/willzhang-utexas/fynopsis-demo">
-                                    <button className="px-6 py-4 rounded-full font-bold text-xl text-white bg-gradient-to-br from-sky-500 to-sky-950 hover:from-sky-600 hover:to-gray-900 transition-all duration-300 hover:scale-105">
+                                    <button className="px-6 py-4 rounded-full font-semibold text-xl text-white bg-gradient-to-br from-sky-500 to-sky-950 hover:from-sky-600 hover:to-gray-900 transition-all duration-300 hover:scale-105">
                                         Book a Demo
                                     </button>
                                 </a>
@@ -215,7 +214,7 @@ export default function FrontPage() {
 
                         <FadeInSlideUp className="w-full md:hidden justify-center flex md:justify-start mb-4 md:mb-0">
                             <a href="https://calendly.com/willzhang-utexas/fynopsis-demo">
-                                <button className="px-6 py-4 rounded-full font-bold text-xl text-white bg-gradient-to-br from-sky-500 to-sky-950 hover:from-sky-600 hover:to-gray-900 transition-all duration-300 hover:scale-105">
+                                <button className="px-6 py-4 rounded-full font-semibold text-xl text-white bg-gradient-to-br from-sky-500 to-sky-950 hover:from-sky-600 hover:to-gray-900 transition-all duration-300 hover:scale-105">
                                     Book a Demo
                                 </button>
                             </a>
@@ -233,7 +232,7 @@ export default function FrontPage() {
                     <div className="flex flex-row py-12 gap-64">
                         <div className="flex flex-row items-center">
                             <img src={logo.src} alt="logo" className="md:h-6 md:w-auto w-[10%] h-auto" />
-                            <h1 className="font-bold text-xl sm:text-2xl md:text-lg">Fynopsis</h1>
+                            <h1 className="font-semibold text-xl sm:text-2xl md:text-lg">Fynopsis</h1>
                         </div>
 
                         <div className="flex flex-row items-center gap-4">
