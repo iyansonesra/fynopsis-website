@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo } from 'react';
+import React, { SetStateAction, useCallback, useMemo } from 'react';
 import RecentSearch from './RecentSearch';
 import { ScrollArea, ScrollBar } from './ui/scroll-area';
 import UserSearchBubble from './UserSearchBubble';
@@ -121,7 +121,7 @@ const Stock: React.FC<StockProps> = ({
   const [qLoading, setQLoading] = useState(false);
   const [questionResponse, setQuestionResponse] = useState('');
   const [showIndustry, setShowIndustry] = useState(false);
-  const [recentNews, setRecentNews] = useState(false);
+  const [recentNews, setRecentNews] = useState("");
   const [recentNewsSources, setRecentNewsSources] = useState<{ title: string; url: string }[]>([]);
   const [isLoadingRecentNews, setIsLoadingRecentNews] = useState(true);
   const [questionResponseLinks, setQuestionResponseLinks] = useState<{ title: string; url: string }[]>([]);
@@ -417,7 +417,7 @@ const Stock: React.FC<StockProps> = ({
       }
     } catch (error) {
       console.error('Error fetching recent news:', error);
-      setRecentNews('Unable to fetch recent news at this time.');
+      setRecentNews("Unable to fetch recent news at this time." as SetStateAction<string>);
       setRecentNewsSources([]);
     } finally {
       setIsLoadingRecentNews(false);
@@ -589,7 +589,7 @@ const Stock: React.FC<StockProps> = ({
                   <CircularProgress />
                 </div>
               ) : (
-                <ReactMarkdown>{recentNews || "No recent news available."}</ReactMarkdown>
+                <ReactMarkdown>{recentNews ? recentNews: "No recent news available."}</ReactMarkdown>
               )}
                 </ScrollArea>
               ) : (
