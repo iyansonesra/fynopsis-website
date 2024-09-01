@@ -89,6 +89,7 @@ const Stock: React.FC<StockProps> = ({
     { date: 'Loading...', dealDescription: 'Loading...' },
     // ... add all your deals here
   ]);
+  const [isLoadingDeals, setIsLoadingDeals] = useState(true);
   const dataFetchedRef = useRef(false);
   const [isCopiedAll, setIsCopiedAll] = useState(false);
   const [isInitialLoad, setIsInitialLoad] = useState(true);
@@ -444,7 +445,7 @@ const Stock: React.FC<StockProps> = ({
 
 Date of the Deal
 Deal Description
-Return the response in JSON format, with an array of deal objects. Each object should have the properties: "date" and "dealDescription". The response should not include any additional text before or after the JSON data.
+Return the response in JSON format, with an array of deal objects in descending chronological order as shown in the example. Each object should have the properties: "date" and "dealDescription". The response should not include any additional text before or after the JSON data.
 
 Here's an example of the expected format:
 
@@ -468,6 +469,7 @@ Here's an example of the expected format:
           const finalContent = contentWithoutSources.dealHistory;
           console.log(finalContent);
           setDeals(finalContent);
+          setIsLoadingDeals(false);
           // setRecentNewsSources(links);
         }
       }
@@ -711,23 +713,38 @@ Here's an example of the expected format:
 
         <Separator className="decoration-black w-[100%] my-1" />
 
-        {showDealHistory ? (
+        {showDealHistory ? isLoadingDeals ? 
           <div className="inline-block flex flex-col mt-2">
-            <div className="flex flex-row items-center justify-end gap-2 mr-2">
-              <button
-                onClick={handleCopyAll}
-                className="flex items-center gap-2 focus:outline-none"
-                aria-label="Copy all deal information"
-              >
-                <Copy size={16} />
-                <h1 className="text-sm text-black dark:text-white">
-                  {isCopiedAll ? "Copied!" : "Copy All"}
-                </h1>
-              </button>
+            <div className="flex flex-row items-center justify-center min-h-screen">
+              <CircularProgress />
             </div>
-            {deals.map((deal, index) => (
-              <Deal key={index} date={deal.date} dealDescription={deal.dealDescription} />
-            ))}
+          </div>:(
+          <div className="inline-block flex flex-col mt-2">
+            {deals.length === 0 ? (
+              <div className="flex flex-row items-center justify-center mt-4">
+                <h1 className="text-sm text-gray-500 dark:text-gray-400">
+                  Sorry, no recent deals could be found.
+                </h1>
+              </div>
+            ) : (
+              <>
+                <div className="flex flex-row items-center justify-end gap-2 mr-2">
+                  <button
+                    onClick={handleCopyAll}
+                    className="flex items-center gap-2 focus:outline-none"
+                    aria-label="Copy all deal information"
+                  >
+                    <Copy size={16} />
+                    <h1 className="text-sm text-black dark:text-white">
+                      {isCopiedAll ? "Copied!" : "Copy All"}
+                    </h1>
+                  </button>
+                </div>
+                {deals.map((deal, index) => (
+                  <Deal key={index} date={deal.date} dealDescription={deal.dealDescription} />
+                ))}
+              </>
+            )}
           </div>
         ) : (
           <>
