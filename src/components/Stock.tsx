@@ -86,8 +86,7 @@ const Stock: React.FC<StockProps> = ({
   const [showDealHistory, setShowDealHistory] = useState(false);
   const [showLearnMore, setShowLearnMore] = useState(false);
   const [deals, setDeals] = useState([
-    { date: 'August 28, 2019', dealDescription: 'blah blah blah blah blah blah blah blah blah blahblah blah b' },
-    { date: 'August 28, 2019', dealDescription: 'blah blah blah blah blah blah blah blah blah blahblah blah b' },
+    { date: 'Loading...', dealDescription: 'Loading...' },
     // ... add all your deals here
   ]);
   const dataFetchedRef = useRef(false);
@@ -170,9 +169,9 @@ const Stock: React.FC<StockProps> = ({
       if (responseMain && responseMain.body) {
         const innerBody = JSON.parse(responseMain.body);
         if (innerBody && innerBody.message) {
-          console.log(innerBody.message);
-          console.log(innerBody.sources);
-          console.log(innerBody.sources.sources);
+          // console.log(innerBody.message);
+          // console.log(innerBody.sources);
+          // console.log(innerBody.sources.sources);
           const links = extractRelevantLinks(innerBody.sources.sources);
           const contentWithoutSources = innerBody.message;
           setQuestionResponse(contentWithoutSources);
@@ -352,9 +351,9 @@ const Stock: React.FC<StockProps> = ({
             if (responseMain && responseMain.body) {
               const innerBody = JSON.parse(responseMain.body);
               if (innerBody && innerBody.message) {
-                console.log(innerBody.message);
-                console.log(innerBody.sources);
-                console.log(innerBody.sources.sources);
+                // console.log(innerBody.message);
+                // console.log(innerBody.sources);
+                // console.log(innerBody.sources.sources);
                 const links = extractRelevantLinks(innerBody.sources.sources);
                 const contentWithoutSources = innerBody.message;
                 return { date: marker, content: contentWithoutSources, links };
@@ -424,9 +423,67 @@ const Stock: React.FC<StockProps> = ({
     }
   };
 
+  const fetchRecentDealHistory = async () => {
+    setIsLoadingRecentNews(true);
+    try {
+      const accessToken = await handleFetchAccess();
+      if (!accessToken) {
+        console.error('Failed to fetch access token.');
+        return;
+      }
+
+      const restOperation = post({
+        apiName: 'testAPI',
+        path: '/postAgent',
+        options: {
+          headers: {
+            Authorization: accessToken
+          },
+          body: {
+            query: `As a financial analysis agent, provide a detailed list of the 4-5 recent deals for ${longName}. For each deal, include the following information:
+
+Date of the Deal
+Deal Description
+Return the response in JSON format, with an array of deal objects. Each object should have the properties: "date" and "dealDescription". The response should not include any additional text before or after the JSON data.
+
+Here's an example of the expected format:
+
+{"dealHistory": [{"date": "September 12, 2020","dealDescription": "blah blah blah blah blah blah blah blah blah blah blah blah"},{"date": "August 28, 2019", "dealDescription": "blah blah blah blah blah blah blah blah blah blah blah blah"}]}`
+          }
+        }
+      });
+
+      const { body } = await restOperation.response;
+      const responseText = await body.text();
+      const responseMain = JSON.parse(responseText);
+      console.log(responseMain);
+
+      if (responseMain && responseMain.body) {
+        const innerBody = JSON.parse(responseMain.body);
+        if (innerBody && innerBody.message) {
+          // const links = extractRelevantLinks(innerBody.sources.sources);
+          console.log(innerBody.message);
+          const contentWithoutSources = JSON.parse(innerBody.message);
+          console.log(contentWithoutSources);
+          const finalContent = contentWithoutSources.dealHistory;
+          console.log(finalContent);
+          setDeals(finalContent);
+          // setRecentNewsSources(links);
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching recent news:', error);
+      setRecentNews("Unable to fetch recent news at this time." as SetStateAction<string>);
+      setRecentNewsSources([]);
+    } finally {
+      setIsLoadingRecentNews(false);
+    }
+  };
+
   useEffect(() => {
     if (longName !== "-") {
       fetchRecentNews();
+      fetchRecentDealHistory();
     }
   }, [longName]);
 
