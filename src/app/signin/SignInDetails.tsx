@@ -6,6 +6,7 @@ import Home from "../pages/MainPage";
 import { useAuthenticator } from '@aws-amplify/ui-react';
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
+import { CircularProgress } from "@mui/material";
 
 
 
@@ -24,7 +25,9 @@ export default function SignInDetails() {
 
     return (
         <Authenticator>
-            Redirecting...
+            <div className="grid h-screen place-items-center">
+                <CircularProgress value={0.5} />
+            </div>
         </Authenticator>
     );
 }

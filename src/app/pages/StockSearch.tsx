@@ -70,13 +70,13 @@ export default function StockSearch({ setSelectedTab }: { setSelectedTab: React.
             const { body } = await restOperation.response;
             const responseText = await body.text();
             const responseMain = JSON.parse(responseText);
-            console.log('Recent searches:', responseMain);
+            // console.log('Recent searches:', responseMain);
 
             // Extract the searches array from the response
             const searches = responseMain.searches || [];
             setRecentSearches(searches);
         } catch (error) {
-            console.error('Error fetching recent searches:', error);
+            console.error('Error fetching recent searches');
             setError("Failed to fetch recent searches. Please try again later.");
         } finally {
             setIsLoading(false);
@@ -95,7 +95,7 @@ export default function StockSearch({ setSelectedTab }: { setSelectedTab: React.
             const attributes = await fetchUserAttributes();
             setUserAttributes(attributes);
         } catch (error) {
-            console.log(error);
+            console.log('error');
         }
     }
 

@@ -22,7 +22,7 @@ export default function IndustrySearch({ setSelectedTab }: { setSelectedTab: Rea
             const attributes = await fetchUserAttributes();
             setUserAttributes(attributes);
         } catch (error) {
-            console.log(error);
+            console.log("error");
         }
     }
 

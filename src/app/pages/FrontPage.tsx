@@ -236,8 +236,9 @@ export default function FrontPage() {
                         </div>
 
                         <div className="flex flex-row items-center gap-4">
-                            <Instagram className="w-6 h-6 text-black dark:text-white" />
-                            <Linkedin className="w-6 h-6 text-black dark:text-white" />
+                            <a href="https://www.linkedin.com/company/fynopsis-ai">
+                                <Linkedin className="w-6 h-6 text-black dark:text-white" />
+                            </a>
                         </div>
                     </div>
 

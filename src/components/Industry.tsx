@@ -193,7 +193,7 @@ const Industry: React.FC<IndustryProps> = ({
                     return messageWithoutSources;
                 }
             } catch (error) {
-                console.error("Error parsing info:", error);
+                console.error("Error parsing info");
             }
         }
     };
@@ -227,13 +227,13 @@ const Industry: React.FC<IndustryProps> = ({
                 cagr: formatNumber(cagr, true)
             };
         } catch (error) {
-            console.error('Error parsing industry metrics:', error);
+            console.error('Error parsing industry metrics');
             return { mcap: 'N/A', cagr: 'N/A' };
         }
     }
 
 
-    async function infoQuery(timeframe: string) {
+    async function infoQuery(industry: string, timeframe: string) {
         const accessTokens = await handleFetchAccess();
         if (accessTokens) {
             try {
@@ -245,7 +245,7 @@ const Industry: React.FC<IndustryProps> = ({
                             Authorization: accessTokens
                         },
                         body: {
-                            query: `As a financial analysis agent, provide a concise yet comprehensive summary (3-5 sentences MAXIMUM) of the most significant events and news within the ${timeframe} period that could have impacted the Dairy industry. Please remove any fluff such as "In the past six months, the mobile phone industry has seen significant developments", I just want pure facts. The response should be in paragraph format, not a list. The following is an example: Apple has emerged as the top smartphone vendor, surpassing Samsung for the first time in 12 years. Global smartphone shipments decreased by 4% in 2023 but rebounded with a 9% increase in Q2 2024, indicating a possible recovery trend. Additionally, mobile phone exports from India surged by 39% in early 2024, driven primarily by iPhone production. However, challenges remain, with consumers reportedly holding onto their devices longer than before, reflecting market saturation and economic pressures.`
+                            query: `As a financial analysis agent, provide a concise yet comprehensive summary (3-5 sentences MAXIMUM) of the most significant events and news within the ${timeframe} period that could have impacted the ${industry} industry. Please remove any fluff such as "In the past six months, the mobile phone industry has seen significant developments", I just want pure facts. The response should be in paragraph format, not a list. The following is an example: Apple has emerged as the top smartphone vendor, surpassing Samsung for the first time in 12 years. Global smartphone shipments decreased by 4% in 2023 but rebounded with a 9% increase in Q2 2024, indicating a possible recovery trend. Additionally, mobile phone exports from India surged by 39% in early 2024, driven primarily by iPhone production. However, challenges remain, with consumers reportedly holding onto their devices longer than before, reflecting market saturation and economic pressures.`
                         }
                     }
                 });
@@ -256,7 +256,7 @@ const Industry: React.FC<IndustryProps> = ({
 
                 return responseMain.body;
             } catch (e) {
-                console.error("Error making API request:", e);
+                console.error("Error making API request");
                 return null;
             }
         } else {
@@ -295,7 +295,7 @@ Please ensure the information is accurate and up-to-date. Return the response in
 
                 return responseMain.body;
             } catch (e) {
-                console.error("Error making API request for major players:", e);
+                console.error("Error making API request for major players");
                 return null;
             }
         } else {
@@ -332,11 +332,11 @@ Please ensure the information is accurate and up-to-date. Return the response in
                 const responseText = await body.text();
                 const responseMain = JSON.parse(responseText);
 
-                console.log(responseMain.body);
+                // console.log(responseMain.body);
 
                 return responseMain.body;
             } catch (e) {
-                console.error("Error making API request for similar companies:", e);
+                console.error("Error making API request for similar companies");
                 return null;
             }
         } else {
@@ -371,7 +371,7 @@ Ensure that the values are accurate and up-to-date. The MCAP should be a dollar 
 
                 return responseMain.body;
             } catch (e) {
-                console.error("Error making API request for industry metrics:", e);
+                console.error("Error making API request for industry metrics");
                 return null;
             }
         } else {
@@ -381,7 +381,7 @@ Ensure that the values are accurate and up-to-date. The MCAP should be a dollar 
 
 
     async function queryRegulationsInnovations(industry: string) {
-        console.log("called queryRegulations");
+        // console.log("called queryRegulations");
         const accessTokens = await handleFetchAccess();
         if (accessTokens) {
             try {
@@ -412,7 +412,7 @@ Please ensure the information is accurate and up-to-date. Sort the list by date,
 
                 return responseMain.body;
             } catch (e) {
-                console.error("Error making API request for regulations and innovations:", e);
+                console.error("Error making API request for regulations and innovations");
                 return null;
             }
         } else {
@@ -424,20 +424,20 @@ Please ensure the information is accurate and up-to-date. Sort the list by date,
         // console.log("Response: " + response);
         try {
             const parsedResponse = JSON.parse(response);
-            console.log("Parsed response:", parsedResponse);
+            // console.log("Parsed response:", parsedResponse);
 
             // The actual data is nested in a JSON string inside the "message" field
             const messageContent = JSON.parse(parsedResponse.message);
-            console.log("Parsed message content:", messageContent);
+            // console.log("Parsed message content:", messageContent);
 
             const companies = messageContent.companies || [];
 
             if (!Array.isArray(companies)) {
-                console.error('Unexpected response structure:', messageContent);
+                console.error('Unexpected response structure');
                 return [];
             }
 
-            console.log("Companies:", companies);
+            // console.log("Companies:", companies);
 
             return companies.map(company => {
                 return {
@@ -448,31 +448,42 @@ Please ensure the information is accurate and up-to-date. Sort the list by date,
                 };
             });
         } catch (error) {
-            console.error('Error parsing response:', error);
+            // console.error('Error parsing response:', error);
             return [];
         }
 
     }
 
-    function formatNumber(num: number, isPercentage = false) {
-        if (isPercentage) {
-            return num.toFixed(1) + '%';
+    function formatNumber(num: number | string | null | undefined, isPercentage = false) {
+        if (num === null || num === undefined) {
+            return 'N/A';
         }
-        if (num >= 1000000000000) {
-            return (num / 1000000000000).toFixed(1) + 'T';
-        } else if (num >= 1000000000) {
-            return (num / 1000000000).toFixed(1) + 'B';
-        } else if (num >= 1000000) {
-            return (num / 1000000).toFixed(1) + 'M';
-        } else if (num >= 1000) {
-            return (num / 1000).toFixed(1) + 'K';
+        
+        // Convert to number if it's a string
+        const numValue = typeof num === 'string' ? parseFloat(num) : num;
+        
+        if (isNaN(numValue)) {
+            return 'N/A';
+        }
+        
+        if (isPercentage) {
+            return numValue.toFixed(1) + '%';
+        }
+        if (numValue >= 1000000000000) {
+            return (numValue / 1000000000000).toFixed(1) + 'T';
+        } else if (numValue >= 1000000000) {
+            return (numValue / 1000000000).toFixed(1) + 'B';
+        } else if (numValue >= 1000000) {
+            return (numValue / 1000000).toFixed(1) + 'M';
+        } else if (numValue >= 1000) {
+            return (numValue / 1000).toFixed(1) + 'K';
         } else {
-            return num.toFixed(1);
+            return numValue.toFixed(1);
         }
     }
 
     useEffect(() => {
-        console.log('useEffect in Industry component is running');
+        // console.log('useEffect in Industry component is running');
 
         setIsLoading(true);
         setIsMajorPlayersLoading(true);
@@ -489,10 +500,10 @@ Please ensure the information is accurate and up-to-date. Sort the list by date,
 
 
         const promises = [
-            infoQuery('24 hours'),
-            infoQuery('30 days'),
-            infoQuery('6 months'),
-            infoQuery('year'),
+            infoQuery(industryName, '24 hours'),
+            infoQuery(industryName, '30 days'),
+            infoQuery(industryName, '6 months'),
+            infoQuery(industryName, 'year'),
             queryMajorPlayers(industryName),
             querySimilarCompanies(company),
             queryIndustryMetrics(industryName),
@@ -513,7 +524,9 @@ Please ensure the information is accurate and up-to-date. Sort the list by date,
 
                 if (majorPlayersInfo) {
                     const parsedPlayers = parseMajorPlayers(majorPlayersInfo);
+                    // console.log("Official parse: " + parsedPlayers);
                     setMajorPlayers(parsedPlayers);
+                    // console.log("Major Players: " + majorPlayers);
                 }
 
                 if (similarCompaniesInfo) {
@@ -534,15 +547,15 @@ Please ensure the information is accurate and up-to-date. Sort the list by date,
 
 
                 const endTime = performance.now();
-                console.log(`All parallel queries completed in ${endTime - startTime} milliseconds.`);
-                console.log('24 hours:', info1Day);
-                console.log('30 days:', info1Month);
-                console.log('6 months:', info6Month);
-                console.log('1 year:', infoYear);
-                console.log('Major Players Lambda Response:', majorPlayersInfo);
-                console.log('Similar Companies Lambda Response:', similarCompaniesInfo);
-                console.log('RegInnovInfo Lambda Response:', regInnovInfo);
-                console.log('Similar Companies Lambda Response:', similarCompaniesInfo);
+                // console.log(`All parallel queries completed in ${endTime - startTime} milliseconds.`);
+                // console.log('24 hours:', info1Day);
+                // console.log('30 days:', info1Month);
+                // console.log('6 months:', info6Month);
+                // console.log('1 year:', infoYear);
+                // console.log('Major Players Lambda Response:', majorPlayersInfo);
+                // console.log('Similar Companies Lambda Response:', similarCompaniesInfo);
+                // console.log('RegInnovInfo Lambda Response:', regInnovInfo);
+                // console.log('Similar Companies Lambda Response:', similarCompaniesInfo);
                 setIsLoading(false);
                 setIsMajorPlayersLoading(false);
                 setSimilarCompaniesLoading(false);  // Add this line
@@ -550,7 +563,7 @@ Please ensure the information is accurate and up-to-date. Sort the list by date,
                 setRegInnovLoading(false);
 
                 if (!isLoading && !isMajorPlayersLoading && !similarCompaniesLoading && !industryMetricsLoading && !regInnovLoading) {
-                    console.log("success!!!!!");
+                    // console.log("success!!!!!");
                     clearInterval(loadingTimer);
                     setLoadingProgress(100);
                 }
@@ -559,7 +572,7 @@ Please ensure the information is accurate and up-to-date. Sort the list by date,
 
             })
             .catch((error) => {
-                console.error("Error fetching information:", error);
+                console.error("Error fetching information");
                 setIsLoading(false);
                 setIsMajorPlayersLoading(false);
                 setSimilarCompaniesLoading(false);
@@ -595,7 +608,7 @@ Please ensure the information is accurate and up-to-date. Sort the list by date,
                 (parsedResponse.message ? JSON.parse(parsedResponse.message) : []);
 
             if (!Array.isArray(items)) {
-                console.error('Unexpected response structure:', parsedResponse);
+                // console.error('Unexpected response structure:', parsedResponse);
                 return [];
             }
 
@@ -606,7 +619,7 @@ Please ensure the information is accurate and up-to-date. Sort the list by date,
                 LongDescription: item.LongDescription || ''
             }));
         } catch (error) {
-            console.error('Error parsing response:', error);
+            // console.error('Error parsing response:', error);
             return [];
         }
     }

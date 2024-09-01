@@ -18,6 +18,7 @@ import IndustryPage from "./IndustryPage";
 import { useAuthenticator } from '@aws-amplify/ui-react';
 import { Sun, Moon } from "lucide-react";
 import { fetchUserAttributes, FetchUserAttributesOutput } from 'aws-amplify/auth';
+import { CircularProgress } from "@mui/material";
 
 
 export default function Home() {
@@ -38,7 +39,7 @@ export default function Home() {
       const attributes = await fetchUserAttributes();
       setUserAttributes(attributes);
     } catch (error) {
-      console.log(error);
+      console.log("error");
     }
   }
 
@@ -64,7 +65,8 @@ export default function Home() {
   }, [isDarkMode]);
 
   return (
-    <div className="grid max-h-screen w-full lg:grid-cols-[250px_1fr] xl:grid-cols-[250px_1fr] 2xl:grid-cols-[350px_1fr] overflow-hidden bg-white dark:bg-gray-900 text-black dark:text-white">
+    userAttributes ? 
+    <div className="grid max-h-screen w-full lg:grid-cols-[250px_1fr] xl:grid-cols-[250px_1fr] 2xl:grid-cols-[350px_1fr] overflow-hidden font-montserrat bg-white dark:bg-gray-900 text-black dark:text-white">
       <div className="hidden border-r lg:block">
         <div className="flex h-full max-h-screen flex-col gap-2">
           <div className="flex h-14 items-center border-b px-4 lg:h-[60px] lg:px-6 xl:h-[60px] 2xl:h-[90px]">
@@ -133,6 +135,9 @@ export default function Home() {
           {renderSelectedScreen()}
         </ScrollArea>
       </div>
+    </div>:
+    <div className="grid h-screen place-items-center">
+      <CircularProgress value={0.5} />
     </div>
   );
 }

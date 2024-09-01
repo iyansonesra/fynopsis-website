@@ -124,6 +124,8 @@ const Stock: React.FC<StockProps> = ({
   const [recentNews, setRecentNews] = useState(false);
   const [recentNewsSources, setRecentNewsSources] = useState<{ title: string; url: string }[]>([]);
   const [isLoadingRecentNews, setIsLoadingRecentNews] = useState(true);
+  const [questionResponseLinks, setQuestionResponseLinks] = useState<{ title: string; url: string }[]>([]);
+
 
   const handleInputChangeQ = (event: React.ChangeEvent<HTMLInputElement>) => {
     setInputValue(event.target.value);
@@ -168,11 +170,17 @@ const Stock: React.FC<StockProps> = ({
       if (responseMain && responseMain.body) {
         const innerBody = JSON.parse(responseMain.body);
         if (innerBody && innerBody.message) {
-          setQuestionResponse(innerBody.message);
+          console.log(innerBody.message);
+          console.log(innerBody.sources);
+          console.log(innerBody.sources.sources);
+          const links = extractRelevantLinks(innerBody.sources.sources);
+          const contentWithoutSources = innerBody.message;
+          setQuestionResponse(contentWithoutSources);
+          setQuestionResponseLinks(links);
         }
       }
     } catch (error) {
-      console.error('Error sending query:', error);
+      console.error('Error sending query');
       setQuestionResponse('An error occurred while processing your question.');
     } finally {
       setQLoading(false);
@@ -200,9 +208,9 @@ const Stock: React.FC<StockProps> = ({
       const responseText = await body.text();
 
       const responseMain = JSON.parse(responseText);
-      console.log('Recent searches:', responseMain);
+      // console.log('Recent searches');
     } catch (error) {
-      console.error('Error fetching recent searches:', error);
+      console.error('Error fetching recent searches');
     }
   }
 
@@ -262,7 +270,7 @@ const Stock: React.FC<StockProps> = ({
         setTicker(info.symbol || "-");
         setSector(info.sector || "-");
         putSearches(info.longName || "-");
-        console.log(searchCount);
+        // console.log(searchCount);
 
         const currentPrice = info.currentPrice || 1;
         const previousClose = info.previousClose || 1;
@@ -332,13 +340,7 @@ const Stock: React.FC<StockProps> = ({
     2. Industry developments: Competitive landscape shifts, regulatory changes, or technological advancements.
     3. Macroeconomic factors: Interest rate changes, economic indicators, or geopolitical events.
     4. Market trends: Sector performance, investor sentiment, or notable analyst reports.
-    For each point, briefly explain its potential impact on ${longName}'s stock price. If applicable, include quantitative data such as percentage changes in stock price, revenue figures, or market share. Conclude with a sentence summarizing the overall market sentiment towards ${longName} during this period.
-    
-    After your summary, you must provide a "Sources:" section with 1-3 relevant links to news articles from the provided data, formatted exactly as follows:
-    Sources:
-    1. "Title of Article 1" [URL1]
-    2. "Title of Article 2" [URL2]
-    3. "Title of Article 3" [URL3]`
+    For each point, briefly explain its potential impact on ${longName}'s stock price. If applicable, include quantitative data such as percentage changes in stock price, revenue figures, or market share. Conclude with a sentence summarizing the overall market sentiment towards ${longName} during this period.`
                 }
               }
             });
@@ -350,8 +352,11 @@ const Stock: React.FC<StockProps> = ({
             if (responseMain && responseMain.body) {
               const innerBody = JSON.parse(responseMain.body);
               if (innerBody && innerBody.message) {
-                const links = extractRelevantLinks(innerBody.message);
-                const contentWithoutSources = innerBody.message.split('Sources:')[0].trim();
+                console.log(innerBody.message);
+                console.log(innerBody.sources);
+                console.log(innerBody.sources.sources);
+                const links = extractRelevantLinks(innerBody.sources.sources);
+                const contentWithoutSources = innerBody.message;
                 return { date: marker, content: contentWithoutSources, links };
               }
             }
@@ -392,13 +397,7 @@ const Stock: React.FC<StockProps> = ({
             Authorization: accessToken
           },
           body: {
-            query: `Provide a brief summary of the most recent news (last 7 days) for ${longName}. Include any significant events, financial updates, or market trends that could impact the stock. Limit the response to 3-4 sentences.
-
-            After your summary, you must provide a "Sources:" section with 1-3 relevant links to news articles from the provided data, formatted exactly as follows:
-            Sources:
-            1. "Title of Article 1" [URL1]
-            2. "Title of Article 2" [URL2]
-            3. "Title of Article 3" [URL3]`
+            query: `Provide a brief summary of the most recent news (last 7 days) for ${longName}. Include any significant events, financial updates, or market trends that could impact the stock. Limit the response to 3-4 sentences.`
           }
         }
       });
@@ -410,8 +409,8 @@ const Stock: React.FC<StockProps> = ({
       if (responseMain && responseMain.body) {
         const innerBody = JSON.parse(responseMain.body);
         if (innerBody && innerBody.message) {
-          const links = extractRelevantLinks(innerBody.message);
-          const contentWithoutSources = innerBody.message.split('Sources:')[0].trim();
+          const links = extractRelevantLinks(innerBody.sources.sources);
+          const contentWithoutSources = innerBody.message;
           setRecentNews(contentWithoutSources);
           setRecentNewsSources(links);
         }
@@ -544,7 +543,27 @@ const Stock: React.FC<StockProps> = ({
                 </div>
               ) : questionResponse ? (
                 <div className="mt-2 p-4 rounded-lg text-left w-full">
-                  <p className="text-sm 2xl:text-base">{questionResponse}</p>
+                  <ScrollArea className='h-[12rem] md:h-[12rem] items-center justify-center text-slate-600 text-[.8rem] flex font-light dark:text-slate-200 2xl:text-xl mb-4'>
+                    <ReactMarkdown>{questionResponse}</ReactMarkdown>
+                  </ScrollArea>
+                  <h1 className="font-semibold 2xl:text-2xl">Relevant Links</h1>
+                  <div className="flex inline-block relative">
+                    <ScrollArea className="flex flex-row pb-4 pt-2 w-[90vw] md:w-[50vw] 2xl:w-[50vw] md:w-[65vw] lg:w-[50vw]">
+                      <div className="flex flex-row h-full gap-4 justify-center ">
+                        {questionResponseLinks.map((link, index) => (
+                          <RelevantLink
+                            key={index}
+                            title={link.title}
+                            url={link.url}
+                            linkDescription=""
+                            isLoading={false}
+                          />
+                        ))}
+                      </div>
+                      <ScrollBar orientation="horizontal" />
+                    </ScrollArea>
+                    <div className="dark:hidden absolute right-0 h-full w-4 bg-gradient-to-l from-white to-transparent dark:from-black dark:to-transparent"></div>
+                  </div>
                 </div>
               ) : null}
 

@@ -26,7 +26,7 @@ const Deal: React.FC<DealProps> = ({
                 }, 1000);
             })
             .catch(err => {
-                console.error('Failed to copy text: ', err);
+                console.error('Failed to copy text');
             });
     };
 

@@ -106,6 +106,7 @@ export interface DataPoint {
           const innerBody = responseMain.body;
           if (innerBody && innerBody.message && innerBody.message.info) {
             const info = innerBody.message.info;
+            console.log(innerBody)
             setStockInfo(info);
   
             if (innerBody.message.history) {
@@ -289,29 +290,33 @@ export const parseHistoryData = (history: any): { dataPoints: DataPoint[], month
     });
   }
 
-  export const extractRelevantLinks = (content: string): { title: string; url: string }[] => {
-    // console.log("Original content:", content);
-
-    const sourcesSection = content.split('Sources:')[1];
-    if (!sourcesSection) {
-      // console.log("No 'Sources:' section found.");
+  export const extractRelevantLinks = (content: string | object): { title: string; url: string }[] => {
+    let sourcesSection: any;
+    console.log(content);
+    if (typeof content === 'string') {
+      try {
+        sourcesSection = JSON.parse(content);
+      } catch (error) {
+        console.error("Error parsing JSON string:", error);
+        return [];
+      }
+    } else if (typeof content === 'object' && content !== null) {
+      sourcesSection = content;
+    } else {
+      console.error("Invalid content type. Expected string or object.");
       return [];
     }
-
-    // console.log("Sources section:", sourcesSection);
-
-    // Updated regex pattern to match the new format
-    const links = sourcesSection.match(/\d+\.\s"(.+?)"\s\[(.+?)\]/g) || [];
-    // console.log("Matched links:", links);
-
-    const extractedLinks = links.map(link => {
-      // Updated regex to capture title and URL in the new format
-      const [, title, url] = link.match(/\d+\.\s"(.+?)"\s\[(.+?)\]/) || [];
-      return { title, url };
-    });
-
-    // console.log("Extracted links:", extractedLinks);
-
+  
+    if (!Array.isArray(sourcesSection)) {
+      console.error("Content is not an array");
+      return [];
+    }
+  
+    const extractedLinks = sourcesSection.map(item => ({
+      title: item.title || '',
+      url: item.url || ''
+    }));
+  
     return extractedLinks;
   };
 

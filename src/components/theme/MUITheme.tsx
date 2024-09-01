@@ -1,7 +1,7 @@
 import { createTheme, ThemeProvider } from '@mui/material/styles';
 import { useTheme } from 'next-themes';
 
-const createMuiTheme = (mode) => {
+const createMuiTheme = (mode: any) => {
   return createTheme({
     palette: {
       mode: mode,
@@ -21,7 +21,7 @@ const createMuiTheme = (mode) => {
   });
 };
 
-export const MuiThemeProvider = ({ children }) => {
+export const MuiThemeProvider = ({ children }: any) => {
   const { resolvedTheme } = useTheme();
   const muiTheme = createMuiTheme(resolvedTheme === 'dark' ? 'dark' : 'light');
 
