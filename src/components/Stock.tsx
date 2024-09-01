@@ -425,7 +425,7 @@ const Stock: React.FC<StockProps> = ({
   };
 
   const fetchRecentDealHistory = async () => {
-    setIsLoadingRecentNews(true);
+    setIsLoadingDeals(true);
     try {
       const accessToken = await handleFetchAccess();
       if (!accessToken) {
@@ -469,7 +469,7 @@ Here's an example of the expected format:
           const finalContent = contentWithoutSources.dealHistory;
           console.log(finalContent);
           setDeals(finalContent);
-          setIsLoadingDeals(false);
+          
           // setRecentNewsSources(links);
         }
       }
@@ -478,7 +478,7 @@ Here's an example of the expected format:
       setRecentNews("Unable to fetch recent news at this time." as SetStateAction<string>);
       setRecentNewsSources([]);
     } finally {
-      setIsLoadingRecentNews(false);
+      setIsLoadingDeals(false);
     }
   };
 
