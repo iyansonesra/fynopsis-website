@@ -106,7 +106,7 @@ export interface DataPoint {
           const innerBody = responseMain.body;
           if (innerBody && innerBody.message && innerBody.message.info) {
             const info = innerBody.message.info;
-            console.log(innerBody)
+            // console.log(innerBody);
             setStockInfo(info);
   
             if (innerBody.message.history) {
@@ -136,8 +136,8 @@ export interface DataPoint {
     setAboutCompanyText: React.Dispatch<React.SetStateAction<string>>
   ) => {
     setIsLoadingAboutText(true);
-    console.log("yo");
-    console.log(userMessage);
+    // console.log("yo");
+    // console.log(userMessage);
   
     const accessTokens = await handleFetchAccess();
     if (accessTokens) {

@@ -352,9 +352,9 @@ const Stock: React.FC<StockProps> = ({
             if (responseMain && responseMain.body) {
               const innerBody = JSON.parse(responseMain.body);
               if (innerBody && innerBody.message) {
-                // console.log(innerBody.message);
-                // console.log(innerBody.sources);
-                // console.log(innerBody.sources.sources);
+                console.log(innerBody.message);
+                console.log(innerBody.sources);
+                console.log(innerBody.sources.sources);
                 const links = extractRelevantLinks(innerBody.sources.sources);
                 const contentWithoutSources = innerBody.message;
                 return { date: marker, content: contentWithoutSources, links };
