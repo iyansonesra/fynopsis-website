@@ -8,26 +8,6 @@ import "@aws-amplify/ui-react/styles.css";
 import { Amplify } from "aws-amplify";
 import { signInWithRedirect } from "aws-amplify/auth"
 
-// const userPoolConfig = Amplify.getConfig();
-
-// Amplify.configure({
-//     Auth: {
-//       Cognito: {
-//         loginWith: {
-//           oauth: {
-//             redirectSignIn: [
-//               'http://localhost:3000/'
-//             ],
-//             redirectSignOut: [
-//               'http://localhost:3000/'
-//             ]
-//           }
-//         },
-//         ...userPoolConfig
-//       }
-//     }
-// });
-
 export const Authenticator: React.FC<PropsWithChildren> = ({ children }) => {
  const theme: Theme = {
    name: "bookshelf",
@@ -63,10 +43,12 @@ export const Authenticator: React.FC<PropsWithChildren> = ({ children }) => {
      components: {
        authenticator: {
          modal: {
-           backgroundColor: { value: "{colors.blue.40}" },
+           backgroundColor: { value: "white" },
          },
          router: {
            borderWidth: { value: "0" },
+           borderRadius: { value: "{radii.large}" }, // Added border radius for the container
+
          },
          state: {
            inactive: {
@@ -74,20 +56,28 @@ export const Authenticator: React.FC<PropsWithChildren> = ({ children }) => {
            },
          },
        },
+       button: {
+         primary: {
+           backgroundColor: { value: "darkblue" },
+           _hover: {
+             backgroundColor: { value: "darkblue" },
+           },
+         },
+       },
        tabs: {
          item: {
            borderColor: { value: "{colors.brand.primary.100}" },
-           color: { value: "{colors.brand.secondary.20}" },
+           color: { value: "black" }, // Changed to black for non-active tabs
            _active: {
-             backgroundColor: { value: "{colors.brand.primary.100}" },
-             color: { value: "{colors.brand.secondary.10}" },
+             backgroundColor: { value: "darkblue" },
+             color: { value: "white" },
              borderColor: { value: "{colors.brand.secondary.40}" },
            },
            _hover: {
-             color: { value: "{colors.brand.secondary.40}" },
+             color: { value: "darkblue" }, // Changed to darkblue for hover state
            },
            _focus: {
-             color: { value: "{colors.brand.secondary.40}" },
+             color: { value: "darkblue" }, // Changed to darkblue for focus state
            },
          },
        },
@@ -95,15 +85,11 @@ export const Authenticator: React.FC<PropsWithChildren> = ({ children }) => {
    },
  };
 
-
  return (
    <AmplifyThemeProvider theme={theme} >
-    {/* socialProviders={['google']} */}
      <AmplifyAuthenticator 
        variation="modal"
-       signUpAttributes={["given_name", 
-        "family_name"
-       ]}
+       signUpAttributes={["given_name", "family_name"]}
        socialProviders={['google']}
        formFields={{
          signIn: {

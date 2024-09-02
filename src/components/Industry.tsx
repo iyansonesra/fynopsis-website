@@ -294,6 +294,7 @@ Please ensure the information is accurate and up-to-date. Return the response in
                 const responseMain = JSON.parse(responseText);
 
                 return responseMain.body;
+                
             } catch (e) {
                 console.error("Error making API request for major players");
                 return null;
@@ -315,7 +316,7 @@ Please ensure the information is accurate and up-to-date. Return the response in
                             Authorization: accessTokens
                         },
                         body: {
-                            query: `As a financial analysis agent, provide a detailed list of 5-6 companies similar to ${company}. For each company, include the following information (ensure that the entire LinkedIn URL is returned and accurate):
+                            query: `As a financial analysis agent, provide a detailed list of 5-6 companies similar to ${company}. Make sure ${company} itself is not in the list. For each company, include the following information (ensure that the entire LinkedIn URL is returned and accurate):
 
                             Company Name
                             Company URL
@@ -421,10 +422,9 @@ Please ensure the information is accurate and up-to-date. Sort the list by date,
     }
 
     function parseMajorPlayers(response: string) {
-        // console.log("Response: " + response);
         try {
             const parsedResponse = JSON.parse(response);
-            // console.log("Parsed response:", parsedResponse);
+            console.log("Parsed response:", parsedResponse);
 
             // The actual data is nested in a JSON string inside the "message" field
             const messageContent = JSON.parse(parsedResponse.message);
@@ -436,9 +436,7 @@ Please ensure the information is accurate and up-to-date. Sort the list by date,
                 console.error('Unexpected response structure');
                 return [];
             }
-
-            // console.log("Companies:", companies);
-
+    
             return companies.map(company => {
                 return {
                     "Company Name": company["Company Name"] || '',
@@ -448,10 +446,9 @@ Please ensure the information is accurate and up-to-date. Sort the list by date,
                 };
             });
         } catch (error) {
-            // console.error('Error parsing response:', error);
+            console.error('Error parsing response:', error);
             return [];
         }
-
     }
 
     function formatNumber(num: number | string | null | undefined, isPercentage = false) {
@@ -524,7 +521,8 @@ Please ensure the information is accurate and up-to-date. Sort the list by date,
 
                 if (majorPlayersInfo) {
                     const parsedPlayers = parseMajorPlayers(majorPlayersInfo);
-                    // console.log("Official parse: " + parsedPlayers);
+                    
+                    console.log("Official parse: " + majorPlayersInfo);
                     setMajorPlayers(parsedPlayers);
                     // console.log("Major Players: " + majorPlayers);
                 }
@@ -547,15 +545,14 @@ Please ensure the information is accurate and up-to-date. Sort the list by date,
 
 
                 const endTime = performance.now();
-                // console.log(`All parallel queries completed in ${endTime - startTime} milliseconds.`);
-                // console.log('24 hours:', info1Day);
-                // console.log('30 days:', info1Month);
-                // console.log('6 months:', info6Month);
-                // console.log('1 year:', infoYear);
-                // console.log('Major Players Lambda Response:', majorPlayersInfo);
-                // console.log('Similar Companies Lambda Response:', similarCompaniesInfo);
-                // console.log('RegInnovInfo Lambda Response:', regInnovInfo);
-                // console.log('Similar Companies Lambda Response:', similarCompaniesInfo);
+                console.log('24 hours info:', info1Day);
+                console.log('30 days info:', info1Month);
+                console.log('6 months info:', info6Month);
+                console.log('1 year info:', infoYear);
+                console.log('Major Players info:', majorPlayersInfo);
+                console.log('Similar Companies info:', similarCompaniesInfo);
+                console.log('Industry Metrics:', industryMetrics);
+                console.log('Regulations and Innovations info:', regInnovInfo);
                 setIsLoading(false);
                 setIsMajorPlayersLoading(false);
                 setSimilarCompaniesLoading(false);  // Add this line
@@ -648,8 +645,8 @@ Please ensure the information is accurate and up-to-date. Sort the list by date,
     );
 
     const LoadingOverlay = ({ progress }: { progress: number }) => (
-        <div className="absolute inset-0 bg-white flex items-center justify-center z-50">
-            <div className="bg-white dark:bg-slate-800 p-6 rounded-lg shadow-lg w-80">
+        <div className="absolute inset-0 flex light:bg-white dark:bg-slate-900 items-center justify-center z-50">
+            <div className="bg-white dark:bg-slate-900 p-6 rounded-lg shadow-lg w-80">
                 <div className="w-full bg-gray-200 rounded-full h-2.5 mb-4">
                     <div className="bg-blue-600 h-2.5 rounded-full" style={{ width: `${Math.min(progress, 99)}%` }}></div>
                 </div>
