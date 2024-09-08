@@ -1,4 +1,4 @@
-import React, { SetStateAction, useCallback, useMemo } from 'react';
+import React, { SetStateAction, use, useCallback, useMemo } from 'react';
 import RecentSearch from './RecentSearch';
 import { ScrollArea, ScrollBar } from './ui/scroll-area';
 import UserSearchBubble from './UserSearchBubble';
@@ -8,9 +8,10 @@ import RelevantLink from './RelevantLinks';
 import CustomGraph from './StockGraph';
 import generateRandomStockData from './GenerateRandomStockData';
 import { useState, useRef, useEffect } from 'react';
-import { useAuthenticator } from '@aws-amplify/ui-react';
 import { fetchUserAttributes, FetchUserAttributesOutput } from 'aws-amplify/auth';
 import { fetchAuthSession } from 'aws-amplify/auth';
+import { useAuthenticator } from '@aws-amplify/ui-react';
+
 import { post } from 'aws-amplify/api';
 import { Separator } from './ui/separator';
 import IndustryButton from './IndustryButton';
@@ -53,6 +54,8 @@ interface StockProps {
   stockDescription: string;
   imageType: 'circular' | 'rectangular';
   onBack: () => void;
+  remainingRequests: number | null;
+  setRemainingRequests: React.Dispatch<React.SetStateAction<number | null>>;
 
 }
 
@@ -78,10 +81,14 @@ const Stock: React.FC<StockProps> = ({
   stockDescription,
   imageType,
   onBack,
+  remainingRequests,
+  setRemainingRequests
 }) => {
   const [answer, setAnswer] = useState<string>();
   const [query, setQuery] = useState<string>();
   // const [companyName, setCompanyName] = useState<string>('-');
+  const { user, signOut } = useAuthenticator((context) => [context.user]);
+
   const [inputValue, setInputValue] = useState('');
   const [showDealHistory, setShowDealHistory] = useState(false);
   const [showLearnMore, setShowLearnMore] = useState(false);
@@ -125,14 +132,63 @@ const Stock: React.FC<StockProps> = ({
   const [recentNewsSources, setRecentNewsSources] = useState<{ title: string; url: string }[]>([]);
   const [isLoadingRecentNews, setIsLoadingRecentNews] = useState(true);
   const [questionResponseLinks, setQuestionResponseLinks] = useState<{ title: string; url: string }[]>([]);
+  // const [remainingRequests, setRemainingRequests] = useState<number | null>(null);
 
 
+  async function getTotalSearches() {
+      try {
+          const restOperation = get({
+              apiName: 'testAPI',
+              path: '/fetchTotalSearches',
+          });
+          const { body } = await restOperation.response;
+          const responseText = await body.text();
+          const responseMain = JSON.parse(responseText);
+          // console.log('Recent searches:', responseMain);
+
+          // Extract the searches array from the response
+          const value = 5 - responseMain.totalSearches || 0;
+          setRemainingRequests(value);
+      } catch (error) {
+          console.error('Error fetching recent searches');
+      }
+  }
+  useEffect(() => {
+    if (user) {
+      getTotalSearches();
+    }
+  }, [user]);
+
+  async function incrementSearches() {
+    try {
+        const restOperation = get({
+            apiName: 'testAPI',
+            path: '/incrementTotalSearches',
+        });
+        // const { body } = await restOperation.response;
+        // const responseText = await body.text();
+        // const responseMain = JSON.parse(responseText);
+        // // console.log('Recent searches:', responseMain);
+
+        // // Extract the searches array from the response
+        // const value = 5 - responseMain.totalSearches || 0;
+        // setRemainingRequests(value);
+    } catch (error) {
+        console.error('Error fetching recent searches');
+    }
+}
+
+
+  
   const handleInputChangeQ = (event: React.ChangeEvent<HTMLInputElement>) => {
     setInputValue(event.target.value);
   };
 
   const handleKeyPressQ = async (event: React.KeyboardEvent<HTMLInputElement>) => {
-    if (event.key === 'Enter') {
+    if (event.key === 'Enter' && remainingRequests != null && remainingRequests > 0) {
+      incrementSearches();
+      // decrementGlobalCounter();
+      setRemainingRequests(remainingRequests - 1);
       await handleSendQuestion();
     }
   };

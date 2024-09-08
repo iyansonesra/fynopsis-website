@@ -8,14 +8,68 @@ import { fetchUserAttributes, FetchUserAttributesOutput } from 'aws-amplify/auth
 import { useAuthenticator } from '@aws-amplify/ui-react';
 import Link from 'next/link';
 import Industry from '@/components/Industry';
+import { useEffect } from 'react';
+import { get } from 'aws-amplify/api';
+import { set } from 'date-fns';
 
-export default function IndustrySearch({ setSelectedTab }: { setSelectedTab: React.Dispatch<React.SetStateAction<string>> }) {
+interface IndustrySearchProps {
+    setSelectedTab: React.Dispatch<React.SetStateAction<string>>;
+    remainingRequests: number | null;
+    setRemainingRequests: React.Dispatch<React.SetStateAction<number | null>>;
+}
+
+export default function IndustrySearch({ setSelectedTab, remainingRequests, setRemainingRequests }: IndustrySearchProps) {
     const [searchInput, setSearchInput] = useState('');
     const [companyInput, setCompanyInput] = useState('');
 
     const [showIndustry, setShowIndustry] = useState(false);
     const [userAttributes, setUserAttributes] = useState<FetchUserAttributesOutput | null>(null);
     const { user, signOut } = useAuthenticator((context) => [context.user]);
+
+
+    async function getTotalSearches() {
+        try {
+            const restOperation = get({
+                apiName: 'testAPI',
+                path: '/fetchTotalSearches',
+            });
+            const { body } = await restOperation.response;
+            const responseText = await body.text();
+            const responseMain = JSON.parse(responseText);
+            // console.log('Recent searches:', responseMain);
+  
+            // Extract the searches array from the response
+            const value = 5 - responseMain.totalSearches || 0;
+            setRemainingRequests(value);
+        } catch (error) {
+            console.error('Error fetching recent searches');
+        }
+    }
+
+    async function incrementSearches() {
+        try {
+            const restOperation = get({
+                apiName: 'testAPI',
+                path: '/incrementTotalSearches',
+            });
+            // const { body } = await restOperation.response;
+            // const responseText = await body.text();
+            // const responseMain = JSON.parse(responseText);
+            // // console.log('Recent searches:', responseMain);
+  
+            // // Extract the searches array from the response
+            // const value = 5 - responseMain.totalSearches || 0;
+            // setRemainingRequests(value);
+        } catch (error) {
+            console.error('Error fetching recent searches');
+        }
+    }
+
+    useEffect(() => {
+      if (user) {
+        getTotalSearches();
+      }
+    }, [user]);
 
     async function handleFetchUserAttributes() {
         try {
@@ -31,7 +85,9 @@ export default function IndustrySearch({ setSelectedTab }: { setSelectedTab: Rea
     };
 
     const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
-        if (e.key === 'Enter' && searchInput.trim() !== '') {
+        if (e.key === 'Enter' && searchInput.trim() !== '' && remainingRequests != null && remainingRequests > 0) {
+            incrementSearches();
+            setRemainingRequests(remainingRequests - 1);
             setShowIndustry(true);
         }
     };

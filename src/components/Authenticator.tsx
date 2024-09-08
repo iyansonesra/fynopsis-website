@@ -47,7 +47,7 @@ export const Authenticator: React.FC<PropsWithChildren> = ({ children }) => {
          },
          router: {
            borderWidth: { value: "0" },
-           borderRadius: { value: "{radii.large}" }, // Added border radius for the container
+          //  borderRadius: { value: "{radi.large}" }, // Added border radius for the container
 
          },
          state: {

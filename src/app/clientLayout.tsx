@@ -62,7 +62,7 @@ Amplify.configure({
     REST: {
       testAPI: {
         endpoint:
-          'https://4s693esbca.execute-api.us-east-1.amazonaws.com/test', // main
+          'https://4s693esbca.execute-api.us-east-1.amazonaws.com/main', // main
         region: 'us-east-1' // Optional
       }
     }

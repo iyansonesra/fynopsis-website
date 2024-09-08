@@ -19,6 +19,9 @@ import { useAuthenticator } from '@aws-amplify/ui-react';
 import { Sun, Moon } from "lucide-react";
 import { fetchUserAttributes, FetchUserAttributesOutput } from 'aws-amplify/auth';
 import { CircularProgress } from "@mui/material";
+import { get } from 'aws-amplify/api';
+
+
 
 
 export default function Home() {
@@ -27,10 +30,12 @@ export default function Home() {
   const [userAttributes, setUserAttributes] = useState<FetchUserAttributesOutput | null>(null);
 
   const [isDarkMode, setIsDarkMode] = useState(false);
+  const [remainingRequests, setRemainingRequests] = useState<number | null>(null);
 
   useEffect(() => {
     if (user) {
       handleFetchUserAttributes();
+      getTotalSearches();
     }
   }, [user]);
 
@@ -43,16 +48,50 @@ export default function Home() {
     }
   }
 
+  async function getTotalSearches() {
+      try {
+          const restOperation = get({
+              apiName: 'testAPI',
+              path: '/fetchTotalSearches',
+          });
+          const { body } = await restOperation.response;
+          const responseText = await body.text();
+          const responseMain = JSON.parse(responseText);
+          // console.log('Recent searches:', responseMain);
+
+          // Extract the searches array from the response
+          const value = 5 - responseMain.totalSearches || 0;
+          setRemainingRequests(value);
+      } catch (error) {
+          console.error('Error fetching recent searches');
+      }
+  }
+
+
   const renderSelectedScreen = () => {
     switch (selectedTab) {
       case "stockSearch":
-        return <StockSearch setSelectedTab={setSelectedTab} />
+        return  <StockSearch 
+        setSelectedTab={setSelectedTab} 
+        remainingRequests={remainingRequests} 
+        setRemainingRequests={setRemainingRequests}
+      />
+
       case "settings":
         return <Settings setSelectedTab={setSelectedTab} />
       case "industryPage":
-        return <IndustryPage setSelectedTab={setSelectedTab}/>
+        return <IndustryPage 
+        setSelectedTab={setSelectedTab} 
+        remainingRequests={remainingRequests}
+        setRemainingRequests={setRemainingRequests}
+      />
       default:
-        return <StockSearch setSelectedTab={setSelectedTab} />
+        return <StockSearch 
+        setSelectedTab={setSelectedTab} 
+        remainingRequests={remainingRequests} 
+        setRemainingRequests={setRemainingRequests}
+      />
+
     }
   }
 
@@ -123,6 +162,10 @@ export default function Home() {
             </nav>
           </div>
           <div className="mt-auto p-4">
+            <div className="mb-4 p-3 bg-gray-100 dark:bg-gray-800 rounded-lg text-center">
+                <p className="text-sm font-medium">Remaining Requests</p>
+                <p className="text-lg font-bold">{remainingRequests !== null ? remainingRequests : 'Loading...'}</p>
+              </div>
             <button className="h-12 w-full justify-center flex flex-row items-center gap-2" onClick={signOut}>
               <h1 className="text-red-400">Logout</h1>
               <LogOut className="h-4 w-4 decoration-red-400" color={"#E74545"} />
