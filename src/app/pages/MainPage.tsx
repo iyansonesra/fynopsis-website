@@ -3,7 +3,6 @@ import Link from "next/link"
 import {
   Bell,
   Search,
-  LogOut,
   Settings as SettingsIcon,
   Factory,
 } from "lucide-react"
@@ -19,12 +18,52 @@ import { useAuthenticator } from '@aws-amplify/ui-react';
 import { Sun, Moon } from "lucide-react";
 import { fetchUserAttributes, FetchUserAttributesOutput } from 'aws-amplify/auth';
 import { CircularProgress } from "@mui/material";
+import React, {  useRef } from 'react';
+import { useRouter } from 'next/navigation';
+import { Library, Users, TrendingUp, LucideIcon, LogOut } from 'lucide-react';
+import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/hover-card';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import Analytics from "@/components/Analytics";
+import Files from "@/components/Files";
+import People from "@/components/People";
 
 
 export default function Home() {
   const [selectedTab, setSelectedTab] = useState("stockSearch");
   const { user, signOut } = useAuthenticator((context) => [context.user]);
   const [userAttributes, setUserAttributes] = useState<FetchUserAttributesOutput | null>(null);
+  const router = useRouter();
+  const [activeTab, setActiveTab] = useState<number | null>(null);
+  const [indicatorStyle, setIndicatorStyle] = useState<IndicatorStyle>({} as IndicatorStyle);
+  const tabRefs = useRef<(HTMLDivElement | null)[]>([]);
+
+  const tabs: Tab[] = [
+      { icon: Library, label: 'Library' },
+      { icon: Users, label: 'People' },
+      { icon: TrendingUp, label: 'Trending' }
+  ];
+
+  function signIn(): void {
+      router.push('/signin');
+  }
+
+  
+  function handleTabClick(index: number): void {
+    setActiveTab(index);
+    setSelectedTab(tabs[index].label.toLowerCase());
+  }
+
+  useEffect(() => {
+      if (activeTab !== null && tabRefs.current[activeTab]) {
+          const tabElement = tabRefs.current[activeTab];
+          if (tabElement) {
+              setIndicatorStyle({
+                  top: `${tabElement.offsetTop}px`,
+                  height: `${tabElement.offsetHeight}px`,
+              });
+          }
+      }
+  }, [activeTab]);
 
   const [isDarkMode, setIsDarkMode] = useState(false);
 
@@ -45,14 +84,14 @@ export default function Home() {
 
   const renderSelectedScreen = () => {
     switch (selectedTab) {
-      case "stockSearch":
-        return <StockSearch setSelectedTab={setSelectedTab} />
-      case "settings":
-        return <Settings setSelectedTab={setSelectedTab} />
-      case "industryPage":
-        return <IndustryPage setSelectedTab={setSelectedTab}/>
+      case "library":
+        return <Files setSelectedTab={setSelectedTab} />
+      case "trending":
+        return <Analytics setSelectedTab={setSelectedTab} />
+      case "people":
+        return <People setSelectedTab={setSelectedTab} />
       default:
-        return <StockSearch setSelectedTab={setSelectedTab} />
+        return <Files setSelectedTab={setSelectedTab} />
     }
   }
 
@@ -65,79 +104,52 @@ export default function Home() {
   }, [isDarkMode]);
 
   return (
-    userAttributes ? 
-    <div className="grid max-h-screen w-full lg:grid-cols-[250px_1fr] xl:grid-cols-[250px_1fr] 2xl:grid-cols-[350px_1fr] overflow-hidden font-montserrat bg-white dark:bg-gray-900 text-black dark:text-white">
-      <div className="hidden border-r lg:block">
-        <div className="flex h-full max-h-screen flex-col gap-2">
-          <div className="flex h-14 items-center border-b px-4 lg:h-[60px] lg:px-6 xl:h-[60px] 2xl:h-[90px]">
-            <Link href="/" className="flex items-center gap-2 font-semibold">
-              <img src={logo.src} alt="Fynopsis Logo" className="h-8 w-8 2xl:h-14 2xl:w-14" />
-              <span className="sm-text-lg lg:text-m 2xl:text-2xl">{userAttributes?.given_name} {userAttributes?.family_name}</span>
-            </Link>
-            <Button
-              variant="outline"
-              size="icon"
-              className="ml-auto h-8 w-8 2xl:[h-12 w-12]"
-              onClick={() => setIsDarkMode(!isDarkMode)}
-            >
-              {isDarkMode ?
-                <Sun className="h-4 w-4 2xl:h-6 w-6" /> :
-                <Moon className="h-4 w-4 2xl:h-6 w-6" />
-              }
-              <span className="sr-only">Toggle theme</span>
-            </Button>
+    userAttributes ?
+      <div className="relative h-screen w-full flex flex-row sans-serif">
+        <div className="w-20 bg-slate-900 h-full flex flex-col items-center justify-between pt-4 pb-6">
+          <div className="">
+            <img src={logo.src} alt="logo" className="h-14 w-auto mb-8" />
+            <div className="relative flex flex-col items-center">
+              {activeTab !== null && (
+                <div
+                  className="absolute left-0 w-full bg-blue-300 rounded-xl transition-all duration-300 ease-in-out"
+                  style={indicatorStyle}
+                />
+              )}
+              {tabs.map((tab, index) => (
+                <div
+                  key={tab.label}
+                  ref={(el) => (tabRefs.current[index] = el)}
+                  className={`relative z-10 p-2 mb-4 cursor-pointer ${activeTab === index ? 'text-slate-900' : 'text-white'
+                    }`}
+                  onClick={() => handleTabClick(index)}
+                >
+                  <tab.icon size={24} />
+                </div>
+              ))}
+            </div>
           </div>
-          <div className="flex-1">
-            <nav className="grid items-start px-2 lg:text-base xl:text-lg 2xl:text-2xl font-medium lg:px-4">
-              <Link
-                href="#"
-                className={`flex items-center gap-3 rounded-lg px-3 py-2 transition-all hover:text-primary ${selectedTab === "stockSearch" ? "bg-muted text-primary" : "text-muted-foreground"
-                  }`}
-                onClick={() => setSelectedTab("stockSearch")}
-              >
-                <Search className="h-4 w-4 2xl:h-6 2xl:w-6" />
-                Stock Search
-              </Link>
 
-              <Link
-                href="#"
-                className={`flex items-center gap-3 rounded-lg px-3 py-2 transition-all hover:text-primary ${selectedTab === "stockSearch" ? "text-muted-foreground" : "bg-muted text-primary" 
-                  }`}
-                onClick={() => setSelectedTab("industryPage")}
+          <Popover>
+            <PopoverTrigger className='bg-sky-600 h-10 aspect-square rounded-full'></PopoverTrigger>
+            <PopoverContent className="w-auto p-0">
+              <button
+                onClick={signOut}
+                className="flex items-center space-x-2 px-4 py-2 text-red-500 hover:bg-gray-100 w-full"
               >
-                <Factory className="h-4 w-4 2xl:h-6 2xl:w-6" />
-                Industry
-              </Link>
-
-              {/* <Link
-                href="#"
-                className={`flex items-center gap-3 rounded-lg px-3 py-2 transition-all hover:text-primary ${selectedTab === "settings" ? "bg-muted text-primary" : "text-muted-foreground"
-                  }`}
-                onClick={() => setSelectedTab("settings")}
-              >
-                <SettingsIcon className="h-4 w-4 2xl:h-6 2xl:w-6" />
-                Settings
-              </Link> */}
-
-             
-            </nav>
-          </div>
-          <div className="mt-auto p-4">
-            <button className="h-12 w-full justify-center flex flex-row items-center gap-2" onClick={signOut}>
-              <h1 className="text-red-400">Logout</h1>
-              <LogOut className="h-4 w-4 decoration-red-400" color={"#E74545"} />
-            </button>
-          </div>
+                <LogOut size={18} />
+                <span>Logout</span>
+              </button>
+            </PopoverContent>
+          </Popover>
         </div>
-      </div>
-      <div className="flex flex-col">
-        <ScrollArea className="">
+
+        <div className="flex-1 overflow-hidden">
           {renderSelectedScreen()}
-        </ScrollArea>
+        </div>
+      </div> :
+      <div className="grid h-screen place-items-center">
+        <CircularProgress value={0.5} />
       </div>
-    </div>:
-    <div className="grid h-screen place-items-center">
-      <CircularProgress value={0.5} />
-    </div>
   );
 }
