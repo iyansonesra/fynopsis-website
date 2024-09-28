@@ -13,6 +13,7 @@ import {
     useReactTable,
 } from "@tanstack/react-table"
 import { ArrowUpDown, ChevronDown, MoreHorizontal, Upload } from "lucide-react"
+import DragDropOverlay from "./DragDrop"
 
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -187,6 +188,8 @@ export const columns: ColumnDef<Payment>[] = [
 
 export function DataTableDemo() {
     const [sorting, setSorting] = React.useState<SortingState>([])
+    const [showUploadOverlay, setShowUploadOverlay] = React.useState(false);
+    const [tableData, setTableData] = React.useState<Payment[]>(data);
     const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
         []
     )
@@ -195,7 +198,8 @@ export function DataTableDemo() {
     const [rowSelection, setRowSelection] = React.useState({})
 
     const table = useReactTable({
-        data,
+        data: tableData,
+
         columns,
         onSortingChange: setSorting,
         onColumnFiltersChange: setColumnFilters,
@@ -219,6 +223,30 @@ export function DataTableDemo() {
             },
         },
     })
+
+    
+
+
+    const handleUploadClick = () => { 
+        setShowUploadOverlay(true);
+    }
+
+    const handleFilesUploaded = (files: File[]) => {
+        // Here you would typically send the files to your backend
+        // For this example, we'll just add them to the table data
+        const newData = files.map((file, index) => ({
+            type: file.name.split('.').pop()?.toUpperCase() || 'Unknown',
+            name: file.name,
+            status: "success",
+            size: `${(file.size / (1024 * 1024)).toFixed(2)} MB`,
+            date: new Date().toISOString().split('T')[0],
+            uploadedBy: "Current User",
+        }))
+
+        setTableData((prevData) => [...newData, ...prevData])
+        setShowUploadOverlay(false)
+    }
+
 
     return (
         <div className="w-full">
@@ -267,7 +295,9 @@ export function DataTableDemo() {
             `}</style>
             <div className="flex items-center py-4">
                 <div className="buttons flex flex-row gap-2">
-                    <button className="flex items-center gap-2 bg-blue-500 text-white px-4 py-1 rounded-full hover:bg-blue-700">
+                    <button 
+                    className="flex items-center gap-2 bg-blue-500 text-white px-4 py-1 rounded-full hover:bg-blue-700"
+                    onClick={handleUploadClick}>
                         <Upload size={16} />
                         <span>Upload</span>
                     </button>
@@ -398,6 +428,13 @@ export function DataTableDemo() {
                     </Button>
                 </div>
             </div>
+
+            {showUploadOverlay && (
+                <DragDropOverlay
+                onClose={() => setShowUploadOverlay(false)}
+                onFilesUploaded={handleFilesUploaded}
+            />
+            )}
         </div>
     )
 }

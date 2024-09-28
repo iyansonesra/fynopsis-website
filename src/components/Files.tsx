@@ -37,6 +37,8 @@ export default function Files({ setSelectedTab }: { setSelectedTab: React.Dispat
     const [showDetailsView, setShowDetailsView] = useState(true);
     const [folderViewWidth, setFolderViewWidth] = useState('54%');
     const [folderSearchQuery, setFolderSearchQuery] = useState('');
+    const [showUploadOverlay, setShowUploadOverlay] = useState(false);
+
 
     const data = getData();
 

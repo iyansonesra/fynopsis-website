@@ -31,17 +31,17 @@ const shortTreeTemplate = {
 
 const longTreeTemplate = {
   root: {
-    Fruit: {
+    Folder1: {
       Apple: null,
       Orange: null,
       Lemon: null,
-      Berries: {
+      Folder5: {
         Strawberry: null,
         Blueberry: null
       },
       Banana: null
     },
-    Meals: {
+    Folder2: {
       America: {
         SmashBurger: null,
         Chowder: null,
@@ -69,11 +69,11 @@ const longTreeTemplate = {
         KumaraFries: null
       }
     },
-    Desserts: {
+    Folder3: {
       Cookies: null,
       IceCream: null
     },
-    Drinks: {
+    Folder4: {
       PinaColada: null,
       Cola: null,
       Juice: null
@@ -111,7 +111,10 @@ interface FolderTreeComponentProps {
 
 const FolderTreeComponent: React.FC<FolderTreeComponentProps> = () => {
 
-  const [search, setSearch] = useState('pizza');
+  const [openingItem, setOpeningItem] = useState<TreeItemIndex | undefined>();
+  const [closingItem, setClosingItem] = useState<TreeItemIndex | undefined>();
+
+  const [search, setSearch] = useState('');
   const tree = useRef<TreeRef>(null);
 
   const dataProvider = useMemo(
@@ -168,41 +171,57 @@ const FolderTreeComponent: React.FC<FolderTreeComponentProps> = () => {
       <style>{`
         :root {
           --rct-color-tree-bg: transparent;
-  --rct-item-height: 28px;
-  --rct-color-search-highlight-bg: transparent;
+          --rct-item-height: 28px;
+          --rct-color-search-highlight-bg: transparent;
+          --rct-color-tree-focus-outline: transparent;
+          --rct-item-margin: 1px;
+          --rct-item-padding: 8px;
+          --rct-radius: 4px;
+          --rct-bar-offset: 10px;
+          --rct-bar-width: 10px;
+          --rct-bar-color: transparent;
+          --rct-focus-outline: #000000;
+          --rct-color-focustree-item-selected-bg: #f0f2f5;
+          --rct-color-focustree-item-hover-bg: #f0f2f5;
+          --rct-color-focustree-item-hover-text: transparent;
+          --rct-color-focustree-item-active-bg: transparent;
+          --rct-color-focustree-item-active-text: #4f4f4f;
+          --rct-arrow-size: 10px;
+          --rct-arrow-container-size: 30px;
+          --rct-arrow-padding: 40px;
+          --rct-cursor: pointer;
+          --rct-search-width: 120px;
+          --rct-search-height: 16px;
+          --rct-search-padding: 8px;
+          --rct-search-border: #b4b7bd;
+          --rct-search-border-bottom: #0366d6;
+          --rct-search-bg: #f8f9fa;
+          --rct-search-text: #000000;
+          --rct-search-text-offset: calc(var(--rct-search-padding) * 2 + 16px);
+        }
 
-  --rct-color-tree-focus-outline: transparent;
-  --rct-item-margin: 1px;
-  --rct-item-padding: 8px;
-  --rct-radius: 4px;
-  --rct-bar-offset: 0px;
-  --rct-bar-width: 0px;
-  --rct-bar-color: transparent;
-  --rct-focus-outline: #000000;
+        .rct-tree-item-button {
+          display: flex !important;
+          align-items: center !important;
+        }
 
-  --rct-color-focustree-item-selected-bg: #f0f2f5;
-  --rct-color-focustree-item-hover-bg: #f0f2f5;
-  --rct-color-focustree-item-hover-text: transparent;
-  --rct-color-focustree-item-active-bg: transparent;
-  --rct-color-focustree-item-active-text: #4f4f4f;
+        .rct-tree-item-button > .rct-tree-item-content-wrapper {
+          display: flex !important;
+          align-items: center !important;
+        }
 
-  --rct-arrow-size: 10px;
-  --rct-arrow-container-size: 16px;
-  --rct-arrow-padding: 6px;
+        .rct-tree-item-button > .rct-tree-item-content-wrapper > .rct-tree-item-content {
+          display: flex !important;
+          align-items: center !important;
+          gap: 8px !important; /* Adjust this value to change space between icon and text */
+        }
 
-  --rct-cursor: pointer;
-
-  --rct-search-width: 120px;
-  --rct-search-height: 16px;
-  --rct-search-padding: 8px;
-  --rct-search-border: #b4b7bd;
-  --rct-search-border-bottom: #0366d6;
-  --rct-search-bg: #f8f9fa;
-  --rct-search-text: #000000;
-  --rct-search-text-offset: calc(var(--rct-search-padding) * 2 + 16px);
+        /* Ensure the arrow container doesn't add extra space */
+        .rct-tree-item-arrow-container {
+          margin-right: 8px !important;
         }
       `}</style>
-       <form onSubmit={find} className="relative ">
+       <form onSubmit={find} className="relative mb-2">
         <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
           <Sparkles className="h-5 w-5 text-blue-400" />
         </div>
@@ -225,9 +244,6 @@ const FolderTreeComponent: React.FC<FolderTreeComponentProps> = () => {
       </form>
     
       <UncontrolledTreeEnvironment<string>
-        canDragAndDrop
-        canDropOnFolder
-        canReorderItems
         dataProvider={
           new StaticTreeDataProvider(longTree.items, (item, data) => ({
             ...item,
@@ -236,18 +252,73 @@ const FolderTreeComponent: React.FC<FolderTreeComponentProps> = () => {
         }
         getItemTitle={item => item.data}
         viewState={{
-          'tree-1': {
-            expandedItems: [
-              'Fruit',
-              'Meals',
-              'America',
-              'Europe',
-              'Asia',
-              'Desserts',
-            ],
-          },
+          'tree-1': {},
         }}
-      >
+        renderItemArrow={({ item, context }) => 
+          item.isFolder ? (
+            context.isExpanded ? (
+              <ChevronDown className="w-4 h-4 mr-1" />
+            ) : (
+              <ChevronRight className="w-4 h-4 mr-1" />
+            )
+          ) : null
+        }
+        renderItemTitle={({ item, title }) => (
+          <>
+            {item.isFolder ? (
+              <Folder className="w-4 h-4 mr-1 text-blue-500" />
+            ) : (
+              <File className="w-4 h-4 mr-1 text-gray-500" />
+            )}
+            <span>{title}</span>
+          </>
+        )}
+      shouldRenderChildren={(item, context) =>
+        context.isExpanded ||
+        closingItem === item.index ||
+        openingItem === item.index
+      }
+      onExpandItem={item => {
+        setOpeningItem(item.index);
+        setTimeout(() => {
+          setOpeningItem(undefined);
+        });
+      }}
+      onCollapseItem={item => {
+        setClosingItem(item.index);
+        setTimeout(() => {
+          setClosingItem(undefined);
+        }, 500);
+      }}
+      viewState={{
+        'tree-1': {},
+      }}
+      renderItemsContainer={({ children, containerProps, parentId }) => (
+        <div
+          style={{
+            overflow: 'hidden',
+          }}
+        >
+          <ul
+            {...containerProps}
+            className="rct-tree-items-container"
+            style={{
+              transition: 'all 500ms',
+              maxHeight:
+                parentId === openingItem || parentId === closingItem
+                  ? 0
+                  : '999999px',
+              marginTop:
+                parentId === closingItem || parentId === openingItem
+                  ? '-100%'
+                  : '0',
+            }}
+          >
+            {children}
+          </ul>
+        </div>
+      )}
+    >
         <Tree
           treeId="tree-1"
           rootItem="root"

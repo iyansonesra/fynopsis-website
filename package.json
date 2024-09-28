@@ -36,6 +36,7 @@
     "react-animate-on-scroll": "^2.1.9",
     "react-complex-tree": "^2.4.5",
     "react-dom": "^18",
+    "react-dropzone": "^14.2.3",
     "react-hook-form": "^7.52.1",
     "react-markdown": "^9.0.1",
     "react-scroll-motion": "^0.3.3",
