@@ -66,7 +66,7 @@ export default function Files({ setSelectedTab }: { setSelectedTab: React.Dispat
                 }`}
                 style={{ marginLeft: showFolderTree ? '0' : '-23%' }}
             >
-                <ScrollArea className="h-full">
+                <div className="h-full flex flex-col">
                     <button
                         className="absolute top-2 right-2 p-1 bg-gray-200 rounded-full"
                         onClick={() => setShowFolderTree(false)}
@@ -83,7 +83,7 @@ export default function Files({ setSelectedTab }: { setSelectedTab: React.Dispat
                         </SelectContent>
                     </Select>
 
-                    <div className="relative mt-4">
+                    {/* <div className="relative mt-4">
                         <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                             <Sparkles className="h-5 w-5 text-blue-400" />
                         </div>
@@ -101,19 +101,15 @@ export default function Files({ setSelectedTab }: { setSelectedTab: React.Dispat
                                 <X className="h-5 w-5 text-gray-400" />
                             </button>
                         )}
-                    </div>
+                    </div> */}
 
-                     {/* folder tree */}
-
-                     <ScrollArea className="mt-4 flex flex-col">
-                        <FolderTreeComponent searchQuery={folderSearchQuery} />
-                        <FolderTreeComponent searchQuery={folderSearchQuery} />
-                        <FolderTreeComponent searchQuery={folderSearchQuery} />
-                        <FolderTreeComponent searchQuery={folderSearchQuery} />
+                    <ScrollArea className="flex-grow  h-64 overflow-auto p-2">
+                        
+                            <FolderTreeComponent searchQuery={folderSearchQuery} />
+                          
+                     
                     </ScrollArea>
-
-
-                </ScrollArea>
+                </div>
             </div>
            
             <div 
