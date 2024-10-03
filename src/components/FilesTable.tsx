@@ -14,7 +14,10 @@ import {
 } from "@tanstack/react-table"
 import { ArrowUpDown, ChevronDown, MoreHorizontal, Upload } from "lucide-react"
 import DragDropOverlay from "./DragDrop"
-
+import { v4 as uuidv4 } from 'uuid';
+import { S3Client, PutObjectCommand, GetObjectCommand, DeleteObjectCommand, ListObjectsV2Command, HeadObjectCommand } from "@aws-sdk/client-s3";
+import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
+import { fetchAuthSession, getCurrentUser } from 'aws-amplify/auth';
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import {
@@ -37,96 +40,92 @@ import {
 } from "@/components/ui/table"
 
 const data: Payment[] = [
-    {
-        type: "PDF",
-        name: "2013 Annual Report",
-        status: "success",
-        size: "0.08 MB",
-        date: "2021-09-01",
-        uploadedBy: "John Doe",
-    },
-    {
-        type: "PDF",
-        name: "2014 Annual Report",
-        status: "success",
-        size: "1 MB",
-        date: "2021-09-01",
-        uploadedBy: "John Doe",
-    },
-    {
-        type: "DOC",
-        name: "2015 Annual Report",
-        status: "processing",
-        size: "2.7 MB",
-        date: "2021-09-01",
-        uploadedBy: "John Doe",
-    },
-    {
-        type: "JPG",
-        name: "2016 Annual Report",
-        status: "success",
-        size: "3.9 MB",
-        date: "2021-09-01",
-        uploadedBy: "John Doe",
-    },
-    {
-        type: "PPT",
-        name: "2017 Annual Report",
-        status: "failed",
-        size: "24 MB",
-        date: "2021-09-01",
-        uploadedBy: "John Doe",
-    },
-    {
-        type: "PPT",
-        name: "2017 Annual Report",
-        status: "failed",
-        size: "24 MB",
-        date: "2021-09-01",
-        uploadedBy: "John Doe",
-    },
-    {
-        type: "PPT",
-        name: "2017 Annual Report",
-        status: "failed",
-        size: "24 MB",
-        date: "2021-09-01",
-        uploadedBy: "John Doe",
-    },
-    {
-        type: "PPT",
-        name: "2017 Annual Report",
-        status: "failed",
-        size: "24 MB",
-        date: "2021-09-01",
-        uploadedBy: "John Doe",
-    },
-    {
-        type: "PPT",
-        name: "2017 Annual Report",
-        status: "failed",
-        size: "24 MB",
-        date: "2021-09-01",
-        uploadedBy: "John Doe",
-    },
-    {
-        type: "PPT",
-        name: "2017 Annual Report",
-        status: "failed",
-        size: "24 MB",
-        date: "2021-09-01",
-        uploadedBy: "John Doe",
-    },
 ]
 
 export type Payment = {
+    id: string,
     type: string,
     name: string,
     size: string,
     status: "pending" | "processing" | "success" | "failed",
     date: string,
     uploadedBy: string,
+    s3Key?: string,
+    s3Url?: string,
 }
+
+const S3_BUCKET_NAME = '34b834c8-b001-70ff-02b0-f1e5b8e5d86a';
+const S3_PREFIX = 'documents/';
+const REGION = 'us-east-1';
+
+const getS3Client = async () => {
+    try {
+        const { credentials } = await fetchAuthSession();
+        
+        if (!credentials) {
+            throw new Error('No credentials available');
+        }
+
+        return new S3Client({
+            region: REGION,
+            credentials: {
+                accessKeyId: credentials.accessKeyId,
+                secretAccessKey: credentials.secretAccessKey,
+                sessionToken: credentials.sessionToken
+            }
+        });
+    } catch (error) {
+        console.error('Error getting credentials:', error);
+        throw error;
+    }
+};
+
+const getUserInfo = async () => {
+    try {
+        const userInfo = await getCurrentUser();
+        console.log(userInfo.username);
+        return userInfo.username;
+    } catch (error) {
+        console.error('Error getting user info:', error);
+        return 'Unknown User';
+    }
+};
+
+const getPresignedUrl = async (s3Key: string) => {
+    try {
+        
+        console.log("Waiting on s3 client");
+
+        const s3Client = await getS3Client();
+
+        console.log("Got the s3 client");
+        const command = new GetObjectCommand({
+            Bucket: S3_BUCKET_NAME,
+            Key: s3Key
+        });
+
+        return await getSignedUrl(s3Client, command, { expiresIn: 3600 });
+    } catch (error) {
+        console.error('Error generating signed URL:', error);
+        throw error;
+    }
+};
+
+// Helper function to delete object
+const deleteS3Object = async (s3Key: string) => {
+    try {
+        const s3Client = await getS3Client();
+        const command = new DeleteObjectCommand({
+            Bucket: S3_BUCKET_NAME,
+            Key: s3Key
+        });
+
+        await s3Client.send(command);
+    } catch (error) {
+        console.error('Error deleting object:', error);
+        throw error;
+    }
+};
 
 export const columns: ColumnDef<Payment>[] = [
     {
@@ -184,18 +183,71 @@ export const columns: ColumnDef<Payment>[] = [
         enableResizing: true,
         size: 100,
     },
+    {
+        id: "actions",
+        cell: ({ row }) => {
+            const payment = row.original;
+            return (
+                <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" className="h-8 w-8 p-0">
+                            <MoreHorizontal className="h-4 w-4" />
+                        </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                        <DropdownMenuItem
+                            onClick={async () => {
+                                if (payment.s3Key) {
+                                    try {
+                                        const url = await getPresignedUrl(payment.s3Key);
+                                        window.open(url, '_blank');
+                                    } catch (error) {
+                                        console.error('Error downloading file:', error);
+                                    }
+                                }
+                            }}
+                        >
+                            Download
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                            onClick={async () => {
+                                if (payment.s3Key) {
+                                    try {
+                                        await deleteS3Object(payment.s3Key);
+                                        // setTableData(prev => 
+                                        //     prev.filter(item => item.s3Key !== payment.s3Key)
+                                        // ); TODO: Update table data here
+                                    } catch (error) {
+                                        console.error('Error deleting file:', error);
+                                    }
+                                }
+                            }}
+                        >
+                            Delete
+                        </DropdownMenuItem>
+                    </DropdownMenuContent>
+                </DropdownMenu>
+            );
+        }
+    }
 ]
 
 export function DataTableDemo() {
     const [sorting, setSorting] = React.useState<SortingState>([])
     const [showUploadOverlay, setShowUploadOverlay] = React.useState(false);
     const [tableData, setTableData] = React.useState<Payment[]>(data);
+    const [currentUser, setCurrentUser] = React.useState<string>('');
     const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
         []
     )
     const [columnVisibility, setColumnVisibility] =
         React.useState<VisibilityState>({})
     const [rowSelection, setRowSelection] = React.useState({})
+    const [isLoading, setIsLoading] = React.useState(true);
+
+    
+
+    
 
     const table = useReactTable({
         data: tableData,
@@ -231,21 +283,134 @@ export function DataTableDemo() {
         setShowUploadOverlay(true);
     }
 
-    const handleFilesUploaded = (files: File[]) => {
-        // Here you would typically send the files to your backend
-        // For this example, we'll just add them to the table data
-        const newData = files.map((file, index) => ({
-            type: file.name.split('.').pop()?.toUpperCase() || 'Unknown',
-            name: file.name,
-            status: "success",
-            size: `${(file.size / (1024 * 1024)).toFixed(2)} MB`,
-            date: new Date().toISOString().split('T')[0],
-            uploadedBy: "Current User",
-        }))
+    React.useEffect(() => {
+        getUserInfo().then(username => setCurrentUser(username));
+    }, []);
+    
+    React.useEffect(() => {
+        listS3Objects();
+    }, []);
 
-        setTableData((prevData) => [...newData, ...prevData])
-        setShowUploadOverlay(false)
-    }
+
+    const uploadToS3 = async (file: File) => {
+        const fileId = uuidv4();
+        const fileExtension = file.name.split('.').pop() || '';
+        const s3Key = `${S3_PREFIX}${fileId}.${fileExtension}`;
+
+        try {
+            const s3Client = await getS3Client();
+            
+            const command = new PutObjectCommand({
+                Bucket: S3_BUCKET_NAME,
+                Key: s3Key,
+                Body: file,
+                ContentType: file.type,
+                Metadata: {
+                    uploadedBy: currentUser,
+                    originalName: file.name
+                }
+            });
+
+            await s3Client.send(command);
+            return s3Key;
+        } catch (error) {
+            console.error('Error uploading to S3:', error);
+            throw error;
+        }
+    };
+
+    const listS3Objects = async () => {
+        try {
+            setIsLoading(true);
+            const s3Client = await getS3Client();
+            
+            const command = new ListObjectsV2Command({
+                Bucket: S3_BUCKET_NAME,
+                Prefix: S3_PREFIX
+            });
+
+            const response = await s3Client.send(command);
+            
+            if (response.Contents) {
+                const files = await Promise.all(
+                    response.Contents.map(async (object) => {
+                        if (!object.Key) return null;
+                        
+                        const headCommand = new HeadObjectCommand({
+                            Bucket: S3_BUCKET_NAME,
+                            Key: object.Key
+                        });
+                        
+                        try {
+                            const headResponse = await s3Client.send(headCommand);
+                            const metadata = headResponse.Metadata || {};
+                            
+                            const file: Payment = {
+                                id: object.Key,
+                                type: object.Key.split('.').pop()?.toUpperCase() || 'Unknown',
+                                name: metadata.originalname || object.Key.split('/').pop() || '',
+                                status: "success", // This is now correctly typed
+                                size: `${(object.Size || 0 / (1024 * 1024)).toFixed(2)} MB`,
+                                date: object.LastModified?.toISOString().split('T')[0] || '',
+                                uploadedBy: metadata.uploadedby || 'Unknown',
+                                s3Key: object.Key
+                            };
+                            return file;
+                        } catch (error) {
+                            console.error(`Error getting metadata for ${object.Key}:`, error);
+                            return null;
+                        }
+                    })
+                );
+                
+                // Fix the type predicate
+                const validFiles = files.filter((file): file is Payment => {
+                    return file !== null && 
+                           typeof file === 'object' &&
+                           'id' in file &&
+                           'status' in file;
+                });
+                
+                setTableData(validFiles);
+            }
+        } catch (error) {
+            console.error('Error listing S3 objects:', error);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const handleFilesUploaded = async (files: File[]) => {
+        const uploadPromises = files.map(async (file) => {
+            try {
+                const s3Key = await uploadToS3(file);
+                return {
+                    id: uuidv4(),
+                    type: file.name.split('.').pop()?.toUpperCase() || 'Unknown',
+                    name: file.name,
+                    status: "success" as const,
+                    size: `${(file.size / (1024 * 1024)).toFixed(2)} MB`,
+                    date: new Date().toISOString().split('T')[0],
+                    uploadedBy: "Current User",
+                    s3Key: s3Key
+                };
+            } catch (error) {
+                return {
+                    id: uuidv4(),
+                    type: file.name.split('.').pop()?.toUpperCase() || 'Unknown',
+                    name: file.name,
+                    status: "failed" as const,
+                    size: `${(file.size / (1024 * 1024)).toFixed(2)} MB`,
+                    date: new Date().toISOString().split('T')[0],
+                    uploadedBy: "Current User"
+                };
+            }
+        });
+
+        const newData = await Promise.all(uploadPromises);
+        setTableData((prevData) => [...newData, ...prevData]);
+        setShowUploadOverlay(false);
+    };
 
 
     return (
@@ -367,7 +532,16 @@ export function DataTableDemo() {
                         ))}
                     </TableHeader>
                     <TableBody>
-                        {table.getRowModel().rows?.length ? (
+                        {isLoading ? (
+                            <TableRow>
+                                <TableCell
+                                    colSpan={columns.length}
+                                    className="h-16 text-center text-xs"
+                                >
+                                    Loading...
+                                </TableCell>
+                            </TableRow>
+                        ): table.getRowModel().rows?.length ? (
                             table.getRowModel().rows.map((row) => (
                                 <TableRow
                                     key={row.id}

@@ -40,7 +40,7 @@ Amplify.configure({
 
       userPoolClientId: process.env.NEXT_PUBLIC_USER_POOL_CLIENT_ID, // change this one
       // REQUIRED only for Federated Authentication - Amazon Cognito Identity Pool ID
-      identityPoolId: 'us-east-1:e905629f-9f02-4ff7-b6de-6f9f24233685',
+      identityPoolId: process.env.NEXT_PUBLIC_IDENTITY_POOL_ID!,
       // OPTIONAL - Set to true to use your identity pool's unauthenticated role when user is not logged in
       // allowGuestAccess: true,
       // // OPTIONAL - This is used when autoSignIn is enabled for Auth.signUp
@@ -73,8 +73,6 @@ Amplify.configure({
 const ClientComponent = ({ children }: { children: React.ReactNode }) => {
   return (
     <ThemeProvider theme = {theme}>
-
-
       <AmplifyAuthenticator.Provider>
         {children}
       </AmplifyAuthenticator.Provider>

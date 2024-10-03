@@ -9,7 +9,10 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@aws-amplify/storage": "^6.6.8",
     "@aws-amplify/ui-react": "^6.1.14",
+    "@aws-sdk/client-s3": "^3.663.0",
+    "@aws-sdk/s3-request-presigner": "^3.663.0",
     "@emotion/react": "^11.13.0",
     "@emotion/styled": "^11.13.0",
     "@mui/icons-material": "^5.16.7",
@@ -43,7 +46,8 @@
     "recharts": "^2.12.7",
     "sharp": "^0.33.4",
     "tailwind-merge": "^2.4.0",
-    "tailwindcss-animate": "^1.0.7"
+    "tailwindcss-animate": "^1.0.7",
+    "uuid": "^10.0.0"
   },
   "devDependencies": {
     "@types/node": "^20",
