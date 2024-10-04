@@ -1,4 +1,3 @@
-
 import * as React from "react"
 import {
     ColumnDef,
@@ -13,9 +12,8 @@ import {
     useReactTable,
 } from "@tanstack/react-table"
 import { ArrowUpDown, ChevronDown, MoreHorizontal, Upload } from "lucide-react"
-import DragDropOverlay from "./DragDrop"
-import { v4 as uuidv4 } from 'uuid';
-import { S3Client, PutObjectCommand, GetObjectCommand, DeleteObjectCommand, ListObjectsV2Command, HeadObjectCommand } from "@aws-sdk/client-s3";
+import DragDropOverlay from "./DragDrop";
+import { S3Client, GetObjectCommand, DeleteObjectCommand, ListObjectsV2Command } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { fetchAuthSession, getCurrentUser } from 'aws-amplify/auth';
 import { Button } from "@/components/ui/button"
@@ -29,7 +27,6 @@ import {
     DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { Input } from "@/components/ui/input"
 import {
     Table,
     TableBody,
@@ -39,39 +36,21 @@ import {
     TableRow,
 } from "@/components/ui/table"
 
-const data: Payment[] = [
-]
-
-export type Payment = {
-    id: string,
-    type: string,
-    name: string,
-    size: string,
-    status: "pending" | "processing" | "success" | "failed",
-    date: string,
-    uploadedBy: string,
-    s3Key?: string,
-    s3Url?: string,
-}
-
 const S3_BUCKET_NAME = 'vdr-documents';
 const REGION = 'us-east-1';
 
-const getUserPrefix = async () => {
-    try {
-        const { identityId } = await fetchAuthSession();
-        if (!identityId) {
-            throw new Error('No identity ID available');
-        }
-        console.log("The identity id:", identityId);
-        return `${identityId}/`;
-    } catch (error) {
-        console.error('Error getting user prefix:', error);
-        throw error;
-    }
-};
+export interface Payment {
+    id: string;
+    type: string;
+    name: string;
+    size: string;
+    status: string;
+    date: string;
+    uploadedBy?: string;
+    s3Key?: string;
+}
 
-
+// S3 utility functions
 const getS3Client = async () => {
     try {
         const { credentials } = await fetchAuthSession();
@@ -94,26 +73,22 @@ const getS3Client = async () => {
     }
 };
 
-
-const getUserInfo = async () => {
+const getUserPrefix = async () => {
     try {
-        const userInfo = await getCurrentUser();
-        console.log(userInfo.username);
-        return userInfo.username;
+        const { identityId } = await fetchAuthSession();
+        if (!identityId) {
+            throw new Error('No identity ID available');
+        }
+        return `${identityId}/`;
     } catch (error) {
-        console.error('Error getting user info:', error);
-        return 'Unknown User';
+        console.error('Error getting user prefix:', error);
+        throw error;
     }
 };
 
 const getPresignedUrl = async (s3Key: string) => {
     try {
-        
-        console.log("Waiting on s3 client");
-
         const s3Client = await getS3Client();
-
-        console.log("Got the s3 client");
         const command = new GetObjectCommand({
             Bucket: S3_BUCKET_NAME,
             Key: s3Key
@@ -126,7 +101,6 @@ const getPresignedUrl = async (s3Key: string) => {
     }
 };
 
-// Helper function to delete object
 const deleteS3Object = async (s3Key: string) => {
     try {
         const s3Client = await getS3Client();
@@ -161,55 +135,69 @@ export const columns: ColumnDef<Payment>[] = [
         ),
         enableSorting: false,
         enableHiding: false,
-        enableResizing: false,
     },
     {
         accessorKey: "name",
-        header: "Name",
-        cell: ({ row }) => <div className="capitalize">{row.getValue("name")}</div>,
-        enableResizing: true,
-        size: 200,
+        header: ({ column }) => {
+            return (
+                <Button
+                    variant="ghost"
+                    onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+                >
+                    Name
+                    <ArrowUpDown className="ml-2 h-4 w-4" />
+                </Button>
+            )
+        },
+        cell: ({ row }) => <div className="lowercase">{row.getValue("name")}</div>,
     },
     {
         accessorKey: "type",
         header: "Type",
-        cell: ({ row }) => <div className="capitalize">{row.getValue("type")}</div>,
-        enableResizing: true,
-        size: 100,
+        cell: ({ row }) => <div className="lowercase">{row.getValue("type")}</div>,
     },
     {
-        accessorKey: "date",
-        header: "Date Uploaded",
-        cell: ({ row }) => <div className="capitalize">{row.getValue("date")}</div>,
-        enableResizing: true,
-        size: 150,
+        accessorKey: "status",
+        header: "Status",
+        cell: ({ row }) => <div className="capitalize">{row.getValue("status")}</div>,
     },
     {
         accessorKey: "size",
-        header: "Size",
-        cell: ({ row }) => <div className="">{row.getValue("size")}</div>,
-        enableResizing: true,
-        size: 100,
+        header: () => <div className="text-right">Size</div>,
+        cell: ({ row }) => {
+            return <div className="text-right font-medium">{row.getValue("size")}</div>
+        },
+    },
+    {
+        accessorKey: "date",
+        header: () => <div>Upload Date</div>,
+        cell: ({ row }) => {
+            return <div>{row.getValue("date")}</div>
+        },
     },
     {
         accessorKey: "uploadedBy",
-        header: "Uploaded By",
-        cell: ({ row }) => <div className="">{row.getValue("uploadedBy")}</div>,
-        enableResizing: true,
-        size: 100,
+        header: () => <div>Uploaded By</div>,
+        cell: ({ row }) => {
+            return <div>{row.getValue("uploadedBy")}</div>
+        },
     },
     {
         id: "actions",
+        enableHiding: false,
         cell: ({ row }) => {
-            const payment = row.original;
+            const payment = row.original
+
             return (
                 <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                         <Button variant="ghost" className="h-8 w-8 p-0">
+                            <span className="sr-only">Open menu</span>
                             <MoreHorizontal className="h-4 w-4" />
                         </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
+                        <DropdownMenuLabel>Actions</DropdownMenuLabel>
                         <DropdownMenuItem
                             onClick={async () => {
                                 if (payment.s3Key) {
@@ -229,9 +217,7 @@ export const columns: ColumnDef<Payment>[] = [
                                 if (payment.s3Key) {
                                     try {
                                         await deleteS3Object(payment.s3Key);
-                                        // setTableData(prev => 
-                                        //     prev.filter(item => item.s3Key !== payment.s3Key)
-                                        // );
+                                        // This will be handled by the onDelete prop
                                     } catch (error) {
                                         console.error('Error deleting file:', error);
                                     }
@@ -242,31 +228,78 @@ export const columns: ColumnDef<Payment>[] = [
                         </DropdownMenuItem>
                     </DropdownMenuContent>
                 </DropdownMenu>
-            );
-        }
-    }
+            )
+        },
+    },
 ]
 
 export function DataTableDemo() {
     const [sorting, setSorting] = React.useState<SortingState>([])
-    const [showUploadOverlay, setShowUploadOverlay] = React.useState(false);
-    const [tableData, setTableData] = React.useState<Payment[]>(data);
-    const [currentUser, setCurrentUser] = React.useState<string>('');
-    const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
-        []
-    )
-    const [columnVisibility, setColumnVisibility] =
-        React.useState<VisibilityState>({})
+    const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([])
+    const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({})
     const [rowSelection, setRowSelection] = React.useState({})
+    const [showUploadOverlay, setShowUploadOverlay] = React.useState(false);
+    const [tableData, setTableData] = React.useState<Payment[]>([]);
     const [isLoading, setIsLoading] = React.useState(true);
 
+    const listS3Objects = async () => {
+        try {
+            setIsLoading(true);
+            const s3Client = await getS3Client();
+            const userPrefix = await getUserPrefix();
+            
+            const command = new ListObjectsV2Command({
+                Bucket: S3_BUCKET_NAME,
+                Prefix: userPrefix
+            });
     
+            const response = await s3Client.send(command);
+            
+            if (response.Contents) {
+                const files = await Promise.all(
+                    response.Contents
+                        .filter(object => {
+                            const key = object.Key || '';
+                            return !key.endsWith('/') && 
+                                   !key.includes('US-EAST-1:') &&
+                                   object.Size !== 0;
+                        })
+                        .map(async (object) => {
+                            if (!object.Key) return null;
+                            
+                            return {
+                                id: object.Key,
+                                type: object.Key.split('.').pop()?.toUpperCase() || 'Unknown',
+                                name: object.Key.split('/').pop() || '',
+                                status: "success",
+                                size: `${(object.Size || 0 / (1024 * 1024)).toFixed(2)} MB`,
+                                date: object.LastModified?.toISOString().split('T')[0] || '',
+                                uploadedBy: await getCurrentUser().then(user => user.username),
+                                s3Key: object.Key
+                            };
+                        })
+                );
+                
+                const validFiles = files.filter((file): file is Payment => file !== null);
+                setTableData(validFiles);
+            }
+        } catch (error) {
+            console.error('Error listing S3 objects:', error);
+        } finally {
+            setIsLoading(false);
+        }
+    };
 
-    
+    React.useEffect(() => {
+        listS3Objects();
+    }, []);
+
+    const handleFilesUploaded = async (newPayments: Payment[]) => {
+        setTableData(prevData => [...newPayments, ...prevData]);
+    };
 
     const table = useReactTable({
         data: tableData,
-
         columns,
         onSortingChange: setSorting,
         onColumnFiltersChange: setColumnFilters,
@@ -282,226 +315,27 @@ export function DataTableDemo() {
             columnVisibility,
             rowSelection,
         },
-        enableColumnResizing: true,
-        columnResizeMode: "onChange",
-        initialState: {
-            pagination: {
-                pageSize: 5,
-            },
-        },
     })
-
-    
-
-
-    const handleUploadClick = () => { 
-        setShowUploadOverlay(true);
-    }
-    
-    React.useEffect(() => {
-        getUserInfo().then(username => setCurrentUser(username));
-        listS3Objects();
-        console.log("Getting user info");
-    }, []);
-    React.useEffect(() => {
-        getUserInfo().then(username => setCurrentUser(username));
-    }, []);
-    
-    React.useEffect(() => {
-        listS3Objects();
-    }, []);
-
-
-    const uploadToS3 = async (file: File) => {
-        const fileId = uuidv4();
-        const fileExtension = file.name.split('.').pop() || '';
-        const userPrefix = await getUserPrefix();
-        const s3Key = `${userPrefix}${fileId}.${fileExtension}`;
-    
-        try {
-            const s3Client = await getS3Client();
-            
-            const command = new PutObjectCommand({
-                Bucket: S3_BUCKET_NAME,
-                Key: s3Key,
-                Body: file,
-                ContentType: file.type,
-                Metadata: {
-                    uploadedBy: await getUserInfo(),
-                    originalName: file.name
-                }
-            });
-    
-            await s3Client.send(command);
-            return s3Key;
-        } catch (error) {
-            console.error('Error uploading to S3:', error);
-            throw error;
-        }
-    };
-
-    const listS3Objects = async () => {
-        try {
-            setIsLoading(true);
-            const s3Client = await getS3Client();
-            const userPrefix = await getUserPrefix();
-            
-            const command = new ListObjectsV2Command({
-                Bucket: S3_BUCKET_NAME,
-                Prefix: userPrefix
-            });
-    
-            const response = await s3Client.send(command);
-            console.log(response);
-            if (response.Contents) {
-                const files = await Promise.all(
-                    response.Contents.map(async (object) => {
-                        if (!object.Key) return null;
-                        
-                        const headCommand = new HeadObjectCommand({
-                            Bucket: S3_BUCKET_NAME,
-                            Key: object.Key
-                        });
-                        
-                        try {
-                            const headResponse = await s3Client.send(headCommand);
-                            const metadata = headResponse.Metadata || {};
-                            console.log(metadata);
-                            
-                            const file: Payment = {
-                                id: object.Key,
-                                type: object.Key.split('.').pop()?.toUpperCase() || 'Unknown',
-                                name: metadata.originalname || object.Key.split('/').pop() || '',
-                                status: "success",
-                                size: `${(object.Size || 0 / (1024 * 1024)).toFixed(2)} MB`,
-                                date: object.LastModified?.toISOString().split('T')[0] || '',
-                                uploadedBy: metadata.uploadedby || 'Unknown',
-                                s3Key: object.Key
-                            };
-                            return file;
-                        } catch (error) {
-                            console.error(`Error getting metadata for ${object.Key}:`, error);
-                            return null;
-                        }
-                    })
-                );
-                
-                const validFiles = files.filter((file): file is Payment => {
-                    return file !== null && 
-                           typeof file === 'object' &&
-                           'id' in file &&
-                           'status' in file;
-                });
-                
-                setTableData(validFiles);
-            }
-        } catch (error) {
-            console.error('Error listing S3 objects:', error);
-        } finally {
-            setIsLoading(false);
-        }
-    };
-
-    const handleFilesUploaded = async (files: File[]) => {
-        const uploadPromises = files.map(async (file) => {
-            try {
-                const s3Key = await uploadToS3(file);
-                return {
-                    id: uuidv4(),
-                    type: file.name.split('.').pop()?.toUpperCase() || 'Unknown',
-                    name: file.name,
-                    status: "success" as const,
-                    size: `${(file.size / (1024 * 1024)).toFixed(2)} MB`,
-                    date: new Date().toISOString().split('T')[0],
-                    uploadedBy: currentUser,
-                    s3Key: s3Key
-                };
-            } catch (error) {
-                console.error('Error uploading file:', error);
-                return {
-                    id: uuidv4(),
-                    type: file.name.split('.').pop()?.toUpperCase() || 'Unknown',
-                    name: file.name,
-                    status: "failed" as const,
-                    size: `${(file.size / (1024 * 1024)).toFixed(2)} MB`,
-                    date: new Date().toISOString().split('T')[0],
-                    uploadedBy: currentUser
-                };
-            }
-        });
-
-        const newData = await Promise.all(uploadPromises);
-        setTableData((prevData) => [...newData, ...prevData]);
-        setShowUploadOverlay(false);
-    };
-
-
 
     return (
         <div className="w-full">
-             <style jsx>{`
-                .resizer {
-                    position: absolute;
-                    right: 0;
-                    top: 0;
-                    height: 100%;
-                    width: 5px;
-                    background: rgba(0, 0, 0, 0.5);
-                    cursor: col-resize;
-                    user-select: none;
-                    touch-action: none;
-                    opacity: 0;
-                    transition: opacity 0.2s;
-                }
-                
-                .resizer:hover,
-                .resizer.isResizing {
-                    opacity: 1;
-                }
-                
-                @media (hover: hover) {
-                    .resizer {
-                        opacity: 0;
-                    }
-                
-                    *:hover > .resizer {
-                        opacity: 1;
-                    }
-                }
-                
-                table {
-                    width: 100%;
-                    border-collapse: separate;
-                    border-spacing: 0;
-                }
-                
-                th, td {
-                    border-bottom: 1px solid #e5e7eb;
-                    overflow: hidden;
-                    text-overflow: ellipsis;
-                    white-space: nowrap;
-                }
-            `}</style>
             <div className="flex items-center py-4">
                 <div className="buttons flex flex-row gap-2">
-                    <button 
-                    className="flex items-center gap-2 bg-blue-500 text-white px-4 py-1 rounded-full hover:bg-blue-700"
-                    onClick={handleUploadClick}>
-                        <Upload size={16} />
-                        <span>Upload</span>
-                    </button>
-                    <button className="flex items-center gap-2 bg-gray-200 text-gray-800 px-4 py-1 rounded-full hover:bg-slate-300">
-                        <span>Manage Documents</span>
-                        <ChevronDown size={16} />
-                    </button>
+                    <Button
+                        onClick={() => setShowUploadOverlay(true)}
+                        className="flex items-center gap-2"
+                    >
+                        <Upload className="h-4 w-4" />
+                        Upload
+                    </Button>
                 </div>
                 <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                        <Button variant="outline" className="ml-auto text-xs">
-                            Columns <ChevronDown className="ml-2 h-3 w-3" />
+                        <Button variant="outline" className="ml-auto">
+                            Columns <ChevronDown className="ml-2 h-4 w-4" />
                         </Button>
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="text-xs">
+                    <DropdownMenuContent align="end">
                         {table
                             .getAllColumns()
                             .filter((column) => column.getCanHide())
@@ -522,36 +356,23 @@ export function DataTableDemo() {
                     </DropdownMenuContent>
                 </DropdownMenu>
             </div>
-
-           
-            <div className="rounded-md overflow-hidden">
+            <div className="rounded-md border">
                 <Table>
                     <TableHeader>
                         {table.getHeaderGroups().map((headerGroup) => (
                             <TableRow key={headerGroup.id}>
-                                {headerGroup.headers.map((header) => (
-                                    <TableHead 
-                                        key={header.id}
-                                        className="text-xs font-medium py-3 relative"
-                                        style={{ width: header.getSize() }}
-                                    >
-                                        {header.isPlaceholder
-                                            ? null
-                                            : flexRender(
-                                                header.column.columnDef.header,
-                                                header.getContext()
-                                            )}
-                                        {header.column.getCanResize() && (
-                                            <div
-                                                onMouseDown={header.getResizeHandler()}
-                                                onTouchStart={header.getResizeHandler()}
-                                                className={`resizer ${
-                                                    header.column.getIsResizing() ? "isResizing" : ""
-                                                }`}
-                                            ></div>
-                                        )}
-                                    </TableHead>
-                                ))}
+                                {headerGroup.headers.map((header) => {
+                                    return (
+                                        <TableHead key={header.id}>
+                                            {header.isPlaceholder
+                                                ? null
+                                                : flexRender(
+                                                      header.column.columnDef.header,
+                                                      header.getContext()
+                                                  )}
+                                        </TableHead>
+                                    )
+                                })}
                             </TableRow>
                         ))}
                     </TableHeader>
@@ -560,23 +381,19 @@ export function DataTableDemo() {
                             <TableRow>
                                 <TableCell
                                     colSpan={columns.length}
-                                    className="h-16 text-center text-xs"
+                                    className="h-24 text-center"
                                 >
                                     Loading...
                                 </TableCell>
                             </TableRow>
-                        ): table.getRowModel().rows?.length ? (
+                        ) : table.getRowModel().rows?.length ? (
                             table.getRowModel().rows.map((row) => (
                                 <TableRow
                                     key={row.id}
                                     data-state={row.getIsSelected() && "selected"}
                                 >
                                     {row.getVisibleCells().map((cell) => (
-                                        <TableCell 
-                                            key={cell.id} 
-                                            className="text-xs py-3"
-                                            style={{ width: cell.column.getSize() }}
-                                        >
+                                        <TableCell key={cell.id}>
                                             {flexRender(
                                                 cell.column.columnDef.cell,
                                                 cell.getContext()
@@ -589,7 +406,7 @@ export function DataTableDemo() {
                             <TableRow>
                                 <TableCell
                                     colSpan={columns.length}
-                                    className="h-16 text-center text-xs"
+                                    className="h-24 text-center"
                                 >
                                     No results.
                                 </TableCell>
@@ -598,16 +415,12 @@ export function DataTableDemo() {
                     </TableBody>
                 </Table>
             </div>
-            <div className="flex items-center justify-between space-x-2 py-4">
+            <div className="flex items-center justify-end space-x-2 py-4">
                 <div className="flex-1 text-sm text-muted-foreground">
                     {table.getFilteredSelectedRowModel().rows.length} of{" "}
                     {table.getFilteredRowModel().rows.length} row(s) selected.
                 </div>
-                <div className="space-x-2 flex items-center">
-                    <span className="text-sm text-muted-foreground">
-                        Page {table.getState().pagination.pageIndex + 1} of{" "}
-                        {table.getPageCount()}
-                    </span>
+                <div className="space-x-2">
                     <Button
                         variant="outline"
                         size="sm"
@@ -629,7 +442,7 @@ export function DataTableDemo() {
 
             {showUploadOverlay && (
                 <DragDropOverlay
-                onClose={() => setShowUploadOverlay(false)}
+                    onClose={() => setShowUploadOverlay(false)}
                 onFilesUploaded={handleFilesUploaded}
             />
             )}
