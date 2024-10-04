@@ -54,9 +54,23 @@ export type Payment = {
     s3Url?: string,
 }
 
-const S3_BUCKET_NAME = '34b834c8-b001-70ff-02b0-f1e5b8e5d86a';
-const S3_PREFIX = 'documents/';
+const S3_BUCKET_NAME = 'vdr-documents';
 const REGION = 'us-east-1';
+
+const getUserPrefix = async () => {
+    try {
+        const { identityId } = await fetchAuthSession();
+        if (!identityId) {
+            throw new Error('No identity ID available');
+        }
+        console.log("The identity id:", identityId);
+        return `${identityId}/`;
+    } catch (error) {
+        console.error('Error getting user prefix:', error);
+        throw error;
+    }
+};
+
 
 const getS3Client = async () => {
     try {
@@ -79,6 +93,7 @@ const getS3Client = async () => {
         throw error;
     }
 };
+
 
 const getUserInfo = async () => {
     try {
@@ -216,7 +231,7 @@ export const columns: ColumnDef<Payment>[] = [
                                         await deleteS3Object(payment.s3Key);
                                         // setTableData(prev => 
                                         //     prev.filter(item => item.s3Key !== payment.s3Key)
-                                        // ); TODO: Update table data here
+                                        // );
                                     } catch (error) {
                                         console.error('Error deleting file:', error);
                                     }
@@ -282,7 +297,12 @@ export function DataTableDemo() {
     const handleUploadClick = () => { 
         setShowUploadOverlay(true);
     }
-
+    
+    React.useEffect(() => {
+        getUserInfo().then(username => setCurrentUser(username));
+        listS3Objects();
+        console.log("Getting user info");
+    }, []);
     React.useEffect(() => {
         getUserInfo().then(username => setCurrentUser(username));
     }, []);
@@ -295,8 +315,9 @@ export function DataTableDemo() {
     const uploadToS3 = async (file: File) => {
         const fileId = uuidv4();
         const fileExtension = file.name.split('.').pop() || '';
-        const s3Key = `${S3_PREFIX}${fileId}.${fileExtension}`;
-
+        const userPrefix = await getUserPrefix();
+        const s3Key = `${userPrefix}${fileId}.${fileExtension}`;
+    
         try {
             const s3Client = await getS3Client();
             
@@ -306,11 +327,11 @@ export function DataTableDemo() {
                 Body: file,
                 ContentType: file.type,
                 Metadata: {
-                    uploadedBy: currentUser,
+                    uploadedBy: await getUserInfo(),
                     originalName: file.name
                 }
             });
-
+    
             await s3Client.send(command);
             return s3Key;
         } catch (error) {
@@ -323,14 +344,15 @@ export function DataTableDemo() {
         try {
             setIsLoading(true);
             const s3Client = await getS3Client();
+            const userPrefix = await getUserPrefix();
             
             const command = new ListObjectsV2Command({
                 Bucket: S3_BUCKET_NAME,
-                Prefix: S3_PREFIX
+                Prefix: userPrefix
             });
-
+    
             const response = await s3Client.send(command);
-            
+            console.log(response);
             if (response.Contents) {
                 const files = await Promise.all(
                     response.Contents.map(async (object) => {
@@ -344,12 +366,13 @@ export function DataTableDemo() {
                         try {
                             const headResponse = await s3Client.send(headCommand);
                             const metadata = headResponse.Metadata || {};
+                            console.log(metadata);
                             
                             const file: Payment = {
                                 id: object.Key,
                                 type: object.Key.split('.').pop()?.toUpperCase() || 'Unknown',
                                 name: metadata.originalname || object.Key.split('/').pop() || '',
-                                status: "success", // This is now correctly typed
+                                status: "success",
                                 size: `${(object.Size || 0 / (1024 * 1024)).toFixed(2)} MB`,
                                 date: object.LastModified?.toISOString().split('T')[0] || '',
                                 uploadedBy: metadata.uploadedby || 'Unknown',
@@ -363,7 +386,6 @@ export function DataTableDemo() {
                     })
                 );
                 
-                // Fix the type predicate
                 const validFiles = files.filter((file): file is Payment => {
                     return file !== null && 
                            typeof file === 'object' &&
@@ -391,10 +413,11 @@ export function DataTableDemo() {
                     status: "success" as const,
                     size: `${(file.size / (1024 * 1024)).toFixed(2)} MB`,
                     date: new Date().toISOString().split('T')[0],
-                    uploadedBy: "Current User",
+                    uploadedBy: currentUser,
                     s3Key: s3Key
                 };
             } catch (error) {
+                console.error('Error uploading file:', error);
                 return {
                     id: uuidv4(),
                     type: file.name.split('.').pop()?.toUpperCase() || 'Unknown',
@@ -402,7 +425,7 @@ export function DataTableDemo() {
                     status: "failed" as const,
                     size: `${(file.size / (1024 * 1024)).toFixed(2)} MB`,
                     date: new Date().toISOString().split('T')[0],
-                    uploadedBy: "Current User"
+                    uploadedBy: currentUser
                 };
             }
         });
@@ -411,6 +434,7 @@ export function DataTableDemo() {
         setTableData((prevData) => [...newData, ...prevData]);
         setShowUploadOverlay(false);
     };
+
 
 
     return (
