@@ -38,6 +38,9 @@ import {
     TableHeader,
     TableRow,
 } from "@/components/ui/table"
+import DocViewer, { DocViewerRenderers } from "@cyntler/react-doc-viewer";
+import "@cyntler/react-doc-viewer/dist/index.css";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 
 const data: Payment[] = [
 ]
@@ -52,6 +55,63 @@ export type Payment = {
     uploadedBy: string,
     s3Key?: string,
     s3Url?: string,
+}
+
+interface FileViewerProps {
+    isOpen: boolean
+    onClose: () => void
+    documentUrl?: string
+    documentName?: string
+}
+
+const getFileType = (fileName: string): string => {
+    const extension = fileName.split('.').pop()?.toLowerCase() || ''
+    const extensionMap: { [key: string]: string } = {
+        'pdf': 'application/pdf',
+        'doc': 'application/msword',
+        'docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        'xls': 'application/vnd.ms-excel',
+        'xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        'png': 'image/png',
+        'jpg': 'image/jpeg',
+        'jpeg': 'image/jpeg',
+        // Add more mappings as needed
+    }
+    return extensionMap[extension] || 'application/octet-stream'
+}
+
+const FileViewer: React.FC<FileViewerProps> = ({
+    isOpen,
+    onClose,
+    documentUrl,
+    documentName = ''
+}) => {
+    if (!documentUrl) return null
+
+    const fileType = getFileType(documentName)
+
+    return (
+        <Dialog open={isOpen} onOpenChange={onClose}>
+            <DialogContent className="max-w-4xl w-full h-[80vh]">
+                <DialogHeader>
+                    <DialogTitle>{documentName || 'Document Viewer'}</DialogTitle>
+                </DialogHeader>
+                <div className="flex-1 w-full h-full min-h-[60vh]">
+                    <DocViewer
+                        documents={[{ uri: documentUrl, fileType }]}
+                        pluginRenderers={DocViewerRenderers}
+                        style={{ height: '100%' }}
+                        config={{
+                            header: {
+                                disableHeader: true,
+                                disableFileName: true,
+                            }
+                        }}
+                    />
+                </div>
+            </DialogContent>
+        </Dialog>
+    )
 }
 
 const S3_BUCKET_NAME = 'vdr-documents';
@@ -142,6 +202,7 @@ const deleteS3Object = async (s3Key: string) => {
     }
 };
 
+
 export const columns: ColumnDef<Payment>[] = [
     {
         id: "select",
@@ -198,53 +259,71 @@ export const columns: ColumnDef<Payment>[] = [
         enableResizing: true,
         size: 100,
     },
-    {
-        id: "actions",
-        cell: ({ row }) => {
-            const payment = row.original;
-            return (
-                <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" className="h-8 w-8 p-0">
-                            <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                        <DropdownMenuItem
-                            onClick={async () => {
-                                if (payment.s3Key) {
-                                    try {
-                                        const url = await getPresignedUrl(payment.s3Key);
-                                        window.open(url, '_blank');
-                                    } catch (error) {
-                                        console.error('Error downloading file:', error);
-                                    }
-                                }
-                            }}
-                        >
-                            Download
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                            onClick={async () => {
-                                if (payment.s3Key) {
-                                    try {
-                                        await deleteS3Object(payment.s3Key);
-                                        // setTableData(prev => 
-                                        //     prev.filter(item => item.s3Key !== payment.s3Key)
-                                        // ); TODO fix this statement
-                                    } catch (error) {
-                                        console.error('Error deleting file:', error);
-                                    }
-                                }
-                            }}
-                        >
-                            Delete
-                        </DropdownMenuItem>
-                    </DropdownMenuContent>
-                </DropdownMenu>
-            );
-        }
-    }
+    // {
+    //     id: "actions",
+    //     cell: ({ row }) => {
+    //         const payment = row.original;
+    //         return (
+    //             <DropdownMenu>
+    //                 <DropdownMenuTrigger asChild>
+    //                     <Button variant="ghost" className="h-8 w-8 p-0">
+    //                         <MoreHorizontal className="h-4 w-4" />
+    //                     </Button>
+    //                 </DropdownMenuTrigger>
+    //                 <DropdownMenuContent align="end">
+    //                     <DropdownMenuItem
+    //                             onClick={async () => {
+    //                                 if (payment.s3Key) {
+    //                                     try {
+    //                                         const url = await getPresignedUrl(payment.s3Key)
+    //                                         setCurrentDocument({
+    //                                             url,
+    //                                             name: payment.name
+    //                                         })
+    //                                         setViewerOpen(true)
+    //                                     } catch (error) {
+    //                                         console.error('Error getting presigned URL:', error)
+    //                                     }
+    //                                 }
+    //                             }}
+    //                         >
+    //                             View
+    //                     </DropdownMenuItem>
+    //                     <DropdownMenuItem
+    //                         onClick={async () => {
+    //                             if (payment.s3Key) {
+    //                                 try {
+    //                                     const url = await getPresignedUrl(payment.s3Key);
+    //                                     window.open(url, '_blank');
+    //                                 } catch (error) {
+    //                                     console.error('Error downloading file:', error);
+    //                                 }
+    //                             }
+    //                         }}
+    //                     >
+    //                         Download
+    //                     </DropdownMenuItem>
+    //                     <DropdownMenuItem
+    //                         onClick={async () => {
+    //                             if (payment.s3Key) {
+    //                                 try {
+    //                                     await deleteS3Object(payment.s3Key);
+    //                                     // setTableData(prev => 
+    //                                     //     prev.filter(item => item.s3Key !== payment.s3Key)
+    //                                     // ); TODO fix this statement
+    //                                 } catch (error) {
+    //                                     console.error('Error deleting file:', error);
+    //                                 }
+    //                             }
+    //                         }}
+    //                     >
+    //                         Delete
+    //                     </DropdownMenuItem>
+    //                 </DropdownMenuContent>
+    //             </DropdownMenu>
+    //         );
+    //     }
+    // }
 ]
 
 export function DataTableDemo() {
@@ -259,6 +338,78 @@ export function DataTableDemo() {
         React.useState<VisibilityState>({})
     const [rowSelection, setRowSelection] = React.useState({})
     const [isLoading, setIsLoading] = React.useState(true);
+    const [viewerOpen, setViewerOpen] = React.useState(false)
+    const [currentDocument, setCurrentDocument] = React.useState<{url?: string, name?: string}>({})
+
+
+    const updatedColumns: ColumnDef<Payment>[] = [
+        ...columns,
+        {
+            id: "actions",
+            cell: ({ row }) => {
+                const payment = row.original
+                return (
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" className="h-8 w-8 p-0">
+                                <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                            <DropdownMenuItem
+                                onClick={async () => {
+                                    if (payment.s3Key) {
+                                        try {
+                                            const url = await getPresignedUrl(payment.s3Key)
+                                            setCurrentDocument({
+                                                url,
+                                                name: payment.name
+                                            })
+                                            setViewerOpen(true)
+                                        } catch (error) {
+                                            console.error('Error getting presigned URL:', error)
+                                        }
+                                    }
+                                }}
+                            >
+                                View
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                                onClick={async () => {
+                                    if (payment.s3Key) {
+                                        try {
+                                            const url = await getPresignedUrl(payment.s3Key)
+                                            window.open(url, '_blank')
+                                        } catch (error) {
+                                            console.error('Error downloading file:', error)
+                                        }
+                                    }
+                                }}
+                            >
+                                Download
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                                onClick={async () => {
+                                    if (payment.s3Key) {
+                                        try {
+                                            await deleteS3Object(payment.s3Key);
+                                            setTableData(prev => 
+                                                prev.filter(item => item.s3Key !== payment.s3Key)
+                                            );
+                                        } catch (error) {
+                                            console.error('Error deleting file:', error);
+                                        }
+                                    }
+                                }}
+                            >
+                                Delete
+                            </DropdownMenuItem>
+                        </DropdownMenuContent>
+                    </DropdownMenu>
+                )
+            }
+        }
+    ]
 
     
 
@@ -267,7 +418,7 @@ export function DataTableDemo() {
     const table = useReactTable({
         data: tableData,
 
-        columns,
+        columns: updatedColumns,
         onSortingChange: setSorting,
         onColumnFiltersChange: setColumnFilters,
         getCoreRowModel: getCoreRowModel(),
@@ -446,7 +597,28 @@ export function DataTableDemo() {
     };
 
 
+    // return (
+    //     <DocViewer
+    //         documents={[{ uri: "https://vdr-documents.s3.us-east-1.amazonaws.com/us-east-1%3Ab0ba6fcd-a381-c36e-7373-2f3fb92b5808/files/extra%20problem%203.pdf?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Content-Sha256=UNSIGNED-PAYLOAD&X-Amz-Credential=ASIA3BOTPZWRQ5NOCWQF%2F20241005%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Date=20241005T180317Z&X-Amz-Expires=3600&X-Amz-Security-Token=IQoJb3JpZ2luX2VjEKr%2F%2F%2F%2F%2F%2F%2F%2F%2F%2FwEaCXVzLWVhc3QtMSJHMEUCIQDtwR7U0ZKNkcbA7DEfVcb3n32Dzu2Gbvf6wszxjLPn8gIgepFYN55vamTpQ3H0H%2BcZhXG8rhW0u2ecswXywT7J4joqzQQI8%2F%2F%2F%2F%2F%2F%2F%2F%2F%2F%2FARADGgw3NTkwNDIxMzM0MTEiDETN7LiKbRU7oL1kQyqhBGqVTKJasSPxnkUniq3pbqtiEpTWmTT5S%2BXDJfC2uYRQdcgNEWLQ5kJEmgn7RP2uERmuZlLbsz4GevhLkT82NRf9NECdF4BRa2XzNDsU1NuNhTe6NZnwX5YuucnrgmJsIEy%2BRUybVdW6j0Ssj74lc94D8amc9eliDuQPXbPzaD5FYMGD0gx8vmXJ%2BbYIAFIBQa6KYr4IcY%2BlFicKmr7mC%2BZScFE7P37w%2FRvi1FAqvuRqryEINwd5dx%2BM95MUZY9aWu5rUqpXx2Q7lD4bx5UmDZ6pNjJEFP%2FbGewuk5uNcF%2BfpQeZs2mPnZ2ozuITYPWxzYiyxlM%2FySOiiE5f8msa%2FlKhVIOaFwkGxfN9TcuMsUJIzNufcsfbIFRjSz7FQXhK9WDacKbuQKT5nVc7h9klFrTepz91mxIbrSfKjvpv09ngzSeIcxH9khcgAGGvgPhbqGeMZyTDnqg5tdOIqEeQByTER2aifxp5IYlNAkTrYYyDcXvnnjnY2eIxvbXES%2FYu3P9P0xig7hL5rH4K2sghjb%2BTYgK9%2BF3vDk0Zg4jt4Mvs6S%2FfnP0l9SrRlfXPN2%2F3Fjww6lIvhmWAMtqAJB9DtfGlz5UpLj%2FNolqGH9vswgHvVMIuOyKCtQ4VnU8dRQevhciNIJNWSXGoHrLZfLOpzcDc7iGqbPlXWoHcuhThyLauDgXV4Wkme6D%2BuPmRiwe29zb8cNp%2F%2B2tDYKtBA8rsc2giMLL7hbgGOoUCAG5zpk7sViSAXBvxE1ufdQtqVem5%2FAe5GvAb0O5tgZiegO8c%2FVEcVka0YRJ650uuV8D0w3bvZZTxg9GM7zp%2B9te825%2FI1IrPiPtZWmS%2BTYmRa%2FLknw2CjOMO93%2Bql5ANDYDJPYaHUxB7KILzjVT2AaFaWqJQ%2FsMGosaYiyikSP7CgIjzhLr5hnZN2BkLoK%2FQcIyqjgEgX0PZELVcFoMp2oIBh1WW1YS6DBB%2BYOHmAmrLqgano1rcUl%2FYX1TOJKAe%2BcgXngMd%2FWQtP35pBvH%2FBtffbsTihtRAdVhBP3jXoMgS6Iin4cAb9TNUrGyAhmJ2EoabPLejGZLABSkJpEb%2Fq%2FSE%2F9mk&X-Amz-Signature=d099cdd70551edf1832d3234ced70d024fe405a3dc442f02c9020639b3e74856&X-Amz-SignedHeaders=host&x-id=GetObject" }]}
+    //         pluginRenderers={DocViewerRenderers}
+    //         // config={{
+    //         //     header: {
+    //         //         disableHeader: false,
+    //         //         disableFileName: false,
+    //         //         retainURLParams: false
+    //         //     }
+    //         // }}
+    //         // style={{ height: 500 }}
+    //         // style={{ height: '100%' }}
 
+    //         // config={{
+    //         //     header: {
+    //         //         disableHeader: true,
+    //         //         disableFileName: true,
+    //         //     }
+    //         // }}
+    //     />
+    // );
     return (
         <div className="w-full">
              <style jsx>{`
@@ -643,6 +815,15 @@ export function DataTableDemo() {
                 onFilesUploaded={handleFilesUploaded}
             />
             )}
+            <FileViewer
+                isOpen={viewerOpen}
+                onClose={() => {
+                    setViewerOpen(false)
+                    setCurrentDocument({})
+                }}
+                documentUrl={currentDocument.url}
+                documentName={currentDocument.name}
+            />
         </div>
     )
 }
