@@ -41,6 +41,7 @@ import {
 import DocViewer, { DocViewerRenderers } from "@cyntler/react-doc-viewer";
 import "@cyntler/react-doc-viewer/dist/index.css";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import EnhancedFileViewer from "@/components/EnhancedFileviewer"
 
 const data: Payment[] = [
 ]
@@ -64,31 +65,13 @@ interface FileViewerProps {
     documentName?: string
 }
 
-const getFileType = (fileName: string): string => {
-    const extension = fileName.split('.').pop()?.toLowerCase() || ''
-    const extensionMap: { [key: string]: string } = {
-        'pdf': 'application/pdf',
-        'doc': 'application/msword',
-        'docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-        'xls': 'application/vnd.ms-excel',
-        'xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-        'png': 'image/png',
-        'jpg': 'image/jpeg',
-        'jpeg': 'image/jpeg',
-        // Add more mappings as needed
-    }
-    return extensionMap[extension] || 'application/octet-stream'
-}
-
 const FileViewer: React.FC<FileViewerProps> = ({
     isOpen,
     onClose,
     documentUrl,
-    documentName = ''
+    documentName
 }) => {
     if (!documentUrl) return null
-
-    const fileType = getFileType(documentName)
 
     return (
         <Dialog open={isOpen} onOpenChange={onClose}>
@@ -98,8 +81,9 @@ const FileViewer: React.FC<FileViewerProps> = ({
                 </DialogHeader>
                 <div className="flex-1 w-full h-full min-h-[60vh]">
                     <DocViewer
-                        documents={[{ uri: documentUrl, fileType }]}
+                        documents={[{ uri: documentUrl, fileType: "doc" }]}
                         pluginRenderers={DocViewerRenderers}
+                        prefetchMethod="GET"
                         style={{ height: '100%' }}
                         config={{
                             header: {
@@ -107,6 +91,7 @@ const FileViewer: React.FC<FileViewerProps> = ({
                                 disableFileName: true,
                             }
                         }}
+                        
                     />
                 </div>
             </DialogContent>
@@ -815,11 +800,11 @@ export function DataTableDemo() {
                 onFilesUploaded={handleFilesUploaded}
             />
             )}
-            <FileViewer
+            <EnhancedFileViewer
                 isOpen={viewerOpen}
                 onClose={() => {
-                    setViewerOpen(false)
-                    setCurrentDocument({})
+                setViewerOpen(false);
+                setCurrentDocument({});
                 }}
                 documentUrl={currentDocument.url}
                 documentName={currentDocument.name}
