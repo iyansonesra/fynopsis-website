@@ -89,7 +89,7 @@ export default function Home() {
       case "trending":
         return <AdvancedSearch setSelectedTab={setSelectedTab} />
       case "people":
-        return <People setSelectedTab={setSelectedTab} />
+        return <AdvancedSearch setSelectedTab={setSelectedTab} />
       default:
         return <Files setSelectedTab={setSelectedTab} />
     }

@@ -20,6 +20,7 @@ import {
   } from "@/components/ui/resizable"
 
   import "./Folder/styles.css";
+  import DetailSection from './DetailsSection';
 
 
 interface FilesProps {
@@ -135,116 +136,8 @@ export default function Files({ setSelectedTab }: { setSelectedTab: React.Dispat
         </ResizablePanel>
         <ResizableHandle withHandle />
         <ResizablePanel defaultSize={25}  minSize = {20} collapsible={true} collapsedSize={0}>
-        <div className="flex flex-row gap-2 items-center px-4 py-4">
-                     <BadgeInfo className='h-6 w-6 text-slate-800' />
-                   <h1 className='text-xl font-semibold text-slate-800'>Details</h1>
-                 </div>
+                 <DetailSection/>
         </ResizablePanel>
       </ResizablePanelGroup>
-        // <div className='flex w-full mb-2 flex-row h-full overflow-hidden'>
-        //     <div 
-        //         className={`folder-tree flex-shrink-0 w-[23%] h-full px-4 py-2 border-r-2 relative transition-all duration-300 ease-in-out ${
-        //             showFolderTree ? '' : '-translate-x-full'
-        //         }`}
-        //         style={{ marginLeft: showFolderTree ? '0' : '-23%' }}
-        //     >
-        //         <div className="h-full flex flex-col">
-        //             <button
-        //                 className="absolute top-2 right-2 p-1 bg-gray-200 rounded-full"
-        //                 onClick={() => setShowFolderTree(false)}
-        //             >
-        //                 <ChevronLeft className="h-4 w-4" />
-        //             </button>
-        //             <Select>
-        //                 <SelectTrigger className="w-[120px] select-none outline-none border-none focus:ring-0 focus:ring-offset-0">
-        //                     <SelectValue placeholder="Theme" />
-        //                 </SelectTrigger>
-        //                 <SelectContent>
-        //                     <SelectItem value="light">By Name</SelectItem>
-        //                     <SelectItem value="dark">By AI</SelectItem>
-        //                 </SelectContent>
-        //             </Select>
-
-
-        //             <ScrollArea className="flex-grow  h-64 overflow-auto p-2">
-                        
-        //                     <FolderTreeComponent searchQuery={folderSearchQuery} />
-                          
-                     
-        //             </ScrollArea>
-        //         </div>
-        //     </div>
-           
-        //     <div 
-        //         className='folder-view h-full border-r-2 px-4 py-4 flex flex-col transition-all duration-300 ease-in-out'
-        //         style={{ width: folderViewWidth }}
-        //     >
-        //         <div className="flex flex-row justify-between mb-4">
-        //             <div className="flex flex-row gap-2 items-center">
-        //                 {!showFolderTree && (
-        //                     <button
-        //                         className="p-1 bg-gray-200 rounded-full mr-2"
-        //                         onClick={() => setShowFolderTree(true)}
-        //                     >
-        //                         <ChevronRight className="h-4 w-4" />
-        //                     </button>
-        //                 )}
-        //                 <Folder className='h-6 w-6 text-slate-800' />
-        //                 <h1 className='text-xl font-semibold text-slate-800'>Due Dilligence</h1>
-        //             </div>
-
-        //             <div className="relative">
-        //                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-        //                     <Sparkles className="h-5 w-5 text-blue-400" />
-        //                 </div>
-        //                 <input
-        //                     className='w-64 h-9 border-2 rounded-xl pl-10 pr-10 border-slate-400'
-        //                     placeholder='Search for a file...'
-        //                     value={searchFolderText}
-        //                     onChange={(e) => setSearchFolderText(e.target.value)}
-        //                 />
-        //                 {searchFolderText && (
-        //                     <button
-        //                         className="absolute inset-y-0 right-0 pr-3 flex items-center"
-        //                         onClick={handleClearFolderSearch}
-        //                     >
-        //                         <X className="h-5 w-5 text-gray-400" />
-        //                     </button>
-        //                 )}
-        //             </div>
-        //         </div>
-
-        //         <div className="table-view mx-auto w-full">
-        //             <DataTableDemo/>
-        //         </div>
-        //     </div>
-
-        //     <div 
-        //         className={`details-view flex-shrink-0 w-[23%] h-full px-4 py-4 relative transition-all duration-300 ease-in-out ${
-        //             showDetailsView ? '' : 'translate-x-full'
-        //         }`}
-        //         style={{ marginRight: showDetailsView ? '0' : '-23%' }}
-        //     >
-        //         <button
-        //             className="absolute top-2 left-2 p-1 bg-gray-200 rounded-full"
-        //             onClick={() => setShowDetailsView(false)}
-        //         >
-        //             <ChevronRight className="h-4 w-4" />
-        //         </button>
-        //         <div className="flex flex-row gap-2 items-center mt-8">
-        //             <BadgeInfo className='h-6 w-6 text-slate-800' />
-        //             <h1 className='text-xl font-semibold text-slate-800'>Details</h1>
-        //         </div>
-        //     </div>
-
-        //     {!showDetailsView && (
-        //         <button
-        //             className="p-1 bg-gray-200 rounded-full self-start mt-4 mr-4 transition-all duration-300 ease-in-out"
-        //             onClick={() => setShowDetailsView(true)}
-        //         >
-        //             <ChevronLeft className="h-4 w-4" />
-        //         </button>
-        //     )}
-        // </div>
     );
 }

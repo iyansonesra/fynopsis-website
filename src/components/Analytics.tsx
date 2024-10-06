@@ -5,9 +5,7 @@ export default function AdvancedSearch({ setSelectedTab }: { setSelectedTab: Rea
 
     return (
         <div className='flex w-full mb-2 flex flex-row h-full'>
-            <div className='flex-1 bg-green-100 h-full'></div>
-            <div className='flex-1 bg-red-100 h-full'></div>
-            <div className='flex-1 bg-blue-100 h-full'></div>
+          
     
       </div>
     );
