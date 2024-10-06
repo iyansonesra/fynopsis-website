@@ -23,13 +23,13 @@ import { useRouter } from 'next/navigation';
 import { Library, Users, TrendingUp, LucideIcon, LogOut } from 'lucide-react';
 import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/hover-card';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import Analytics from "@/components/Analytics";
+import AdvancedSearch from "@/components/Analytics";
 import Files from "@/components/Files";
 import People from "@/components/People";
 
 
 export default function Home() {
-  const [selectedTab, setSelectedTab] = useState("stockSearch");
+  const [selectedTab, setSelectedTab] = useState("library");
   const { user, signOut } = useAuthenticator((context) => [context.user]);
   const [userAttributes, setUserAttributes] = useState<FetchUserAttributesOutput | null>(null);
   const router = useRouter();
@@ -39,7 +39,7 @@ export default function Home() {
 
   const tabs: Tab[] = [
       { icon: Library, label: 'Library' },
-      { icon: Users, label: 'People' },
+      { icon: Search, label: 'People' },
       { icon: TrendingUp, label: 'Trending' }
   ];
 
@@ -87,7 +87,7 @@ export default function Home() {
       case "library":
         return <Files setSelectedTab={setSelectedTab} />
       case "trending":
-        return <Analytics setSelectedTab={setSelectedTab} />
+        return <AdvancedSearch setSelectedTab={setSelectedTab} />
       case "people":
         return <People setSelectedTab={setSelectedTab} />
       default:

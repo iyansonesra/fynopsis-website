@@ -655,10 +655,10 @@ export function DataTableDemo() {
                     className="flex items-center gap-2 bg-blue-500 text-white px-4 py-1 rounded-full hover:bg-blue-700"
                     onClick={handleUploadClick}>
                         <Upload size={16} />
-                        <span>Upload</span>
+                        <span className="text-sm">Upload</span>
                     </button>
                     <button className="flex items-center gap-2 bg-gray-200 text-gray-800 px-4 py-1 rounded-full hover:bg-slate-300">
-                        <span>Manage Documents</span>
+                        <span className="text-sm">Manage Documents</span>
                         <ChevronDown size={16} />
                     </button>
                 </div>
