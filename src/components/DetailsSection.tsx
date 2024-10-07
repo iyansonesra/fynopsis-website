@@ -1,15 +1,19 @@
 import React, { useState } from 'react';
-import { BadgeInfo, Search } from 'lucide-react';
+import { ArrowLeft, BadgeInfo, Search } from 'lucide-react';
 import { Input, Skeleton } from '@mui/material';
+import { Button } from './ui/button';
+
 
 interface DetailsSectionProps {
-    userSearch?: string;
+    showDetailsView: boolean;
+    setShowDetailsView: (show: boolean) => void;
+    selectedFile: any;  // Replace 'any' with your file type
 }
 
-const DetailSection: React.FC<DetailsSectionProps> = () => {
+const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView, setShowDetailsView, selectedFile }) => {
     const [userSearch, setUserSearch] = useState('');
-
     const [isLoading, setIsLoading] = useState(false);
+
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         setUserSearch(e.target.value);
     };
@@ -20,11 +24,11 @@ const DetailSection: React.FC<DetailsSectionProps> = () => {
         }
     };
 
-    return (
-        <div className="flex flex-col gap-2 px-4 py-4">
-            <div className="flex flex-row gap-2">
+    const renderAdvancedSearch = () => (
+        <>
+            <div className="flex flex-row gap-2 items-center">
                 <BadgeInfo className='h-6 w-6 text-slate-800' />
-                <h1 className='text-xl font-semibold text-slate-800'>Advanced Search</h1>
+                <h1 className='text-base font-semibold text-slate-800'>Advanced Search</h1>
             </div>
 
             <div className="relative w-[80%]">
@@ -39,7 +43,7 @@ const DetailSection: React.FC<DetailsSectionProps> = () => {
             </div>
 
             {isLoading && (
-                <div className="w-full max-w-md transition-opacity duration-300 ${showSkeleton ? 'opacity-100' : 'opacity-0'}`">
+                <div className="w-full max-w-md transition-opacity duration-300">
                     <Skeleton animation="wave" className="h-5 w-full" />
                     <Skeleton animation="wave" className="h-5 w-[80%]" />
                     <Skeleton animation="wave" className="h-5 w-[60%]" />
@@ -53,11 +57,42 @@ const DetailSection: React.FC<DetailsSectionProps> = () => {
                         <Skeleton variant="rectangular" animation="wave" className="h-16 w-20 rounded-xl" />
                         <Skeleton variant="rectangular" animation="wave" className="h-16 w-20 rounded-xl" />
                     </div>
-
                 </div>
             )}
-        </div>
+        </>
     );
+
+    const renderFileDetails = () => (
+        <>
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-xl font-semibold">File Details</h2>
+            <Button
+              variant="outlined"
+              startIcon={<ArrowLeft />}
+              onClick={() => setShowDetailsView(false)}
+            >
+              Back to Search
+            </Button>
+          </div>
+          {selectedFile && (
+            <div>
+              <p><strong>Name:</strong> {selectedFile.name}</p>
+              <p><strong>Type:</strong> {selectedFile.type}</p>
+              <p><strong>Size:</strong> {selectedFile.size}</p>
+              <p><strong>Uploaded By:</strong> {selectedFile.uploadedBy}</p>
+              <p><strong>Date:</strong> {selectedFile.date}</p>
+              {/* Add more details as needed */}
+            </div>
+          )}
+        </>
+      );
+ 
+        return (
+            <div className="flex flex-col gap-2 px-4 py-4">
+                {showDetailsView ? renderFileDetails() : renderAdvancedSearch()}
+            </div>
+        );
+    
 };
 
 export default DetailSection;

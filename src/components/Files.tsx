@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import logo from '../app/assets/fynopsis_noBG.png'
 import { ScrollArea } from '@radix-ui/react-scroll-area';
-import TreeFolder from '../components/Folder/Tree';
+import TreeFolder from './Folder/Tree';
 import {
     Select,
     SelectContent,
@@ -17,10 +17,10 @@ import {
     ResizableHandle,
     ResizablePanel,
     ResizablePanelGroup,
-  } from "@/components/ui/resizable"
+} from "@/components/ui/resizable"
 
-  import "./Folder/styles.css";
-  import DetailSection from './DetailsSection';
+import "./Folder/styles.css";
+import DetailSection from './DetailsSection';
 
 
 interface FilesProps {
@@ -30,12 +30,12 @@ interface FilesProps {
 function getData(): Payment[] {
     // Fetch data from your API here.
     return [
-      {
-        id: "728ed52f",
-        amount: 100,
-        status: "pending",
-        email: "m@example.com",
-      },
+        {
+            id: "728ed52f",
+            amount: 100,
+            status: "pending",
+            email: "m@example.com",
+        },
     ]
 }
 
@@ -43,10 +43,17 @@ export default function Files({ setSelectedTab }: { setSelectedTab: React.Dispat
     const [searchFileText, setSearchFileText] = useState('');
     const [searchFolderText, setSearchFolderText] = useState('');
     const [showFolderTree, setShowFolderTree] = useState(true);
-    const [showDetailsView, setShowDetailsView] = useState(true);
     const [folderViewWidth, setFolderViewWidth] = useState('54%');
     const [folderSearchQuery, setFolderSearchQuery] = useState('');
     const [showUploadOverlay, setShowUploadOverlay] = useState(false);
+
+    const [showDetailsView, setShowDetailsView] = useState(false);
+    const [selectedFile, setSelectedFile] = useState(null);
+
+    const handleFileSelect = (file) => {
+        setSelectedFile(file);
+        setShowDetailsView(true);
+    };
 
 
     const data = getData();
@@ -71,12 +78,12 @@ export default function Files({ setSelectedTab }: { setSelectedTab: React.Dispat
 
     return (
         <ResizablePanelGroup
-        direction="horizontal"
-        className="flex w-full mb-2 flex-row h-full overflow-hidden"
-      >
-        <ResizablePanel defaultSize={25} maxSize={30} minSize={16} collapsible={true} collapsedSize={0}>
-        <div className="h-full flex flex-col px-4 py-2">
-               
+            direction="horizontal"
+            className="flex w-full mb-2 flex-row h-full overflow-hidden"
+        >
+            <ResizablePanel defaultSize={25} maxSize={30} minSize={16} collapsible={true} collapsedSize={0}>
+                <div className="h-full flex flex-col px-4 py-2">
+
                     <Select>
                         <SelectTrigger className="w-[120px] select-none outline-none border-none focus:ring-0 focus:ring-offset-0">
                             <SelectValue placeholder="Theme" />
@@ -89,55 +96,59 @@ export default function Files({ setSelectedTab }: { setSelectedTab: React.Dispat
 
 
                     <ScrollArea className="flex-grow  h-64 overflow-auto p-2">
-                        
-                          <TreeFolder/>
-                          
-                     
+
+                        <TreeFolder onFileSelect={handleFileSelect} />
+
+
                     </ScrollArea>
                 </div>
-        </ResizablePanel>
-        <ResizableHandle withHandle />
-        <ResizablePanel defaultSize={50} minSize={40}>
-        <div 
-                className='folder-view h-full px-4 py-4 flex flex-col transition-all duration-300 ease-in-out'
-              
-            >
-                <div className="flex flex-row justify-between mb-4">
-                    <div className="flex flex-row gap-2 items-center">  
-                        <Folder className='h-6 w-6 text-slate-800' />
-                        <h1 className='text-xl font-semibold text-slate-800'>Due Dilligence</h1>
-                    </div>
+            </ResizablePanel>
+            <ResizableHandle withHandle />
+            <ResizablePanel defaultSize={50} minSize={40}>
+                <div
+                    className='folder-view h-full px-4 py-4 flex flex-col transition-all duration-300 ease-in-out'
 
-                    <div className="relative">
-                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                            <Sparkles className="h-4 w-4 text-blue-400" />
+                >
+                    <div className="flex flex-row justify-between mb-4">
+                        <div className="flex flex-row gap-2 items-center">
+                            <Folder className='h-6 w-6 text-slate-800' />
+                            <h1 className='text-xl font-semibold text-slate-800'>Due Dilligence</h1>
                         </div>
-                        <input
-                            className='w-64 h-8 border rounded-xl pl-10 pr-10 border-slate-400 text-sm'
-                            placeholder='Search for a file...'
-                            value={searchFolderText}
-                            onChange={(e) => setSearchFolderText(e.target.value)}
-                        />
-                        {searchFolderText && (
-                            <button
-                                className="absolute inset-y-0 right-0 pr-3 flex items-center"
-                                onClick={handleClearFolderSearch}
-                            >
-                                <X className="h-5 w-5 text-gray-400" />
-                            </button>
-                        )}
+
+                        <div className="relative">
+                            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                <Sparkles className="h-4 w-4 text-blue-400" />
+                            </div>
+                            <input
+                                className='w-64 h-8 border rounded-xl pl-10 pr-10 border-slate-400 text-sm'
+                                placeholder='Search for a file...'
+                                value={searchFolderText}
+                                onChange={(e) => setSearchFolderText(e.target.value)}
+                            />
+                            {searchFolderText && (
+                                <button
+                                    className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                                    onClick={handleClearFolderSearch}
+                                >
+                                    <X className="h-5 w-5 text-gray-400" />
+                                </button>
+                            )}
+                        </div>
+                    </div>
+
+                    <div className="table-view mx-auto w-full">
+                        <DataTableDemo onFileSelect={handleFileSelect} />
                     </div>
                 </div>
-
-                <div className="table-view mx-auto w-full">
-                    <DataTableDemo/>
-                </div>
-            </div>
-        </ResizablePanel>
-        <ResizableHandle withHandle />
-        <ResizablePanel defaultSize={25}  minSize = {20} collapsible={true} collapsedSize={0}>
-                 <DetailSection/>
-        </ResizablePanel>
-      </ResizablePanelGroup>
+            </ResizablePanel>
+            <ResizableHandle withHandle />
+            <ResizablePanel defaultSize={25} minSize={20} collapsible={true} collapsedSize={0}>
+                <DetailSection
+                    showDetailsView={showDetailsView}
+                    setShowDetailsView={setShowDetailsView}
+                    selectedFile={selectedFile}
+                />
+            </ResizablePanel>
+        </ResizablePanelGroup>
     );
 }
