@@ -5,6 +5,7 @@ import {
     Search,
     Settings as SettingsIcon,
     Factory,
+    Plus,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -27,6 +28,8 @@ import Files from "@/components/Files";
 import People from "@/components/People";
 import { Separator } from "@radix-ui/react-separator";
 import DataRoomCard from "@/components/DataRoomCard";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
 
 
 export default function GeneralDashboard() {
@@ -46,11 +49,14 @@ export default function GeneralDashboard() {
         router.push('/signin');
     }
 
-    const dataRooms = [
+    const [dataRooms, setDataRooms] = useState([
         { id: 1, title: 'Apple M&A', lastOpened: 'Sept. 27, 2024 5:36 PM' },
         { id: 2, title: 'Project X', lastOpened: 'Sept. 26, 2024 2:15 PM' },
         { id: 3, title: 'Quarterly Review', lastOpened: 'Sept. 25, 2024 10:00 AM' },
-    ];
+      ]);
+
+    const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+    const [newDataroomName, setNewDataroomName] = useState('');
 
 
     const handleDataRoomClick = (id) => {
@@ -58,6 +64,25 @@ export default function GeneralDashboard() {
         console.log(`Navigating to data room ${id}`);
         // You can implement your routing logic here
         // router.push(`/dataroom/${id}`);
+    };
+
+    const handleAddDataroom = () => {
+        if (newDataroomName.trim()) {
+            const newDataroom = {
+                id: dataRooms.length + 1, // In a real app, use a more robust ID generation method
+                title: newDataroomName.trim(),
+                lastOpened: new Date().toLocaleString('en-US', {
+                    year: 'numeric',
+                    month: 'short',
+                    day: 'numeric',
+                    hour: 'numeric',
+                    minute: '2-digit'
+                })
+            };
+            setDataRooms([...dataRooms, newDataroom]);
+            setIsAddDialogOpen(false);
+            setNewDataroomName('');
+        }
     };
 
 
@@ -150,9 +175,14 @@ export default function GeneralDashboard() {
                 </div>
 
 
-                <div className="flex-1 overflow-hidden  flex">
-                    <div className="flex-[2]  px-8 py-8">
-                        <h1 className="font-semibold text-xl mb-4" >Your Datarooms</h1>
+                <div className="flex-1 overflow-hidden flex">
+                    <div className="flex-[2] px-4 py-4">
+                        <div className="flex justify-between items-center mb-4">
+                            <h1 className="font-semibold text-xl">Your Datarooms</h1>
+                            <Button onClick={() => setIsAddDialogOpen(true)}>
+                                <Plus className="mr-2 h-4 w-4" /> Add Dataroom
+                            </Button>
+                        </div>
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                             {dataRooms.map((room) => (
                                 <DataRoomCard
@@ -163,12 +193,30 @@ export default function GeneralDashboard() {
                                 />
                             ))}
                         </div>
+
+                        <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+                            <DialogContent>
+                                <DialogHeader>
+                                    <DialogTitle>Create New Dataroom</DialogTitle>
+                                </DialogHeader>
+                                <Input
+                                    value={newDataroomName}
+                                    onChange={(e) => setNewDataroomName(e.target.value)}
+                                    placeholder="Enter dataroom name"
+                                />
+                                <DialogFooter>
+                                    <Button variant="outline" onClick={() => setIsAddDialogOpen(false)}>Cancel</Button>
+                                    <Button onClick={handleAddDataroom}>Create</Button>
+                                </DialogFooter>
+                            </DialogContent>
+                        </Dialog>
                     </div>
-                    <div className="flex-1  px-8 py-8">
+                    <div className="flex-1 px-4 py-4">
                         <h1 className="font-semibold text-xl">Recent Activity</h1>
+                        {/* Recent activity content */}
                     </div>
                 </div>
-            </div> :
+            </div > :
             <div className="grid h-screen place-items-center">
                 <CircularProgress value={0.5} />
             </div>
