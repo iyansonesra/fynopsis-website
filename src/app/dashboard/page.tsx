@@ -5,7 +5,8 @@ import { useEffect } from 'react';
 import { Sign } from "crypto";
 import { useAuthenticator } from '@aws-amplify/ui-react';
 import { useRouter } from 'next/navigation';
-import Home from "../pages/MainPage";
+import Home from "../pages/DataroomPage";
+import GeneralDashboard from "../pages/Dashboard";
 import { get } from 'aws-amplify/api';
 import { put } from 'aws-amplify/api';
 import { fetchAuthSession } from 'aws-amplify/auth';
@@ -29,7 +30,7 @@ export default function Dashboard() {
   return (
     user ? 
     <AmplifyAuthenticator.Provider>
-      <Home/>
+      <GeneralDashboard/>
     </AmplifyAuthenticator.Provider> : 
     <AmplifyAuthenticator.Provider>
       <div className="grid h-screen place-items-center">

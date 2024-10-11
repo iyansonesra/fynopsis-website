@@ -21,6 +21,9 @@ import {
 
 import "./Folder/styles.css";
 import DetailSection from './DetailsSection';
+import TabSystem from './TabSystem';
+
+
 
 
 interface FilesProps {
@@ -76,6 +79,46 @@ export default function Files({ setSelectedTab }: { setSelectedTab: React.Dispat
         setSearchFolderText('');
     };
 
+    const initialTabs = [
+        { id: '1', title: 'Tab 1', content: <div
+            className='folder-view h-full px-4 py-4 flex flex-col transition-all duration-300 ease-in-out'
+    
+        >
+            <div className="flex flex-row justify-between mb-4">
+                <div className="flex flex-row gap-2 items-center">
+                    <Folder className='h-6 w-6 text-slate-800' />
+                    <h1 className='text-xl font-semibold text-slate-800'>Due Dilligence</h1>
+                </div>
+    
+                <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <Sparkles className="h-4 w-4 text-blue-400" />
+                    </div>
+                    <input
+                        className='w-64 h-8 border rounded-xl pl-10 pr-10 border-slate-400 text-sm'
+                        placeholder='Search for a file...'
+                        value={searchFolderText}
+                        onChange={(e) => setSearchFolderText(e.target.value)}
+                    />
+                    {searchFolderText && (
+                        <button
+                            className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                            onClick={handleClearFolderSearch}
+                        >
+                            <X className="h-5 w-5 text-gray-400" />
+                        </button>
+                    )}
+                </div>
+            </div>
+    
+            <div className="table-view mx-auto w-full">
+                <DataTableDemo onFileSelect={handleFileSelect} />
+            </div>
+        </div>  },
+        { id: '2', title: 'Tab 2', content: <div>Content for Tab 2</div> },
+        { id: '3', title: 'Tab 3', content: <div>Content for Tab 3</div> },
+    ];
+
     return (
         <ResizablePanelGroup
             direction="horizontal"
@@ -105,7 +148,22 @@ export default function Files({ setSelectedTab }: { setSelectedTab: React.Dispat
             </ResizablePanel>
             <ResizableHandle withHandle />
             <ResizablePanel defaultSize={50} minSize={40}>
-                <div
+                <TabSystem initialTabs={initialTabs} />
+            </ResizablePanel>
+            <ResizableHandle withHandle />
+            <ResizablePanel defaultSize={25} minSize={20} collapsible={true} collapsedSize={0}>
+                <DetailSection
+                    showDetailsView={showDetailsView}
+                    setShowDetailsView={setShowDetailsView}
+                    selectedFile={selectedFile}
+                />
+            </ResizablePanel>
+        </ResizablePanelGroup>
+    );
+}
+
+
+{/* <div
                     className='folder-view h-full px-4 py-4 flex flex-col transition-all duration-300 ease-in-out'
 
                 >
@@ -139,16 +197,4 @@ export default function Files({ setSelectedTab }: { setSelectedTab: React.Dispat
                     <div className="table-view mx-auto w-full">
                         <DataTableDemo onFileSelect={handleFileSelect} />
                     </div>
-                </div>
-            </ResizablePanel>
-            <ResizableHandle withHandle />
-            <ResizablePanel defaultSize={25} minSize={20} collapsible={true} collapsedSize={0}>
-                <DetailSection
-                    showDetailsView={showDetailsView}
-                    setShowDetailsView={setShowDetailsView}
-                    selectedFile={selectedFile}
-                />
-            </ResizablePanel>
-        </ResizablePanelGroup>
-    );
-}
+                </div> */}

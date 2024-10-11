@@ -39,6 +39,7 @@
     "react": "^18",
     "react-animate-on-scroll": "^2.1.9",
     "react-arborist": "^3.4.0",
+    "react-beautiful-dnd": "^13.1.1",
     "react-complex-tree": "^2.4.5",
     "react-dom": "^18",
     "react-dropzone": "^14.2.3",
