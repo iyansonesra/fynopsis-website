@@ -60,16 +60,13 @@ export default function GeneralDashboard() {
 
 
     const handleDataRoomClick = (id) => {
-        // Handle navigation to the specific data room
-        console.log(`Navigating to data room ${id}`);
-        // You can implement your routing logic here
-        // router.push(`/dataroom/${id}`);
+       
     };
 
     const handleAddDataroom = () => {
         if (newDataroomName.trim()) {
             const newDataroom = {
-                id: dataRooms.length + 1, // In a real app, use a more robust ID generation method
+                id: dataRooms.length + 1, 
                 title: newDataroomName.trim(),
                 lastOpened: new Date().toLocaleString('en-US', {
                     year: 'numeric',
@@ -213,7 +210,7 @@ export default function GeneralDashboard() {
                     </div>
                     <div className="flex-1 px-4 py-4">
                         <h1 className="font-semibold text-xl">Recent Activity</h1>
-                        {/* Recent activity content */}
+                       
                     </div>
                 </div>
             </div > :
