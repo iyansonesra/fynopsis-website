@@ -1,7 +1,7 @@
 import React from 'react';
 import { Clock } from 'lucide-react';
 
-const DataRoomCard = ({ title, lastOpened, onClick }) => {
+const DataRoomCard = ({ title, createdAt, onClick }) => {
   return (
     <div 
       onClick={onClick}
@@ -11,7 +11,7 @@ const DataRoomCard = ({ title, lastOpened, onClick }) => {
         <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">{title}</h2>
         <div className="flex items-center text-sm text-gray-500 dark:text-gray-400">
           <Clock className="mr-2 h-4 w-4" />
-          <span>Last Opened: {lastOpened}</span>
+          <span>Created On: {createdAt}</span>
         </div>
       </div>
     </div>

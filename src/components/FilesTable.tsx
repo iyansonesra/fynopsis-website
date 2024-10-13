@@ -99,22 +99,8 @@ const FileViewer: React.FC<FileViewerProps> = ({
     )
 }
 
-const S3_BUCKET_NAME = 'vdr-documents';
-const REGION = 'us-east-1';
 
-const getUserPrefix = async () => {
-    try {
-        const { identityId } = await fetchAuthSession();
-        if (!identityId) {
-            throw new Error('No identity ID available');
-        }
-        console.log("The identity id:", identityId);
-        return `${identityId}/`;
-    } catch (error) {
-        console.error('Error getting user prefix:', error);
-        throw error;
-    }
-};
+const REGION = 'us-east-1';
 
 
 const getS3Client = async () => {
@@ -140,52 +126,18 @@ const getS3Client = async () => {
 };
 
 
-const getUserInfo = async () => {
-    try {
-        const userInfo = await getCurrentUser();
-        console.log(userInfo.username);
-        return userInfo.username;
-    } catch (error) {
-        console.error('Error getting user info:', error);
-        return 'Unknown User';
-    }
-};
+// const getUserInfo = async () => {
+//     try {
+//         const userInfo = await getCurrentUser();
+//         console.log(userInfo.username);
+//         return userInfo.username;
+//     } catch (error) {
+//         console.error('Error getting user info:', error);
+//         return 'Unknown User';
+//     }
+// };
 
-const getPresignedUrl = async (s3Key: string) => {
-    try {
-        
-        console.log("Waiting on s3 client");
 
-        const s3Client = await getS3Client();
-
-        console.log("Got the s3 client");
-        const command = new GetObjectCommand({
-            Bucket: S3_BUCKET_NAME,
-            Key: s3Key
-        });
-
-        return await getSignedUrl(s3Client, command, { expiresIn: 3600 });
-    } catch (error) {
-        console.error('Error generating signed URL:', error);
-        throw error;
-    }
-};
-
-// Helper function to delete object
-const deleteS3Object = async (s3Key: string) => {
-    try {
-        const s3Client = await getS3Client();
-        const command = new DeleteObjectCommand({
-            Bucket: S3_BUCKET_NAME,
-            Key: s3Key
-        });
-
-        await s3Client.send(command);
-    } catch (error) {
-        console.error('Error deleting object:', error);
-        throw error;
-    }
-};
 
 
 export const columns: ColumnDef<Payment>[] = [
@@ -247,7 +199,8 @@ export const columns: ColumnDef<Payment>[] = [
 
 ]
 
-export function DataTableDemo({ onFileSelect }) {
+export function DataTableDemo({ onFileSelect, bucketName }) {
+    const S3_BUCKET_NAME = `vdr-documents/${bucketName}`;
     const [sorting, setSorting] = React.useState<SortingState>([])
     const [showUploadOverlay, setShowUploadOverlay] = React.useState(false);
     const [tableData, setTableData] = React.useState<Payment[]>(data);
@@ -370,13 +323,14 @@ export function DataTableDemo({ onFileSelect }) {
     }
     
     React.useEffect(() => {
-        getUserInfo().then(username => setCurrentUser(username));
+        // getUserInfo().then(username => setCurrentUser(username));
         listS3Objects();
-        console.log("Getting user info");
-    }, []);
-    React.useEffect(() => {
-        getUserInfo().then(username => setCurrentUser(username));
-    }, []);
+        // console.log("Getting user info");
+    }, [bucketName]);
+
+    // React.useEffect(() => {
+    //     getUserInfo().then(username => setCurrentUser(username));
+    // }, []);
     
     React.useEffect(() => {
         listS3Objects();
@@ -386,9 +340,8 @@ export function DataTableDemo({ onFileSelect }) {
     const uploadToS3 = async (file: File) => {
         const fileId = file.name.split('.')[0];
         const fileExtension = file.name.split('.').pop() || '';
-        const userPrefix = await getUserPrefix();
         // Ensure we're not using the identity ID in the visible part of the key
-        const s3Key = `${userPrefix}files/${fileId}.${fileExtension}`;
+        const s3Key = `files/${fileId}.${fileExtension}`;
     
         try {
             const s3Client = await getS3Client();
@@ -416,11 +369,11 @@ export function DataTableDemo({ onFileSelect }) {
         try {
             setIsLoading(true);
             const s3Client = await getS3Client();
-            const userPrefix = await getUserPrefix();
+            // const userPrefix = await getUserPrefix();
             
             const command = new ListObjectsV2Command({
                 Bucket: S3_BUCKET_NAME,
-                Prefix: userPrefix
+                // Prefix: userPrefix
             });
     
             const response = await s3Client.send(command);
@@ -479,6 +432,42 @@ export function DataTableDemo({ onFileSelect }) {
             console.error('Error listing S3 objects:', error);
         } finally {
             setIsLoading(false);
+        }
+    };
+
+    const getPresignedUrl = async (s3Key: string) => {
+        try {
+            
+            console.log("Waiting on s3 client");
+    
+            const s3Client = await getS3Client();
+    
+            console.log("Got the s3 client");
+            const command = new GetObjectCommand({
+                Bucket: S3_BUCKET_NAME,
+                Key: s3Key
+            });
+    
+            return await getSignedUrl(s3Client, command, { expiresIn: 3600 });
+        } catch (error) {
+            console.error('Error generating signed URL:', error);
+            throw error;
+        }
+    };
+    
+    // Helper function to delete object
+    const deleteS3Object = async (s3Key: string) => {
+        try {
+            const s3Client = await getS3Client();
+            const command = new DeleteObjectCommand({
+                Bucket: S3_BUCKET_NAME,
+                Key: s3Key
+            });
+    
+            await s3Client.send(command);
+        } catch (error) {
+            console.error('Error deleting object:', error);
+            throw error;
         }
     };
     

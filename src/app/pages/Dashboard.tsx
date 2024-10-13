@@ -6,6 +6,7 @@ import {
     Settings as SettingsIcon,
     Factory,
     Plus,
+    Fullscreen,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -16,7 +17,7 @@ import Settings from "./Settings";
 import IndustryPage from "./IndustryPage";
 import { useAuthenticator } from '@aws-amplify/ui-react';
 import { Sun, Moon } from "lucide-react";
-import { fetchUserAttributes, FetchUserAttributesOutput } from 'aws-amplify/auth';
+import { fetchAuthSession, fetchUserAttributes, FetchUserAttributesOutput } from 'aws-amplify/auth';
 import { CircularProgress } from "@mui/material";
 import React, { useRef } from 'react';
 import { useRouter } from 'next/navigation';
@@ -30,7 +31,11 @@ import { Separator } from "@radix-ui/react-separator";
 import DataRoomCard from "@/components/DataRoomCard";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-
+import { post } from 'aws-amplify/api';
+import { get } from 'aws-amplify/api';
+import { aws4Interceptor } from 'aws4-axios';
+import axios from 'axios';
+// import { API } from 'aws-amplify';
 
 export default function GeneralDashboard() {
     const [selectedTab, setSelectedTab] = useState("library");
@@ -50,24 +55,96 @@ export default function GeneralDashboard() {
     }
 
     const [dataRooms, setDataRooms] = useState([
-        { id: 1, title: 'Apple M&A', lastOpened: 'Sept. 27, 2024 5:36 PM' },
-        { id: 2, title: 'Project X', lastOpened: 'Sept. 26, 2024 2:15 PM' },
-        { id: 3, title: 'Quarterly Review', lastOpened: 'Sept. 25, 2024 10:00 AM' },
+        // { uuid: 1, title: 'Apple M&A', created: 'Sept. 27, 2024 5:36 PM' },
+        // { uuid: 2, title: 'Project X', created: 'Sept. 26, 2024 2:15 PM' },
+        // { uuid: 3, title: 'Quarterly Review', created: 'Sept. 25, 2024 10:00 AM' },
       ]);
 
     const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
     const [newDataroomName, setNewDataroomName] = useState('');
 
 
-    const handleDataRoomClick = (id) => {
-       
+    const handleDataRoomClick = (name: any) => {
+        // console.log(uuid);
+        router.push(`/dataroom?id=${name}`);
     };
 
-    const handleAddDataroom = () => {
-        if (newDataroomName.trim()) {
+    const handleFetchDataRooms = async () => {
+        try {
+            const { credentials } = await fetchAuthSession();
+            if (!credentials) {
+                throw new Error('User is not authenticated');
+            }
+    
+            const restOperation = get({
+                apiName: 'VdrBucketAPI',
+                path: '/list_buckets',
+                options: {
+                    withCredentials: true
+                }
+            });
+    
+            const { body } = await restOperation.response;
+            const responseText = await body.text();
+            // console.log(responseText);
+    
+            // Parse the response text to JSON
+            const buckets = JSON.parse(responseText);
+    
+            // Map the buckets to the dataRooms format
+            
+            const newDataRooms = buckets.map(bucket => ({
+                id: bucket.uuid,
+                title: bucket.bucketName.replace(`-${bucket.userId}`, ''), // Remove user ID from bucket name
+                lastOpened: new Date(bucket.createdAt).toLocaleString('en-US', {
+                    year: 'numeric',
+                    month: 'short',
+                    day: 'numeric',
+                    hour: 'numeric',
+                    minute: '2-digit'
+                }),
+                createdAt: bucket.createdAt,
+                userId: bucket.userId,
+                fullBucketName: bucket.bucketName
+            }));
+    
+            // Update the dataRooms state
+            setDataRooms(newDataRooms);
+    
+        } catch (error) {
+            console.error('Error fetching buckets:', error);
+        }
+    }
+
+    const handleAddDataroom = async () => {
+        try {
+            const newDataroomNameStored = newDataroomName.trim();
+            // console.log(newDataroomNameStored);
+            const { credentials } = await fetchAuthSession();
+            if (!credentials) {
+                throw new Error('User is not authenticated');
+            }
+            // console.log(credentials);
+            const restOperation = post({
+              apiName: 'VdrBucketAPI',
+              path: '/create_bucket',
+              options: {
+                body: {
+                    bucketName: newDataroomNameStored
+                },
+                withCredentials: true
+              }
+            });
+
+            // console.log(restOperation);
+      
+            const { body } = await restOperation.response;
+            const responseText = await body.text();
+            console.log(responseText); // fix this responseText to return the bucket details
+
             const newDataroom = {
                 id: dataRooms.length + 1, 
-                title: newDataroomName.trim(),
+                title: newDataroomNameStored,
                 lastOpened: new Date().toLocaleString('en-US', {
                     year: 'numeric',
                     month: 'short',
@@ -76,9 +153,13 @@ export default function GeneralDashboard() {
                     minute: '2-digit'
                 })
             };
+
             setDataRooms([...dataRooms, newDataroom]);
             setIsAddDialogOpen(false);
             setNewDataroomName('');
+      
+        } catch (error) {
+            console.error('Error sending new bucket creation');
         }
     };
 
@@ -106,7 +187,8 @@ export default function GeneralDashboard() {
 
     useEffect(() => {
         if (user) {
-            handleFetchUserAttributes();
+            handleFetchUserAttributes();    
+            handleFetchDataRooms();
         }
     }, [user]);
 
@@ -185,8 +267,8 @@ export default function GeneralDashboard() {
                                 <DataRoomCard
                                     key={room.id}
                                     title={room.title}
-                                    lastOpened={room.lastOpened}
-                                    onClick={() => handleDataRoomClick(room.id)}
+                                    createdAt={room.createdAt}
+                                    onClick={() => handleDataRoomClick(room.fullBucketName)}
                                 />
                             ))}
                         </div>

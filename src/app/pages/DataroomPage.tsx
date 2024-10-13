@@ -26,9 +26,12 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import AdvancedSearch from "@/components/Analytics";
 import Files from "@/components/Files";
 import People from "@/components/People";
+import { useSearchParams } from 'next/navigation';
 
 
 export default function Home() {
+  const searchParams = useSearchParams();
+  const id = searchParams.get('id');
   const [selectedTab, setSelectedTab] = useState("library");
   const { user, signOut } = useAuthenticator((context) => [context.user]);
   const [userAttributes, setUserAttributes] = useState<FetchUserAttributesOutput | null>(null);
@@ -85,13 +88,13 @@ export default function Home() {
   const renderSelectedScreen = () => {
     switch (selectedTab) {
       case "library":
-        return <Files setSelectedTab={setSelectedTab} />
+        return <Files setSelectedTab={setSelectedTab} id={id}/>
       case "trending":
         return <AdvancedSearch setSelectedTab={setSelectedTab} />
       case "people":
         return <AdvancedSearch setSelectedTab={setSelectedTab} />
       default:
-        return <Files setSelectedTab={setSelectedTab} />
+        return <Files setSelectedTab={setSelectedTab} id={id} />
     }
   }
 

@@ -42,7 +42,7 @@ function getData(): Payment[] {
     ]
 }
 
-export default function Files({ setSelectedTab }: { setSelectedTab: React.Dispatch<React.SetStateAction<string>> }) {
+export default function Files({ setSelectedTab, id }) { // : { setSelectedTab: React.Dispatch<React.SetStateAction<string>> }
     const [searchFileText, setSearchFileText] = useState('');
     const [searchFolderText, setSearchFolderText] = useState('');
     const [showFolderTree, setShowFolderTree] = useState(true);
@@ -112,7 +112,7 @@ export default function Files({ setSelectedTab }: { setSelectedTab: React.Dispat
             </div>
     
             <div className="table-view mx-auto w-full">
-                <DataTableDemo onFileSelect={handleFileSelect} />
+                <DataTableDemo onFileSelect={handleFileSelect} bucketName={id} />
             </div>
         </div>  },
         { id: '2', title: 'Tab 2', content: <div>Content for Tab 2</div> },

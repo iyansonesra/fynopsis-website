@@ -40,7 +40,8 @@ Amplify.configure({
 
       userPoolClientId: process.env.NEXT_PUBLIC_USER_POOL_CLIENT_ID, // change this one
       // REQUIRED only for Federated Authentication - Amazon Cognito Identity Pool ID
-      identityPoolId: process.env.NEXT_PUBLIC_IDENTITY_POOL_ID!,
+      identityPoolId: 'us-east-1:2032ae39-7405-4bd1-b2db-cf5aef2ff28b',
+      // mandatorySignIn: true,
       // OPTIONAL - Set to true to use your identity pool's unauthenticated role when user is not logged in
       // allowGuestAccess: true,
       // // OPTIONAL - This is used when autoSignIn is enabled for Auth.signUp
@@ -54,16 +55,21 @@ Amplify.configure({
           redirectSignOut: ['https://fynopsis.ai'], // 
           responseType: 'code',
         }
-      }
+      },
     },
 
   },
   API: {
     REST: {
-      testAPI: {
+      // testAPI: {
+      //   endpoint:
+      //     'https://4s693esbca.execute-api.us-east-1.amazonaws.com/test', // main
+      //   region: 'us-east-1' // Optional
+      // },
+      VdrBucketAPI: {
         endpoint:
-          'https://4s693esbca.execute-api.us-east-1.amazonaws.com/test', // main
-        region: 'us-east-1' // Optional
+          'https://barfwuro11.execute-api.us-east-1.amazonaws.com/prod', // main
+        region: 'us-east-1', // Optional
       }
     }
   },
