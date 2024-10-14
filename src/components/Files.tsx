@@ -24,25 +24,6 @@ import DetailSection from './DetailsSection';
 import TabSystem from './TabSystem';
 import FileViewer from './FileViewer';
 
-
-
-
-interface FilesProps {
-    userSearch: string;
-}
-
-function getData(): Payment[] {
-    // Fetch data from your API here.
-    return [
-        {
-            id: "728ed52f",
-            amount: 100,
-            status: "pending",
-            email: "m@example.com",
-        },
-    ]
-}
-
 export default function Files({ setSelectedTab }: { setSelectedTab: React.Dispatch<React.SetStateAction<string>> }) {
     const [searchFileText, setSearchFileText] = useState('');
     const [searchFolderText, setSearchFolderText] = useState('');
@@ -53,14 +34,6 @@ export default function Files({ setSelectedTab }: { setSelectedTab: React.Dispat
 
     const [showDetailsView, setShowDetailsView] = useState(false);
     const [selectedFile, setSelectedFile] = useState(null);
-
-    // const handleFileSelect = (file) => {
-    //     setSelectedFile(file);
-    //     setShowDetailsView(true);
-    // };
-
-
-    const data = getData();
 
     useEffect(() => {
         if (!showFolderTree && !showDetailsView) {
@@ -85,22 +58,23 @@ export default function Files({ setSelectedTab }: { setSelectedTab: React.Dispat
     ]);
     const [activeTabId, setActiveTabId] = useState('1');
 
-    function handleFileSelect(file) {
-        const newTabId = `file-${file.id}`;
-        console.log('tabs', newTabId);
-        console.log('name', file.name);
-        if (!tabs.some(tab => tab.id === newTabId) && file.name) {
-          
-            setTabs(prevTabs => [
-                ...prevTabs,
-                {
-                    id: newTabId,
-                    title: file.name,
-                    content: <FileViewer fileUrl={file.s3Url} />
-                }
-            ]);
+    function handleFileSelect(file: { id: string; name: string; s3Url: string; }) {
+        if (file.id && file.name && file.s3Url) {
+            const newTabId = `file-${file.id}`;
+            if (!tabs.some(tab => tab.id === newTabId)) {
+                setTabs(prevTabs => [
+                    ...prevTabs,
+                    {
+                        id: newTabId,
+                        title: file.name,
+                        content: <FileViewer fileUrl={file.s3Url} />
+                    }
+                ]);
+            }
+            setActiveTabId(newTabId);
+        } else {
+            console.error('Incomplete file information:', file);
         }
-        setActiveTabId(newTabId);
     }
 
     return (
@@ -148,40 +122,3 @@ export default function Files({ setSelectedTab }: { setSelectedTab: React.Dispat
         </ResizablePanelGroup>
     );
 }
-
-
-{/* <div
-                    className='folder-view h-full px-4 py-4 flex flex-col transition-all duration-300 ease-in-out'
-
-                >
-                    <div className="flex flex-row justify-between mb-4">
-                        <div className="flex flex-row gap-2 items-center">
-                            <Folder className='h-6 w-6 text-slate-800' />
-                            <h1 className='text-xl font-semibold text-slate-800'>Due Dilligence</h1>
-                        </div>
-
-                        <div className="relative">
-                            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                <Sparkles className="h-4 w-4 text-blue-400" />
-                            </div>
-                            <input
-                                className='w-64 h-8 border rounded-xl pl-10 pr-10 border-slate-400 text-sm'
-                                placeholder='Search for a file...'
-                                value={searchFolderText}
-                                onChange={(e) => setSearchFolderText(e.target.value)}
-                            />
-                            {searchFolderText && (
-                                <button
-                                    className="absolute inset-y-0 right-0 pr-3 flex items-center"
-                                    onClick={handleClearFolderSearch}
-                                >
-                                    <X className="h-5 w-5 text-gray-400" />
-                                </button>
-                            )}
-                        </div>
-                    </div>
-
-                    <div className="table-view mx-auto w-full">
-                        <DataTableDemo onFileSelect={handleFileSelect} />
-                    </div>
-                </div> */}

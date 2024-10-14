@@ -55,7 +55,7 @@ export type Payment = {
     date: string,
     uploadedBy: string,
     s3Key?: string,
-    s3Url?: string,
+    s3Url: string;
 }
 
 interface FileViewerProps {
@@ -63,41 +63,6 @@ interface FileViewerProps {
     onClose: () => void
     documentUrl?: string
     documentName?: string
-}
-
-const FileViewer: React.FC<FileViewerProps> = ({
-    isOpen,
-    onClose,
-    documentUrl,
-    documentName
-}) => {
-    if (!documentUrl) return null
-    console.log()
-
-    return (
-        <Dialog open={isOpen} onOpenChange={onClose}>
-            <DialogContent className="max-w-4xl w-full h-[80vh]">
-                <DialogHeader>
-                    <DialogTitle>{documentName || 'Document Viewer'}</DialogTitle>
-                </DialogHeader>
-                <div className="flex-1 w-full h-full min-h-[60vh]">
-                    <DocViewer
-                        documents={[{ uri: documentUrl, fileType: "doc" }]}
-                        pluginRenderers={DocViewerRenderers}
-                        prefetchMethod="GET"
-                        style={{ height: '100%' }}
-                        config={{
-                            header: {
-                                disableHeader: true,
-                                disableFileName: true,
-                            }
-                        }}
-
-                    />
-                </div>
-            </DialogContent>
-        </Dialog>
-    )
 }
 
 const S3_BUCKET_NAME = 'vdr-documents';
@@ -116,7 +81,6 @@ const getUserPrefix = async () => {
         throw error;
     }
 };
-
 
 const getS3Client = async () => {
     try {
@@ -248,7 +212,11 @@ export const columns: ColumnDef<Payment>[] = [
 
 ]
 
-export function DataTableDemo({ onFileSelect }) {
+interface DataTableDemoProps {
+    onFileSelect: (file: Payment) => void;
+}
+
+export function DataTableDemo({ onFileSelect }: DataTableDemoProps) {
     const [sorting, setSorting] = React.useState<SortingState>([])
     const [showUploadOverlay, setShowUploadOverlay] = React.useState(false);
     const [tableData, setTableData] = React.useState<Payment[]>(data);
@@ -278,30 +246,29 @@ export function DataTableDemo({ onFileSelect }) {
                             </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
-                    
                             <DropdownMenuItem
-                                onClick={async () => {
-                                    console.log("clicked!\n");
-                                    if (payment.s3Key) {
-                                        try {
-                                            const url = await getPresignedUrl(payment.s3Key);
-                                            setCurrentDocument({
-                                                url,
-                                                name: payment.name
-                                            })
-                                            onFileSelect({
-                                                id: payment.id,
-                                                name: currentDocument.name,
-                                                s3Url: currentDocument.url
-                                            });
-                                        } catch (error) {
-                                            console.error('Error getting presigned URL:', error);
-                                        }
+                            onClick={async () => {
+                                if (payment.s3Key) {
+                                    try {
+                                        const url = await getPresignedUrl(payment.s3Key);
+                                        onFileSelect({
+                                            id: payment.id,
+                                            name: payment.name,
+                                            s3Url: url,
+                                            type: payment.type,
+                                            size: payment.size,
+                                            status: payment.status,
+                                            date: payment.date,
+                                            uploadedBy: payment.uploadedBy
+                                        });
+                                    } catch (error) {
+                                        console.error('Error getting presigned URL:', error);
                                     }
-                                }}
-                            >
-                                View
-                            </DropdownMenuItem>
+                                }
+                            }}
+                        >
+                            View
+                        </DropdownMenuItem>
                             <DropdownMenuItem
                                 onClick={async () => {
                                     if (payment.s3Key) {
@@ -339,10 +306,6 @@ export function DataTableDemo({ onFileSelect }) {
         }
     ]
 
-
-
-
-
     const table = useReactTable({
         data: tableData,
         columns: updatedColumns,
@@ -368,7 +331,6 @@ export function DataTableDemo({ onFileSelect }) {
             },
         },
     })
-
 
 
 
