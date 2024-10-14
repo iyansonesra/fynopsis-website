@@ -72,6 +72,7 @@ const FileViewer: React.FC<FileViewerProps> = ({
     documentName
 }) => {
     if (!documentUrl) return null
+    console.log()
 
     return (
         <Dialog open={isOpen} onOpenChange={onClose}>
@@ -91,7 +92,7 @@ const FileViewer: React.FC<FileViewerProps> = ({
                                 disableFileName: true,
                             }
                         }}
-                        
+
                     />
                 </div>
             </DialogContent>
@@ -120,7 +121,7 @@ const getUserPrefix = async () => {
 const getS3Client = async () => {
     try {
         const { credentials } = await fetchAuthSession();
-        
+
         if (!credentials) {
             throw new Error('No credentials available');
         }
@@ -153,7 +154,7 @@ const getUserInfo = async () => {
 
 const getPresignedUrl = async (s3Key: string) => {
     try {
-        
+
         console.log("Waiting on s3 client");
 
         const s3Client = await getS3Client();
@@ -260,7 +261,7 @@ export function DataTableDemo({ onFileSelect }) {
     const [rowSelection, setRowSelection] = React.useState({})
     const [isLoading, setIsLoading] = React.useState(true);
     const [viewerOpen, setViewerOpen] = React.useState(false)
-    const [currentDocument, setCurrentDocument] = React.useState<{url?: string, name?: string}>({})
+    const [currentDocument, setCurrentDocument] = React.useState<{ url?: string, name?: string }>({})
 
 
     const updatedColumns: ColumnDef<Payment>[] = [
@@ -295,6 +296,31 @@ export function DataTableDemo({ onFileSelect }) {
                             >
                                 View
                             </DropdownMenuItem>
+
+
+                            <DropdownMenuItem
+                                onClick={async () => {
+                                    console.log("clicked!\n");
+                                    if (payment.s3Key) {
+                                        try {
+                                            const url = await getPresignedUrl(payment.s3Key);
+                                            setCurrentDocument({
+                                                url,
+                                                name: payment.name
+                                            })
+                                            onFileSelect({
+                                                id: payment.id,
+                                                name: currentDocument.name,
+                                                s3Url: currentDocument.url
+                                            });
+                                        } catch (error) {
+                                            console.error('Error getting presigned URL:', error);
+                                        }
+                                    }
+                                }}
+                            >
+                                View 2
+                            </DropdownMenuItem>
                             <DropdownMenuItem
                                 onClick={async () => {
                                     if (payment.s3Key) {
@@ -314,7 +340,7 @@ export function DataTableDemo({ onFileSelect }) {
                                     if (payment.s3Key) {
                                         try {
                                             await deleteS3Object(payment.s3Key);
-                                            setTableData(prev => 
+                                            setTableData(prev =>
                                                 prev.filter(item => item.s3Key !== payment.s3Key)
                                             );
                                         } catch (error) {
@@ -332,9 +358,9 @@ export function DataTableDemo({ onFileSelect }) {
         }
     ]
 
-    
 
-    
+
+
 
     const table = useReactTable({
         data: tableData,
@@ -348,27 +374,27 @@ export function DataTableDemo({ onFileSelect }) {
         onColumnVisibilityChange: setColumnVisibility,
         onRowSelectionChange: setRowSelection,
         state: {
-          sorting,
-          columnFilters,
-          columnVisibility,
-          rowSelection,
+            sorting,
+            columnFilters,
+            columnVisibility,
+            rowSelection,
         },
         enableColumnResizing: true,
         columnResizeMode: "onChange",
         initialState: {
-          pagination: {
-            pageSize: 5,
-          },
+            pagination: {
+                pageSize: 5,
+            },
         },
-      })
-
-    
+    })
 
 
-    const handleUploadClick = () => { 
+
+
+    const handleUploadClick = () => {
         setShowUploadOverlay(true);
     }
-    
+
     React.useEffect(() => {
         getUserInfo().then(username => setCurrentUser(username));
         listS3Objects();
@@ -377,7 +403,7 @@ export function DataTableDemo({ onFileSelect }) {
     React.useEffect(() => {
         getUserInfo().then(username => setCurrentUser(username));
     }, []);
-    
+
     React.useEffect(() => {
         listS3Objects();
     }, []);
@@ -389,10 +415,10 @@ export function DataTableDemo({ onFileSelect }) {
         const userPrefix = await getUserPrefix();
         // Ensure we're not using the identity ID in the visible part of the key
         const s3Key = `${userPrefix}files/${fileId}.${fileExtension}`;
-    
+
         try {
             const s3Client = await getS3Client();
-            
+
             const command = new PutObjectCommand({
                 Bucket: S3_BUCKET_NAME,
                 Key: s3Key,
@@ -403,7 +429,7 @@ export function DataTableDemo({ onFileSelect }) {
                     originalName: file.name
                 }
             });
-    
+
             await s3Client.send(command);
             return s3Key;
         } catch (error) {
@@ -417,14 +443,14 @@ export function DataTableDemo({ onFileSelect }) {
             setIsLoading(true);
             const s3Client = await getS3Client();
             const userPrefix = await getUserPrefix();
-            
+
             const command = new ListObjectsV2Command({
                 Bucket: S3_BUCKET_NAME,
                 Prefix: userPrefix
             });
-    
+
             const response = await s3Client.send(command);
-            
+
             if (response.Contents) {
                 const files = await Promise.all(
                     response.Contents
@@ -432,22 +458,22 @@ export function DataTableDemo({ onFileSelect }) {
                         .filter(object => {
                             const key = object.Key || '';
                             // Exclude the identity ID directory object and any other system objects
-                            return !key.endsWith('/') && 
-                                   !key.includes('US-EAST-1:') &&
-                                   object.Size !== 0; // Also exclude zero-byte objects
+                            return !key.endsWith('/') &&
+                                !key.includes('US-EAST-1:') &&
+                                object.Size !== 0; // Also exclude zero-byte objects
                         })
                         .map(async (object) => {
                             if (!object.Key) return null;
-                            
+
                             const headCommand = new HeadObjectCommand({
                                 Bucket: S3_BUCKET_NAME,
                                 Key: object.Key
                             });
-                            
+
                             try {
                                 const headResponse = await s3Client.send(headCommand);
                                 const metadata = headResponse.Metadata || {};
-                                
+
                                 const file: Payment = {
                                     id: object.Key,
                                     type: object.Key.split('.').pop()?.toUpperCase() || 'Unknown',
@@ -465,14 +491,14 @@ export function DataTableDemo({ onFileSelect }) {
                             }
                         })
                 );
-                
+
                 const validFiles = files.filter((file): file is Payment => {
-                    return file !== null && 
-                           typeof file === 'object' &&
-                           'id' in file &&
-                           'status' in file;
+                    return file !== null &&
+                        typeof file === 'object' &&
+                        'id' in file &&
+                        'status' in file;
                 });
-                
+
                 setTableData(validFiles);
             }
         } catch (error) {
@@ -481,7 +507,7 @@ export function DataTableDemo({ onFileSelect }) {
             setIsLoading(false);
         }
     };
-    
+
 
     const handleFilesUploaded = async (files: File[]) => {
         const uploadPromises = files.map(async (file) => {
@@ -518,7 +544,7 @@ export function DataTableDemo({ onFileSelect }) {
 
     return (
         <div className="w-full">
-             <style jsx>{`
+            <style jsx>{`
                 .resizer {
                     position: absolute;
                     right: 0;
@@ -563,9 +589,9 @@ export function DataTableDemo({ onFileSelect }) {
             `}</style>
             <div className="flex items-center py-4">
                 <div className="buttons flex flex-row gap-2">
-                    <button 
-                    className="flex items-center gap-2 bg-blue-500 text-white px-4 py-1 rounded-full hover:bg-blue-700"
-                    onClick={handleUploadClick}>
+                    <button
+                        className="flex items-center gap-2 bg-blue-500 text-white px-4 py-1 rounded-full hover:bg-blue-700"
+                        onClick={handleUploadClick}>
                         <Upload size={16} />
                         <span className="text-sm">Upload</span>
                     </button>
@@ -602,14 +628,14 @@ export function DataTableDemo({ onFileSelect }) {
                 </DropdownMenu>
             </div>
 
-           
+
             <div className="rounded-md overflow-hidden">
                 <Table>
                     <TableHeader>
                         {table.getHeaderGroups().map((headerGroup) => (
                             <TableRow key={headerGroup.id}>
                                 {headerGroup.headers.map((header) => (
-                                    <TableHead 
+                                    <TableHead
                                         key={header.id}
                                         className="text-xs font-medium py-3 relative"
                                         style={{ width: header.getSize() }}
@@ -624,9 +650,8 @@ export function DataTableDemo({ onFileSelect }) {
                                             <div
                                                 onMouseDown={header.getResizeHandler()}
                                                 onTouchStart={header.getResizeHandler()}
-                                                className={`resizer ${
-                                                    header.column.getIsResizing() ? "isResizing" : ""
-                                                }`}
+                                                className={`resizer ${header.column.getIsResizing() ? "isResizing" : ""
+                                                    }`}
                                             ></div>
                                         )}
                                     </TableHead>
@@ -644,7 +669,7 @@ export function DataTableDemo({ onFileSelect }) {
                                     Loading...
                                 </TableCell>
                             </TableRow>
-                        ): table.getRowModel().rows?.length ? (
+                        ) : table.getRowModel().rows?.length ? (
                             table.getRowModel().rows.map((row) => (
                                 <TableRow
                                     key={row.id}
@@ -653,8 +678,8 @@ export function DataTableDemo({ onFileSelect }) {
                                     className="cursor-pointer hover:bg-gray-100"
                                 >
                                     {row.getVisibleCells().map((cell) => (
-                                        <TableCell 
-                                            key={cell.id} 
+                                        <TableCell
+                                            key={cell.id}
                                             className="text-xs py-3"
                                             style={{ width: cell.column.getSize() }}
                                         >
@@ -710,19 +735,11 @@ export function DataTableDemo({ onFileSelect }) {
 
             {showUploadOverlay && (
                 <DragDropOverlay
-                onClose={() => setShowUploadOverlay(false)}
-                onFilesUploaded={handleFilesUploaded}
-            />
+                    onClose={() => setShowUploadOverlay(false)}
+                    onFilesUploaded={handleFilesUploaded}
+                />
             )}
-            <EnhancedFileViewer
-                isOpen={viewerOpen}
-                onClose={() => {
-                setViewerOpen(false);
-                setCurrentDocument({});
-                }}
-                documentUrl={currentDocument.url}
-                documentName={currentDocument.name}
-            />
+
         </div>
     )
 }

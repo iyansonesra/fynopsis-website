@@ -22,6 +22,7 @@ import {
 import "./Folder/styles.css";
 import DetailSection from './DetailsSection';
 import TabSystem from './TabSystem';
+import FileViewer from './FileViewer';
 
 
 
@@ -53,10 +54,10 @@ export default function Files({ setSelectedTab }: { setSelectedTab: React.Dispat
     const [showDetailsView, setShowDetailsView] = useState(false);
     const [selectedFile, setSelectedFile] = useState(null);
 
-    const handleFileSelect = (file) => {
-        setSelectedFile(file);
-        setShowDetailsView(true);
-    };
+    // const handleFileSelect = (file) => {
+    //     setSelectedFile(file);
+    //     setShowDetailsView(true);
+    // };
 
 
     const data = getData();
@@ -79,45 +80,28 @@ export default function Files({ setSelectedTab }: { setSelectedTab: React.Dispat
         setSearchFolderText('');
     };
 
-    const initialTabs = [
-        { id: '1', title: 'Tab 1', content: <div
-            className='folder-view h-full px-4 py-4 flex flex-col transition-all duration-300 ease-in-out'
-    
-        >
-            <div className="flex flex-row justify-between mb-4">
-                <div className="flex flex-row gap-2 items-center">
-                    <Folder className='h-6 w-6 text-slate-800' />
-                    <h1 className='text-xl font-semibold text-slate-800'>Due Dilligence</h1>
-                </div>
-    
-                <div className="relative">
-                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                        <Sparkles className="h-4 w-4 text-blue-400" />
-                    </div>
-                    <input
-                        className='w-64 h-8 border rounded-xl pl-10 pr-10 border-slate-400 text-sm'
-                        placeholder='Search for a file...'
-                        value={searchFolderText}
-                        onChange={(e) => setSearchFolderText(e.target.value)}
-                    />
-                    {searchFolderText && (
-                        <button
-                            className="absolute inset-y-0 right-0 pr-3 flex items-center"
-                            onClick={handleClearFolderSearch}
-                        >
-                            <X className="h-5 w-5 text-gray-400" />
-                        </button>
-                    )}
-                </div>
-            </div>
-    
-            <div className="table-view mx-auto w-full">
-                <DataTableDemo onFileSelect={handleFileSelect} />
-            </div>
-        </div>  },
-        { id: '2', title: 'Tab 2', content: <div>Content for Tab 2</div> },
-        { id: '3', title: 'Tab 3', content: <div>Content for Tab 3</div> },
-    ];
+    const [tabs, setTabs] = useState([
+        { id: '1', title: 'All Files', content: <DataTableDemo onFileSelect={handleFileSelect} /> }
+    ]);
+    const [activeTabId, setActiveTabId] = useState('1');
+
+    function handleFileSelect(file) {
+        const newTabId = `file-${file.id}`;
+        console.log('tabs', newTabId);
+        console.log('name', file.name);
+        if (!tabs.some(tab => tab.id === newTabId) && file.name) {
+          
+            setTabs(prevTabs => [
+                ...prevTabs,
+                {
+                    id: newTabId,
+                    title: file.name,
+                    content: <FileViewer fileUrl={file.s3Url} />
+                }
+            ]);
+        }
+        setActiveTabId(newTabId);
+    }
 
     return (
         <ResizablePanelGroup
@@ -139,16 +123,19 @@ export default function Files({ setSelectedTab }: { setSelectedTab: React.Dispat
 
 
                     <ScrollArea className="flex-grow  h-64 overflow-auto p-2">
-
                         <TreeFolder onFileSelect={handleFileSelect} />
-
 
                     </ScrollArea>
                 </div>
             </ResizablePanel>
             <ResizableHandle withHandle />
             <ResizablePanel defaultSize={50} minSize={40}>
-                <TabSystem initialTabs={initialTabs} />
+            <TabSystem 
+                tabs={tabs} 
+                activeTabId={activeTabId} 
+                setActiveTabId={setActiveTabId}
+                setTabs={setTabs}
+            />
             </ResizablePanel>
             <ResizableHandle withHandle />
             <ResizablePanel defaultSize={25} minSize={20} collapsible={true} collapsedSize={0}>

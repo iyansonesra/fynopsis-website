@@ -27,7 +27,6 @@ import AdvancedSearch from "@/components/Analytics";
 import Files from "@/components/Files";
 import People from "@/components/People";
 
-
 export default function Home() {
   const [selectedTab, setSelectedTab] = useState("library");
   const { user, signOut } = useAuthenticator((context) => [context.user]);
@@ -46,7 +45,6 @@ export default function Home() {
   function signIn(): void {
       router.push('/signin');
   }
-
   
   function handleTabClick(index: number): void {
     setActiveTab(index);

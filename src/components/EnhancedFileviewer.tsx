@@ -87,6 +87,8 @@ const EnhancedFileViewer: React.FC<FileViewerProps> = ({
     fileType: fileType
   }];
 
+  console.log("The document url:", documentUrl);
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-4xl w-full h-[80vh]">

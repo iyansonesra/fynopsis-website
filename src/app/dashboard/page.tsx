@@ -30,7 +30,7 @@ export default function Dashboard() {
   return (
     user ? 
     <AmplifyAuthenticator.Provider>
-      <GeneralDashboard/>
+      <Home/>
     </AmplifyAuthenticator.Provider> : 
     <AmplifyAuthenticator.Provider>
       <div className="grid h-screen place-items-center">

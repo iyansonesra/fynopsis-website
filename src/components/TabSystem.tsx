@@ -9,13 +9,14 @@ interface Tab {
 }
 
 interface TabSystemProps {
-  initialTabs: Tab[];
+  tabs: Tab[];
+  activeTabId: string;
+  setActiveTabId: React.Dispatch<React.SetStateAction<string>>;
+  setTabs: React.Dispatch<React.SetStateAction<Tab[]>>;
 }
 
-const TabSystem: React.FC<TabSystemProps> = ({ initialTabs }) => {
-  const [tabs, setTabs] = useState<Tab[]>(initialTabs);
-  const [activeTabId, setActiveTabId] = useState<string>(initialTabs[0]?.id || '');
-
+const TabSystem: React.FC<TabSystemProps> = ({ tabs, activeTabId, setActiveTabId, setTabs }) => {
+  
   const onDragEnd = (result: any) => {
     if (!result.destination) return;
 
