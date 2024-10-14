@@ -278,26 +278,7 @@ export function DataTableDemo({ onFileSelect }) {
                             </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
-                            <DropdownMenuItem
-                                onClick={async () => {
-                                    if (payment.s3Key) {
-                                        try {
-                                            const url = await getPresignedUrl(payment.s3Key)
-                                            setCurrentDocument({
-                                                url,
-                                                name: payment.name
-                                            })
-                                            setViewerOpen(true)
-                                        } catch (error) {
-                                            console.error('Error getting presigned URL:', error)
-                                        }
-                                    }
-                                }}
-                            >
-                                View
-                            </DropdownMenuItem>
-
-
+                    
                             <DropdownMenuItem
                                 onClick={async () => {
                                     console.log("clicked!\n");
@@ -319,7 +300,7 @@ export function DataTableDemo({ onFileSelect }) {
                                     }
                                 }}
                             >
-                                View 2
+                                View
                             </DropdownMenuItem>
                             <DropdownMenuItem
                                 onClick={async () => {
