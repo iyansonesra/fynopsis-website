@@ -23,6 +23,7 @@ import "./Folder/styles.css";
 import DetailSection from './DetailsSection';
 import TabSystem from './TabSystem';
 import FileViewer from './FileViewer';
+import { Console } from 'console';
 
 export default function Files({ setSelectedTab }: { setSelectedTab: React.Dispatch<React.SetStateAction<string>> }) {
     const [searchFileText, setSearchFileText] = useState('');
@@ -59,6 +60,8 @@ export default function Files({ setSelectedTab }: { setSelectedTab: React.Dispat
     const [activeTabId, setActiveTabId] = useState('1');
 
     function handleFileSelect(file: { id: string; name: string; s3Url: string; }) {
+        setSelectedFile(file);
+        setShowDetailsView(true);
         if (file.id && file.name && file.s3Url) {
             const newTabId = `file-${file.id}`;
             if (!tabs.some(tab => tab.id === newTabId)) {

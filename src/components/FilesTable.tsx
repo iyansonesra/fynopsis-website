@@ -57,6 +57,8 @@ export type Payment = {
     uploadedBy: string,
     s3Key?: string,
     s3Url: string;
+    tags?: string[];
+    documentSummary?: string;
 }
 
 interface FileViewerProps {
@@ -154,6 +156,38 @@ const deleteS3Object = async (s3Key: string) => {
 };
 
 
+const TagDisplay = ({ tags }) => {
+    const tagColors = [
+      'bg-blue-100 text-blue-800',
+      'bg-green-100 text-green-800',
+      'bg-yellow-100 text-yellow-800',
+      'bg-red-100 text-red-800',
+      'bg-indigo-100 text-indigo-800',
+      'bg-purple-100 text-purple-800',
+      'bg-pink-100 text-pink-800',
+    ];
+  
+    const displayedTags = tags.slice(0, 2);
+    const remainingCount = Math.max(0, tags.length - 2);
+  
+    return (
+      <div className="flex flex-wrap gap-1 items-center">
+        {displayedTags.map((tag, index) => (
+          <span
+            key={index}
+            className={`px-2 py-1 text-xs font-medium rounded-full ${tagColors[index % tagColors.length]}`}
+          >
+            {tag}
+          </span>
+        ))}
+        {remainingCount > 0 && (
+          <span className="text-xs text-gray-500">+{remainingCount} more</span>
+        )}
+      </div>
+    );
+  };
+
+
 export const columns: ColumnDef<Payment>[] = [
     {
         id: "select",
@@ -210,6 +244,13 @@ export const columns: ColumnDef<Payment>[] = [
         enableResizing: true,
         size: 100,
     },
+    {
+        accessorKey: "tags",
+        header: "Tags",
+        cell: ({ row }) => <TagDisplay tags={row.getValue("tags") || []} />,
+        enableResizing: true,
+        size: 200,
+    },
 
 ]
 
@@ -248,28 +289,28 @@ export function DataTableDemo({ onFileSelect }: DataTableDemoProps) {
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
                             <DropdownMenuItem
-                            onClick={async () => {
-                                if (payment.s3Key) {
-                                    try {
-                                        const url = await getPresignedUrl(payment.s3Key);
-                                        onFileSelect({
-                                            id: payment.id,
-                                            name: payment.name,
-                                            s3Url: url,
-                                            type: payment.type,
-                                            size: payment.size,
-                                            status: payment.status,
-                                            date: payment.date,
-                                            uploadedBy: payment.uploadedBy
-                                        });
-                                    } catch (error) {
-                                        console.error('Error getting presigned URL:', error);
+                                onClick={async () => {
+                                    if (payment.s3Key) {
+                                        try {
+                                            const url = await getPresignedUrl(payment.s3Key);
+                                            onFileSelect({
+                                                id: payment.id,
+                                                name: payment.name,
+                                                s3Url: url,
+                                                type: payment.type,
+                                                size: payment.size,
+                                                status: payment.status,
+                                                date: payment.date,
+                                                uploadedBy: payment.uploadedBy
+                                            });
+                                        } catch (error) {
+                                            console.error('Error getting presigned URL:', error);
+                                        }
                                     }
-                                }
-                            }}
-                        >
-                            View
-                        </DropdownMenuItem>
+                                }}
+                            >
+                                View
+                            </DropdownMenuItem>
                             <DropdownMenuItem
                                 onClick={async () => {
                                     if (payment.s3Key) {
@@ -375,7 +416,7 @@ export function DataTableDemo({ onFileSelect }: DataTableDemoProps) {
             });
 
             await s3Client.send(command);
-            
+
             // console.log(s3Key);
             const restOperation = post({
                 apiName: 'VDR_API',
@@ -435,6 +476,18 @@ export function DataTableDemo({ onFileSelect }: DataTableDemoProps) {
                             try {
                                 const headResponse = await s3Client.send(headCommand);
                                 const metadata = headResponse.Metadata || {};
+                                console.log("metadata");
+                                console.log(headResponse);
+
+                                let tags = [];
+                                if (metadata.tags) {
+                                    try {
+                                        tags = JSON.parse(metadata.tags.replace(/'/g, '"'));
+                                    } catch (e) {
+                                        console.error('Error parsing tags:', e);
+                                        tags = [];
+                                    }
+                                }
 
                                 const file: Payment = {
                                     id: object.Key,
@@ -444,7 +497,9 @@ export function DataTableDemo({ onFileSelect }: DataTableDemoProps) {
                                     size: `${(object.Size || 0 / (1024 * 1024)).toFixed(2)} KB`,
                                     date: object.LastModified?.toISOString().split('T')[0] || '',
                                     uploadedBy: metadata.uploadedby || 'Unknown',
-                                    s3Key: object.Key
+                                    s3Key: object.Key,
+                                    tags: tags,
+                                    documentSummary: metadata.document_summary || '' 
                                 };
                                 return file;
                             } catch (error) {
@@ -456,10 +511,11 @@ export function DataTableDemo({ onFileSelect }: DataTableDemoProps) {
 
                 const validFiles = files.filter((file): file is Payment => {
                     return file !== null &&
-                        typeof file === 'object' &&
-                        'id' in file &&
-                        'status' in file;
-                });
+                      typeof file === 'object' &&
+                      'id' in file &&
+                      'status' in file;
+                  });
+
 
                 setTableData(validFiles);
             }

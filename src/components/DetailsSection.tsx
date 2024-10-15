@@ -3,6 +3,7 @@ import { ArrowLeft, BadgeInfo, Search } from 'lucide-react';
 import { Input, Skeleton } from '@mui/material';
 import { Button } from './ui/button';
 import { post } from 'aws-amplify/api';
+import { ScrollArea } from './ui/scroll-area';
 
 interface DetailsSectionProps {
     showDetailsView: boolean;
@@ -110,20 +111,23 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView, setShow
             </Button>
           </div>
           {selectedFile && (
-            <div>
+              <>
               <p><strong>Name:</strong> {selectedFile.name}</p>
               <p><strong>Type:</strong> {selectedFile.type}</p>
               <p><strong>Size:</strong> {selectedFile.size}</p>
               <p><strong>Uploaded By:</strong> {selectedFile.uploadedBy}</p>
               <p><strong>Date:</strong> {selectedFile.date}</p>
+              <p><strong>Detailed Summary:</strong> {selectedFile.documentSummary}</p>
               {/* Add more details as needed */}
-            </div>
+            </>
+       
+           
           )}
         </>
       );
  
         return (
-            <div className="flex flex-col gap-2 px-4 py-4">
+            <div className="flex flex-col gap-2 px-4 py-4 overflow-auto">
                 {showDetailsView ? renderFileDetails() : renderAdvancedSearch()}
             </div>
         );
