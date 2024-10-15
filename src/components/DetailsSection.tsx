@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { ArrowLeft, BadgeInfo, Search } from 'lucide-react';
 import { Input, Skeleton } from '@mui/material';
 import { Button } from './ui/button';
-
+import { post } from 'aws-amplify/api';
 
 interface DetailsSectionProps {
     showDetailsView: boolean;
@@ -13,6 +13,7 @@ interface DetailsSectionProps {
 const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView, setShowDetailsView, selectedFile }) => {
     const [userSearch, setUserSearch] = useState('');
     const [isLoading, setIsLoading] = useState(false);
+    const [searchResults, setSearchResults] = useState<any[]>([]);
 
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         setUserSearch(e.target.value);
@@ -23,6 +24,40 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView, setShow
             setIsLoading(true);
         }
     };
+
+    const queryAllDocuments = async (searchTerm: string) => {
+        const restOperation = post({
+            apiName: 'VDR_API',
+            path: '/vdr-documents/query',
+            options: {
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: {
+                    query: searchTerm
+                }
+            },
+        });
+        
+        console.log(restOperation);
+    };
+
+    const querySingleDocument = async (fileKey, searchTerm) => {
+        const restOperation = post({
+          apiName: 'VDR_API',
+          path: `/vdr-documents/documents/${fileKey}/query`,
+          options: {
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: {
+              query: searchTerm
+            }
+          }
+        });
+        
+        console.log(restOperation);
+      };
 
     const renderAdvancedSearch = () => (
         <>

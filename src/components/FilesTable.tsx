@@ -42,6 +42,7 @@ import DocViewer, { DocViewerRenderers } from "@cyntler/react-doc-viewer";
 import "@cyntler/react-doc-viewer/dist/index.css";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import EnhancedFileViewer from "@/components/EnhancedFileviewer"
+import { post } from "aws-amplify/api";
 
 const data: Payment[] = [
 ]
@@ -374,6 +375,24 @@ export function DataTableDemo({ onFileSelect }: DataTableDemoProps) {
             });
 
             await s3Client.send(command);
+            
+            // console.log(s3Key);
+            const restOperation = post({
+                apiName: 'VDR_API',
+                path: '/vdr-documents/documents/upload',
+                options: {
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: {
+                        pdf_paths: [s3Key]
+                    }
+                }
+            });
+
+            console.log(restOperation);
+
+
             return s3Key;
         } catch (error) {
             console.error('Error uploading to S3:', error);

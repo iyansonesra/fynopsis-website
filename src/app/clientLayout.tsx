@@ -60,9 +60,9 @@ Amplify.configure({
   },
   API: {
     REST: {
-      testAPI: {
+      VDR_API: {
         endpoint:
-          'https://4s693esbca.execute-api.us-east-1.amazonaws.com/test', // main
+          'https://t87zcr0ug0.execute-api.us-east-1.amazonaws.com/prod', // main
         region: 'us-east-1' // Optional
       }
     }
