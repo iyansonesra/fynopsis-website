@@ -14,7 +14,7 @@ interface DetailsSectionProps {
 const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView, setShowDetailsView, selectedFile }) => {
     const [userSearch, setUserSearch] = useState('');
     const [isLoading, setIsLoading] = useState(false);
-    const [searchResults, setSearchResults] = useState<any[]>([]);
+    const [searchResults, setSearchResults] = useState('');
 
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         setUserSearch(e.target.value);
@@ -23,6 +23,9 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView, setShow
     const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
         if(e.key === 'Enter') {
             setIsLoading(true);
+            queryAllDocuments(userSearch.trim());
+            setUserSearch('');
+            setIsLoading(false);
         }
     };
 
@@ -41,6 +44,10 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView, setShow
         });
         
         console.log(restOperation);
+        const { body } = await restOperation.response;
+        const responseText = await body.text();
+        const responseMain = JSON.parse(responseText);
+        console.log(responseMain);
     };
 
     const querySingleDocument = async (fileKey, searchTerm) => {
@@ -78,7 +85,7 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView, setShow
                 />
             </div>
 
-            {isLoading && (
+            {isLoading ? (
                 <div className="w-full max-w-md transition-opacity duration-300">
                     <Skeleton animation="wave" className="h-5 w-full" />
                     <Skeleton animation="wave" className="h-5 w-[80%]" />
@@ -94,7 +101,7 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView, setShow
                         <Skeleton variant="rectangular" animation="wave" className="h-16 w-20 rounded-xl" />
                     </div>
                 </div>
-            )}
+            ): searchResults}
         </>
     );
 

@@ -43,6 +43,7 @@ import "@cyntler/react-doc-viewer/dist/index.css";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import EnhancedFileViewer from "@/components/EnhancedFileviewer"
 import { post } from "aws-amplify/api";
+// import { delete } from "aws-amplify/api";
 
 const data: Payment[] = [
 ]
@@ -147,6 +148,24 @@ const deleteS3Object = async (s3Key: string) => {
             Bucket: S3_BUCKET_NAME,
             Key: s3Key
         });
+        
+        const encodedS3Key = encodeURIComponent(s3Key);
+        
+
+        const restOperation = post({
+            apiName: 'VDR_API',
+            path: `/vdr-documents/documents/${encodedS3Key}/delete`,
+            options: {
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: {
+                    pdf_paths: [s3Key]
+                }
+            }
+        });
+
+        console.log(restOperation);
 
         await s3Client.send(command);
     } catch (error) {
@@ -301,7 +320,8 @@ export function DataTableDemo({ onFileSelect }: DataTableDemoProps) {
                                                 size: payment.size,
                                                 status: payment.status,
                                                 date: payment.date,
-                                                uploadedBy: payment.uploadedBy
+                                                uploadedBy: payment.uploadedBy,
+                                                s3Key: payment.s3Key,
                                             });
                                         } catch (error) {
                                             console.error('Error getting presigned URL:', error);
@@ -426,7 +446,7 @@ export function DataTableDemo({ onFileSelect }: DataTableDemoProps) {
                         'Content-Type': 'application/json'
                     },
                     body: {
-                        pdf_paths: [s3Key]
+                        file_paths: [s3Key]
                     }
                 }
             });
