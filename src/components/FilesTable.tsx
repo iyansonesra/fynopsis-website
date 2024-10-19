@@ -43,6 +43,7 @@ import "@cyntler/react-doc-viewer/dist/index.css";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import EnhancedFileViewer from "@/components/EnhancedFileviewer"
 import { post } from "aws-amplify/api";
+import { ScrollArea, ScrollBar } from "./ui/scroll-area";
 // import { delete } from "aws-amplify/api";
 
 const data: Payment[] = [
@@ -148,9 +149,9 @@ const deleteS3Object = async (s3Key: string) => {
             Bucket: S3_BUCKET_NAME,
             Key: s3Key
         });
-        
+
         const encodedS3Key = encodeURIComponent(s3Key);
-        
+
 
         const restOperation = post({
             apiName: 'VDR_API',
@@ -177,34 +178,34 @@ const deleteS3Object = async (s3Key: string) => {
 
 const TagDisplay = ({ tags }) => {
     const tagColors = [
-      'bg-blue-100 text-blue-800',
-      'bg-green-100 text-green-800',
-      'bg-yellow-100 text-yellow-800',
-      'bg-red-100 text-red-800',
-      'bg-indigo-100 text-indigo-800',
-      'bg-purple-100 text-purple-800',
-      'bg-pink-100 text-pink-800',
+        'bg-blue-100 text-blue-800',
+        'bg-green-100 text-green-800',
+        'bg-yellow-100 text-yellow-800',
+        'bg-red-100 text-red-800',
+        'bg-indigo-100 text-indigo-800',
+        'bg-purple-100 text-purple-800',
+        'bg-pink-100 text-pink-800',
     ];
-  
+
     const displayedTags = tags.slice(0, 2);
     const remainingCount = Math.max(0, tags.length - 2);
-  
+
     return (
-      <div className="flex flex-wrap gap-1 items-center">
-        {displayedTags.map((tag, index) => (
-          <span
-            key={index}
-            className={`px-2 py-1 text-xs font-medium rounded-full ${tagColors[index % tagColors.length]}`}
-          >
-            {tag}
-          </span>
-        ))}
-        {remainingCount > 0 && (
-          <span className="text-xs text-gray-500">+{remainingCount} more</span>
-        )}
-      </div>
+        <div className="flex flex-wrap gap-1 items-center">
+            {displayedTags.map((tag, index) => (
+                <span
+                    key={index}
+                    className={`px-2 py-1 text-xs font-medium rounded-full ${tagColors[index % tagColors.length]}`}
+                >
+                    {tag}
+                </span>
+            ))}
+            {remainingCount > 0 && (
+                <span className="text-xs text-gray-500">+{remainingCount} more</span>
+            )}
+        </div>
     );
-  };
+};
 
 
 export const columns: ColumnDef<Payment>[] = [
@@ -291,6 +292,20 @@ export function DataTableDemo({ onFileSelect }: DataTableDemoProps) {
     const [isLoading, setIsLoading] = React.useState(true);
     const [viewerOpen, setViewerOpen] = React.useState(false)
     const [currentDocument, setCurrentDocument] = React.useState<{ url?: string, name?: string }>({})
+
+    const handleRowDoubleClick = async (payment: Payment) => {
+        if (payment.s3Key) {
+            try {
+                const url = await getPresignedUrl(payment.s3Key);
+                onFileSelect({
+                    ...payment,
+                    s3Url: url,
+                });
+            } catch (error) {
+                console.error('Error getting presigned URL:', error);
+            }
+        }
+    };
 
 
     const updatedColumns: ColumnDef<Payment>[] = [
@@ -465,7 +480,7 @@ export function DataTableDemo({ onFileSelect }: DataTableDemoProps) {
         const KB = 1024;
         const MB = KB * 1024;
         const GB = MB * 1024;
-    
+
         if (bytes >= GB) {
             return `${(bytes / GB).toFixed(2)} GB`;
         } else if (bytes >= MB) {
@@ -538,7 +553,7 @@ export function DataTableDemo({ onFileSelect }: DataTableDemoProps) {
                                     uploadedBy: truncateString(metadata.uploadedby || 'Unknown', 10),
                                     s3Key: object.Key,
                                     tags: tags,
-                                    documentSummary: metadata.document_summary || '' 
+                                    documentSummary: metadata.document_summary || ''
                                 };
                                 return file;
                             } catch (error) {
@@ -550,10 +565,10 @@ export function DataTableDemo({ onFileSelect }: DataTableDemoProps) {
 
                 const validFiles = files.filter((file): file is Payment => {
                     return file !== null &&
-                      typeof file === 'object' &&
-                      'id' in file &&
-                      'status' in file;
-                  });
+                        typeof file === 'object' &&
+                        'id' in file &&
+                        'status' in file;
+                });
 
 
                 setTableData(validFiles);
@@ -600,7 +615,7 @@ export function DataTableDemo({ onFileSelect }: DataTableDemoProps) {
     };
 
     return (
-        <div className="w-full">
+        <div className="w-full py-4 px-6">
             <style jsx>{`
                 .resizer {
                     position: absolute;
@@ -686,7 +701,7 @@ export function DataTableDemo({ onFileSelect }: DataTableDemoProps) {
             </div>
 
 
-            <div className="rounded-md overflow-hidden">
+            <ScrollArea className="w-full whitespace-nowrap rounded-md">
                 <Table>
                     <TableHeader>
                         {table.getHeaderGroups().map((headerGroup) => (
@@ -731,7 +746,7 @@ export function DataTableDemo({ onFileSelect }: DataTableDemoProps) {
                                 <TableRow
                                     key={row.id}
                                     data-state={row.getIsSelected() && "selected"}
-                                    onClick={() => onFileSelect(row.original)}
+                                    onDoubleClick={() => handleRowDoubleClick(row.original)}
                                     className="cursor-pointer hover:bg-gray-100"
                                 >
                                     {row.getVisibleCells().map((cell) => (
@@ -760,7 +775,8 @@ export function DataTableDemo({ onFileSelect }: DataTableDemoProps) {
                         )}
                     </TableBody>
                 </Table>
-            </div>
+                <ScrollBar orientation="horizontal" />
+            </ScrollArea>
             <div className="flex items-center justify-between space-x-2 py-4">
                 <div className="flex-1 text-sm text-muted-foreground">
                     {table.getFilteredSelectedRowModel().rows.length} of{" "}

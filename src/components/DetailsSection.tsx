@@ -21,7 +21,7 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView, setShow
     };
 
     const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-        if(e.key === 'Enter') {
+        if (e.key === 'Enter') {
             setIsLoading(true);
             queryAllDocuments(userSearch.trim());
             setUserSearch('');
@@ -42,7 +42,7 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView, setShow
                 }
             },
         });
-        
+
         console.log(restOperation);
         const { body } = await restOperation.response;
         const responseText = await body.text();
@@ -52,20 +52,20 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView, setShow
 
     const querySingleDocument = async (fileKey, searchTerm) => {
         const restOperation = post({
-          apiName: 'VDR_API',
-          path: `/vdr-documents/documents/${fileKey}/query`,
-          options: {
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: {
-              query: searchTerm
+            apiName: 'VDR_API',
+            path: `/vdr-documents/documents/${fileKey}/query`,
+            options: {
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: {
+                    query: searchTerm
+                }
             }
-          }
         });
-        
+
         console.log(restOperation);
-      };
+    };
 
     const renderAdvancedSearch = () => (
         <>
@@ -93,7 +93,7 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView, setShow
 
                     <Skeleton animation="wave" className="h-5 w-full mt-4" />
                     <Skeleton animation="wave" className="h-5 w-[80%]" />
-                    
+
                     <div className="flex flex-wrap w-full gap-2 mt-4">
                         <Skeleton variant="rectangular" animation="wave" className="h-16 w-20 rounded-xl" />
                         <Skeleton variant="rectangular" animation="wave" className="h-16 w-20 rounded-xl" />
@@ -101,44 +101,47 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView, setShow
                         <Skeleton variant="rectangular" animation="wave" className="h-16 w-20 rounded-xl" />
                     </div>
                 </div>
-            ): searchResults}
+            ) : searchResults}
         </>
     );
 
     const renderFileDetails = () => (
         <>
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="text-xl font-semibold">File Details</h2>
-            <Button
-              variant="outlined"
-              startIcon={<ArrowLeft />}
-              onClick={() => setShowDetailsView(false)}
-            >
-              Back to Search
-            </Button>
-          </div>
-          {selectedFile && (
-              <>
-              <p><strong>Name:</strong> {selectedFile.name}</p>
-              <p><strong>Type:</strong> {selectedFile.type}</p>
-              <p><strong>Size:</strong> {selectedFile.size}</p>
-              <p><strong>Uploaded By:</strong> {selectedFile.uploadedBy}</p>
-              <p><strong>Date:</strong> {selectedFile.date}</p>
-              <p><strong>Detailed Summary:</strong> {selectedFile.documentSummary}</p>
-              {/* Add more details as needed */}
-            </>
-       
-           
-          )}
+            <div className="flex justify-between items-center mb-4">
+                <h2 className="text-xl font-semibold">File Details</h2>
+                <Button
+                    variant="outlined"
+                    startIcon={<ArrowLeft />}
+                    onClick={() => setShowDetailsView(false)}
+                >
+                    Back to Search
+                </Button>
+            </div>
+            {selectedFile && (
+                <>
+                    <p><strong>Name:</strong> {selectedFile.name}</p>
+                    <p><strong>Type:</strong> {selectedFile.type}</p>
+                    <p><strong>Size:</strong> {selectedFile.size}</p>
+                    <p><strong>Uploaded By:</strong> {selectedFile.uploadedBy}</p>
+                    <p><strong>Date:</strong> {selectedFile.date}</p>
+                    <p><strong>Detailed Summary:</strong> {selectedFile.documentSummary}</p>
+                    {/* Add more details as needed */}
+                </>
+
+
+            )}
         </>
-      );
- 
-        return (
+    );
+
+    return (
+        <ScrollArea className="h-full">
             <div className="flex flex-col gap-2 px-4 py-4 overflow-auto">
                 {showDetailsView ? renderFileDetails() : renderAdvancedSearch()}
             </div>
-        );
-    
+        </ScrollArea>
+
+    );
+
 };
 
 export default DetailSection;

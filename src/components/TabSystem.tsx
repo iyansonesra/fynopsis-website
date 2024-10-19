@@ -1,6 +1,6 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useRef, useEffect } from 'react';
 import { DragDropContext, Droppable, Draggable } from 'react-beautiful-dnd';
-import { X, ChevronLeft, ChevronRight } from 'lucide-react';
+import { X } from 'lucide-react';
 
 interface Tab {
   id: string;
@@ -17,35 +17,6 @@ interface TabSystemProps {
 
 const TabSystem: React.FC<TabSystemProps> = ({ tabs, activeTabId, setActiveTabId, setTabs }) => {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
-  const [showLeftScroll, setShowLeftScroll] = useState(false);
-  const [showRightScroll, setShowRightScroll] = useState(false);
-
-  const checkScrollButtons = () => {
-    const container = scrollContainerRef.current;
-    if (container) {
-      setShowLeftScroll(container.scrollLeft > 0);
-      setShowRightScroll(
-        container.scrollLeft < container.scrollWidth - container.clientWidth
-      );
-    }
-  };
-
-  useEffect(() => {
-    checkScrollButtons();
-    window.addEventListener('resize', checkScrollButtons);
-    return () => window.removeEventListener('resize', checkScrollButtons);
-  }, [tabs]);
-
-  const scroll = (direction: 'left' | 'right') => {
-    const container = scrollContainerRef.current;
-    if (container) {
-      const scrollAmount = container.clientWidth * 0.8;
-      container.scrollBy({
-        left: direction === 'left' ? -scrollAmount : scrollAmount,
-        behavior: 'smooth'
-      });
-    }
-  };
 
   const onDragEnd = (result: any) => {
     if (!result.destination) return;
@@ -66,7 +37,19 @@ const TabSystem: React.FC<TabSystemProps> = ({ tabs, activeTabId, setActiveTabId
     }
   };
 
-  // Scroll active tab into view when it changes
+  // New function to add or activate a tab
+  const addOrActivateTab = (newTab: Tab) => {
+    const existingTab = tabs.find(tab => tab.id === newTab.id);
+    if (existingTab) {
+      // If the tab already exists, just activate it
+      setActiveTabId(existingTab.id);
+    } else {
+      // If it's a new tab, add it and activate it
+      setTabs([...tabs, newTab]);
+      setActiveTabId(newTab.id);
+    }
+  };
+
   useEffect(() => {
     const activeTab = document.querySelector(`[data-tab-id="${activeTabId}"]`);
     if (activeTab) {
@@ -77,15 +60,6 @@ const TabSystem: React.FC<TabSystemProps> = ({ tabs, activeTabId, setActiveTabId
   return (
     <div className="flex flex-col h-full">
       <div className="relative flex bg-gray-300">
-        {/* {showLeftScroll && (
-          <button
-            onClick={() => scroll('left')}
-            className="sticky left-0 z-10 px-1 bg-gray-300 hover:bg-gray-400 flex items-center"
-          >
-            <ChevronLeft size={20} />
-          </button>
-        )} */}
-        
         <DragDropContext onDragEnd={onDragEnd}>
           <Droppable droppableId="tabs" direction="horizontal">
             {(provided) => (
@@ -98,7 +72,6 @@ const TabSystem: React.FC<TabSystemProps> = ({ tabs, activeTabId, setActiveTabId
                 }}
                 {...provided.droppableProps}
                 className="flex overflow-x-auto hide-scrollbar"
-                onScroll={checkScrollButtons}
                 style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
               >
                 {tabs.map((tab, index) => (
@@ -133,19 +106,25 @@ const TabSystem: React.FC<TabSystemProps> = ({ tabs, activeTabId, setActiveTabId
             )}
           </Droppable>
         </DragDropContext>
-
-        {/* {showRightScroll && (
-          <button
-            onClick={() => scroll('right')}
-            className="sticky right-0 z-10 px-1 bg-gray-300 hover:bg-gray-400 flex items-center"
-          >
-            <ChevronRight size={20} />
-          </button>
-        )} */}
       </div>
       
-      <div className="flex-grow bg-white p-4">
-        {tabs.find(tab => tab.id === activeTabId)?.content}
+      <div className="flex-grow bg-white p-4 relative">
+        {tabs.map(tab => (
+          <div
+            key={tab.id}
+            style={{
+              display: tab.id === activeTabId ? 'block' : 'none',
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              overflow: 'auto'
+            }}
+          >
+            {tab.content}
+          </div>
+        ))}
       </div>
 
       <style jsx global>{`
