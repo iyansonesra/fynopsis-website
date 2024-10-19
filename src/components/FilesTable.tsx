@@ -461,6 +461,25 @@ export function DataTableDemo({ onFileSelect }: DataTableDemoProps) {
         }
     };
 
+    const formatFileSize = (bytes: number): string => {
+        const KB = 1024;
+        const MB = KB * 1024;
+        const GB = MB * 1024;
+    
+        if (bytes >= GB) {
+            return `${(bytes / GB).toFixed(2)} GB`;
+        } else if (bytes >= MB) {
+            return `${(bytes / MB).toFixed(2)} MB`;
+        } else {
+            return `${(bytes / KB).toFixed(2)} KB`;
+        }
+    };
+
+    const truncateString = (str: string, maxLength: number): string => {
+        if (str.length <= maxLength) return str;
+        return str.slice(0, maxLength - 3) + '...';
+    };
+
     const listS3Objects = async () => {
         try {
             setIsLoading(true);
@@ -514,9 +533,9 @@ export function DataTableDemo({ onFileSelect }: DataTableDemoProps) {
                                     type: object.Key.split('.').pop()?.toUpperCase() || 'Unknown',
                                     name: metadata.originalname || object.Key.split('/').pop() || '',
                                     status: "success",
-                                    size: `${(object.Size || 0 / (1024 * 1024)).toFixed(2)} KB`,
+                                    size: formatFileSize(object.Size || 0),
                                     date: object.LastModified?.toISOString().split('T')[0] || '',
-                                    uploadedBy: metadata.uploadedby || 'Unknown',
+                                    uploadedBy: truncateString(metadata.uploadedby || 'Unknown', 10),
                                     s3Key: object.Key,
                                     tags: tags,
                                     documentSummary: metadata.document_summary || '' 
