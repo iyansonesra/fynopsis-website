@@ -4,12 +4,27 @@ import { Input, Skeleton } from '@mui/material';
 import { Button } from './ui/button';
 import { post } from 'aws-amplify/api';
 import { ScrollArea } from './ui/scroll-area';
+import { fetchAuthSession } from 'aws-amplify/auth';
 
 interface DetailsSectionProps {
     showDetailsView: boolean;
     setShowDetailsView: (show: boolean) => void;
     selectedFile: any;  // Replace 'any' with your file type
 }
+
+const getUserPrefix = async () => {
+    try {
+        const { identityId } = await fetchAuthSession();
+        if (!identityId) {
+            throw new Error('No identity ID available');
+        }
+        console.log("The identity id:", identityId);
+        return `${identityId}/`;
+    } catch (error) {
+        console.error('Error getting user prefix:', error);
+        throw error;
+    }
+};
 
 const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView, setShowDetailsView, selectedFile }) => {
     const [userSearch, setUserSearch] = useState('');
@@ -30,9 +45,11 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView, setShow
     };
 
     const queryAllDocuments = async (searchTerm: string) => {
+        const userPrefix = await getUserPrefix();
+        const encodedPrefix = encodeURIComponent(userPrefix);
         const restOperation = post({
             apiName: 'VDR_API',
-            path: '/vdr-documents/query',
+            path: `/${encodedPrefix}/query`,
             options: {
                 headers: {
                     'Content-Type': 'application/json'
@@ -51,17 +68,20 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView, setShow
     };
 
     const querySingleDocument = async (fileKey, searchTerm) => {
+        const userPrefix = await getUserPrefix();
+        const encodedPrefix = encodeURIComponent(userPrefix);
+        const encodedS3Key = encodeURIComponent(fileKey);
         const restOperation = post({
-            apiName: 'VDR_API',
-            path: `/vdr-documents/documents/${fileKey}/query`,
-            options: {
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: {
-                    query: searchTerm
-                }
+          apiName: 'VDR_API',
+          path: `/${encodedPrefix}/documents/${encodedS3Key}/query`,
+          options: {
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: {
+              query: searchTerm
             }
+          }
         });
 
         console.log(restOperation);

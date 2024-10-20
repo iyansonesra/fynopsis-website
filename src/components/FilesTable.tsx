@@ -433,6 +433,7 @@ export function DataTableDemo({ onFileSelect }: DataTableDemoProps) {
         const fileId = file.name.split('.')[0];
         const fileExtension = file.name.split('.').pop() || '';
         const userPrefix = await getUserPrefix();
+        const encodedUserPrefix =  encodeURIComponent(userPrefix);
         // Ensure we're not using the identity ID in the visible part of the key
         const s3Key = `${userPrefix}files/${fileId}.${fileExtension}`;
 
@@ -455,7 +456,7 @@ export function DataTableDemo({ onFileSelect }: DataTableDemoProps) {
             // console.log(s3Key);
             const restOperation = post({
                 apiName: 'VDR_API',
-                path: '/vdr-documents/documents/upload',
+                path: `/${encodedUserPrefix}/documents/upload`,
                 options: {
                     headers: {
                         'Content-Type': 'application/json'
