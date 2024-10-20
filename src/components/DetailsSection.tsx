@@ -46,10 +46,10 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView, setShow
 
     const queryAllDocuments = async (searchTerm: string) => {
         const userPrefix = await getUserPrefix();
-        const encodedPrefix = encodeURIComponent(userPrefix);
+        const encodedUserPrefix =  userPrefix.split(':')[1].slice(0, -1);
         const restOperation = post({
             apiName: 'VDR_API',
-            path: `/${encodedPrefix}/query`,
+            path: `/${encodedUserPrefix}/query`,
             options: {
                 headers: {
                     'Content-Type': 'application/json'
@@ -69,11 +69,11 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView, setShow
 
     const querySingleDocument = async (fileKey, searchTerm) => {
         const userPrefix = await getUserPrefix();
-        const encodedPrefix = encodeURIComponent(userPrefix);
+        const encodedUserPrefix =  userPrefix.split(':')[1].slice(0, -1);
         const encodedS3Key = encodeURIComponent(fileKey);
         const restOperation = post({
           apiName: 'VDR_API',
-          path: `/${encodedPrefix}/documents/${encodedS3Key}/query`,
+          path: `/${encodedUserPrefix}/documents/${encodedS3Key}/query`,
           options: {
             headers: {
                 'Content-Type': 'application/json'

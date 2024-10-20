@@ -152,10 +152,13 @@ const deleteS3Object = async (s3Key: string) => {
 
         const encodedS3Key = encodeURIComponent(s3Key);
 
+        const userPrefix = await getUserPrefix();
+        const encodedUserPrefix =  userPrefix.split(':')[1].slice(0, -1);
+
 
         const restOperation = post({
             apiName: 'VDR_API',
-            path: `/vdr-documents/documents/${encodedS3Key}/delete`,
+            path: `/${encodedUserPrefix}/documents/${encodedS3Key}/delete`,
             options: {
                 headers: {
                     'Content-Type': 'application/json'
@@ -433,7 +436,7 @@ export function DataTableDemo({ onFileSelect }: DataTableDemoProps) {
         const fileId = file.name.split('.')[0];
         const fileExtension = file.name.split('.').pop() || '';
         const userPrefix = await getUserPrefix();
-        const encodedUserPrefix =  encodeURIComponent(userPrefix);
+        const encodedUserPrefix =  userPrefix.split(':')[1].slice(0, -1);
         // Ensure we're not using the identity ID in the visible part of the key
         const s3Key = `${userPrefix}files/${fileId}.${fileExtension}`;
 
@@ -453,7 +456,9 @@ export function DataTableDemo({ onFileSelect }: DataTableDemoProps) {
 
             await s3Client.send(command);
 
-            // console.log(s3Key);
+
+
+            console.log(encodedUserPrefix + " The place we store this.");
             const restOperation = post({
                 apiName: 'VDR_API',
                 path: `/${encodedUserPrefix}/documents/upload`,
