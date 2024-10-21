@@ -37,7 +37,7 @@ const TabSystem: React.FC<TabSystemProps> = ({ tabs, activeTabId, setActiveTabId
     }
   };
 
-  // New function to add or activate a tab
+  // Updated function to add or activate a tab
   const addOrActivateTab = (newTab: Tab) => {
     const existingTab = tabs.find(tab => tab.id === newTab.id);
     if (existingTab) {

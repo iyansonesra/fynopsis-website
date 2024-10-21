@@ -1,3 +1,4 @@
+import React from 'react';
 import { AiFillFolder, AiFillFile } from "react-icons/ai";
 import { MdArrowRight, MdArrowDropDown, MdEdit } from "react-icons/md";
 import { RxCross2 } from "react-icons/rx";
@@ -6,7 +7,6 @@ const Node = ({ node, style, dragHandle, tree }) => {
   const CustomIcon = node.data.icon;
   const iconColor = node.data.iconColor;
 
-  // console.log(node, tree);
   return (
     <div
       className={`node-container flex-row ${node.state.isSelected ? "isSelected" : ""}`}
@@ -37,12 +37,12 @@ const Node = ({ node, style, dragHandle, tree }) => {
               {CustomIcon ? (
                 <CustomIcon color={iconColor ? iconColor : "#f6cf60"} />
               ) : (
-               <></>
+                <AiFillFolder color="#f6cf60" />
               )}
             </span>
           </>
         )}
-        <span className="node-text">
+        <span className="node-text" title={node.data.name}>
           {node.isEditing ? (
             <input
               type="text"
@@ -61,7 +61,7 @@ const Node = ({ node, style, dragHandle, tree }) => {
         </span>
       </div>
 
-      <div className="file-actions">
+      <div className="file-actions absolute right-0">
         <div className="folderFileActions">
           <button onClick={() => node.edit()} title="Rename...">
             <MdEdit />

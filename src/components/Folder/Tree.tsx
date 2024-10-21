@@ -36,7 +36,7 @@ const TreeFolder: React.FC<TreeFolderProps> = ({ onFileSelect }) => {
   );
 
   return (
-    <div>
+    <div className=" overflow-hidden">
       <input
         type="text"
         placeholder="Search..."
@@ -45,21 +45,23 @@ const TreeFolder: React.FC<TreeFolderProps> = ({ onFileSelect }) => {
         onChange={(e) => setTerm(e.target.value)}
       />
       <div className="ml-2 folderFileActions mb-2">{createFileFolder}</div>
+      <div className="tree-container">
+        <Tree
+          ref={treeRef}
+          initialData={data}
+          width={"100%"}
+          indent={24}
+          rowHeight={32}
+          searchTerm={term}
+          searchMatch={(node, term) =>
+            node.data.name.toLowerCase().includes(term.toLowerCase())
+          }
+          onActivate={handleNodeClick}
+        >
+          {Node}
+        </Tree>
+      </div>
 
-      <Tree
-        ref={treeRef}
-        initialData={data}
-        width={"100%"}
-        indent={24}
-        rowHeight={32}
-        searchTerm={term}
-        searchMatch={(node, term) =>
-          node.data.name.toLowerCase().includes(term.toLowerCase())
-        }
-        onActivate={handleNodeClick}
-      >
-        {Node}
-      </Tree>
     </div>
   );
 };

@@ -20,6 +20,8 @@ const FileViewer: React.FC<FileViewerProps> = ({ fileUrl }) => {
                         {
                             path: 'lib',
                             initialDoc: fileUrl,
+                            licenseKey: 'demo:1729472279952:7e1afcaa03000000006ee7153b04bc0c722dbbd3e438bc594dfc596e62',
+
                         },
                         viewerDiv.current
                     );

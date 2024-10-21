@@ -4,16 +4,20 @@
   height: 100%;
   align-items: center;
   width: 100%;
+  box-sizing: border-box;
 }
 
 .node-content {
   cursor: pointer;
+  flex: 1;
+  min-width: 0;
 }
 
 .node-content span.arrow {
   width: 20px;
   font-size: 20px;
   display: flex;
+  flex-shrink: 0;
 }
 
 .node-content span.file-folder-icon {
@@ -21,11 +25,23 @@
   display: flex;
   align-items: center;
   font-size: 20px;
+  flex-shrink: 0;
 }
 
 .node-content span.node-text {
   flex: 1;
   color: black;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.node-text {
+  max-width: calc(100% + 500px); /* Adjust this value as needed */
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .node-content input[type="text"],
@@ -53,6 +69,16 @@
   margin-bottom: 0.5rem;
   color: black;
   border-radius: 10px;
+}
+
+.tree-container {
+  width: 100%;
+  overflow-x: hidden;
+}
+
+.tree-scroll-container {
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 
 .search-input:focus {

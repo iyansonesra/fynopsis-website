@@ -59,22 +59,31 @@ export default function Files({ setSelectedTab }: { setSelectedTab: React.Dispat
     ]);
     const [activeTabId, setActiveTabId] = useState('1');
 
+    const addOrActivateTab = (newTab) => {
+        setTabs(prevTabs => {
+            const existingTab = prevTabs.find(tab => tab.id === newTab.id);
+            if (existingTab) {
+                // If the tab already exists, return the current tabs array
+                return prevTabs;
+            } else {
+                // If it's a new tab, add it
+                return [...prevTabs, newTab];
+            }
+        });
+        // Always set the active tab to the new or existing tab
+        setActiveTabId(newTab.id);
+    };
+
     function handleFileSelect(file: { id: string; name: string; s3Url: string; }) {
         setSelectedFile(file);
         setShowDetailsView(true);
         if (file.id && file.name && file.s3Url) {
             const newTabId = `file-${file.id}`;
-            if (!tabs.some(tab => tab.id === newTabId)) {
-                setTabs(prevTabs => [
-                    ...prevTabs,
-                    {
-                        id: newTabId,
-                        title: file.name,
-                        content: <FileViewer fileUrl={file.s3Url} />
-                    }
-                ]);
-            }
-            setActiveTabId(newTabId);
+            addOrActivateTab({
+                id: newTabId,
+                title: file.name,
+                content: <FileViewer fileUrl={file.s3Url} />
+            });
         } else {
             console.error('Incomplete file information:', file);
         }

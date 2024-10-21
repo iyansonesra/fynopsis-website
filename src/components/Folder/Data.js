@@ -4,35 +4,32 @@ import { FaNpm } from "react-icons/fa";
 export const data = [
   {
     id: "1",
-    name: "public",
+    name: "General Documents",
     children: [
       {
         id: "c1-1",
-        name: "index.html",
-        icon: SiHtml5,
+        name: "ACC 311H DuPont",
         iconColor: "#dc4a25"
-      }
-    ]
-  },
-  {
-    id: "2",
-    name: "src",
-    children: [
-      {
-        id: "c2-1",
-        name: "App.js",
-        icon: SiJavascript,
-        iconColor: "#efd81e"
       },
       {
-        id: "c2-2",
-        name: "index.js",
-        icon: SiJavascript,
-        iconColor: "#efd81e"
+        id: "c1-1",
+        name: "Basic Interface (2)",
+        iconColor: "#dc4a25"
       },
-      { id: "c2-3", name: "styles.css", icon: SiCss3, iconColor: "#42a5f5" }
+      {
+        id: "c1-1",
+        name: "Petco2023AnnualReport_Final",
+        iconColor: "#dc4a25"
+      },
+      {
+        id: "c1-1",
+        name: "sta_235H_class_03",
+        iconColor: "#dc4a25"
+      },
+
+
+      
     ]
   },
-  { id: "3", name: "package.json", icon: FaNpm, iconColor: "#c43636" },
-  { id: "4", name: "README.md", icon: SiMarkdown, iconColor: "#715537" }
+
 ];
