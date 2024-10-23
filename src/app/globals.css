@@ -33,6 +33,8 @@
 
   :root {
     --font-montserrat: var(--font-montserrat), sans-serif;
+    --font-inter: var(--font-inter), sans-serif;
+    --font-cormorant: var(--font-cormorant), serif;
     --font-poppins: var(--font-poppins), sans-serif;
     --font-inter: var(--font-inter), sans-serif;
   }

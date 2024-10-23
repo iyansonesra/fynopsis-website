@@ -76,9 +76,12 @@ export default function Files({ setSelectedTab }: { setSelectedTab: React.Dispat
 
     function handleFileSelect(file: { id: string; name: string; s3Url: string; }) {
         setSelectedFile(file);
+        console.log('Selected file:', file);
         setShowDetailsView(true);
         if (file.id && file.name && file.s3Url) {
             const newTabId = `file-${file.id}`;
+            console.log('New tab ID:', newTabId);
+            console.log('S3 URL:', file.s3Url);
             addOrActivateTab({
                 id: newTabId,
                 title: file.name,
@@ -116,12 +119,12 @@ export default function Files({ setSelectedTab }: { setSelectedTab: React.Dispat
             </ResizablePanel>
             <ResizableHandle withHandle />
             <ResizablePanel defaultSize={50} minSize={40}>
-            <TabSystem 
-                tabs={tabs} 
-                activeTabId={activeTabId} 
-                setActiveTabId={setActiveTabId}
-                setTabs={setTabs}
-            />
+                <TabSystem
+                    tabs={tabs}
+                    activeTabId={activeTabId}
+                    setActiveTabId={setActiveTabId}
+                    setTabs={setTabs}
+                />
             </ResizablePanel>
             <ResizableHandle withHandle />
             <ResizablePanel defaultSize={25} minSize={20} collapsible={true} collapsedSize={0}>
@@ -129,6 +132,7 @@ export default function Files({ setSelectedTab }: { setSelectedTab: React.Dispat
                     showDetailsView={showDetailsView}
                     setShowDetailsView={setShowDetailsView}
                     selectedFile={selectedFile}
+                    onFileSelect={handleFileSelect}  // Add this line
                 />
             </ResizablePanel>
         </ResizablePanelGroup>

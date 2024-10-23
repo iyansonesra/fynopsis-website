@@ -1,7 +1,7 @@
 "use client";
 import { Amplify } from "aws-amplify";
 import { Authenticator as AmplifyAuthenticator } from "@aws-amplify/ui-react";
-import { Montserrat, Poppins } from "next/font/google";
+import { Montserrat, Poppins, Cormorant, Inter } from "next/font/google";
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 
 if (!process.env.NEXT_PUBLIC_USER_POOL_ID || !process.env.NEXT_PUBLIC_USER_POOL_CLIENT_ID) {
@@ -14,6 +14,18 @@ const montserrat = Montserrat({
   variable: '--font-montserrat',
 });
 
+const cormorant = Cormorant({
+  subsets: ["latin"],
+  display: 'swap',
+  variable: '--font-cormorant',
+});
+
+const inter = Inter({
+  subsets: ["latin"],
+  display: 'swap',
+  variable: '--font-inter',
+});
+
 const poppins = Poppins({
   weight: ['100', '200', '300', '400', '500', '600', '700', '800', '900'],
   subsets: ['latin'],
@@ -24,7 +36,7 @@ const poppins = Poppins({
 const theme = createTheme({
   typography: {
     allVariants: {
-      fontFamily: montserrat.style.fontFamily,
+      fontFamily: cormorant.style.fontFamily,
       textTransform: 'none',
       fontSize: 16,
     },

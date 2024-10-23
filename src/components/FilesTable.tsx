@@ -298,6 +298,7 @@ export function DataTableDemo({ onFileSelect }: DataTableDemoProps) {
 
     const handleRowDoubleClick = async (payment: Payment) => {
         if (payment.s3Key) {
+            console.log("The s3 key is:", payment.s3Key);
             try {
                 const url = await getPresignedUrl(payment.s3Key);
                 onFileSelect({
