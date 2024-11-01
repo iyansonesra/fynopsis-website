@@ -442,20 +442,20 @@ export function DataTableDemo({ onFileSelect }: DataTableDemoProps) {
         const s3Key = `${userPrefix}files/${fileId}.${fileExtension}`;
 
         try {
-            const s3Client = await getS3Client();
+            // const s3Client = await getS3Client();
 
-            const command = new PutObjectCommand({
-                Bucket: S3_BUCKET_NAME,
-                Key: s3Key,
-                Body: file,
-                ContentType: file.type,
-                Metadata: {
-                    uploadedBy: await getUserInfo(),
-                    originalName: file.name
-                }
-            });
+            // const command = new PutObjectCommand({
+            //     Bucket: S3_BUCKET_NAME,
+            //     Key: s3Key,
+            //     Body: file,
+            //     ContentType: file.type,
+            //     Metadata: {
+            //         uploadedBy: await getUserInfo(),
+            //         originalName: file.name
+            //     }
+            // });
 
-            await s3Client.send(command);
+            // await s3Client.send(command);
 
 
 
@@ -591,6 +591,7 @@ export function DataTableDemo({ onFileSelect }: DataTableDemoProps) {
     const handleFilesUploaded = async (files: File[]) => {
         const uploadPromises = files.map(async (file) => {
             try {
+                // const s3Key = await uploadToS3(file);
                 const s3Key = await uploadToS3(file);
                 return {
                     id: uuidv4(),
