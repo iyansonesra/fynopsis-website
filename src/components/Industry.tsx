@@ -126,6 +126,8 @@ const Industry: React.FC<IndustryProps> = ({
     const [isOverallLoading, setIsOverallLoading] = useState(true);
     const [isActualLoadingComplete, setIsActualLoadingComplete] = useState(false);
 
+    
+
     const startArtificialLoading = () => {
         const totalDuration = 120000; // 2 minutes in milliseconds
         const interval = 1000; // Update every second

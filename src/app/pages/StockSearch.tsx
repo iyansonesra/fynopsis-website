@@ -15,6 +15,7 @@ import { useAuthenticator } from '@aws-amplify/ui-react';
 import Link from 'next/link';
 import { get } from 'aws-amplify/api';
 
+
 function timeSince(dateString: string | number | Date) {
     // Set the current date to August 14, 2024, at 5:43 PM CST
     const now = new Date('2024-08-14T22:43:00Z'); // 5:43 PM CST in UTC
@@ -45,7 +46,12 @@ function timeSince(dateString: string | number | Date) {
     return "just now";
 }
 
-export default function StockSearch({ setSelectedTab }: { setSelectedTab: React.Dispatch<React.SetStateAction<string>> }) {
+interface StockSearchProps {
+    setSelectedTab: React.Dispatch<React.SetStateAction<string>>;
+    remainingRequests: number | null;
+    setRemainingRequests: React.Dispatch<React.SetStateAction<number | null>>;
+}
+export default function StockSearch({ setSelectedTab, remainingRequests, setRemainingRequests }: StockSearchProps) {
     const [searchInput, setSearchInput] = useState('');
     const [showStock, setShowStock] = useState(false);
     const [userAttributes, setUserAttributes] = useState<FetchUserAttributesOutput | null>(null);
@@ -58,6 +64,32 @@ export default function StockSearch({ setSelectedTab }: { setSelectedTab: React.
     const [recentSearches, setRecentSearches] = useState<RecentSearch[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    // const [remainingRequests, setRemainingRequests] = useState<number | null>(null);
+
+
+    async function getTotalSearches() {
+        try {
+            const restOperation = get({
+                apiName: 'testAPI',
+                path: '/fetchTotalSearches',
+            });
+            const { body } = await restOperation.response;
+            const responseText = await body.text();
+            const responseMain = JSON.parse(responseText);
+            // console.log('Recent searches:', responseMain);
+  
+            // Extract the searches array from the response
+            const value = 5 - responseMain.totalSearches || 0;
+            setRemainingRequests(value);
+        } catch (error) {
+            console.error('Error fetching recent searches');
+        }
+    }
+    useEffect(() => {
+      if (user) {
+        getTotalSearches();
+      }
+    }, [user]);
 
     async function getRecentSearches() {
         setIsLoading(true);
@@ -90,6 +122,26 @@ export default function StockSearch({ setSelectedTab }: { setSelectedTab: React.
         getRecentSearches();
     }, [user]);
 
+    async function incrementSearches() {
+        try {
+            const restOperation = get({
+                apiName: 'testAPI',
+                path: '/incrementTotalSearches',
+            });
+            // const { body } = await restOperation.response;
+            // const responseText = await body.text();
+            // const responseMain = JSON.parse(responseText);
+            // // console.log('Recent searches:', responseMain);
+  
+            // // Extract the searches array from the response
+            // const value = 5 - responseMain.totalSearches || 0;
+            // setRemainingRequests(value);
+        } catch (error) {
+            console.error('Error fetching recent searches');
+        }
+    }
+
+
     async function handleFetchUserAttributes() {
         try {
             const attributes = await fetchUserAttributes();
@@ -104,7 +156,9 @@ export default function StockSearch({ setSelectedTab }: { setSelectedTab: React.
     };
 
     const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
-        if (e.key === 'Enter' && searchInput.trim() !== '') {
+        if (e.key === 'Enter' && searchInput.trim() !== '' && remainingRequests != null && remainingRequests > 0) {
+            incrementSearches();
+            setRemainingRequests(remainingRequests - 1);
             setShowStock(true);
         }
     };
@@ -134,6 +188,8 @@ export default function StockSearch({ setSelectedTab }: { setSelectedTab: React.
                     stockDescription={''}
                     imageType={'circular'}
                     onBack={handleBack}
+                    remainingRequests={remainingRequests}
+                    setRemainingRequests={setRemainingRequests}
                 />
             </div>
         );

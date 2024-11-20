@@ -1,14 +1,14 @@
 import React, { useState } from 'react';
 import { signIn, signUp, confirmSignUp, signInWithRedirect } from 'aws-amplify/auth';
 
-const CustomAuthenticator = ({ onAuthStateChange }) => {
+const CustomAuthenticator = ({ onAuthStateChange }: any) => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [email, setEmail] = useState('');
   const [code, setCode] = useState('');
   const [step, setStep] = useState('signIn');
 
-  const handleSignIn = async (e) => {
+  const handleSignIn = async (e: any) => {
     e.preventDefault();
     try {
       await signIn({ username, password });
@@ -18,15 +18,15 @@ const CustomAuthenticator = ({ onAuthStateChange }) => {
     }
   };
 
-  const handleSignUp = async (e) => {
+  const handleSignUp = async (e: any) => {
     e.preventDefault();
     try {
       await signUp({
         username,
         password,
-        attributes: {
-          email,
-        },
+        // attributes: {
+        //   email,
+        // },
       });
       setStep('confirmSignUp');
     } catch (error) {
@@ -34,7 +34,7 @@ const CustomAuthenticator = ({ onAuthStateChange }) => {
     }
   };
 
-  const handleConfirmSignUp = async (e) => {
+  const handleConfirmSignUp = async (e: any) => {
     e.preventDefault();
     try {
       await confirmSignUp({ username, confirmationCode: code });
