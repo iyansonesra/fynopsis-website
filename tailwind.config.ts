@@ -78,10 +78,18 @@ const config = {
         "accordion-up": "accordion-up 0.2s ease-out",
       },
       fontFamily: {
-          montserrat: ['Montserrat', 'sans-serif'],
+          montserrat: ['Montserrat', 'sans'],
+          inter: ['var(--font-inter)'],
+          cormorant: ['var(--font-cormorant)'],
           poppins: ['Poppins', 'sans-serif'],
           sans: ['var(--font-poppins)'],
       },
+      dropShadow: {
+        glow: [
+          "0 0px 20px rgba(255,255, 255, 0.35)",
+          "0 0px 65px rgba(255, 255,255, 0.2)"
+        ]
+      }
      
     
     },

@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Montserrat, Inter, Poppins } from "next/font/google";
+import { Montserrat, Inter, Poppins, Cormorant } from "next/font/google";
 import "./globals.css";
 import { Amplify } from "aws-amplify";
 import { Authenticator as AmplifyAuthenticator } from "@aws-amplify/ui-react";
@@ -8,8 +8,22 @@ import { ThemeProvider, createTheme } from '@mui/material/styles';
 
 const montserrat = Montserrat({
   subsets: ["latin"],
+  weight: ['100', '200', '300', '400', '500', '600', '700', '800', '900'],
   display: 'swap',
   variable: '--font-montserrat',
+});
+
+const cormorant = Cormorant({
+  subsets: ["latin"],
+  display: 'swap',
+  variable: '--font-cormorant',
+});
+
+
+const inter = Inter({
+  subsets: ["latin"],
+  display: 'swap',
+  variable: '--font-inter',
 });
 
 const poppins = Poppins({
@@ -17,12 +31,6 @@ const poppins = Poppins({
   subsets: ['latin'],
   display: 'swap',
   variable: '--font-poppins',
-});
-
-const inter = Inter({
-  subsets: ["latin"],
-  display: 'swap',
-  variable: '--font-inter',
 });
 
 
@@ -43,7 +51,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-        <body className={`${montserrat.variable} ${poppins.variable} ${inter.variable} font-sans`}>
+        <body className={`${montserrat.variable} ${poppins.variable} ${inter.variable} ${cormorant.variable} ${inter.variable} font-sans`}>
           <ClientComponent>
             {children}
           </ClientComponent>

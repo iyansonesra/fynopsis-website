@@ -1,0 +1,44 @@
+"use client";
+import { Amplify } from "aws-amplify";
+import { Authenticator as AmplifyAuthenticator } from "@aws-amplify/ui-react";
+import { useEffect } from 'react';
+import { Sign } from "crypto";
+import { useAuthenticator } from '@aws-amplify/ui-react';
+import { useRouter } from 'next/navigation';
+import Home from "../../pages/DataroomPage";
+import GeneralDashboard from "../../pages/Dashboard";
+import { get } from 'aws-amplify/api';
+import { put } from 'aws-amplify/api';
+import { fetchAuthSession } from 'aws-amplify/auth';
+import { Button } from "@/components/ui/button";
+import { CircularProgress } from "@mui/material";
+import DataRoom from "../../pages/DataroomPage";
+
+export default function Dashboard() {
+  const { user } = useAuthenticator();
+  
+
+  const router = useRouter();
+  useEffect(() => {
+    if (!user) {
+        router.push("/signin");
+    } 
+  }, [user, router]);
+  
+
+  // getRecentSearches();
+  // handleFetchAccess();
+
+  return (
+    user ? 
+    <AmplifyAuthenticator.Provider>
+      <DataRoom/>
+    </AmplifyAuthenticator.Provider> : 
+    <AmplifyAuthenticator.Provider>
+      <div className="grid h-screen place-items-center">
+        <CircularProgress value={0.5} />
+      </div>
+    </AmplifyAuthenticator.Provider>
+    
+  );
+}

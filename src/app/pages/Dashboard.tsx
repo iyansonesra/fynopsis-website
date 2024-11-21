@@ -1,216 +1,304 @@
+"use client";
+import Link from "next/link"
 import {
-    Card,
-    CardContent,
-    CardDescription,
-    CardFooter,
-    CardHeader,
-    CardTitle,
-} from "@/components/ui/card"
-import NewsListing from "@/components/NewsListing"
-import { ScrollArea } from "@/components/ui/scroll-area"
+    Bell,
+    Search,
+    Settings as SettingsIcon,
+    Factory,
+    Plus,
+} from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { ScrollArea } from "@/components/ui/scroll-area";
+import logo from '../assets/fynopsis_noBG.png'
+import { useState, useEffect } from "react"
+import StockSearch from "./StockSearch";
+import Settings from "./Settings";
+import IndustryPage from "./IndustryPage";
+import { useAuthenticator } from '@aws-amplify/ui-react';
+import { Sun, Moon } from "lucide-react";
+import { fetchUserAttributes, FetchUserAttributesOutput } from 'aws-amplify/auth';
+import { CircularProgress } from "@mui/material";
+import React, { useRef } from 'react';
+import { useRouter } from 'next/navigation';
+import { Library, Users, TrendingUp, LucideIcon, LogOut, DoorOpen } from 'lucide-react';
+import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/hover-card';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import AdvancedSearch from "@/components/Analytics";
+import Files from "@/components/Files";
+import People from "@/components/People";
+import { Separator } from "@radix-ui/react-separator";
+import DataRoomCard from "@/components/DataRoomCard";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { post, get } from 'aws-amplify/api';
+import { fetchAuthSession } from 'aws-amplify/auth';
 
-import { Separator } from "@/components/ui/separator"
-import RecentNews from "@/components/RecentNews"
-import CustomGraph, { DataPoint } from "@/components/StockGraph"
-import { useMemo, useState } from "react"
-import generateRandomStockData from "@/components/GenerateRandomStockData"
-const { data, importantMarkers } = generateRandomStockData();
+
+export default function GeneralDashboard() {
+    const [selectedTab, setSelectedTab] = useState("library");
+    const { user, signOut } = useAuthenticator((context) => [context.user]);
+    const [userAttributes, setUserAttributes] = useState<FetchUserAttributesOutput | null>(null);
+    const router = useRouter();
+    const [activeTab, setActiveTab] = useState<number | null>(null);
+    const [indicatorStyle, setIndicatorStyle] = useState<IndicatorStyle>({} as IndicatorStyle);
+    const tabRefs = useRef<(HTMLDivElement | null)[]>([]);
+
+    const tabs: Tab[] = [
+        { icon: DoorOpen, label: 'Rooms' },
+    ];
+
+    function signIn(): void {
+        router.push('/signin');
+    }
+
+    const [dataRooms, setDataRooms] = useState([
+        // { id: 1, title: 'Apple M&A', lastOpened: 'Sept. 27, 2024 5:36 PM' },
+        // { id: 2, title: 'Project X', lastOpened: 'Sept. 26, 2024 2:15 PM' },
+        // { id: 3, title: 'Quarterly Review', lastOpened: 'Sept. 25, 2024 10:00 AM' },
+      ]);
+
+    const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+    const [newDataroomName, setNewDataroomName] = useState('');
 
 
-export default function Dashboard() {
+    const handleDataRoomClick = (name: any) => {
+        // console.log(uuid);
+        router.push(`/dataroom/${name}`);
+    };
+
+    const handleAddDataroom = async () => {
+        if (newDataroomName.trim()) {
+            try {
+
+                const newRoomName = newDataroomName.trim();
+                const restOperation = post({
+                    apiName: 'S3_API',
+                    path: `/create-data-room`,
+                    options: {
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: {
+                            bucketName: newRoomName
+                        },
+                        withCredentials: true
+                    },
+                });
     
+                const { body } = await restOperation.response;
+                const responseText = await body.text();
+                const responseMain = JSON.parse(responseText);
+                console.log(responseMain);
+                
+                const newDataroom = {
+                    id: dataRooms.length + 1, 
+                    title: newDataroomName.trim(),
+                    lastOpened: new Date().toLocaleString('en-US', {
+                        year: 'numeric',
+                        month: 'short',
+                        day: 'numeric',
+                        hour: 'numeric',
+                        minute: '2-digit'
+                    })
+                };
+                setDataRooms([...dataRooms, newDataroom]);
+                setIsAddDialogOpen(false);
+                setNewDataroomName('');
+            } catch (error) {
+                console.log("error");
+            }
+        }
+    };
+
+
+
+
+    function handleTabClick(index: number): void {
+        setActiveTab(index);
+        setSelectedTab(tabs[index].label.toLowerCase());
+    }
+
+    useEffect(() => {
+        if (activeTab !== null && tabRefs.current[activeTab]) {
+            const tabElement = tabRefs.current[activeTab];
+            if (tabElement) {
+                setIndicatorStyle({
+                    top: `${tabElement.offsetTop}px`,
+                    height: `${tabElement.offsetHeight}px`,
+                });
+            }
+        }
+    }, [activeTab]);
+
+    const [isDarkMode, setIsDarkMode] = useState(false);
+
+    useEffect(() => {
+        if (user) {
+            handleFetchUserAttributes();
+        }
+    }, [user]);
+
+    async function handleFetchUserAttributes() {
+        try {
+            const attributes = await fetchUserAttributes();
+            setUserAttributes(attributes);
+        } catch (error) {
+            console.log("error");
+        }
+    }
+
+    const handleFetchDataRooms = async () => {
+        try {
+            const { credentials } = await fetchAuthSession();
+            if (!credentials) {
+                throw new Error('User is not authenticated');
+            }
+    
+            const restOperation = get({
+                apiName: 'S3_API',
+                path: '/get-data-rooms',
+                options: {
+                    withCredentials: true
+                }
+            });
+    
+            const { body } = await restOperation.response;
+            const responseText = await body.text();
+            console.log(responseText);
+    
+            // Parse the response text to JSON
+            const response = JSON.parse(responseText);
+            const buckets = response.listedBuckets.bucketList;
+            const uuids = response.listedUuids.uuidList;
+    
+            // Map the buckets to the dataRooms format
+            const newDataRooms = buckets.map((bucketName: string, index: number) => ({
+                id: uuids[index], // Use the UUID from the response
+                title: bucketName, // Use the bucket name as the title
+                lastOpened: new Date().toLocaleString('en-US', {
+                    year: 'numeric',
+                    month: 'short', 
+                    day: 'numeric',
+                    hour: 'numeric',
+                    minute: '2-digit'
+                }),
+                createdAt: new Date().toISOString(), // Use current date since we don't have creation date
+                userId: user?.userId, // Use current user's ID
+                fullBucketName: bucketName
+            }));
+    
+            // Update the dataRooms state
+            setDataRooms(newDataRooms);
+    
+        } catch (error) {
+            console.error('Error fetching buckets:', error);
+        }
+    }
+
+
+    useEffect(() => {
+        if (user) {
+            handleFetchUserAttributes();
+            handleFetchDataRooms();
+        }
+    }, [user]);
+
+    useEffect(() => {
+        if (isDarkMode) {
+            document.documentElement.classList.add('dark');
+        } else {
+            document.documentElement.classList.remove('dark');
+        }
+    }, [isDarkMode]);
+
     return (
-        <div className=" flex flex-row h-screen w-full p-2 lg:p-4 xl:p-8 2xl:p-10 gap-8 font-montserrat">
-            <div className="smallerCompAndRecentNews flex-[5]  flex flex-col gap-8 h-[90%]">
-                <div className="smallerComp flex-[1] rounded-2xl flex flex-row gap-8 h-[30%]">
-                    <div className="firstComp flex-[2] bg-white rounded-2xl border">
-                        {/* <CustomGraph data={data} height={"100%"} width={"100%"} gradientColor={"black"} importantMarkers={[]} /> */}
+        userAttributes ?
+            <div className="relative h-screen w-full flex flex-row sans-serif">
+                <div className="w-20 bg-slate-900 h-full flex flex-col items-center justify-between pt-4 pb-6">
+                    <div className="">
+                        <img src={logo.src} alt="logo" className="h-14 w-auto mb-8" />
+                        <div className="relative flex flex-col items-center">
+                            {activeTab !== null && (
+                                <div
+                                    className="absolute left-0 w-full bg-blue-300 rounded-xl transition-all duration-300 ease-in-out"
+                                    style={indicatorStyle}
+                                />
+                            )}
+                            {tabs.map((tab, index) => (
+                                <div
+                                    key={tab.label}
+                                    ref={(el) => (tabRefs.current[index] = el)}
+                                    className={`relative z-10 p-2 mb-4 cursor-pointer ${activeTab === index ? 'text-slate-900' : 'text-white'
+                                        }`}
+                                    onClick={() => handleTabClick(index)}
+                                >
+                                    <tab.icon size={24} />
+                                </div>
+                            ))}
+                        </div>
+
                     </div>
-                    <div className="secondComp flex-[1] bg-white rounded-2xl border"></div>
+
+                    <Popover>
+                        <PopoverTrigger className='bg-sky-600 h-10 aspect-square rounded-full'></PopoverTrigger>
+                        <PopoverContent className="w-auto p-0">
+                            <button
+                                onClick={signOut}
+                                className="flex items-center space-x-2 px-4 py-2 text-red-500 hover:bg-gray-100 w-full"
+                            >
+                                <LogOut size={18} />
+                                <span>Logout</span>
+                            </button>
+                        </PopoverContent>
+                    </Popover>
                 </div>
-                <div className="recentNews flex-[2] 2xl:flex-[3] rounded-2xl border bg-white flex flex-col h-[70%]">
-                    <div className="flex flex-[1] items-center pl-4 2xl:pl-8 h-[3%]">
-                        <h1 className="text-xs 2xl:text-2xl font-semibold">Recent News</h1>
 
+
+                <div className="flex-1 overflow-hidden flex">
+                    <div className="flex-[2] px-4 py-4">
+                        <div className="flex justify-between items-center mb-4">
+                            <h1 className="font-semibold text-xl">Your Datarooms</h1>
+                            <Button onClick={() => setIsAddDialogOpen(true)}>
+                                <Plus className="mr-2 h-4 w-4" /> Add Dataroom
+                            </Button>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                            {dataRooms.map((room) => (
+                                <DataRoomCard
+                                    key={room.id}
+                                    title={room.title}
+                                    lastOpened={room.lastOpened}
+                                    onClick={() => handleDataRoomClick(room.id)}
+                                />
+                            ))}
+                        </div>
+
+                        <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+                            <DialogContent>
+                                <DialogHeader>
+                                    <DialogTitle>Create New Dataroom</DialogTitle>
+                                </DialogHeader>
+                                <Input
+                                    value={newDataroomName}
+                                    onChange={(e) => setNewDataroomName(e.target.value)}
+                                    placeholder="Enter dataroom name"
+                                />
+                                <DialogFooter>
+                                    <Button variant="outline" onClick={() => setIsAddDialogOpen(false)}>Cancel</Button>
+                                    <Button onClick={handleAddDataroom}>Create</Button>
+                                </DialogFooter>
+                            </DialogContent>
+                        </Dialog>
                     </div>
-                    <Separator className="decoration-black w-[100%]" />
-                    <div className="flex-[5] rounded-b-2xl 2xl:flex-[5] flex flex-col overflow-hidden relative">
-                        <ScrollArea className="h-full w-full 2xl:px-4"> {/* Wrap content in ScrollArea */}
-                           <RecentNews image={""} stockName={"AAPL"} stockDescription={"Apple Inc. is a multinational technology company specializing in consumer electronics, software, and online services."} width={""} imageType={"circular"}/>
-                            <RecentNews image={""} stockName={"AAPL"} stockDescription={"Apple Inc. is a multinational technology company specializing in consumer electronics, software, and online services."} width={""} imageType={"circular"}/>
-                            <RecentNews image={""} stockName={"AAPL"} stockDescription={"Apple Inc. is a multinational technology company specializing in consumer electronics, software, and online services."} width={""} imageType={"circular"}/>
-                            <RecentNews image={""} stockName={"AAPL"} stockDescription={"Apple Inc. is a multinational technology company specializing in consumer electronics, software, and online services."} width={""} imageType={"circular"}/>
-                            <RecentNews image={""} stockName={"AAPL"} stockDescription={"Apple Inc. is a multinational technology company specializing in consumer electronics, software, and online services."} width={""} imageType={"circular"}/>
-                            <RecentNews image={""} stockName={"AAPL"} stockDescription={"Apple Inc. is a multinational technology company specializing in consumer electronics, software, and online services."} width={""} imageType={"circular"}/>
-                            <RecentNews image={""} stockName={"AAPL"} stockDescription={"Apple Inc. is a multinational technology company specializing in consumer electronics, software, and online services."} width={""} imageType={"circular"}/>
-                            <RecentNews image={""} stockName={"AAPL"} stockDescription={"Apple Inc. is a multinational technology company specializing in consumer electronics, software, and online services."} width={""} imageType={"circular"}/>
-                            <RecentNews image={""} stockName={"AAPL"} stockDescription={"Apple Inc. is a multinational technology company specializing in consumer electronics, software, and online services."} width={""} imageType={"circular"}/>
-                            <RecentNews image={""} stockName={"AAPL"} stockDescription={"Apple Inc. is a multinational technology company specializing in consumer electronics, software, and online services."} width={""} imageType={"circular"}/>
-
-
-
-
-                        </ScrollArea>
-
-                        <div className="absolute rounded-2xl bottom-0 left-0 right-0 h-10 bg-gradient-to-t from-white to-transparent pointer-events-none"></div>
-
+                    <div className="flex-1 px-4 py-4">
+                        <h1 className="font-semibold text-xl">Recent Activity</h1>
+                       
                     </div>
-
-                    
                 </div>
+            </div > :
+            <div className="grid h-screen place-items-center">
+                <CircularProgress value={0.5} />
             </div>
-            <div className="companyWatch rounded-2xl flex-[3]  border flex bg-white flex-col h-[90%]">
-                <div className="flex-[1] rounded-2xl bg-white flex flex-col items-align justify-center pl-4 2xl:pl-8 h-[5%]">
-                    <h1 className="text-xs 2xl:text-2xl font-semibold">Companies to Watch</h1>
-                </div>
-                <Separator className="decoration-black w-[100%]" />
-                <div className="flex-[1] flex flex-row h-[5%]">
-                    <div className="flex-[1] flex items-center justify-center">
-                        <h1 className="text-xs 2xl:text-lg font-med text-center">New Entrants</h1>
-                    </div>
-                    <Separator orientation="vertical" className="h-[100%] decoration-black" />
-                    <div className="flex-[1] px-1 2xl:px-4 flex items-center justify-center">
-                        <h1 className="text-xs 2xl:text-lg font-med text-center">Most Capital Raised</h1>
-                    </div>
-                    <Separator orientation="vertical" className="hs-[100%] decoration-black" />
-                    <div className="flex-[1] flex items-center justify-center">
-                        <h1 className="text-xs 2xl:text-lg font-med text-center">Most Likely Fundraising</h1>
-
-                    </div>
-                </div>
-                <Separator className="decoration-black w-[100%]" />
-                <div className="flex-[7] 2xl:flex-[8] rounded-b-2xl flex flex-col overflow-hidden relative h-[90%]">
-                    <ScrollArea className="h-full w-full xl:pr-4 2xl:px-4"> {/* Wrap content in ScrollArea */}
-                        <NewsListing image={""} stockName={"AAPL"} stockDescription={"Apple Inc. is a multinational technology company specializing in consumer electronics, software, and online services. "} width={""} imageType={"circular"}/>
-                        <NewsListing image={""} stockName={"AAPL"} stockDescription={"Apple Inc. is a multinational technology company specializing in consumer electronics, software, and online services. "} width={""} imageType={"circular"}/>
-                        <NewsListing image={""} stockName={"AAPL"} stockDescription={"Apple Inc. is a multinational technology company specializing in consumer electronics, software, and online services. "} width={""} imageType={"circular"}/>
-                        <NewsListing image={""} stockName={"AAPL"} stockDescription={"Apple Inc. is a multinational technology company specializing in consumer electronics, software, and online services. "} width={""} imageType={"circular"}/>
-                        <NewsListing image={""} stockName={"AAPL"} stockDescription={"Apple Inc. is a multinational technology company specializing in consumer electronics, software, and online services. "} width={""} imageType={"circular"}/>
-                        <NewsListing image={""} stockName={"AAPL"} stockDescription={"Apple Inc. is a multinational technology company specializing in consumer electronics, software, and online services. "} width={""} imageType={"circular"}/>
-                        <NewsListing image={""} stockName={"AAPL"} stockDescription={"Apple Inc. is a multinational technology company specializing in consumer electronics, software, and online services. "} width={""} imageType={"circular"}/>
-                        <NewsListing image={""} stockName={"AAPL"} stockDescription={"Apple Inc. is a multinational technology company specializing in consumer electronics, software, and online services. "} width={""} imageType={"circular"}/>
-                        
-
-                     
-                 
-                    </ScrollArea>
-
-                    <div className="absolute rounded-2xl bottom-0 left-0 right-0 h-20 bg-gradient-to-t from-white to-transparent pointer-events-none"></div>
-
-
-                </div>
-
-            </div>
-        </div>
-    )
+    );
 }
 
-{/*  <div className="generalGrid w-full h-full grid grid-rows-10 grid-cols-12 gap-x-5 gap-y-5">
-                <div className="smallComponents col-start-1 col-end-8 row-start-1 row-end-4 grid grid-rows-1 grid-cols-3 gap-x-5 ">
-                    <div className="border h-full rounded-2xl bg-white col-span-2"></div>
-
-                    <div className="border rounded-2xl bg-white"></div>
-
-                    </div>
-                    <div className="CompaniesToWatch col-start-8 col-end-13 row-start-1 row-end-11 border rounded-2xl overflow-hidden">
-                        <div className="bg-white h-full w-full rounded-2xl flex flex-col">
-                            <div className="w-full h-12 2xl:h-20 flex items-center pl-4 rounded-2xl">
-                                <h1 className="text-xs 2xl:text-lg font-semibold">Companies to Watch</h1>
-                            </div>
-                            <Separator className="decoration-black w-[100%]" />
-                            <div className="w-full h-12 2xl:h-16 flex flex-row flex-shrink-0">
-                                <div className="flex-1 flex items-center justify-center">
-                                    <h1 className="text-xs 2xl:text-base font-med text-center">New Entrants</h1>
-                                </div>
-                                <Separator orientation="vertical" className="h-[100%] decoration-black" />
-                                <div className="flex-1 flex items-center justify-center">
-                                    <h1 className="text-xs 2xl:text-lg font-med text-center">Most Capital Raised</h1>
-    
-                                </div>
-                                <Separator orientation="vertical" className="h-[100%] decoration-black flex-shrink-0" />
-                                <div className="flex-1 flex items-center justify-center">
-                                    <h1 className="text-xs 2xl:text-base font-med text-center">Most Likely Fundraising</h1>
-                                </div>
-                            </div>
-                            <Separator className="decoration-black w-[100%]" />
-                            <div className="ScrollAreaHolder relative h-80">
-                                <ScrollArea className="h-full w-full">
-                                    <NewsListing
-                                        image={""}
-                                        stockName={"AAPL"}
-                                        stockDescription={"Apple Inc. is a multinational technology company specializing in consumer electronics, software, and online services."}
-                                        width={"100%"}
-                                        imageType={"circular"}
-                                    />
-    
-                                    <NewsListing
-                                        image={""}
-                                        stockName={"AAPL"}
-                                        stockDescription={"Apple Inc. is a multinational technology company specializing in consumer electronics, software, and online services."}
-                                        width={"100%"}
-                                        imageType={"circular"}
-                                    />
-    
-                                    <NewsListing
-                                        image={""}
-                                        stockName={"AAPL"}
-                                        stockDescription={"Apple Inc. is a multinational technology company specializing in consumer electronics, software, and online services."}
-                                        width={"100%"}
-                                        imageType={"circular"}
-                                    />
-    
-                                    <NewsListing
-                                        image={""}
-                                        stockName={"AAPL"}
-                                        stockDescription={"Apple Inc. is a multinational technology company specializing in consumer electronics, software, and online services."}
-                                        width={"100%"}
-                                        imageType={"circular"}
-                                    />
-    
-                                    <NewsListing
-                                        image={""}
-                                        stockName={"AAPL"}
-                                        stockDescription={"Apple Inc. is a multinational technology company specializing in consumer electronics, software, and online services."}
-                                        width={"100%"}
-                                        imageType={"circular"}
-                                    />
-    
-                                    <NewsListing
-                                        image={""}
-                                        stockName={"AAPL"}
-                                        stockDescription={"Apple Inc. is a multinational technology company specializing in consumer electronics, software, and online services."}
-                                        width={"100%"}
-                                        imageType={"circular"}
-                                    />
-    
-    
-    
-                                  
-    
-                                </ScrollArea>
-    
-                                <div className="absolute bottom-0 left-0 right-0 h-20 bg-gradient-to-t from-white to-transparent pointer-events-none"></div>
-    
-    
-    
-                            </div>
-    
-                        </div>
-    
-    
-    
-    
-                    </div>
-    
-                    <div className="col-start-1 col-end-8 row-start-4 row-end-11 border rounded-2xl">
-                        <div className="bg-white h-full w-full rounded-2xl">
-                            <div className="w-full h-12 2xl:h-20 flex items-center pl-4">
-                                <h1 className="text-xs 2xl:text-lg font-semibold">Recent News</h1>
-                            </div>
-                            <Separator className="decoration-black w-[100%]" />
-                        </div>
-                    </div>
-    
-    
-                </div>
-                */}

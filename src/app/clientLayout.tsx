@@ -1,7 +1,7 @@
 "use client";
 import { Amplify } from "aws-amplify";
 import { Authenticator as AmplifyAuthenticator } from "@aws-amplify/ui-react";
-import { Montserrat, Poppins } from "next/font/google";
+import { Montserrat, Poppins, Cormorant, Inter } from "next/font/google";
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 
 if (!process.env.NEXT_PUBLIC_USER_POOL_ID || !process.env.NEXT_PUBLIC_USER_POOL_CLIENT_ID) {
@@ -14,6 +14,18 @@ const montserrat = Montserrat({
   variable: '--font-montserrat',
 });
 
+const cormorant = Cormorant({
+  subsets: ["latin"],
+  display: 'swap',
+  variable: '--font-cormorant',
+});
+
+const inter = Inter({
+  subsets: ["latin"],
+  display: 'swap',
+  variable: '--font-inter',
+});
+
 const poppins = Poppins({
   weight: ['100', '200', '300', '400', '500', '600', '700', '800', '900'],
   subsets: ['latin'],
@@ -24,7 +36,7 @@ const poppins = Poppins({
 const theme = createTheme({
   typography: {
     allVariants: {
-      fontFamily: montserrat.style.fontFamily,
+      fontFamily: cormorant.style.fontFamily,
       textTransform: 'none',
       fontSize: 16,
     },
@@ -40,7 +52,7 @@ Amplify.configure({
 
       userPoolClientId: process.env.NEXT_PUBLIC_USER_POOL_CLIENT_ID, // change this one
       // REQUIRED only for Federated Authentication - Amazon Cognito Identity Pool ID
-      identityPoolId: 'us-east-1:e905629f-9f02-4ff7-b6de-6f9f24233685',
+      identityPoolId: process.env.NEXT_PUBLIC_IDENTITY_POOL_ID!,
       // OPTIONAL - Set to true to use your identity pool's unauthenticated role when user is not logged in
       // allowGuestAccess: true,
       // // OPTIONAL - This is used when autoSignIn is enabled for Auth.signUp
@@ -60,9 +72,14 @@ Amplify.configure({
   },
   API: {
     REST: {
-      testAPI: {
+      VDR_API: {
         endpoint:
-          'https://4s693esbca.execute-api.us-east-1.amazonaws.com/main', // main
+          'https://t87zcr0ug0.execute-api.us-east-1.amazonaws.com/prod', // main
+        region: 'us-east-1' // Optional
+      },
+      S3_API: {
+        endpoint:
+          'https://barfwuro11.execute-api.us-east-1.amazonaws.com/prod',
         region: 'us-east-1' // Optional
       }
     }
@@ -73,8 +90,6 @@ Amplify.configure({
 const ClientComponent = ({ children }: { children: React.ReactNode }) => {
   return (
     <ThemeProvider theme = {theme}>
-
-
       <AmplifyAuthenticator.Provider>
         {children}
       </AmplifyAuthenticator.Provider>

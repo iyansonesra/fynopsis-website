@@ -1,3 +1,7 @@
+
+import { Library, Users, TrendingUp, LucideIcon, LogOut } from 'lucide-react';
+import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/hover-card';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import {
     Card,
     CardContent,
@@ -24,20 +28,56 @@ import UserSearchBubble from "@/components/UserSearchBubble"
 import GPTResponse from "@/components/GPTResponse"
 import { useRouter } from 'next/navigation';
 
+interface Tab {
+    icon: LucideIcon;
+    label: string;
+}
 
+interface IndicatorStyle {
+    top: string;
+    height: string;
+}
 
-
-export default function FrontPage() {
-
-
+const FrontPage: React.FC = () => {
     const router = useRouter();
+    const [activeTab, setActiveTab] = useState<number | null>(null);
+    const [indicatorStyle, setIndicatorStyle] = useState<IndicatorStyle>({} as IndicatorStyle);
+    const tabRefs = useRef<(HTMLDivElement | null)[]>([]);
 
-    function signIn() {
-        router.push('/signin')
+    const tabs: Tab[] = [
+        { icon: Library, label: 'Library' },
+        { icon: Users, label: 'People' },
+        { icon: TrendingUp, label: 'Trending' }
+    ];
+
+    function signIn(): void {
+        router.push('/signin');
     }
 
+    function handleLogout(): void {
+        // Add your logout logic here
+        console.log('Logout clicked');
+    }
+
+    function handleTabClick(index: number): void {
+        setActiveTab(index);
+        // Add your tab functionality here
+    }
+
+    useEffect(() => {
+        if (activeTab !== null && tabRefs.current[activeTab]) {
+            const tabElement = tabRefs.current[activeTab];
+            if (tabElement) {
+                setIndicatorStyle({
+                    top: `${tabElement.offsetTop}px`,
+                    height: `${tabElement.offsetHeight}px`,
+                });
+            }
+        }
+    }, [activeTab]);
+
     return (
-        <div className="relative h-screen w-full flex flex-col justify-center sans-serif ">
+        <div className="relative h-screen w-full flex flex-row sans-serif">
             <div className="fixed top-0 left-0 right-0 h-20 md:h-20 xl:h-24 bg-white dark:bg-slate-900 bg-opacity-98 w-full flex items-center justify-between 2xl:px-16 xl:px-12 md:px-8 sm:px-4 shadow-md px-4 z-50  select-none">
                 <div className="flex flex-row items-center">
                     <img src={logo.src} alt="logo" className="md:h-12 md:w-auto w-[10%] h-auto" />
@@ -56,6 +96,7 @@ export default function FrontPage() {
                     </button>
                 </div>
             </div>
+
             <div className="h-full w-full flex relative flex-col ">
 
 
@@ -95,8 +136,8 @@ export default function FrontPage() {
 
                 <div className="w-full inline-block flex justify-center z-10 mb-24 md:mb-64">
                     <FadeInSlideUp>
-                        <div className="relative inline-block"> {/* New wrapper div */}
-                            <div className="absolute left-[2.5%] w-[95%] h-full bg-blue-400 blur-[40px] opacity-5"></div> {/* Glow effect */}
+                        <div className="relative inline-block">
+                            <div className="absolute left-[2.5%] w-[95%] h-full bg-blue-400 blur-[40px] opacity-5"></div>
                             <img
                                 src={demo1.src}
                                 alt="demo"
@@ -253,9 +294,9 @@ export default function FrontPage() {
 
 
                 </div>
-
-
             </div>
         </div>
-    )
-}
+    );
+};
+
+export default FrontPage;
