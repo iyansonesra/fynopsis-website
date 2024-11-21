@@ -30,6 +30,8 @@ import { Separator } from "@radix-ui/react-separator";
 import DataRoomCard from "@/components/DataRoomCard";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { post, get } from 'aws-amplify/api';
+import { fetchAuthSession } from 'aws-amplify/auth';
 
 
 export default function GeneralDashboard() {
@@ -50,35 +52,61 @@ export default function GeneralDashboard() {
     }
 
     const [dataRooms, setDataRooms] = useState([
-        { id: 1, title: 'Apple M&A', lastOpened: 'Sept. 27, 2024 5:36 PM' },
-        { id: 2, title: 'Project X', lastOpened: 'Sept. 26, 2024 2:15 PM' },
-        { id: 3, title: 'Quarterly Review', lastOpened: 'Sept. 25, 2024 10:00 AM' },
+        // { id: 1, title: 'Apple M&A', lastOpened: 'Sept. 27, 2024 5:36 PM' },
+        // { id: 2, title: 'Project X', lastOpened: 'Sept. 26, 2024 2:15 PM' },
+        // { id: 3, title: 'Quarterly Review', lastOpened: 'Sept. 25, 2024 10:00 AM' },
       ]);
 
     const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
     const [newDataroomName, setNewDataroomName] = useState('');
 
 
-    const handleDataRoomClick = (id) => {
-       
+    const handleDataRoomClick = (name: any) => {
+        // console.log(uuid);
+        router.push(`/dataroom/${name}`);
     };
 
-    const handleAddDataroom = () => {
+    const handleAddDataroom = async () => {
         if (newDataroomName.trim()) {
-            const newDataroom = {
-                id: dataRooms.length + 1, 
-                title: newDataroomName.trim(),
-                lastOpened: new Date().toLocaleString('en-US', {
-                    year: 'numeric',
-                    month: 'short',
-                    day: 'numeric',
-                    hour: 'numeric',
-                    minute: '2-digit'
-                })
-            };
-            setDataRooms([...dataRooms, newDataroom]);
-            setIsAddDialogOpen(false);
-            setNewDataroomName('');
+            try {
+
+                const newRoomName = newDataroomName.trim();
+                const restOperation = post({
+                    apiName: 'S3_API',
+                    path: `/create-data-room`,
+                    options: {
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: {
+                            bucketName: newRoomName
+                        },
+                        withCredentials: true
+                    },
+                });
+    
+                const { body } = await restOperation.response;
+                const responseText = await body.text();
+                const responseMain = JSON.parse(responseText);
+                console.log(responseMain);
+                
+                const newDataroom = {
+                    id: dataRooms.length + 1, 
+                    title: newDataroomName.trim(),
+                    lastOpened: new Date().toLocaleString('en-US', {
+                        year: 'numeric',
+                        month: 'short',
+                        day: 'numeric',
+                        hour: 'numeric',
+                        minute: '2-digit'
+                    })
+                };
+                setDataRooms([...dataRooms, newDataroom]);
+                setIsAddDialogOpen(false);
+                setNewDataroomName('');
+            } catch (error) {
+                console.log("error");
+            }
         }
     };
 
@@ -119,7 +147,61 @@ export default function GeneralDashboard() {
         }
     }
 
+    const handleFetchDataRooms = async () => {
+        try {
+            const { credentials } = await fetchAuthSession();
+            if (!credentials) {
+                throw new Error('User is not authenticated');
+            }
+    
+            const restOperation = get({
+                apiName: 'S3_API',
+                path: '/get-data-rooms',
+                options: {
+                    withCredentials: true
+                }
+            });
+    
+            const { body } = await restOperation.response;
+            const responseText = await body.text();
+            console.log(responseText);
+    
+            // Parse the response text to JSON
+            const response = JSON.parse(responseText);
+            const buckets = response.listedBuckets.bucketList;
+            const uuids = response.listedUuids.uuidList;
+    
+            // Map the buckets to the dataRooms format
+            const newDataRooms = buckets.map((bucketName: string, index: number) => ({
+                id: uuids[index], // Use the UUID from the response
+                title: bucketName, // Use the bucket name as the title
+                lastOpened: new Date().toLocaleString('en-US', {
+                    year: 'numeric',
+                    month: 'short', 
+                    day: 'numeric',
+                    hour: 'numeric',
+                    minute: '2-digit'
+                }),
+                createdAt: new Date().toISOString(), // Use current date since we don't have creation date
+                userId: user?.userId, // Use current user's ID
+                fullBucketName: bucketName
+            }));
+    
+            // Update the dataRooms state
+            setDataRooms(newDataRooms);
+    
+        } catch (error) {
+            console.error('Error fetching buckets:', error);
+        }
+    }
 
+
+    useEffect(() => {
+        if (user) {
+            handleFetchUserAttributes();
+            handleFetchDataRooms();
+        }
+    }, [user]);
 
     useEffect(() => {
         if (isDarkMode) {

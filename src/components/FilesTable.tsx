@@ -44,7 +44,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import EnhancedFileViewer from "@/components/EnhancedFileviewer"
 import { post } from "aws-amplify/api";
 import { ScrollArea, ScrollBar } from "./ui/scroll-area";
+import { usePathname, useSearchParams } from 'next/navigation';
 // import { delete } from "aws-amplify/api";
+import { get } from "aws-amplify/api";
 
 const data: Payment[] = [
 ]
@@ -69,6 +71,8 @@ interface FileViewerProps {
     documentUrl?: string
     documentName?: string
 }
+
+
 
 const S3_BUCKET_NAME = 'vdr-documents';
 const REGION = 'us-east-1';
@@ -179,7 +183,7 @@ const deleteS3Object = async (s3Key: string) => {
 };
 
 
-const TagDisplay = ({ tags }) => {
+const TagDisplay = ({ tags }: { tags: string[] }) => {
     const tagColors = [
         'bg-blue-100 text-blue-800',
         'bg-green-100 text-green-800',
@@ -310,6 +314,9 @@ export function DataTableDemo({ onFileSelect }: DataTableDemoProps) {
             }
         }
     };
+
+    const pathname = usePathname();
+    const bucketUuid = pathname.split('/').pop() || '';
 
 
     const updatedColumns: ColumnDef<Payment>[] = [
@@ -512,6 +519,20 @@ export function DataTableDemo({ onFileSelect }: DataTableDemoProps) {
                 Bucket: S3_BUCKET_NAME,
                 Prefix: userPrefix
             });
+
+
+            const restOperation = get({
+                apiName: 'S3_API',
+                path: `/s3/${bucketUuid}/head-objects-for-bucket`,
+                options: {
+                    withCredentials: true
+                }
+            });
+
+            const { body } = await restOperation.response;
+            const responseText = await body.text();
+            const responseMain = JSON.parse(responseText);
+            console.log(responseMain);
 
             const response = await s3Client.send(command);
 

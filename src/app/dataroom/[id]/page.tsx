@@ -5,13 +5,14 @@ import { useEffect } from 'react';
 import { Sign } from "crypto";
 import { useAuthenticator } from '@aws-amplify/ui-react';
 import { useRouter } from 'next/navigation';
-import Home from "../pages/DataroomPage";
-import GeneralDashboard from "../pages/Dashboard";
+import Home from "../../pages/DataroomPage";
+import GeneralDashboard from "../../pages/Dashboard";
 import { get } from 'aws-amplify/api';
 import { put } from 'aws-amplify/api';
 import { fetchAuthSession } from 'aws-amplify/auth';
 import { Button } from "@/components/ui/button";
 import { CircularProgress } from "@mui/material";
+import DataRoom from "../../pages/DataroomPage";
 
 export default function Dashboard() {
   const { user } = useAuthenticator();
@@ -23,6 +24,7 @@ export default function Dashboard() {
         router.push("/signin");
     } 
   }, [user, router]);
+  
 
   // getRecentSearches();
   // handleFetchAccess();
@@ -30,7 +32,7 @@ export default function Dashboard() {
   return (
     user ? 
     <AmplifyAuthenticator.Provider>
-      <GeneralDashboard/>
+      <DataRoom/>
     </AmplifyAuthenticator.Provider> : 
     <AmplifyAuthenticator.Provider>
       <div className="grid h-screen place-items-center">
