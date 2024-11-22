@@ -145,36 +145,31 @@ const getPresignedUrl = async (s3Key: string) => {
 };
 
 // Helper function to delete object
-const deleteS3Object = async (s3Key: string) => {
+const deleteS3Object = async (s3Key: string, bucketUuid: string) => {
     try {
-        const s3Client = await getS3Client();
-        const command = new DeleteObjectCommand({
-            Bucket: S3_BUCKET_NAME,
-            Key: s3Key
-        });
-
-        const encodedS3Key = encodeURIComponent(s3Key);
-
-        const userPrefix = await getUserPrefix();
-        const encodedUserPrefix =  userPrefix.split(':')[1].slice(0, -1);
-
-
-        const restOperation = post({
-            apiName: 'VDR_API',
-            path: `/${encodedUserPrefix}/documents/${encodedS3Key}/delete`,
+        console.log("deleting file");
+        const deleteResponse = await get({
+            apiName: 'S3_API', 
+            path: `/s3/${bucketUuid}/delete-url`,
             options: {
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: {
-                    pdf_paths: [s3Key]
+                withCredentials: true,
+                queryParams: {
+                    path: s3Key
                 }
             }
         });
 
-        console.log(restOperation);
+        const { body } = await deleteResponse.response;
+        const responseText = await body.text();
+        console.log(responseText);
+        const { statusCode } = await deleteResponse.response;
 
-        await s3Client.send(command);
+        if (statusCode !== 200) {
+            const { body } = await deleteResponse.response;
+            const errorText = await body.text();
+            throw new Error(`Delete failed: ${errorText}`);
+        }
+
     } catch (error) {
         console.error('Error deleting object:', error);
         throw error;
@@ -374,7 +369,7 @@ export function DataTableDemo({ onFileSelect }: DataTableDemoProps) {
                                 onClick={async () => {
                                     if (payment.s3Key) {
                                         try {
-                                            await deleteS3Object(payment.s3Key);
+                                            await deleteS3Object(payment.s3Key, bucketUuid);
                                             setTableData(prev =>
                                                 prev.filter(item => item.s3Key !== payment.s3Key)
                                             );
