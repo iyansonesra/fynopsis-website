@@ -1,11 +1,8 @@
 import React, { useState, useCallback } from 'react';
 import { useDropzone } from 'react-dropzone';
 import { Upload as UploadIcon, X } from 'lucide-react';
-import { S3Client } from '@aws-sdk/client-s3';
-import { XhrHttpHandler } from '@aws-sdk/xhr-http-handler';
-import { Upload } from '@aws-sdk/lib-storage';
-import { fetchAuthSession } from 'aws-amplify/auth';
-
+import { post } from 'aws-amplify/api';
+import { usePathname } from 'next/navigation';
 interface DragDropOverlayProps {
   onClose: () => void;
   onFilesUploaded: (files: File[]) => void;
@@ -15,7 +12,6 @@ interface FileUpload {
   file: File;
   progress: number;
   status: 'uploading' | 'completed' | 'error';
-  uploadPromise?: Promise<string>;
 }
 
 interface FileUploads {
@@ -25,90 +21,61 @@ interface FileUploads {
 const DragDropOverlay: React.FC<DragDropOverlayProps> = ({ onClose, onFilesUploaded }) => {
   const [fileUploads, setFileUploads] = useState<FileUploads>({});
   const [isConfirming, setIsConfirming] = useState(false);
+  const pathname = usePathname();
+  const bucketUuid = pathname.split('/').pop() || '';
 
-  const getS3Client = async () => {
-    const { credentials } = await fetchAuthSession();
-    if (!credentials) {
-      throw new Error('No credentials available');
-    }
-
-    return new S3Client({
-      region: 'us-east-1',
-      credentials: {
-        accessKeyId: credentials.accessKeyId,
-        secretAccessKey: credentials.secretAccessKey,
-        sessionToken: credentials.sessionToken
-      },
-      requestHandler: new XhrHttpHandler({})
-    });
-  };
-
-  const startFileUpload = async (file: File) => {
+  const uploadFile = async (file: File) => {
     try {
-      const { identityId } = await fetchAuthSession();
-      if (!identityId) throw new Error('No identity ID available');
-      
-      const userPrefix = `${identityId}/`;
-      const fileId = file.name.split('.')[0];
-      const fileExtension = file.name.split('.').pop() || '';
-      const s3Key = `${userPrefix}files/${fileId}.${fileExtension}`;
-      const s3Client = await getS3Client();
-
-      const upload = new Upload({
-        client: s3Client,
-        params: {
-          Bucket: 'vdr-documents',
-          Key: s3Key,
-          Body: file,
-          ContentType: file.type,
-          Metadata: {
-            uploadedBy: 'user',
-            originalName: file.name
-          }
+      // Get presigned URL from API
+      const getUrlResponse = await post({
+        apiName: 'S3_API',
+        path: `/s3/${bucketUuid}/upload-url`,
+        options: {
+          withCredentials: true,
+          body: JSON.stringify({
+            filePath: file.name,
+            contentType: file.type
+          })
         }
       });
 
-      upload.on("httpUploadProgress", (progress) => {
-        if (progress.total) {
-          const percentComplete = (progress.loaded / progress.total) * 100;
-          setFileUploads(prev => ({
-            ...prev,
-            [file.name]: {
-              ...prev[file.name],
-              progress: percentComplete
-            }
-          }));
-        }
+      const { body } = await getUrlResponse.response;
+      const responseText = await body.text();
+      const { signedUrl } = JSON.parse(responseText);
+
+      // Upload file using presigned URL
+      const uploadResponse = await fetch(signedUrl, {
+        method: 'PUT',
+        body: file,
+        headers: {
+          'Content-Type': file.type,
+          'Content-Length': file.size.toString(),
+        },
       });
 
-      // Return the promise but don't await it yet
-      const uploadPromise = upload.done()
-        .then(() => {
-          setFileUploads(prev => ({
-            ...prev,
-            [file.name]: {
-              ...prev[file.name],
-              status: 'completed'
-            }
-          }));
-          return s3Key;
-        })
-        .catch((error) => {
-          console.error('Error uploading to S3:', error);
-          setFileUploads(prev => ({
-            ...prev,
-            [file.name]: {
-              ...prev[file.name],
-              status: 'error'
-            }
-          }));
-          throw error;
-        });
+      if (!uploadResponse.ok) {
+        const errorText = await uploadResponse.text();
+        throw new Error(`Upload failed: ${errorText}`);
+      }
 
-      return uploadPromise;
+      setFileUploads(prev => ({
+        ...prev,
+        [file.name]: {
+          ...prev[file.name],
+          status: 'completed',
+          progress: 100
+        }
+      }));
+
     } catch (error) {
-      console.error('Error starting upload:', error);
-      throw error;
+      console.error('Error uploading file:', error);
+      setFileUploads(prev => ({
+        ...prev,
+        [file.name]: {
+          ...prev[file.name],
+          status: 'error'
+        }
+      }));
     }
   };
 
@@ -129,14 +96,7 @@ const DragDropOverlay: React.FC<DragDropOverlayProps> = ({ onClose, onFilesUploa
 
     // Start uploads immediately
     for (const file of acceptedFiles) {
-      const uploadPromise = startFileUpload(file);
-      setFileUploads(prev => ({
-        ...prev,
-        [file.name]: {
-          ...prev[file.name],
-          uploadPromise
-        }
-      }));
+      await uploadFile(file);
     }
   }, []);
 
@@ -145,14 +105,10 @@ const DragDropOverlay: React.FC<DragDropOverlayProps> = ({ onClose, onFilesUploa
   const handleConfirmUpload = async () => {
     setIsConfirming(true);
     try {
-      // Wait for all uploads to complete
-      const uploadPromises = Object.values(fileUploads)
-        .map(upload => upload.uploadPromise)
-        .filter((promise): promise is Promise<string> => promise !== undefined);
-
-      await Promise.all(uploadPromises);
+      const uploadedFiles = Object.values(fileUploads)
+        .filter(upload => upload.status === 'completed')
+        .map(upload => upload.file);
       
-      const uploadedFiles = Object.values(fileUploads).map(upload => upload.file);
       onFilesUploaded(uploadedFiles);
       onClose();
     } catch (error) {
@@ -205,7 +161,7 @@ const DragDropOverlay: React.FC<DragDropOverlayProps> = ({ onClose, onFilesUploa
                       ) : upload.status === 'error' ? (
                         <span className="text-red-600">Error</span>
                       ) : (
-                        `${Math.round(upload.progress)}%`
+                        'Uploading...'
                       )}
                     </span>
                   </div>

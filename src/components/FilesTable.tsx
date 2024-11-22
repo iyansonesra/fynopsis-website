@@ -544,7 +544,7 @@ export function DataTableDemo({ onFileSelect }: DataTableDemoProps) {
                             return !key.endsWith('/') && 
                                    !key.includes('US-EAST-1:')
                         })
-                        .map(async (object) => {
+                        .map(async (object: any) => {
                             if (!object.key) return null;
 
                             const metadata = object.metadata || {};
