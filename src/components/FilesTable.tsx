@@ -1,4 +1,3 @@
-
 import * as React from "react"
 import {
     ColumnDef,
@@ -536,58 +535,42 @@ export function DataTableDemo({ onFileSelect }: DataTableDemoProps) {
 
             const response = await s3Client.send(command);
 
-            if (response.Contents) {
+            if (responseMain) {
                 const files = await Promise.all(
-                    response.Contents
-                        // Filter out the identity ID object itself
-                        .filter(object => {
-                            const key = object.Key || '';
-                            // Exclude the identity ID directory object and any other system objects
-                            return !key.endsWith('/') &&
-                                !key.includes('US-EAST-1:') &&
-                                object.Size !== 0; // Also exclude zero-byte objects
+                    responseMain.headObjects
+                        // Filter out directory objects and system files
+                        .filter((object: { key?: string }) => {
+                            const key = object.key || '';
+                            return !key.endsWith('/') && 
+                                   !key.includes('US-EAST-1:')
                         })
                         .map(async (object) => {
-                            if (!object.Key) return null;
+                            if (!object.key) return null;
 
-                            const headCommand = new HeadObjectCommand({
-                                Bucket: S3_BUCKET_NAME,
-                                Key: object.Key
-                            });
-
-                            try {
-                                const headResponse = await s3Client.send(headCommand);
-                                const metadata = headResponse.Metadata || {};
-                                console.log("metadata");
-                                console.log(headResponse);
-
-                                let tags = [];
-                                if (metadata.tags) {
-                                    try {
-                                        tags = JSON.parse(metadata.tags.replace(/'/g, '"'));
-                                    } catch (e) {
-                                        console.error('Error parsing tags:', e);
-                                        tags = [];
-                                    }
+                            const metadata = object.metadata || {};
+                            let tags = [];
+                            if (metadata.Metadata?.tags) {
+                                try {
+                                    tags = JSON.parse(metadata.Metadata.tags.replace(/'/g, '"'));
+                                } catch (e) {
+                                    console.error('Error parsing tags:', e);
+                                    tags = [];
                                 }
-
-                                const file: Payment = {
-                                    id: object.Key,
-                                    type: object.Key.split('.').pop()?.toUpperCase() || 'Unknown',
-                                    name: metadata.originalname || object.Key.split('/').pop() || '',
-                                    status: "success",
-                                    size: formatFileSize(object.Size || 0),
-                                    date: object.LastModified?.toISOString().split('T')[0] || '',
-                                    uploadedBy: truncateString(metadata.uploadedby || 'Unknown', 10),
-                                    s3Key: object.Key,
-                                    tags: tags,
-                                    documentSummary: metadata.document_summary || ''
-                                };
-                                return file;
-                            } catch (error) {
-                                console.error(`Error getting metadata for ${object.Key}:`, error);
-                                return null;
                             }
+
+                            const file: Payment = {
+                                id: object.key,
+                                type: object.key.split('.').pop()?.toUpperCase() || 'Unknown',
+                                name: metadata.Metadata?.originalname || object.key.split('/').pop() || '',
+                                status: "success",
+                                size: formatFileSize(metadata.ContentLength || 0),
+                                date: metadata.LastModified?.split('T')[0] || '',
+                                uploadedBy: truncateString(metadata.Metadata?.uploadedby || 'Unknown', 10),
+                                s3Key: object.key,
+                                tags: tags,
+                                documentSummary: metadata.Metadata?.document_summary || ''
+                            };
+                            return file;
                         })
                 );
 
@@ -600,6 +583,7 @@ export function DataTableDemo({ onFileSelect }: DataTableDemoProps) {
 
 
                 setTableData(validFiles);
+
             }
         } catch (error) {
             console.error('Error listing S3 objects:', error);
