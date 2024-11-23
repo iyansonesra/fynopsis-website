@@ -460,33 +460,13 @@ export function DataTableDemo({ onFileSelect }: DataTableDemoProps) {
     const uploadToS3 = async (file: File) => {
         const fileId = file.name.split('.')[0];
         const fileExtension = file.name.split('.').pop() || '';
-        const userPrefix = await getUserPrefix();
-        const encodedUserPrefix =  userPrefix.split(':')[1].slice(0, -1);
         // Ensure we're not using the identity ID in the visible part of the key
-        const s3Key = `${userPrefix}files/${fileId}.${fileExtension}`;
+        const s3Key = `${bucketUuid}/${fileId}.${fileExtension}`;
 
         try {
-            // const s3Client = await getS3Client();
-
-            // const command = new PutObjectCommand({
-            //     Bucket: S3_BUCKET_NAME,
-            //     Key: s3Key,
-            //     Body: file,
-            //     ContentType: file.type,
-            //     Metadata: {
-            //         uploadedBy: await getUserInfo(),
-            //         originalName: file.name
-            //     }
-            // });
-
-            // await s3Client.send(command);
-
-
-
-            console.log(encodedUserPrefix + " The place we store this.");
             const restOperation = post({
                 apiName: 'VDR_API',
-                path: `/${encodedUserPrefix}/documents/upload`,
+                path: `/${bucketUuid}/documents/upload`,
                 options: {
                     headers: {
                         'Content-Type': 'application/json'
@@ -496,10 +476,6 @@ export function DataTableDemo({ onFileSelect }: DataTableDemoProps) {
                     }
                 }
             });
-
-            console.log(restOperation);
-
-
             return s3Key;
         } catch (error) {
             console.error('Error uploading to S3:', error);
