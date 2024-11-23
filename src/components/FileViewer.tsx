@@ -8,6 +8,7 @@ interface FileViewerProps {
 const FileViewer: React.FC<FileViewerProps> = ({ fileUrl }) => {
     const viewerDiv = useRef<HTMLDivElement>(null);
     const viewerInstance = useRef<any>(null);
+    // console.log(fileUrl);
 
     useEffect(() => {
         let isMounted = true;

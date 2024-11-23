@@ -147,7 +147,6 @@ const getPresignedUrl = async (s3Key: string) => {
 // Helper function to delete object
 const deleteS3Object = async (s3Key: string, bucketUuid: string) => {
     try {
-        console.log("deleting file");
         const deleteResponse = await get({
             apiName: 'S3_API', 
             path: `/s3/${bucketUuid}/delete-url`,
@@ -159,9 +158,6 @@ const deleteS3Object = async (s3Key: string, bucketUuid: string) => {
             }
         });
 
-        const { body } = await deleteResponse.response;
-        const responseText = await body.text();
-        console.log(responseText);
         const { statusCode } = await deleteResponse.response;
 
         if (statusCode !== 200) {
@@ -298,10 +294,24 @@ export function DataTableDemo({ onFileSelect }: DataTableDemoProps) {
         if (payment.s3Key) {
             console.log("The s3 key is:", payment.s3Key);
             try {
-                const url = await getPresignedUrl(payment.s3Key);
+                // const url = await getPresignedUrl(payment.s3Key);
+                const downloadResponse = await get({
+                    apiName: 'S3_API', 
+                    path: `/s3/${bucketUuid}/download-url`,
+                    options: {
+                        withCredentials: true,
+                        queryParams: {
+                            path: payment.s3Key
+                        }
+                    }
+                });
+        
+                const { body } = await downloadResponse.response;
+                const responseText = await body.text();
+                const { signedUrl } = JSON.parse(responseText);
                 onFileSelect({
                     ...payment,
-                    s3Url: url,
+                    s3Url: signedUrl,
                 });
             } catch (error) {
                 console.error('Error getting presigned URL:', error);
@@ -331,11 +341,24 @@ export function DataTableDemo({ onFileSelect }: DataTableDemoProps) {
                                 onClick={async () => {
                                     if (payment.s3Key) {
                                         try {
-                                            const url = await getPresignedUrl(payment.s3Key);
+                                            const downloadResponse = await get({
+                                                apiName: 'S3_API', 
+                                                path: `/s3/${bucketUuid}/download-url`,
+                                                options: {
+                                                    withCredentials: true,
+                                                    queryParams: {
+                                                        path: payment.s3Key
+                                                    }
+                                                }
+                                            });
+                                    
+                                            const { body } = await downloadResponse.response;
+                                            const responseText = await body.text();
+                                            const { signedUrl } = JSON.parse(responseText);
                                             onFileSelect({
                                                 id: payment.id,
                                                 name: payment.name,
-                                                s3Url: url,
+                                                s3Url: signedUrl,
                                                 type: payment.type,
                                                 size: payment.size,
                                                 status: payment.status,
