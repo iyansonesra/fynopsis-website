@@ -506,12 +506,12 @@ export function DataTableDemo({ onFileSelect }: DataTableDemoProps) {
         try {
             setIsLoading(true);
             const s3Client = await getS3Client();
-            const userPrefix = await getUserPrefix();
+            // const userPrefix = await getUserPrefix();
 
-            const command = new ListObjectsV2Command({
-                Bucket: S3_BUCKET_NAME,
-                Prefix: userPrefix
-            });
+            // const command = new ListObjectsV2Command({
+            //     Bucket: S3_BUCKET_NAME,
+            //     Prefix: userPrefix
+            // });
 
 
             const restOperation = get({
@@ -527,7 +527,7 @@ export function DataTableDemo({ onFileSelect }: DataTableDemoProps) {
             const responseMain = JSON.parse(responseText);
             console.log(responseMain);
 
-            const response = await s3Client.send(command);
+            // const response = await s3Client.send(command);
 
             if (responseMain) {
                 const files = await Promise.all(
