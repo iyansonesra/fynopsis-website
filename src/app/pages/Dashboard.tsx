@@ -20,13 +20,9 @@ import { fetchUserAttributes, FetchUserAttributesOutput } from 'aws-amplify/auth
 import { CircularProgress } from "@mui/material";
 import React, { useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { Library, Users, TrendingUp, LucideIcon, LogOut, DoorOpen } from 'lucide-react';
+import {  LogOut, DoorOpen, Clipboard } from 'lucide-react';
 import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/hover-card';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import AdvancedSearch from "@/components/Analytics";
-import Files from "@/components/Files";
-import People from "@/components/People";
-import { Separator } from "@radix-ui/react-separator";
 import DataRoomCard from "@/components/DataRoomCard";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
