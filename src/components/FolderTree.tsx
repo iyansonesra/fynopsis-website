@@ -1,6 +1,14 @@
 import React, { useState } from 'react';
 import { Tree, NodeApi, NodeRendererProps } from 'react-arborist';
 import { Folder, File, ChevronRight, ChevronDown, Plus } from 'lucide-react';
+import { fetchAuthSession, getCurrentUser } from 'aws-amplify/auth';
+import { S3Client, PutObjectCommand, GetObjectCommand, DeleteObjectCommand, ListObjectsV2Command, HeadObjectCommand } from "@aws-sdk/client-s3";
+import { usePathname, useSearchParams } from 'next/navigation';
+import { get } from "aws-amplify/api";
+
+
+const S3_BUCKET_NAME = 'vdr-documents';
+const REGION = 'us-east-1';
 
 interface TreeNode {
   id: string;
@@ -30,6 +38,7 @@ const initialData: TreeNode[] = [
     ],
   },
 ];
+
 
 const FolderTreeComponent: React.FC = () => {
   const [data, setData] = useState(initialData);

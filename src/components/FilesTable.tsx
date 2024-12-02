@@ -147,7 +147,6 @@ const getPresignedUrl = async (s3Key: string) => {
 // Helper function to delete object
 const deleteS3Object = async (s3Key: string, bucketUuid: string) => {
     try {
-        console.log("deleting file");
         const deleteResponse = await get({
             apiName: 'S3_API', 
             path: `/s3/${bucketUuid}/delete-url`,
@@ -159,9 +158,6 @@ const deleteS3Object = async (s3Key: string, bucketUuid: string) => {
             }
         });
 
-        const { body } = await deleteResponse.response;
-        const responseText = await body.text();
-        console.log(responseText);
         const { statusCode } = await deleteResponse.response;
 
         if (statusCode !== 200) {
@@ -298,10 +294,24 @@ export function DataTableDemo({ onFileSelect }: DataTableDemoProps) {
         if (payment.s3Key) {
             console.log("The s3 key is:", payment.s3Key);
             try {
-                const url = await getPresignedUrl(payment.s3Key);
+                // const url = await getPresignedUrl(payment.s3Key);
+                const downloadResponse = await get({
+                    apiName: 'S3_API', 
+                    path: `/s3/${bucketUuid}/download-url`,
+                    options: {
+                        withCredentials: true,
+                        queryParams: {
+                            path: payment.s3Key
+                        }
+                    }
+                });
+        
+                const { body } = await downloadResponse.response;
+                const responseText = await body.text();
+                const { signedUrl } = JSON.parse(responseText);
                 onFileSelect({
                     ...payment,
-                    s3Url: url,
+                    s3Url: signedUrl,
                 });
             } catch (error) {
                 console.error('Error getting presigned URL:', error);
@@ -331,11 +341,24 @@ export function DataTableDemo({ onFileSelect }: DataTableDemoProps) {
                                 onClick={async () => {
                                     if (payment.s3Key) {
                                         try {
-                                            const url = await getPresignedUrl(payment.s3Key);
+                                            const downloadResponse = await get({
+                                                apiName: 'S3_API', 
+                                                path: `/s3/${bucketUuid}/download-url`,
+                                                options: {
+                                                    withCredentials: true,
+                                                    queryParams: {
+                                                        path: payment.s3Key
+                                                    }
+                                                }
+                                            });
+                                    
+                                            const { body } = await downloadResponse.response;
+                                            const responseText = await body.text();
+                                            const { signedUrl } = JSON.parse(responseText);
                                             onFileSelect({
                                                 id: payment.id,
                                                 name: payment.name,
-                                                s3Url: url,
+                                                s3Url: signedUrl,
                                                 type: payment.type,
                                                 size: payment.size,
                                                 status: payment.status,
@@ -437,33 +460,13 @@ export function DataTableDemo({ onFileSelect }: DataTableDemoProps) {
     const uploadToS3 = async (file: File) => {
         const fileId = file.name.split('.')[0];
         const fileExtension = file.name.split('.').pop() || '';
-        const userPrefix = await getUserPrefix();
-        const encodedUserPrefix =  userPrefix.split(':')[1].slice(0, -1);
         // Ensure we're not using the identity ID in the visible part of the key
-        const s3Key = `${userPrefix}files/${fileId}.${fileExtension}`;
+        const s3Key = `${bucketUuid}/${fileId}.${fileExtension}`;
 
         try {
-            // const s3Client = await getS3Client();
-
-            // const command = new PutObjectCommand({
-            //     Bucket: S3_BUCKET_NAME,
-            //     Key: s3Key,
-            //     Body: file,
-            //     ContentType: file.type,
-            //     Metadata: {
-            //         uploadedBy: await getUserInfo(),
-            //         originalName: file.name
-            //     }
-            // });
-
-            // await s3Client.send(command);
-
-
-
-            console.log(encodedUserPrefix + " The place we store this.");
             const restOperation = post({
                 apiName: 'VDR_API',
-                path: `/${encodedUserPrefix}/documents/upload`,
+                path: `/${bucketUuid}/documents/upload`,
                 options: {
                     headers: {
                         'Content-Type': 'application/json'
@@ -473,10 +476,6 @@ export function DataTableDemo({ onFileSelect }: DataTableDemoProps) {
                     }
                 }
             });
-
-            console.log(restOperation);
-
-
             return s3Key;
         } catch (error) {
             console.error('Error uploading to S3:', error);
@@ -507,12 +506,12 @@ export function DataTableDemo({ onFileSelect }: DataTableDemoProps) {
         try {
             setIsLoading(true);
             const s3Client = await getS3Client();
-            const userPrefix = await getUserPrefix();
+            // const userPrefix = await getUserPrefix();
 
-            const command = new ListObjectsV2Command({
-                Bucket: S3_BUCKET_NAME,
-                Prefix: userPrefix
-            });
+            // const command = new ListObjectsV2Command({
+            //     Bucket: S3_BUCKET_NAME,
+            //     Prefix: userPrefix
+            // });
 
 
             const restOperation = get({
@@ -528,7 +527,7 @@ export function DataTableDemo({ onFileSelect }: DataTableDemoProps) {
             const responseMain = JSON.parse(responseText);
             console.log(responseMain);
 
-            const response = await s3Client.send(command);
+            // const response = await s3Client.send(command);
 
             if (responseMain) {
                 const files = await Promise.all(

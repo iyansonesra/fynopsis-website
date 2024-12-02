@@ -23,6 +23,7 @@ import "./Folder/styles.css";
 import DetailSection from './DetailsSection';
 import TabSystem from './TabSystem';
 import FileViewer from './FileViewer';
+import PDFViewer from './PDFViewer';
 import { Console } from 'console';
 
 export default function Files({ setSelectedTab }: { setSelectedTab: React.Dispatch<React.SetStateAction<string>> }) {
@@ -85,7 +86,7 @@ export default function Files({ setSelectedTab }: { setSelectedTab: React.Dispat
             addOrActivateTab({
                 id: newTabId,
                 title: file.name,
-                content: <FileViewer fileUrl={file.s3Url} />
+                content: <PDFViewer fileUrl={file.s3Url} />
             });
         } else {
             console.error('Incomplete file information:', file);

@@ -6,29 +6,24 @@ import {
   Settings as SettingsIcon,
   Factory,
 } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { ScrollArea } from "@/components/ui/scroll-area";
+
 import logo from '../assets/fynopsis_noBG.png'
 import { useState, useEffect } from "react"
-import Dashboard from "./Dashboard";
-import StockSearch from "./StockSearch";
-import Settings from "./Settings";
-import IndustryPage from "./IndustryPage";
+
 import { useAuthenticator } from '@aws-amplify/ui-react';
-import { Sun, Moon } from "lucide-react";
+import { Sun, Moon, Clipboard } from "lucide-react";
 import { fetchUserAttributes, FetchUserAttributesOutput } from 'aws-amplify/auth';
 import { CircularProgress } from "@mui/material";
 import React, {  useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { Library, Users, TrendingUp, LucideIcon, LogOut } from 'lucide-react';
-import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/hover-card';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import AdvancedSearch from "@/components/Analytics";
 import Files from "@/components/Files";
-import People from "@/components/People";
+import SimpliFill from "@/components/SimpliFill/SimpliFill";
 
 export default function Home() {
-  const [selectedTab, setSelectedTab] = useState("library");
+  const [selectedTab, setSelectedTab] = useState("Library");
   const { user, signOut } = useAuthenticator((context) => [context.user]);
   const [userAttributes, setUserAttributes] = useState<FetchUserAttributesOutput | null>(null);
   const router = useRouter();
@@ -38,8 +33,7 @@ export default function Home() {
 
   const tabs: Tab[] = [
       { icon: Library, label: 'Library' },
-      { icon: Search, label: 'People' },
-      { icon: TrendingUp, label: 'Trending' }
+      { icon: Clipboard, label: 'Form' },
   ];
 
   function signIn(): void {
@@ -84,12 +78,8 @@ export default function Home() {
     switch (selectedTab) {
       case "library":
         return <Files setSelectedTab={setSelectedTab} />
-      case "trending":
-        return <AdvancedSearch setSelectedTab={setSelectedTab} />
-      case "people":
-        return <AdvancedSearch setSelectedTab={setSelectedTab} />
-      default:
-        return <Files setSelectedTab={setSelectedTab} />
+      case "form":
+        return <SimpliFill/>
     }
   }
 

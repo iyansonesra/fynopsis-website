@@ -172,11 +172,11 @@ const getS3Client = async () => {
 
     const queryAllDocuments = async (searchTerm: string) => {
         try {
-            const userPrefix = await getUserPrefix();
-            const encodedUserPrefix = userPrefix.split(':')[1].slice(0, -1);
+            const bucketUuid = window.location.pathname.split('/').pop() || '';
+
             const restOperation = post({
                 apiName: 'VDR_API',
-                path: `/${encodedUserPrefix}/query`,
+                path: `/${bucketUuid}/query`,
                 options: {
                     headers: {
                         'Content-Type': 'application/json'
@@ -244,13 +244,13 @@ const getS3Client = async () => {
         );
     };
 
-    const querySingleDocument = async (fileKey, searchTerm) => {
-        const userPrefix = await getUserPrefix();
-        const encodedUserPrefix = userPrefix.split(':')[1].slice(0, -1);
+    const querySingleDocument = async (fileKey: string | number | boolean, searchTerm: any) => {
+        // const userPrefix = await getUserPrefix();
+        const bucketUuid = window.location.pathname.split('/').pop() || '';
         const encodedS3Key = encodeURIComponent(fileKey);
         const restOperation = post({
             apiName: 'VDR_API',
-            path: `/${encodedUserPrefix}/documents/${encodedS3Key}/query`,
+            path: `/${bucketUuid}/documents/${encodedS3Key}/query`,
             options: {
                 headers: {
                     'Content-Type': 'application/json'
@@ -309,8 +309,8 @@ const getS3Client = async () => {
             <div className="flex justify-between items-center mb-4">
                 <h2 className="text-xl font-semibold">File Details</h2>
                 <Button
-                    variant="outlined"
-                    startIcon={<ArrowLeft />}
+                    variant="outline"
+                    // startIcon={<ArrowLeft />}
                     onClick={() => setShowDetailsView(false)}
                 >
                     Back to Search
