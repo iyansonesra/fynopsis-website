@@ -172,14 +172,17 @@ const getS3Client = async () => {
 
     const queryAllDocuments = async (searchTerm: string) => {
         try {
+            setIsLoading(true);
             const bucketUuid = window.location.pathname.split('/').pop() || '';
+            console.log(bucketUuid);
 
             const restOperation = post({
                 apiName: 'VDR_API',
                 path: `/${bucketUuid}/query`,
                 options: {
                     headers: {
-                        'Content-Type': 'application/json'
+                        'Content-Type': 'application/json',
+                        'Accept': 'text/event-stream',
                     },
                     body: {
                         query: searchTerm
@@ -188,12 +191,35 @@ const getS3Client = async () => {
                 },
             });
 
-            const { body } = await restOperation.response;
-            const responseText = await body.text();
-            const responseMain = JSON.parse(responseText);
-            setSearchResult(responseMain);
+            const response = await restOperation.response;
+            const reader = (response.body as unknown as ReadableStream).getReader();
+            let result = '';
+
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+                
+                const chunk = new TextDecoder().decode(value);
+                const lines = chunk.split('\n');
+                
+                for (const line of lines) {
+                    if (line.startsWith('data: ')) {
+                        const data = JSON.parse(line.slice(5));
+                        if (data.type === 'content') {
+                            result += data.content;
+                            // Update UI incrementally
+                            setSearchResult({
+                                response: result,
+                                sources: data.sources || {},
+                                thread_id: data.thread_id || ''
+                            });
+                        }
+                    }
+                }
+            }
+
         } catch (err) {
-            console.error('Error querying documents:', err);
+            console.error('Error querying collection:', err);
             setError('Failed to fetch search results. Please try again.');
         } finally {
             setIsLoading(false);
@@ -310,7 +336,6 @@ const getS3Client = async () => {
                 <h2 className="text-xl font-semibold">File Details</h2>
                 <Button
                     variant="outline"
-                    // startIcon={<ArrowLeft />}
                     onClick={() => setShowDetailsView(false)}
                 >
                     Back to Search
