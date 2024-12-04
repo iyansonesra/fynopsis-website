@@ -30,6 +30,16 @@ import { post, get } from 'aws-amplify/api';
 import { fetchAuthSession } from 'aws-amplify/auth';
 
 
+type Tab = {
+    icon: LucideIcon;
+    label: string;
+};
+
+type IndicatorStyle = {
+    top?: string;
+    height?: string;
+};
+
 export default function GeneralDashboard() {
     const [selectedTab, setSelectedTab] = useState("library");
     const { user, signOut } = useAuthenticator((context) => [context.user]);
@@ -47,11 +57,13 @@ export default function GeneralDashboard() {
         router.push('/signin');
     }
 
-    const [dataRooms, setDataRooms] = useState([
-        // { id: 1, title: 'Apple M&A', lastOpened: 'Sept. 27, 2024 5:36 PM' },
-        // { id: 2, title: 'Project X', lastOpened: 'Sept. 26, 2024 2:15 PM' },
-        // { id: 3, title: 'Quarterly Review', lastOpened: 'Sept. 25, 2024 10:00 AM' },
-      ]);
+    type DataRoom = {
+        id: number;
+        title: string;
+        lastOpened: string;
+    };
+
+    const [dataRooms, setDataRooms] = useState<DataRoom[]>([]);
 
     const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
     const [newDataroomName, setNewDataroomName] = useState('');
