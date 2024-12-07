@@ -19,9 +19,13 @@ export default function Dashboard() {
 
   const router = useRouter();
   useEffect(() => {
-    if (!user) {
+    const timeout = setTimeout(() => {
+      if (!user) {
         router.push("/signin");
-    } 
+      }
+    }, 2000);
+
+    return () => clearTimeout(timeout);
   }, [user, router]);
 
   // getRecentSearches();

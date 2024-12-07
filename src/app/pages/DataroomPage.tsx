@@ -76,10 +76,11 @@ export default function Home() {
 
   const renderSelectedScreen = () => {
     switch (selectedTab) {
-      case "library":
+      // case "library":/
+      default:
         return <Files setSelectedTab={setSelectedTab} />
-      case "form":
-        return <SimpliFill/>
+      // case "form":
+      //   return <SimpliFill/>
     }
   }
 
