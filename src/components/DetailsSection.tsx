@@ -2,12 +2,13 @@ import React, { useState } from 'react';
 import { ArrowLeft, BadgeInfo, FileText, Search } from 'lucide-react';
 import { Input, Skeleton } from '@mui/material';
 import { Button } from './ui/button';
-import { post } from 'aws-amplify/api';
+import { post, get } from 'aws-amplify/api';
 import { ScrollArea } from './ui/scroll-area';
 import { fetchAuthSession } from 'aws-amplify/auth';
 import { Card, CardContent } from './ui/card';
 import { GetObjectCommand, S3Client } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
+import ReactMarkdown from 'react-markdown';
 
 interface SearchResponse {
     response: string;
@@ -118,20 +119,23 @@ const getS3Client = async () => {
         }
     };
 
-    const extractSourceInfo = (source: any): { key: string; name: string } | null => {
-        // Check if source is a string (direct S3 key)
-        if (typeof source === 'string') {
-            const name = source.split('/').pop() || 'document';
-            return { key: source, name };
+    const extractSourceInfo = (source: any): { key: string; name: string; descriptions?: string[] } | null => {
+        // Handle object with array of descriptions
+        if (typeof source === 'object' && !Array.isArray(source)) {
+            const [key, descriptions] = Object.entries(source)[0];
+            return {
+                key,
+                name: key.split('/').pop() || 'document',
+                descriptions: Array.isArray(descriptions) ? descriptions : undefined
+            };
         }
         
-        // If source is an object, try to extract the key and name
-        if (typeof source === 'object' && source !== null) {
-            // Assuming the source object might have a structure like { s3Key: "path/key", name: "filename" }
-            // Adjust these property names based on your actual data structure
-            const key = source.s3Key || source.key || Object.keys(source)[0];
-            const name = source.name || key.split('/').pop() || 'document';
-            return { key, name };
+        // Fallback for simple string source
+        if (typeof source === 'string') {
+            return {
+                key: source,
+                name: source.split('/').pop() || 'document'
+            };
         }
         
         return null;
@@ -173,39 +177,42 @@ const getS3Client = async () => {
     const queryAllDocuments = async (searchTerm: string) => {
         try {
             setIsLoading(true);
-            const bucketUuid = window.location.pathname.split('/').pop() || '';
-            console.log(bucketUuid);
-
-            const restOperation = post({
-                apiName: 'VDR_API',
-                path: `/${bucketUuid}/query`,
-                options: {
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Accept': 'text/event-stream',
-                    },
-                    body: {
-                        query: searchTerm
-                    },
-                    withCredentials: true
-                },
+            setSearchResult({
+                response: '',
+                sources: {},
+                thread_id: ''
             });
+            const bucketUuid = window.location.pathname.split('/').pop() || '';
+            
+            // Function to create WebSocket connection with retry
+            const createWebSocketConnection = async (retries = 2): Promise<WebSocket> => {
+                for (let i = 0; i < retries; i++) {
+                    try {
+                        const ws = new WebSocket('wss://gq1n7s34f0.execute-api.us-east-1.amazonaws.com/prod');
+                        await new Promise((resolve, reject) => {
+                            ws.onopen = () => resolve(ws);
+                            ws.onerror = () => reject(new Error('WebSocket connection failed'));
+                        });
+                        return ws;
+                    } catch (error) {
+                        if (i === retries - 1) throw error;
+                        await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1s before retry
+                    }
+                }
+                throw new Error('Failed to connect after retries');
+            };
 
-            const response = await restOperation.response;
-            const reader = (response.body as unknown as ReadableStream).getReader();
+            const ws = await createWebSocketConnection();
             let result = '';
 
-            while (true) {
-                const { done, value } = await reader.read();
-                if (done) break;
-                
-                const chunk = new TextDecoder().decode(value);
-                const lines = chunk.split('\n');
-                
-                for (const line of lines) {
-                    if (line.startsWith('data: ')) {
-                        const data = JSON.parse(line.slice(5));
+            return new Promise((resolve, reject) => {
+                ws.onmessage = (event) => {
+                    try {
+                        const data = JSON.parse(event.data);
+                        console.log('Received message:', data);
+
                         if (data.type === 'content') {
+                            setIsLoading(false);
                             result += data.content;
                             // Update UI incrementally
                             setSearchResult({
@@ -213,18 +220,46 @@ const getS3Client = async () => {
                                 sources: data.sources || {},
                                 thread_id: data.thread_id || ''
                             });
+                        } else if (data.type === 'complete') {
+                            ws.close();
+                            resolve(result);
+                        } else if (data.error) {
+                            ws.close();
+                            reject(new Error(data.error));
                         }
+                    } catch (error) {
+                        console.error('Error processing message:', error);
                     }
-                }
-            }
+                };
+
+                ws.onerror = (error) => {
+                    console.error('WebSocket error:', error);
+                };
+
+                ws.onclose = () => {
+                    console.log('WebSocket connection closed');
+                };
+
+                // Send the query message
+                ws.send(JSON.stringify({
+                    action: 'query',
+                    data: {
+                        collection_name: bucketUuid,
+                        query: searchTerm
+                    }
+                }));
+            });
 
         } catch (err) {
             console.error('Error querying collection:', err);
             setError('Failed to fetch search results. Please try again.');
-        } finally {
-            setIsLoading(false);
-        }
+        } 
+        // finally {
+        //     setIsLoading(false);
+        // }
     };
+
+    
 
    
     
@@ -247,19 +282,33 @@ const getS3Client = async () => {
                     <CardContent className="p-4">
                         <div className="prose max-w-none">
                             <h3 className="text-lg font-semibold mb-4">Search Result</h3>
-                            <p className="text-slate-700">{searchResult?.response}</p>
+                            <ReactMarkdown className="text-slate-700">
+                                {searchResult?.response || ''}
+                            </ReactMarkdown>
+                            {/* <p className="text-slate-700">{searchResult?.response}</p> */}
                             
                             {searchResult?.sources && Object.keys(searchResult.sources).length > 0 && (
                                 <div className="mt-4">
                                     <h4 className="text-sm font-semibold text-slate-600">Sources:</h4>
                                     <div className="mt-2 text-sm text-slate-500">
-                                        {Object.entries(searchResult.sources).map(([key, value], index) => (
-                                            <div key={key} className="mb-2">
-                                                <span className="font-medium">{key}: </span>
-                                                <span>{JSON.stringify(value)}</span>
-                                                {renderSourceButton(value)}
-                                            </div>
-                                        ))}
+                                        {Object.entries(searchResult.sources).map(([key, value]) => {
+                                            const sourceInfo = extractSourceInfo({ [key]: value });
+                                            if (!sourceInfo) return null;
+                                            
+                                            return (
+                                                <div key={key} className="mb-4 p-3 border rounded-lg">
+                                                    <div className="font-medium mb-2">{sourceInfo.name}</div>
+                                                    {sourceInfo.descriptions && (
+                                                        <ul className="list-disc pl-4 mb-2">
+                                                            {sourceInfo.descriptions.map((desc, i) => (
+                                                                <li key={i} className="text-sm text-slate-600">{desc}</li>
+                                                            ))}
+                                                        </ul>
+                                                    )}
+                                                    {renderSourceButton(sourceInfo.key)}
+                                                </div>
+                                            );
+                                        })}
                                     </div>
                                 </div>
                             )}
