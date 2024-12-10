@@ -82,21 +82,26 @@ const TabSystem: React.FC<TabSystemProps> = ({ tabs, activeTabId, setActiveTabId
                         {...provided.draggableProps}
                         {...provided.dragHandleProps}
                         data-tab-id={tab.id}
-                        className={`flex items-center px-4 py-2 cursor-pointer whitespace-nowrap ${
-                          activeTabId === tab.id ? 'bg-white' : 'bg-gray-200'
-                        }`}
+                        className={`flex items-center px-4 py-2 cursor-pointer whitespace-nowrap ${activeTabId === tab.id ? 'bg-white' : 'bg-gray-200'
+                          }`}
                         onClick={() => setActiveTabId(tab.id)}
                       >
                         <span className="mr-2">{tab.title}</span>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            closeTab(tab.id);
-                          }}
-                          className="text-gray-400 hover:text-gray-600"
-                        >
-                          <X size={16} />
-                        </button>
+                        {tab.title !== "All Files" && (
+                          <div>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                closeTab(tab.id);
+                              }}
+                              className="text-gray-400 hover:text-gray-600"
+                            >
+                              <X size={16} />
+                            </button>
+                          </div>
+
+                        )}
+
                       </div>
                     )}
                   </Draggable>
@@ -107,7 +112,7 @@ const TabSystem: React.FC<TabSystemProps> = ({ tabs, activeTabId, setActiveTabId
           </Droppable>
         </DragDropContext>
       </div>
-      
+
       <div className="flex-grow bg-white p-4 relative">
         {tabs.map(tab => (
           <div

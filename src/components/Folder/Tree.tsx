@@ -7,6 +7,7 @@ import { fetchAuthSession } from 'aws-amplify/auth';
 import { S3Client } from "@aws-sdk/client-s3";
 import { usePathname } from 'next/navigation';
 import { get } from "aws-amplify/api";
+import { ScrollArea } from "../ui/scroll-area";
 
 interface TreeFolderProps {
   onFileSelect: (file: any) => void;
@@ -141,11 +142,11 @@ const TreeFolder: React.FC<TreeFolderProps> = ({ onFileSelect }) => {
   }
 
   return (
-    <div className="overflow-hidden">
+    <ScrollArea className="overflow-hidden w-full h-full font-montserrat px-3">
       <input
         type="text"
         placeholder="Search..."
-        className="search-input w-full p-2 mb-2 border rounded"
+        className="search-input w-full p-2 mb-2 border rounded font-montserrat"
         value={term}
         onChange={(e) => setTerm(e.target.value)}
       />
@@ -182,12 +183,12 @@ const TreeFolder: React.FC<TreeFolderProps> = ({ onFileSelect }) => {
             {Node}
           </Tree>
         ) : (
-          <div className="text-center text-gray-500 mt-4">
+          <div className="text-center text-gray-500 mt-4 font-montserrat">
             No files or folders found
           </div>
         )}
       </div>
-    </div>
+    </ScrollArea>
   );
 };
 

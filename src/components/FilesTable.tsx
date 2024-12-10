@@ -432,7 +432,7 @@ export function DataTableDemo({ onFileSelect }: DataTableDemoProps) {
         columnResizeMode: "onChange",
         initialState: {
             pagination: {
-                pageSize: 5,
+                pageSize: 10,
             },
         },
     })
@@ -622,7 +622,7 @@ export function DataTableDemo({ onFileSelect }: DataTableDemoProps) {
     };
 
     return (
-        <div className="w-full py-4 px-6">
+        <div className="select-none w-full py-4 px-6 h-full">
             <style jsx>{`
                 .resizer {
                     position: absolute;
@@ -709,6 +709,7 @@ export function DataTableDemo({ onFileSelect }: DataTableDemoProps) {
 
 
             <ScrollArea className="w-full whitespace-nowrap rounded-md">
+            <div className="overflow-x-auto">
                 <Table>
                     <TableHeader>
                         {table.getHeaderGroups().map((headerGroup) => (
@@ -782,6 +783,7 @@ export function DataTableDemo({ onFileSelect }: DataTableDemoProps) {
                         )}
                     </TableBody>
                 </Table>
+                </div>
                 <ScrollBar orientation="horizontal" />
             </ScrollArea>
             <div className="flex items-center justify-between space-x-2 py-4">
