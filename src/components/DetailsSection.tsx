@@ -349,7 +349,7 @@ const getS3Client = async () => {
             <div className="relative w-[80%]">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-slate-400" />
                 <Input
-                    className="w-full border-slate-200 rounded-xl outline-none pl-10 py-1"
+                    className="w-full border-slate-200 rounded-xl outline-none pl-10 py-1 font-montserrat"
                     placeholder="Search files..."
                     value={userSearch}
                     onChange={handleInputChange}

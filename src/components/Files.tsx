@@ -96,7 +96,7 @@ export default function Files({ setSelectedTab }: { setSelectedTab: React.Dispat
     return (
         <ResizablePanelGroup
             direction="horizontal"
-            className="flex w-full mb-2 flex-row h-full overflow-hidden"
+            className="flex w-full mb-2 flex-row h-full overflow-hidden font-montserrat"
         >
             <ResizablePanel defaultSize={25} maxSize={30} minSize={16} collapsible={true} collapsedSize={0}>
                 <div className="h-full flex flex-col px-4 py-2">
@@ -112,7 +112,7 @@ export default function Files({ setSelectedTab }: { setSelectedTab: React.Dispat
                     </Select>
 
 
-                    <ScrollArea className="flex-grow  h-64 overflow-auto p-2">
+                    <ScrollArea className="flex-grow p-0 h-64 overflow-auto">
                         <TreeFolder onFileSelect={handleFileSelect} />
 
                     </ScrollArea>

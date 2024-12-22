@@ -432,7 +432,7 @@ export function DataTableDemo({ onFileSelect }: DataTableDemoProps) {
         columnResizeMode: "onChange",
         initialState: {
             pagination: {
-                pageSize: 5,
+                pageSize: 10,
             },
         },
     })
@@ -622,7 +622,7 @@ export function DataTableDemo({ onFileSelect }: DataTableDemoProps) {
     };
 
     return (
-        <div className="w-full py-4 px-6">
+        <div className="select-none w-full py-4 px-6 h-full">
             <style jsx>{`
                 .resizer {
                     position: absolute;
@@ -709,79 +709,81 @@ export function DataTableDemo({ onFileSelect }: DataTableDemoProps) {
 
 
             <ScrollArea className="w-full whitespace-nowrap rounded-md">
-                <Table>
-                    <TableHeader>
-                        {table.getHeaderGroups().map((headerGroup) => (
-                            <TableRow key={headerGroup.id}>
-                                {headerGroup.headers.map((header) => (
-                                    <TableHead
-                                        key={header.id}
-                                        className="text-xs font-medium py-3 relative"
-                                        style={{ width: header.getSize() }}
-                                    >
-                                        {header.isPlaceholder
-                                            ? null
-                                            : flexRender(
-                                                header.column.columnDef.header,
-                                                header.getContext()
-                                            )}
-                                        {header.column.getCanResize() && (
-                                            <div
-                                                onMouseDown={header.getResizeHandler()}
-                                                onTouchStart={header.getResizeHandler()}
-                                                className={`resizer ${header.column.getIsResizing() ? "isResizing" : ""
-                                                    }`}
-                                            ></div>
-                                        )}
-                                    </TableHead>
-                                ))}
-                            </TableRow>
-                        ))}
-                    </TableHeader>
-                    <TableBody>
-                        {isLoading ? (
-                            <TableRow>
-                                <TableCell
-                                    colSpan={columns.length}
-                                    className="h-16 text-center text-xs"
-                                >
-                                    Loading...
-                                </TableCell>
-                            </TableRow>
-                        ) : table.getRowModel().rows?.length ? (
-                            table.getRowModel().rows.map((row) => (
-                                <TableRow
-                                    key={row.id}
-                                    data-state={row.getIsSelected() && "selected"}
-                                    onDoubleClick={() => handleRowDoubleClick(row.original)}
-                                    className="cursor-pointer hover:bg-gray-100"
-                                >
-                                    {row.getVisibleCells().map((cell) => (
-                                        <TableCell
-                                            key={cell.id}
-                                            className="text-xs py-3"
-                                            style={{ width: cell.column.getSize() }}
+                <div className="overflow-x-auto">
+                    <Table>
+                        <TableHeader>
+                            {table.getHeaderGroups().map((headerGroup) => (
+                                <TableRow key={headerGroup.id}>
+                                    {headerGroup.headers.map((header) => (
+                                        <TableHead
+                                            key={header.id}
+                                            className="text-xs font-medium py-3 relative"
+                                            style={{ width: header.getSize() }}
                                         >
-                                            {flexRender(
-                                                cell.column.columnDef.cell,
-                                                cell.getContext()
+                                            {header.isPlaceholder
+                                                ? null
+                                                : flexRender(
+                                                    header.column.columnDef.header,
+                                                    header.getContext()
+                                                )}
+                                            {header.column.getCanResize() && (
+                                                <div
+                                                    onMouseDown={header.getResizeHandler()}
+                                                    onTouchStart={header.getResizeHandler()}
+                                                    className={`resizer ${header.column.getIsResizing() ? "isResizing" : ""
+                                                        }`}
+                                                ></div>
                                             )}
-                                        </TableCell>
+                                        </TableHead>
                                     ))}
                                 </TableRow>
-                            ))
-                        ) : (
-                            <TableRow>
-                                <TableCell
-                                    colSpan={columns.length}
-                                    className="h-16 text-center text-xs"
-                                >
-                                    No results.
-                                </TableCell>
-                            </TableRow>
-                        )}
-                    </TableBody>
-                </Table>
+                            ))}
+                        </TableHeader>
+                        <TableBody>
+                            {isLoading ? (
+                                <TableRow>
+                                    <TableCell
+                                        colSpan={columns.length}
+                                        className="h-16 text-center text-xs"
+                                    >
+                                        Loading...
+                                    </TableCell>
+                                </TableRow>
+                            ) : table.getRowModel().rows?.length ? (
+                                table.getRowModel().rows.map((row) => (
+                                    <TableRow
+                                        key={row.id}
+                                        data-state={row.getIsSelected() && "selected"}
+                                        onDoubleClick={() => handleRowDoubleClick(row.original)}
+                                        className="cursor-pointer hover:bg-gray-100"
+                                    >
+                                        {row.getVisibleCells().map((cell) => (
+                                            <TableCell
+                                                key={cell.id}
+                                                className="text-xs py-3"
+                                                style={{ width: cell.column.getSize() }}
+                                            >
+                                                {flexRender(
+                                                    cell.column.columnDef.cell,
+                                                    cell.getContext()
+                                                )}
+                                            </TableCell>
+                                        ))}
+                                    </TableRow>
+                                ))
+                            ) : (
+                                <TableRow>
+                                    <TableCell
+                                        colSpan={columns.length}
+                                        className="h-16 text-center text-xs"
+                                    >
+                                        No results.
+                                    </TableCell>
+                                </TableRow>
+                            )}
+                        </TableBody>
+                    </Table>
+                </div>
                 <ScrollBar orientation="horizontal" />
             </ScrollArea>
             <div className="flex items-center justify-between space-x-2 py-4">
