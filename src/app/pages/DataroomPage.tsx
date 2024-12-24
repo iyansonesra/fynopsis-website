@@ -15,12 +15,17 @@ import { Sun, Moon, Clipboard } from "lucide-react";
 import { fetchUserAttributes, FetchUserAttributesOutput } from 'aws-amplify/auth';
 import { CircularProgress } from "@mui/material";
 import React, {  useRef } from 'react';
-import { useRouter } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import { Library, Users, TrendingUp, LucideIcon, LogOut } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import AdvancedSearch from "@/components/Analytics";
 import Files from "@/components/Files";
 import SimpliFill from "@/components/SimpliFill/SimpliFill";
+import { Share } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { post } from 'aws-amplify/api';
 
 export default function Home() {
   const [selectedTab, setSelectedTab] = useState("Library");
@@ -30,6 +35,11 @@ export default function Home() {
   const [activeTab, setActiveTab] = useState<number | null>(null);
   const [indicatorStyle, setIndicatorStyle] = useState<IndicatorStyle>({} as IndicatorStyle);
   const tabRefs = useRef<(HTMLDivElement | null)[]>([]);
+  const [isShareDialogOpen, setIsShareDialogOpen] = useState(false);
+  const [userEmail, setUserEmail] = useState('');
+  const [permissionLevel, setPermissionLevel] = useState('READ');
+  const params = useParams();
+  const dataroomId = params.id;
 
   const tabs: Tab[] = [
       { icon: Library, label: 'Library' },
@@ -84,6 +94,39 @@ export default function Home() {
     }
   }
 
+  const handleShareDataroom = async () => {
+    if (userEmail.trim()) {
+      try {
+        const restOperation = post({
+          apiName: 'S3_API', 
+          path: `/share-folder/${dataroomId}/invite-user`,
+          options: {
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: {
+              userEmail: userEmail.trim(),
+              permissionLevel: permissionLevel
+            },
+            withCredentials: true
+          },
+        });
+  
+        const { body } = await restOperation.response;
+        const responseText = await body.text();
+        const response = JSON.parse(responseText);
+        console.log('Share response:', response);
+        
+        setIsShareDialogOpen(false);
+        setUserEmail('');
+        // Show success toast/message
+      } catch (error) {
+        console.error('Error sharing dataroom:', error);
+        // Show error toast/message
+      }
+    }
+  };
+
   useEffect(() => {
     if (isDarkMode) {
       document.documentElement.classList.add('dark');
@@ -118,6 +161,41 @@ export default function Home() {
               ))}
             </div>
           </div>
+
+          <Button onClick={() => setIsShareDialogOpen(true)}>
+            <Share className="mr-2 h-4 w-4" /> Share Dataroom
+          </Button>
+
+          <Dialog open={isShareDialogOpen} onOpenChange={setIsShareDialogOpen}>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Share Dataroom</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4 py-4">
+                <Input
+                  value={userEmail}
+                  onChange={(e) => setUserEmail(e.target.value)}
+                  placeholder="Enter user email"
+                  type="email"
+                />
+                <select 
+                  value={permissionLevel}
+                  onChange={(e) => setPermissionLevel(e.target.value)}
+                  className="w-full p-2 border rounded"
+                >
+                  <option value="READ">Read</option>
+                  <option value="WRITE">Write</option>
+                  <option value="ADMIN">Admin</option>
+                </select>
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setIsShareDialogOpen(false)}>
+                  Cancel
+                </Button>
+                <Button onClick={handleShareDataroom}>Share</Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
 
           <Popover>
             <PopoverTrigger className='bg-sky-600 h-10 aspect-square rounded-full'></PopoverTrigger>

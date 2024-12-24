@@ -99,7 +99,7 @@ export default function GeneralDashboard() {
                 console.log(responseMain);
                 
                 const newDataroom = {
-                    id: dataRooms.length + 1, 
+                    id: responseMain.uuid, // Use UUID from API response
                     title: newDataroomName.trim(),
                     lastOpened: new Date().toLocaleString('en-US', {
                         year: 'numeric',
