@@ -48,6 +48,7 @@ export default function GeneralDashboard() {
     const [activeTab, setActiveTab] = useState<number | null>(null);
     const [indicatorStyle, setIndicatorStyle] = useState<IndicatorStyle>({} as IndicatorStyle);
     const tabRefs = useRef<(HTMLDivElement | null)[]>([]);
+    const [invitedDatarooms, setInvitedDatarooms] = useState<any[]>([]);
 
     const tabs: Tab[] = [
         { icon: DoorOpen, label: 'Rooms' },
@@ -154,7 +155,75 @@ export default function GeneralDashboard() {
             console.log("error");
         }
     }
+    
 
+    // const fetchInvitedDatarooms = async () => {
+    //     try {
+    //         const restOperation = get({
+    //             apiName: 'S3_API',
+    //             path: '/get-invited-datarooms',
+    //             options: {
+    //                 withCredentials: true
+    //             }
+    //         });
+
+    //         const { body } = await restOperation.response;
+    //         const responseText = await body.text();
+    //         const response = JSON.parse(responseText);
+    //         setInvitedDatarooms(response.invitedDatarooms || []);
+    //     } catch (error) {
+    //         console.error('Error fetching invited datarooms:', error);
+    //     }
+    // };
+
+    const handleAcceptInvite = async (bucketId: string) => {
+        try {
+            const restOperation = post({
+                apiName: 'S3_API',
+                path: `/share-folder/${bucketId}/accept-invite`,
+                options: {
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    withCredentials: true
+                },
+            });
+
+            await restOperation.response;
+            // Remove from invited list and refresh datarooms
+            setInvitedDatarooms(invitedDatarooms.filter(room => room.bucketId !== bucketId));
+            handleFetchDataRooms();
+        } catch (error) {
+            console.error('Error accepting invite:', error);
+        }
+    };
+
+    const handleDeclineInvite = async (bucketId: string) => {
+        try {
+            const restOperation = post({
+                apiName: 'S3_API',
+                path: `/share-folder/${bucketId}/decline-invite`,
+                options: {
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    withCredentials: true
+                },
+            });
+
+            await restOperation.response;
+            // Remove from invited list
+            setInvitedDatarooms(invitedDatarooms.filter(room => room.bucketId !== bucketId));
+        } catch (error) {
+            console.error('Error declining invite:', error);
+        }
+    };
+
+    // useEffect(() => {
+    //     if (user) {
+    //         fetchInvitedDatarooms();
+    //     }
+    // }, [user]);
     const handleFetchDataRooms = async () => {
         try {
             const { credentials } = await fetchAuthSession();
@@ -178,11 +247,12 @@ export default function GeneralDashboard() {
             const response = JSON.parse(responseText);
             const buckets = response.listedBuckets.bucketList;
             const uuids = response.listedUuids.uuidList;
+            const invitedBuckets = response.invitedBuckets?.invitedList || {};
     
             // Map the buckets to the dataRooms format
             const newDataRooms = buckets.map((bucketName: string, index: number) => ({
-                id: uuids[index], // Use the UUID from the response
-                title: bucketName, // Use the bucket name as the title
+                id: uuids[index],
+                title: bucketName,
                 lastOpened: new Date().toLocaleString('en-US', {
                     year: 'numeric',
                     month: 'short', 
@@ -190,18 +260,27 @@ export default function GeneralDashboard() {
                     hour: 'numeric',
                     minute: '2-digit'
                 }),
-                createdAt: new Date().toISOString(), // Use current date since we don't have creation date
-                userId: user?.userId, // Use current user's ID
+                createdAt: new Date().toISOString(),
+                userId: user?.userId,
                 fullBucketName: bucketName
             }));
     
-            // Update the dataRooms state
+            // Map the invited buckets to the invitedDatarooms format
+            const newInvitedDatarooms = Object.entries(invitedBuckets).map(([bucketId, details]: [string, any]) => ({
+                bucketId,
+                bucketName: details.bucketName,
+                sharedBy: details.sharedBy,
+                permissionLevel: details.permissionLevel
+            }));
+    
+            // Update both states
             setDataRooms(newDataRooms);
+            setInvitedDatarooms(newInvitedDatarooms);
     
         } catch (error) {
             console.error('Error fetching buckets:', error);
         }
-    }
+    };
 
 
     useEffect(() => {
@@ -218,7 +297,6 @@ export default function GeneralDashboard() {
             document.documentElement.classList.remove('dark');
         }
     }, [isDarkMode]);
-
     return (
         userAttributes ?
             <div className="relative h-screen w-full flex flex-row sans-serif">
@@ -235,7 +313,7 @@ export default function GeneralDashboard() {
                             {tabs.map((tab, index) => (
                                 <div
                                     key={tab.label}
-                                    ref={(el) => (tabRefs.current[index] = el)}
+                                    ref={(el) => { tabRefs.current[index] = el }}
                                     className={`relative z-10 p-2 mb-4 cursor-pointer ${activeTab === index ? 'text-slate-900' : 'text-white'
                                         }`}
                                     onClick={() => handleTabClick(index)}
@@ -301,6 +379,42 @@ export default function GeneralDashboard() {
                     <div className="flex-1 px-4 py-4">
                         <h1 className="font-semibold text-xl">Recent Activity</h1>
                        
+                    </div>
+                    <div className="w-64 border-l border-gray-200 p-4 overflow-y-auto">
+                        <h2 className="font-semibold text-lg mb-4">Pending Invites</h2>
+                        {invitedDatarooms.length > 0 ? (
+                            invitedDatarooms.map((room) => (
+                                <div 
+                                    key={room.bucketId} 
+                                    className="bg-white rounded-lg shadow p-4 mb-3 border border-gray-100"
+                                >
+                                    <h3 className="font-medium text-sm">{room.bucketName}</h3>
+                                    <p className="text-xs text-gray-500 mt-1">
+                                        Shared by: {room.sharedBy}
+                                    </p>
+                                    <div className="flex gap-2 mt-3">
+                                        <button
+                                            onClick={() => handleAcceptInvite(room.bucketId)}
+                                            className="flex items-center justify-center p-1 rounded-full bg-green-100 text-green-600 hover:bg-green-200 transition-colors"
+                                        >
+                                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                                                <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                                            </svg>
+                                        </button>
+                                        <button
+                                            onClick={() => handleDeclineInvite(room.bucketId)}
+                                            className="flex items-center justify-center p-1 rounded-full bg-red-100 text-red-600 hover:bg-red-200 transition-colors"
+                                        >
+                                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                                                <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+                                            </svg>
+                                        </button>
+                                    </div>
+                                </div>
+                            ))
+                        ) : (
+                            <p className="text-sm text-gray-500">No pending invites</p>
+                        )}
                     </div>
                 </div>
             </div > :
