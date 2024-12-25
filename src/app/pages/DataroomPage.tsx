@@ -14,18 +14,18 @@ import { useAuthenticator } from '@aws-amplify/ui-react';
 import { Sun, Moon, Clipboard } from "lucide-react";
 import { fetchUserAttributes, FetchUserAttributesOutput } from 'aws-amplify/auth';
 import { CircularProgress } from "@mui/material";
-import React, {  useRef } from 'react';
+import React, { useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { Library, Users, TrendingUp, LucideIcon, LogOut } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import AdvancedSearch from "@/components/Analytics";
 import Files from "@/components/Files";
 import SimpliFill from "@/components/SimpliFill/SimpliFill";
-import { Share } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { post } from 'aws-amplify/api';
+import { Share } from "lucide-react";
 
 export default function Home() {
   const [selectedTab, setSelectedTab] = useState("Library");
@@ -42,29 +42,29 @@ export default function Home() {
   const dataroomId = params.id;
 
   const tabs: Tab[] = [
-      { icon: Library, label: 'Library' },
-      { icon: Clipboard, label: 'Form' },
+    { icon: Library, label: 'Library' },
+    { icon: Clipboard, label: 'Form' },
   ];
 
   function signIn(): void {
-      router.push('/signin');
+    router.push('/signin');
   }
-  
+
   function handleTabClick(index: number): void {
     setActiveTab(index);
     setSelectedTab(tabs[index].label.toLowerCase());
   }
 
   useEffect(() => {
-      if (activeTab !== null && tabRefs.current[activeTab]) {
-          const tabElement = tabRefs.current[activeTab];
-          if (tabElement) {
-              setIndicatorStyle({
-                  top: `${tabElement.offsetTop}px`,
-                  height: `${tabElement.offsetHeight}px`,
-              });
-          }
+    if (activeTab !== null && tabRefs.current[activeTab]) {
+      const tabElement = tabRefs.current[activeTab];
+      if (tabElement) {
+        setIndicatorStyle({
+          top: `${tabElement.offsetTop}px`,
+          height: `${tabElement.offsetHeight}px`,
+        });
       }
+    }
   }, [activeTab]);
 
   const [isDarkMode, setIsDarkMode] = useState(false);
@@ -98,7 +98,7 @@ export default function Home() {
     if (userEmail.trim()) {
       try {
         const restOperation = post({
-          apiName: 'S3_API', 
+          apiName: 'S3_API',
           path: `/share-folder/${dataroomId}/invite-user`,
           options: {
             headers: {
@@ -111,12 +111,12 @@ export default function Home() {
             withCredentials: true
           },
         });
-  
+
         const { body } = await restOperation.response;
         const responseText = await body.text();
         const response = JSON.parse(responseText);
         console.log('Share response:', response);
-        
+
         setIsShareDialogOpen(false);
         setUserEmail('');
         // Show success toast/message
@@ -139,9 +139,9 @@ export default function Home() {
     userAttributes ?
       <div className="relative h-screen w-full flex flex-row sans-serif">
         <div className="w-20 bg-slate-900 h-full flex flex-col items-center justify-between pt-4 pb-6">
-          <div className="">
+          <div className="flex items-center flex-col">
             <img src={logo.src} alt="logo" className="h-14 w-auto mb-8" />
-            <div className="relative flex flex-col items-center">
+            <div className="relative flex flex-col items-center ">
               {activeTab !== null && (
                 <div
                   className="absolute left-0 w-full bg-blue-300 rounded-xl transition-all duration-300 ease-in-out"
@@ -160,11 +160,10 @@ export default function Home() {
                 </div>
               ))}
             </div>
+
           </div>
 
-          <Button onClick={() => setIsShareDialogOpen(true)}>
-            <Share className="mr-2 h-4 w-4" /> Share Dataroom
-          </Button>
+
 
           <Dialog open={isShareDialogOpen} onOpenChange={setIsShareDialogOpen}>
             <DialogContent>
@@ -178,7 +177,7 @@ export default function Home() {
                   placeholder="Enter user email"
                   type="email"
                 />
-                <select 
+                <select
                   value={permissionLevel}
                   onChange={(e) => setPermissionLevel(e.target.value)}
                   className="w-full p-2 border rounded"
@@ -196,19 +195,24 @@ export default function Home() {
               </DialogFooter>
             </DialogContent>
           </Dialog>
+          <div className="flex items-center flex-col gap-3">
+            <Button onClick={() => setIsShareDialogOpen(true)} className="flex justify-center items-center">
+              <Share size={24} />
+            </Button>
+            <Popover>
+              <PopoverTrigger className='bg-sky-600 h-10 aspect-square rounded-full'></PopoverTrigger>
+              <PopoverContent className="w-auto p-0">
+                <button
+                  onClick={signOut}
+                  className="flex items-center space-x-2 px-4 py-2 text-red-500 hover:bg-gray-100 w-full"
+                >
+                  <LogOut size={18} />
+                  <span>Logout</span>
+                </button>
+              </PopoverContent>
+            </Popover>
+          </div>
 
-          <Popover>
-            <PopoverTrigger className='bg-sky-600 h-10 aspect-square rounded-full'></PopoverTrigger>
-            <PopoverContent className="w-auto p-0">
-              <button
-                onClick={signOut}
-                className="flex items-center space-x-2 px-4 py-2 text-red-500 hover:bg-gray-100 w-full"
-              >
-                <LogOut size={18} />
-                <span>Logout</span>
-              </button>
-            </PopoverContent>
-          </Popover>
         </div>
 
         <div className="flex-1 overflow-hidden">

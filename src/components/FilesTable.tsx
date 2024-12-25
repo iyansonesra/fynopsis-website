@@ -172,6 +172,14 @@ const deleteS3Object = async (s3Key: string, bucketUuid: string) => {
     }
 };
 
+function truncateString(str: string) {
+    if(str.length > 20) {
+        return str.substring(0, 20) + '...';
+    }
+
+    return str;
+}
+
 
 const TagDisplay = ({ tags }: { tags: string[] }) => {
     const tagColors = [
@@ -229,7 +237,7 @@ export const columns: ColumnDef<Payment>[] = [
     {
         accessorKey: "name",
         header: "Name",
-        cell: ({ row }) => <div>{row.getValue("name")}</div>,
+        cell: ({ row }) => <div>{truncateString(row.getValue("name"))}</div>,
         enableResizing: true,
         size: 200,
     },
@@ -295,6 +303,7 @@ export function DataTableDemo({ onFileSelect }: DataTableDemoProps) {
             console.log("The s3 key is:", payment.s3Key);
             try {
                 // const url = await getPresignedUrl(payment.s3Key);
+                console.log('bucketuid:' + bucketUuid);
                 const downloadResponse = await get({
                     apiName: 'S3_API', 
                     path: `/s3/${bucketUuid}/download-url`,
@@ -417,7 +426,6 @@ export function DataTableDemo({ onFileSelect }: DataTableDemoProps) {
         onSortingChange: setSorting,
         onColumnFiltersChange: setColumnFilters,
         getCoreRowModel: getCoreRowModel(),
-        getPaginationRowModel: getPaginationRowModel(),
         getSortedRowModel: getSortedRowModel(),
         getFilteredRowModel: getFilteredRowModel(),
         onColumnVisibilityChange: setColumnVisibility,
@@ -622,7 +630,7 @@ export function DataTableDemo({ onFileSelect }: DataTableDemoProps) {
     };
 
     return (
-        <div className="select-none w-full py-4 px-6 h-full">
+        <div className="select-none w-full py-4 h-full">
             <style jsx>{`
                 .resizer {
                     position: absolute;
@@ -666,7 +674,7 @@ export function DataTableDemo({ onFileSelect }: DataTableDemoProps) {
                     white-space: nowrap;
                 }
             `}</style>
-            <div className="flex items-center py-4">
+            <div className="flex items-center py-4 h-[10%] px-6">
                 <div className="buttons flex flex-row gap-2">
                     <button
                         className="flex items-center gap-2 bg-blue-500 text-white px-4 py-1 rounded-full hover:bg-blue-700"
@@ -708,7 +716,7 @@ export function DataTableDemo({ onFileSelect }: DataTableDemoProps) {
             </div>
 
 
-            <ScrollArea className="w-full whitespace-nowrap rounded-md">
+            <ScrollArea className="w-full whitespace-nowrap rounded-md p-4 h-[90%]">
                 <div className="overflow-x-auto">
                     <Table>
                         <TableHeader>
@@ -786,34 +794,7 @@ export function DataTableDemo({ onFileSelect }: DataTableDemoProps) {
                 </div>
                 <ScrollBar orientation="horizontal" />
             </ScrollArea>
-            <div className="flex items-center justify-between space-x-2 py-4">
-                <div className="flex-1 text-sm text-muted-foreground">
-                    {table.getFilteredSelectedRowModel().rows.length} of{" "}
-                    {table.getFilteredRowModel().rows.length} row(s) selected.
-                </div>
-                <div className="space-x-2 flex items-center">
-                    <span className="text-sm text-muted-foreground">
-                        Page {table.getState().pagination.pageIndex + 1} of{" "}
-                        {table.getPageCount()}
-                    </span>
-                    <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => table.previousPage()}
-                        disabled={!table.getCanPreviousPage()}
-                    >
-                        Previous
-                    </Button>
-                    <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => table.nextPage()}
-                        disabled={!table.getCanNextPage()}
-                    >
-                        Next
-                    </Button>
-                </div>
-            </div>
+         
 
             {showUploadOverlay && (
                 <DragDropOverlay

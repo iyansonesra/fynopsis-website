@@ -39,8 +39,8 @@ const getUserPrefix = async () => {
     }
 };
 
-const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView, 
-    setShowDetailsView, 
+const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
+    setShowDetailsView,
     selectedFile,
     onFileSelect }) => {
     const [userSearch, setUserSearch] = useState('');
@@ -56,50 +56,50 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
 
 
 
-    
-const getS3Client = async () => {
-    try {
-        const { credentials } = await fetchAuthSession();
 
-        if (!credentials) {
-            throw new Error('No credentials available');
-        }
+    const getS3Client = async () => {
+        try {
+            const { credentials } = await fetchAuthSession();
 
-        return new S3Client({
-            region: REGION,
-            credentials: {
-                accessKeyId: credentials.accessKeyId,
-                secretAccessKey: credentials.secretAccessKey,
-                sessionToken: credentials.sessionToken
+            if (!credentials) {
+                throw new Error('No credentials available');
             }
-        });
-    } catch (error) {
-        console.error('Error getting credentials:', error);
-        throw error;
-    }
-};
+
+            return new S3Client({
+                region: REGION,
+                credentials: {
+                    accessKeyId: credentials.accessKeyId,
+                    secretAccessKey: credentials.secretAccessKey,
+                    sessionToken: credentials.sessionToken
+                }
+            });
+        } catch (error) {
+            console.error('Error getting credentials:', error);
+            throw error;
+        }
+    };
 
 
     const getPresignedUrl = async (s3Key: string) => {
         try {
-    
+
             console.log("Waiting on s3 client");
-    
+
             const s3Client = await getS3Client();
-    
+
             console.log("Got the s3 client");
             const command = new GetObjectCommand({
                 Bucket: S3_BUCKET_NAME,
                 Key: s3Key
             });
-    
+
             return await getSignedUrl(s3Client, command, { expiresIn: 3600 });
         } catch (error) {
             console.error('Error generating signed URL:', error);
             throw error;
         }
     };
-    
+
 
     const handleOpenSource = async (sourceKey: string, sourceName: string) => {
         try {
@@ -129,7 +129,7 @@ const getS3Client = async () => {
                 descriptions: Array.isArray(descriptions) ? descriptions : undefined
             };
         }
-        
+
         // Fallback for simple string source
         if (typeof source === 'string') {
             return {
@@ -137,10 +137,10 @@ const getS3Client = async () => {
                 name: source.split('/').pop() || 'document'
             };
         }
-        
+
         return null;
     };
-    
+
     const renderSourceButton = (source: any) => {
         const sourceInfo = extractSourceInfo(source);
         if (!sourceInfo) return null;
@@ -160,7 +160,7 @@ const getS3Client = async () => {
             </Button>
         );
     };
-    
+
 
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         setUserSearch(e.target.value);
@@ -183,7 +183,7 @@ const getS3Client = async () => {
                 thread_id: ''
             });
             const bucketUuid = window.location.pathname.split('/').pop() || '';
-            
+
             // Function to create WebSocket connection with retry
             const createWebSocketConnection = async (retries = 2): Promise<WebSocket> => {
                 for (let i = 0; i < retries; i++) {
@@ -253,16 +253,16 @@ const getS3Client = async () => {
         } catch (err) {
             console.error('Error querying collection:', err);
             setError('Failed to fetch search results. Please try again.');
-        } 
+        }
         // finally {
         //     setIsLoading(false);
         // }
     };
 
-    
 
-   
-    
+
+
+
     const renderSearchResults = () => {
         if (error) {
             return (
@@ -286,7 +286,7 @@ const getS3Client = async () => {
                                 {searchResult?.response || ''}
                             </ReactMarkdown>
                             {/* <p className="text-slate-700">{searchResult?.response}</p> */}
-                            
+
                             {searchResult?.sources && Object.keys(searchResult.sources).length > 0 && (
                                 <div className="mt-4">
                                     <h4 className="text-sm font-semibold text-slate-600">Sources:</h4>
@@ -294,7 +294,7 @@ const getS3Client = async () => {
                                         {Object.entries(searchResult.sources).map(([key, value]) => {
                                             const sourceInfo = extractSourceInfo({ [key]: value });
                                             if (!sourceInfo) return null;
-                                            
+
                                             return (
                                                 <div key={key} className="mb-4 p-3 border rounded-lg">
                                                     <div className="font-medium mb-2">{sourceInfo.name}</div>
@@ -382,7 +382,7 @@ const getS3Client = async () => {
     const renderFileDetails = () => (
         <>
             <div className="flex justify-between items-center mb-4">
-                <h2 className="text-xl font-semibold">File Details</h2>
+                <h2 className="text-lg font-semibold">File Details</h2>
                 <Button
                     variant="outline"
                     onClick={() => setShowDetailsView(false)}
@@ -392,13 +392,16 @@ const getS3Client = async () => {
             </div>
             {selectedFile && (
                 <>
-                    <p><strong>Name:</strong> {selectedFile.name}</p>
-                    <p><strong>Type:</strong> {selectedFile.type}</p>
-                    <p><strong>Size:</strong> {selectedFile.size}</p>
-                    <p><strong>Uploaded By:</strong> {selectedFile.uploadedBy}</p>
-                    <p><strong>Date:</strong> {selectedFile.date}</p>
-                    <p><strong>Detailed Summary:</strong> {selectedFile.documentSummary}</p>
-                    {/* Add more details as needed */}
+                    <div className = "text-sm">
+                        <p><strong>Name:</strong> {selectedFile.name}</p>
+                        <p><strong>Type:</strong> {selectedFile.type}</p>
+                        <p><strong>Size:</strong> {selectedFile.size}</p>
+                        <p><strong>Uploaded By:</strong> {selectedFile.uploadedBy}</p>
+                        <p><strong>Date:</strong> {selectedFile.date}</p>
+                        <p><strong>Detailed Summary:</strong> {selectedFile.documentSummary}</p>
+                        {/* Add more details as needed */}
+                    </div>
+
                 </>
 
 

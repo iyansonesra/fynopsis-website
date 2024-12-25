@@ -28,6 +28,13 @@ const TabSystem: React.FC<TabSystemProps> = ({ tabs, activeTabId, setActiveTabId
     setTabs(newTabs);
   };
 
+  function truncateString(str: string) {
+    if (str.length > 20) {
+        return str.slice(0, 17) + '...';
+    }
+    return str;
+}
+
   const closeTab = (tabId: string) => {
     const newTabs = tabs.filter(tab => tab.id !== tabId);
     setTabs(newTabs);
@@ -87,8 +94,9 @@ const TabSystem: React.FC<TabSystemProps> = ({ tabs, activeTabId, setActiveTabId
                         }`}
                         onClick={() => setActiveTabId(tab.id)}
                       >
-                        <span className="mr-2">{tab.title}</span>
-                        <button
+                        <span className="mr-2">{truncateString(tab.title)}</span>
+                        {tab.title == "All Files" ? 
+                         null : <button
                           onClick={(e) => {
                             e.stopPropagation();
                             closeTab(tab.id);
@@ -97,6 +105,8 @@ const TabSystem: React.FC<TabSystemProps> = ({ tabs, activeTabId, setActiveTabId
                         >
                           <X size={16} />
                         </button>
+                        }
+                       
                       </div>
                     )}
                   </Draggable>
