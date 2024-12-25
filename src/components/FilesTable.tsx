@@ -927,7 +927,7 @@ export function DataTableDemo({ onFileSelect }: DataTableDemoProps) {
         onNavigate={handleBreadcrumbNavigate}
       />
     </div>
-            <ScrollArea className="w-full whitespace-nowrap rounded-md p-4 h-[90%]">
+            <ScrollArea className="w-full whitespace-nowrap rounded-md p-4 h-[85%]">
                 <div className="overflow-x-auto">
                     <Table>
                         <TableHeader>

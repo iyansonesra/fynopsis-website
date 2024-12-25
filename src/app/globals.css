@@ -37,7 +37,18 @@
     --font-cormorant: var(--font-cormorant), serif;
     --font-poppins: var(--font-poppins), sans-serif;
     --font-inter: var(--font-inter), sans-serif;
+    --toolbar-bg-color: white;
+
   }
+
+  .pdfemb-toolbar {
+    background-color: white !important;
+  }
+
+  viewer-toolbar {
+    background-color: white !important;
+  }
+  
   
   body {
     font-family: var(--font-montserrat);
