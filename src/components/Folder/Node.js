@@ -7,6 +7,13 @@ const Node = ({ node, style, dragHandle, tree }) => {
   const CustomIcon = node.data.icon;
   const iconColor = node.data.iconColor;
 
+  const handleDelete = async () => {
+    if (window.confirm(`Are you sure you want to delete ${node.data.name}?`)) {
+      const key = node.data.isFolder ? `${node.id}/` : node.id;
+      await tree.props.onDelete(key);
+    }
+  };
+
   return (
     <div
       className={`node-container flex-row ${node.state.isSelected ? "isSelected" : ""}`}
@@ -66,7 +73,7 @@ const Node = ({ node, style, dragHandle, tree }) => {
           <button onClick={() => node.edit()} title="Rename...">
             <MdEdit />
           </button>
-          <button onClick={() => tree.delete(node.id)} title="Delete">
+          <button onClick={handleDelete} title="Delete">
             <RxCross2 />
           </button>
         </div>
