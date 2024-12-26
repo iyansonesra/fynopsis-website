@@ -332,7 +332,7 @@ export function DataTableDemo({ onFileSelect }: DataTableDemoProps) {
                   className="hover:text-blue-500 cursor-pointer"
                   onClick={() => onNavigate(index)}
                 >
-                  {path}
+                  {truncateString(path, 17)}
                 </span>
               </React.Fragment>
             ))}
@@ -437,7 +437,7 @@ export function DataTableDemo({ onFileSelect }: DataTableDemoProps) {
       };
       
       
-      
+     
 
     const handleRowDoubleClick = async (payment: Payment) => {
         if (payment.isFolder) {
@@ -979,7 +979,7 @@ export function DataTableDemo({ onFileSelect }: DataTableDemoProps) {
                                         {row.getVisibleCells().map((cell) => (
                                             <TableCell
                                                 key={cell.id}
-                                                className="text-xs py-3"
+                                                className="text-xs py-1"
                                                 style={{ width: cell.column.getSize() }}
                                             >
                                                 {flexRender(

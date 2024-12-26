@@ -26,13 +26,14 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "
 import { Input } from "@/components/ui/input";
 import { post } from 'aws-amplify/api';
 import { Share } from "lucide-react";
+import UserManagement from "@/components/Collaborators";
 
 export default function Home() {
   const [selectedTab, setSelectedTab] = useState("Library");
   const { user, signOut } = useAuthenticator((context) => [context.user]);
   const [userAttributes, setUserAttributes] = useState<FetchUserAttributesOutput | null>(null);
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState<number | null>(null);
+  const [activeTab, setActiveTab] = useState<number>(0);
   const [indicatorStyle, setIndicatorStyle] = useState<IndicatorStyle>({} as IndicatorStyle);
   const tabRefs = useRef<(HTMLDivElement | null)[]>([]);
   const [isShareDialogOpen, setIsShareDialogOpen] = useState(false);
@@ -44,15 +45,23 @@ export default function Home() {
   const tabs: Tab[] = [
     { icon: Library, label: 'Library' },
     { icon: Clipboard, label: 'Form' },
+    { icon: Users, label: 'Users' },
   ];
 
   function signIn(): void {
     router.push('/signin');
   }
-
   function handleTabClick(index: number): void {
     setActiveTab(index);
-    setSelectedTab(tabs[index].label.toLowerCase());
+    setSelectedTab(tabs[index].label);
+
+    // Update indicator style
+    if (tabRefs.current[index]) {
+      setIndicatorStyle({
+        top: `${tabRefs.current[index].offsetTop}px`,
+        height: `${tabRefs.current[index].offsetHeight}px`,
+      });
+    }
   }
 
   useEffect(() => {
@@ -66,6 +75,16 @@ export default function Home() {
       }
     }
   }, [activeTab]);
+
+  useEffect(() => {
+    if (tabRefs.current[0]) {
+      setIndicatorStyle({
+        top: `${tabRefs.current[0].offsetTop}px`,
+        height: `${tabRefs.current[0].offsetHeight}px`,
+      });
+    }
+  }, []); // This will set the initial indicator style for Library tab
+
 
   const [isDarkMode, setIsDarkMode] = useState(false);
 
@@ -83,16 +102,18 @@ export default function Home() {
       console.log("error");
     }
   }
-
   const renderSelectedScreen = () => {
-    switch (selectedTab) {
-      // case "library":/
+    switch (selectedTab.toLowerCase()) {
+      case "library":
+        return <Files setSelectedTab={setSelectedTab} />;
+      case "form":
+        return <Files setSelectedTab={setSelectedTab} />;
+      case "users":
+        return <UserManagement/>;
       default:
-        return <Files setSelectedTab={setSelectedTab} />
-      // case "form":
-      //   return <SimpliFill/>
+        return <Files setSelectedTab={setSelectedTab} />;
     }
-  }
+  };
 
   const handleShareDataroom = async () => {
     if (userEmail.trim()) {
@@ -141,13 +162,12 @@ export default function Home() {
         <div className="w-20 bg-slate-900 h-full flex flex-col items-center justify-between pt-4 pb-6">
           <div className="flex items-center flex-col">
             <img src={logo.src} alt="logo" className="h-14 w-auto mb-8" />
-            <div className="relative flex flex-col items-center ">
-              {activeTab !== null && (
-                <div
-                  className="absolute left-0 w-full bg-blue-300 rounded-xl transition-all duration-300 ease-in-out"
-                  style={indicatorStyle}
-                />
-              )}
+            <div className="relative flex flex-col items-center">
+              {/* Remove the activeTab !== null check */}
+              <div
+                className="absolute left-0 w-full bg-blue-300 rounded-xl transition-all duration-300 ease-in-out"
+                style={indicatorStyle}
+              />
               {tabs.map((tab, index) => (
                 <div
                   key={tab.label}

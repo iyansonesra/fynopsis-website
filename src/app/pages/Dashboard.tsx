@@ -20,14 +20,16 @@ import { fetchUserAttributes, FetchUserAttributesOutput } from 'aws-amplify/auth
 import { CircularProgress } from "@mui/material";
 import React, { useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import {  LogOut, DoorOpen, Clipboard } from 'lucide-react';
+import { LogOut, DoorOpen, Clipboard } from 'lucide-react';
 import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/hover-card';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import DataRoomCard from "@/components/DataRoomCard";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { post, get } from 'aws-amplify/api';
+import { post, get, del } from 'aws-amplify/api';
 import { fetchAuthSession } from 'aws-amplify/auth';
+
+
 
 
 type Tab = {
@@ -49,6 +51,9 @@ export default function GeneralDashboard() {
     const [indicatorStyle, setIndicatorStyle] = useState<IndicatorStyle>({} as IndicatorStyle);
     const tabRefs = useRef<(HTMLDivElement | null)[]>([]);
     const [invitedDatarooms, setInvitedDatarooms] = useState<any[]>([]);
+    const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+    const [isLeaveDialogOpen, setIsLeaveDialogOpen] = useState(false);
+    const [selectedDataroom, setSelectedDataroom] = useState<string | null>(null);
 
     const tabs: Tab[] = [
         { icon: DoorOpen, label: 'Rooms' },
@@ -93,12 +98,12 @@ export default function GeneralDashboard() {
                         withCredentials: true
                     },
                 });
-    
+
                 const { body } = await restOperation.response;
                 const responseText = await body.text();
                 const responseMain = JSON.parse(responseText);
                 console.log(responseMain);
-                
+
                 const newDataroom = {
                     id: responseMain.uuid, // Use UUID from API response
                     title: newDataroomName.trim(),
@@ -155,7 +160,7 @@ export default function GeneralDashboard() {
             console.log("error");
         }
     }
-    
+
 
     // const fetchInvitedDatarooms = async () => {
     //     try {
@@ -219,18 +224,14 @@ export default function GeneralDashboard() {
         }
     };
 
-    // useEffect(() => {
-    //     if (user) {
-    //         fetchInvitedDatarooms();
-    //     }
-    // }, [user]);
+
     const handleFetchDataRooms = async () => {
         try {
             const { credentials } = await fetchAuthSession();
             if (!credentials) {
                 throw new Error('User is not authenticated');
             }
-    
+
             const restOperation = get({
                 apiName: 'S3_API',
                 path: '/get-data-rooms',
@@ -238,24 +239,24 @@ export default function GeneralDashboard() {
                     withCredentials: true
                 }
             });
-    
+
             const { body } = await restOperation.response;
             const responseText = await body.text();
             console.log(responseText);
-    
+
             // Parse the response text to JSON
             const response = JSON.parse(responseText);
             const buckets = response.listedBuckets.bucketList;
             const uuids = response.listedUuids.uuidList;
             const invitedBuckets = response.invitedBuckets?.invitedList || {};
-    
+
             // Map the buckets to the dataRooms format
             const newDataRooms = buckets.map((bucketName: string, index: number) => ({
                 id: uuids[index],
                 title: bucketName,
                 lastOpened: new Date().toLocaleString('en-US', {
                     year: 'numeric',
-                    month: 'short', 
+                    month: 'short',
                     day: 'numeric',
                     hour: 'numeric',
                     minute: '2-digit'
@@ -264,7 +265,7 @@ export default function GeneralDashboard() {
                 userId: user?.userId,
                 fullBucketName: bucketName
             }));
-    
+
             // Map the invited buckets to the invitedDatarooms format
             const newInvitedDatarooms = Object.entries(invitedBuckets).map(([bucketId, details]: [string, any]) => ({
                 bucketId,
@@ -272,13 +273,65 @@ export default function GeneralDashboard() {
                 sharedBy: details.sharedBy,
                 permissionLevel: details.permissionLevel
             }));
-    
+
             // Update both states
             setDataRooms(newDataRooms);
             setInvitedDatarooms(newInvitedDatarooms);
-    
+
         } catch (error) {
             console.error('Error fetching buckets:', error);
+        }
+    };
+
+    const handleDeleteDataroom = async (dataroomId: string) => {
+        try {
+            const restOperation = del({
+                apiName: 'S3_API',
+                path: `/s3/${dataroomId}/delete-room`,
+                options: {
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    withCredentials: true
+                },
+            });
+
+            const { body } = await restOperation.response;
+            const response = await body.text();
+            const result = JSON.parse(response);
+
+            // Remove the dataroom from state
+            setDataRooms(dataRooms.filter(room => room.id !== dataroomId));
+            setIsDeleteDialogOpen(false);
+            setSelectedDataroom(null);
+        } catch (error) {
+            console.error('Error deleting dataroom:', error);
+        }
+    };
+
+    const handleLeaveDataroom = async (dataroomId: string) => {
+        try {
+            const restOperation = post({
+                apiName: 'S3_API',
+                path: `/s3/${dataroomId}/leave-room`,
+                options: {
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    withCredentials: true
+                },
+            });
+
+            const { body } = await restOperation.response;
+            const response = await body.text();
+            const result = JSON.parse(response);
+
+            // Remove the dataroom from state
+            setDataRooms(dataRooms.filter(room => room.id !== dataroomId));
+            setIsLeaveDialogOpen(false);
+            setSelectedDataroom(null);
+        } catch (error) {
+            console.error('Error leaving dataroom:', error);
         }
     };
 
@@ -349,14 +402,17 @@ export default function GeneralDashboard() {
                             </Button>
                         </div>
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                            {dataRooms.map((room) => (
-                                <DataRoomCard
-                                    key={room.id}
-                                    title={room.title}
-                                    lastOpened={room.lastOpened}
-                                    onClick={() => handleDataRoomClick(room.id)}
-                                />
-                            ))}
+                            
+                                {dataRooms.map((room) => (
+                                    <DataRoomCard
+                                      key={room.id}
+                                      id={room.id}
+                                      title={room.title}
+                                      lastOpened={room.lastOpened}
+                                      onClick={() => handleDataRoomClick(room.id)}
+                                    />
+                                  ))}
+                            
                         </div>
 
                         <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
@@ -378,14 +434,14 @@ export default function GeneralDashboard() {
                     </div>
                     <div className="flex-1 px-4 py-4">
                         <h1 className="font-semibold text-xl">Recent Activity</h1>
-                       
+
                     </div>
                     <div className="w-64 border-l border-gray-200 p-4 overflow-y-auto">
                         <h2 className="font-semibold text-lg mb-4">Pending Invites</h2>
                         {invitedDatarooms.length > 0 ? (
                             invitedDatarooms.map((room) => (
-                                <div 
-                                    key={room.bucketId} 
+                                <div
+                                    key={room.bucketId}
                                     className="bg-white rounded-lg shadow p-4 mb-3 border border-gray-100"
                                 >
                                     <h3 className="font-medium text-sm">{room.bucketName}</h3>

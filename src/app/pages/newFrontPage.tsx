@@ -105,9 +105,9 @@ const FrontPage: React.FC = () => {
             {/* Content container */}
             <div className="relative z-10 overflow-hidden">
                 {/* Navigation bar */}
-                <div className="fixed top-0 left-0 right-0 h-16 md:h-16 xl:h-20 bg-white dark:bg-slate-900 bg-opacity-98 w-full flex items-center justify-between 2xl:px-12 xl:px-8 md:px-4 sm:px-2 select-none font-poppins z-20">
+                <div className="fixed top-0 left-0 right-0 h-16 md:h-16 xl:h-20 bg-white dark:bg-slate-900 bg-opacity-98 w-full flex items-center justify-between lg:px-12 sm:px-4 px-4 select-none font-poppins z-20">
                     <div className="flex flex-row items-center">
-                        <img src={logo.src} alt="logo" className="md:h-10 md:w-auto w-[10%] h-auto" />
+                        <img src={logo.src} alt="logo" className="sm:h-10 sm:w-auto w-[10%] h-auto" />
                         <h1 className="font-semibold text-lg sm:text-2xl md:text-2xl font-montserrat">Fynopsis</h1>
                     </div>
 
@@ -116,7 +116,8 @@ const FrontPage: React.FC = () => {
                             {/* <button className="inline-block px-6 py-2 rounded-lg font-base text-lg text-black max-sm:hidden md:flex text-center text-justify justify-center items-center font-montserrat">Book a Demo</button> */}
                         </a>
                         <button
-                            className="inline-block font-light text-md sm:text-base md:text-lg font-montserrat px-6 py-1 rounded-lg text-black"
+                            className="inline-block font-light text-md sm:text-base md:text-lg font-montserrat px-6 py-1 rounded-lg text-black no-wrap"
+                            style={{ whiteSpace: 'nowrap' }}
                             onClick={signIn}
                         >
                             Sign In
@@ -126,13 +127,13 @@ const FrontPage: React.FC = () => {
 
                 {/* Main content */}
                 <div className="flex flex-row mt-20 w-full justify-center">
-                    <FlowingLine amplitude={500} className=' absolute top-[20%] w-full' />
-                    <FlowingLine amplitude={1000} className=' absolute top-[52%] w-full rotate-180' />
-                    <FlowingLine amplitude={700} className=' absolute top-[78%] w-full rotate-140' />
+                    <FlowingLine amplitude={500} className=' absolute top-[15%] sm:top-[15%] md:top-[18%] lg:top-[20%] w-full' />
+                    <FlowingLine amplitude={600} className=' absolute top-[44%] sm:top-[46%] md:top-[49%] lg:top-[52%] w-full rotate-180' />
+                    <FlowingLine amplitude={700} className=' absolute top-[72%] sm:top[72%] md:top-[74%] lg:top-[78%] w-full rotate-140' />
 
-                    <div className="inline-block max-w-[90%]  text-center px-20 rounded-2xl flex flex-col pt-12 ">
-                        <h1 className="font-semibold font-bold text-6xl text-black">AI-powered data rooms for your team.</h1>
-                        <h1 className="font-semibold font-light text-lg text-black font-montserrat mt-4">Search and organize thousands of documents in seconds, so you can focus on what matters.</h1>
+                    <div className="inline-block max-w-[90%]  text-center px-5 sm:px-10 lg:px-20 rounded-2xl flex flex-col pt-12 ">
+                        <h1 className="font-semibold font-bold text-4xl sm:text-5xl lg:text-6xl text-black">AI-powered data rooms for your team.</h1>
+                        <h1 className="font-semibold font-light text-base sm:text-md lg:text-lg text-black font-montserrat mt-4">Search and organize thousands of documents in seconds, so you can focus on what matters.</h1>
                         <div className="flex flex-row items-center justify-center mt-8">
                             <input type="text" placeholder="Enter your email to get early access" className="w-[55%] border h-12 bg-tan-100 rounded-2xl px-4 text-slate-900 border-slate-400 text-xl outline-none" />
                             <button className="w-12 aspect-square bg-gray-700 text-white rounded-2xl ml-2 flex items-center justify-center">
@@ -166,19 +167,19 @@ const FrontPage: React.FC = () => {
 
                 </div>
 
-                <div className="flex flex-col w-full inline-block justify-center px-24 text-center mt-24">
+                <div className="flex flex-col w-full inline-block justify-center px-5 sm:px-10 lg:px-20 text-center mt-24">
 
                     <FadeInSlideUp>
                         <h1 className="font-montserrat text-2xl">About</h1>
                     </FadeInSlideUp>
 
                     <FadeInSlideUp>
-                        <h1 className="font-semibold font-bold text-5xl text-black">Cut down deal timelines with intelligent document management.</h1>
+                        <h1 className="font-semibold font-bold text-4xl sm:text-5xl lg:text-6xl text-black">Cut down deal timelines with intelligent document management.</h1>
                     </FadeInSlideUp>
 
                     <FadeInSlideUp>
-                        <div className="flex flex-row justify-center mt-12 gap-12 mb-12">
-                            <div className="flex-[3] max-w-[66%] flex flex-col  bg-white drop-shadow-xl rounded-3xl px-8 py-2">
+                        <div className="flex flex-col lg:flex-row justify-center mt-12 gap-12 mb-12">
+                            <div className="lg:flex-[3] lg:max-w-[66%] flex flex-col  bg-white drop-shadow-xl rounded-3xl px-8 py-2">
 
 
                                 <h3 className="font-bold text-3xl text-left mt-4">Understand and analyze thousands of documents in seconds</h3>
@@ -193,7 +194,7 @@ const FrontPage: React.FC = () => {
                                 />
 
                             </div>
-                            <div className="flex-[2] max-w-[33%] flex flex-col bg-white drop-shadow-xl rounded-3xl relative overflow-hidden">
+                            <div className="lg:flex-[2] lg:max-w-[33%] flex flex-col bg-white drop-shadow-xl rounded-3xl relative overflow-hidden">
 
                                 <div className="px-8 py-2 z-40">
                                     <h3 className="font-bold text-3xl mt-4 text-left">Detailed breakdowns with AI</h3>
@@ -218,13 +219,13 @@ const FrontPage: React.FC = () => {
 
                 </div>
                 <FadeInSlideUp>
-                    <div className="mt-12 w-full flex px-24 gap-4">
-                        <div className="flex-1 max-w-[50%]">
-                            <h1 className="text-left text-5xl font-semibold mb-2">Smart Document Tagging & Instant Summaries</h1>
-                            <h1 className="text-left text-xl font-montserrat">Every document is automatically categorized and condensed, turning complex files into clear, searchable insights in seconds</h1>
+                    <div className="mt-12 w-full flex flex-col justify-center items-center lg:flex-row px-5 sm:px-10 lg:px-20 gap-12 lg:gap-4">
+                        <div className="flex-1  max-w-[90%] min-w-[90%] lg:min-w-[50%] lg:max-w-[50%] flex flex-col">
+                            <h1 className="lg:text-left text-center text-4xl sm:text-5xl lg:text-6xl font-semibold mb-2">Smart Document Tagging & Instant Summaries</h1>
+                            <h1 className="lg:text-left text-center text-md sm:text-lg lg:text-xl font-montserrat">Every document is automatically categorized and condensed, turning complex files into clear, searchable insights in seconds</h1>
 
                         </div>
-                        <div className="flex-1 max-w-[50%] flex justify-center items-center">
+                        <div className="flex-1 max-w-[90%] lg:max-w-[50%] lg:min-w-[50%] min-w-[90%] flex justify-center items-center">
                             <CircleBurstAnimation />
                         </div>
 
@@ -232,28 +233,28 @@ const FrontPage: React.FC = () => {
                 </FadeInSlideUp>
 
                 <FadeInSlideUp>
-                    <div className="mt-44 w-full flex px-24 gap-4">
-                        <div className="flex-1 max-w-[50%]">
+                    <div className="mt-24 lg:mt-36 w-full flex flex-col justify-center items-center lg:flex-row px-5 sm:px-10 lg:px-20 gap-0 lg:gap-4">
+                        <div className="flex-1 max-w-[90%] lg:max-w-[50%] lg:min-w-[50%] min-w-[90%] flex justify-center items-center order-2 lg:order-1">
                             <ChangeLogDemo />
-
-                        </div>
-                        <div className="flex-1 flex-col max-w-[50%] flex justify-center items-center ">
-                            <h1 className="text-right text-5xl font-semibold mb-2">Stay in the Loop with Smart Document Digests</h1>
-                            <h1 className="text-right text-xl font-montserrat">Get instant, AI-powered summaries of document changes and updates across your data room, ensuring you never miss critical modifications.</h1>
                         </div>
 
+                        <div className="flex-1 flex-col max-w-[90%] min-w-[90%] lg:min-w-[50%] lg:max-w-[50%] flex justify-center items-center order-1 lg:order-2">
+                            <h1 className="lg:text-left text-center text-4xl sm:text-5xl lg:text-6xl font-semibold mb-2">Stay in the Loop with Smart Document Digests</h1>
+                            <h1 className="lg:text-left text-center text-md sm:text-lg lg:text-xl font-montserrat">Get instant, AI-powered summaries of document changes and updates across your data room, ensuring you never miss critical modifications.</h1>
+                        </div>
                     </div>
                 </FadeInSlideUp>
 
 
 
-                <div className="flex justify-center flex-col items-center w-full mt-36 mb-24">
+
+                <div className="flex justify-center flex-col items-center w-full mt-24 lg:mt-36  mb-24">
                     <FadeInSlideUp className='flex justify-center items-center flex-col'>
-                        <h1 className="text-5xl font-semibold w-[60%] text-center mb-2">The future of document storage is here. Don't miss out.</h1>
+                        <h1 className="text-4xl sm:text-5xl lg:text-6xl font-semibold w-[90%]  text-center mb-2">The future of document storage is here. Don't miss out.</h1>
 
                     </FadeInSlideUp>
                     <FadeInSlideUp className="flex justify-center items-center flex-col">
-                        <h1 className="font-montserrat text-2xl">Get early access today</h1>
+                        <h1 className="font-montserrat text-md sm:text-lg lg:text-xl ">Get early access today</h1>
                     </FadeInSlideUp>
 
                     <FadeInSlideUp className='w-full flex items-center justify-center mt-4 '>
@@ -266,7 +267,7 @@ const FrontPage: React.FC = () => {
                     </FadeInSlideUp>
                 </div>
 
-                <div className="w-full inline-block flex justify-center items-center flex-col">
+                <div className="w-full inline-block flex justify-center items-center flex-col px-5 sm:px-10 lg:px-20">
                     <div className="flex flex-row py-12 gap-64">
                         <div className="flex flex-row items-center">
                             <img src={logo.src} alt="logo" className="md:h-6 md:w-auto w-[10%] h-auto" />
