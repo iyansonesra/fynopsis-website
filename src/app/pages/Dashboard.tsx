@@ -246,9 +246,9 @@ export default function GeneralDashboard() {
 
             // Parse the response text to JSON
             const response = JSON.parse(responseText);
-            const buckets = response.listedBuckets.bucketList;
-            const uuids = response.listedUuids.uuidList;
-            const invitedBuckets = response.invitedBuckets?.invitedList || {};
+            const buckets = JSON.parse(response.listedBuckets).bucketList;
+            const uuids = JSON.parse(response.listedUuids).uuidList;
+            const invitedBuckets = JSON.parse(response.invitedBuckets)?.invitedList || {};
 
             // Map the buckets to the dataRooms format
             const newDataRooms = buckets.map((bucketName: string, index: number) => ({
