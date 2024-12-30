@@ -160,33 +160,28 @@ export default function GeneralDashboard() {
             console.log('Data rooms:', response);
             
             // Update data rooms from the response
-            // Filter and map buckets based on permission level
-            const newDataRooms = response.buckets
-                .filter((room: DataRoom) => room.permissionLevel !== "INVITED")
-                .map((room: DataRoom) => ({
-                    id: room.uuid,
-                    title: room.bucketName,
-                    lastOpened: new Date(room.addedAt).toLocaleString('en-US', {
-                        year: 'numeric',
-                        month: 'short',
-                        day: 'numeric',
-                        hour: 'numeric',
-                        minute: '2-digit'
-                    }),
-                    permissionLevel: room.permissionLevel,
-                    sharedBy: room.sharedBy
-                }));
+            const newDataRooms = response.buckets.map((room: DataRoom) => ({
+                id: room.uuid,
+                title: room.bucketName,
+                lastOpened: new Date(room.addedAt).toLocaleString('en-US', {
+                    year: 'numeric',
+                    month: 'short',
+                    day: 'numeric',
+                    hour: 'numeric',
+                    minute: '2-digit'
+                }),
+                permissionLevel: room.permissionLevel,
+                sharedBy: room.sharedBy
+            }));
 
-            // Map invited rooms from buckets with INVITED permission
-            const newInvitedDatarooms = response.buckets
-                .filter((room: DataRoom) => room.permissionLevel === "INVITED")
-                .map((room: DataRoom) => ({
-                    bucketId: room.uuid,
-                    bucketName: room.bucketName,
-                    sharedBy: room.sharedBy,
-                    permissionLevel: room.permissionLevel,
-                    sharedAt: room.addedAt
-                }));
+            // Update invited rooms from the response
+            const newInvitedDatarooms = response.invited.map((room: InvitedRoom) => ({
+                bucketId: room.uuid,
+                bucketName: room.bucketName,
+                sharedBy: room.sharedBy,
+                permissionLevel: room.permissionLevel,
+                sharedAt: room.sharedAt
+            }));
 
             setDataRooms(newDataRooms);
             setInvitedDatarooms(newInvitedDatarooms);
