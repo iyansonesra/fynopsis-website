@@ -58,6 +58,20 @@ const DragDropOverlay: React.FC<DragDropOverlayProps> = ({ onClose, onFilesUploa
         throw new Error(`Upload failed: ${errorText}`);
       }
 
+      // After successful S3 upload, trigger post-upload processing
+      await post({
+        apiName: 'S3_API', 
+        path: `/s3/${bucketUuid}/post-upload`,
+        options: {
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: {
+            filePaths: [file.name]
+          }
+        }
+      });
+
       setFileUploads(prev => ({
         ...prev,
         [file.name]: {

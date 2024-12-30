@@ -9,6 +9,14 @@ import { Card, CardContent } from './ui/card';
 import { GetObjectCommand, S3Client } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import ReactMarkdown from 'react-markdown';
+import { getCurrentUser } from 'aws-amplify/auth';
+import aws4 from 'aws4';
+import { Sha256 } from '@aws-crypto/sha256-js';
+import { SignatureV4 } from '@aws-sdk/signature-v4';
+import { Credentials } from '@aws-sdk/types';
+// import { w3cwebsocket as W3CWebSocket } from "websocket";
+// import { Signer } from '@aws-amplify/core';
+
 
 interface SearchResponse {
     response: string;
@@ -23,7 +31,15 @@ interface DetailsSectionProps {
     onFileSelect: (file: { id: string; name: string; s3Url: string; }) => void;
 }
 
-
+const getIdToken = async () => {
+    try {
+        const { tokens } = await fetchAuthSession();
+        return tokens?.idToken?.toString();
+    } catch (error) {
+        console.error('Error getting ID token:', error);
+        throw error;
+    }
+};
 
 const getUserPrefix = async () => {
     try {
@@ -174,6 +190,8 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
         }
     };
 
+    
+
     const queryAllDocuments = async (searchTerm: string) => {
         try {
             setIsLoading(true);
@@ -182,39 +200,52 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
                 sources: {},
                 thread_id: ''
             });
+    
             const bucketUuid = window.location.pathname.split('/').pop() || '';
+            const websocketHost = 'gttxjo67ij.execute-api.us-east-1.amazonaws.com';
 
-            // Function to create WebSocket connection with retry
-            const createWebSocketConnection = async (retries = 2): Promise<WebSocket> => {
-                for (let i = 0; i < retries; i++) {
-                    try {
-                        const ws = new WebSocket('wss://gq1n7s34f0.execute-api.us-east-1.amazonaws.com/prod');
-                        await new Promise((resolve, reject) => {
-                            ws.onopen = () => resolve(ws);
-                            ws.onerror = () => reject(new Error('WebSocket connection failed'));
-                        });
-                        return ws;
-                    } catch (error) {
-                        if (i === retries - 1) throw error;
-                        await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1s before retry
-                    }
-                }
-                throw new Error('Failed to connect after retries');
-            };
+            const idToken = await getIdToken();
+            if (!idToken) {
+                throw new Error('No ID token available');
+            }
 
-            const ws = await createWebSocketConnection();
+            const params = new URLSearchParams();
+            params.append('idToken', idToken);
+
+            const websocketUrl = `wss://${websocketHost}/prod?${params.toString()}`;
+
+            // Debug URL
+            console.log('WebSocket URL components:', {
+                host: websocketHost,
+                params: Object.fromEntries(params.entries()),
+                fullUrl: websocketUrl
+            });
+
+            const ws = new WebSocket(websocketUrl);
+    
             let result = '';
-
+    
             return new Promise((resolve, reject) => {
+                ws.onopen = () => {
+                    console.log('WebSocket connected successfully');
+                    // Send query once connected
+                    ws.send(JSON.stringify({
+                        action: 'query',
+                        data: {
+                            collection_name: bucketUuid,
+                            query: searchTerm
+                        }
+                    }));
+                };
+    
                 ws.onmessage = (event) => {
                     try {
                         const data = JSON.parse(event.data);
                         console.log('Received message:', data);
-
+    
                         if (data.type === 'content') {
                             setIsLoading(false);
                             result += data.content;
-                            // Update UI incrementally
                             setSearchResult({
                                 response: result,
                                 sources: data.sources || {},
@@ -231,32 +262,31 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
                         console.error('Error processing message:', error);
                     }
                 };
-
+    
                 ws.onerror = (error) => {
-                    console.error('WebSocket error:', error);
+                    console.error('WebSocket Error Details:', {
+                        error,
+                        url: websocketUrl.substring(0, 100) + '...',
+                        timestamp: new Date().toISOString()
+                    });
+                    reject(new Error('WebSocket connection failed'));
                 };
-
-                ws.onclose = () => {
-                    console.log('WebSocket connection closed');
+    
+    
+                ws.onclose = (event) => {
+                    console.log('WebSocket closed:', {
+                        code: event.code,
+                        reason: event.reason,
+                        wasClean: event.wasClean
+                    });
                 };
-
-                // Send the query message
-                ws.send(JSON.stringify({
-                    action: 'query',
-                    data: {
-                        collection_name: bucketUuid,
-                        query: searchTerm
-                    }
-                }));
             });
-
+    
         } catch (err) {
             console.error('Error querying collection:', err);
             setError('Failed to fetch search results. Please try again.');
+            setIsLoading(false);
         }
-        // finally {
-        //     setIsLoading(false);
-        // }
     };
 
 
@@ -419,5 +449,7 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
     );
 
 };
+
+
 
 export default DetailSection;

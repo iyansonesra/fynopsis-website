@@ -9,11 +9,13 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@aws-amplify/core": "^6.8.0",
     "@aws-amplify/storage": "^6.6.8",
     "@aws-amplify/ui-react": "^6.1.14",
     "@aws-sdk/client-s3": "^3.663.0",
     "@aws-sdk/lib-storage": "^3.679.0",
     "@aws-sdk/s3-request-presigner": "^3.663.0",
+    "@aws-sdk/signature-v4": "^3.370.0",
     "@aws-sdk/xhr-http-handler": "^3.679.0",
     "@cyntler/react-doc-viewer": "^1.17.0",
     "@emotion/react": "^11.13.0",
@@ -32,7 +34,8 @@
     "@radix-ui/react-slot": "^1.1.0",
     "@tanstack/react-table": "^8.20.5",
     "animate.css": "^4.1.1",
-    "aws-amplify": "^6.5.0",
+    "aws-amplify": "^6.11.0",
+    "aws4": "^1.13.2",
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.1.1",
     "date-fns": "^3.6.0",
@@ -64,6 +67,7 @@
   },
   "devDependencies": {
     "@babel/preset-env": "^7.25.8",
+    "@types/aws4": "^1.11.6",
     "@types/node": "^20",
     "@types/react": "^18",
     "@types/react-animate-on-scroll": "^2.1.8",

@@ -42,6 +42,22 @@ type IndicatorStyle = {
     height?: string;
 };
 
+type DataRoom = {
+    bucketName: string;
+    uuid: string;
+    permissionLevel: string;
+    sharedBy?: string;
+    addedAt: string;
+};
+
+type InvitedRoom = {
+    bucketName: string;
+    uuid: string;
+    permissionLevel: string;
+    sharedBy: string;
+    sharedAt: string;
+};
+
 export default function GeneralDashboard() {
     const [selectedTab, setSelectedTab] = useState("library");
     const { user, signOut } = useAuthenticator((context) => [context.user]);
@@ -63,49 +79,42 @@ export default function GeneralDashboard() {
         router.push('/signin');
     }
 
-    type DataRoom = {
-        id: number;
-        title: string;
-        lastOpened: string;
-    };
-
     const [dataRooms, setDataRooms] = useState<DataRoom[]>([]);
 
     const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
     const [newDataroomName, setNewDataroomName] = useState('');
 
 
-    const handleDataRoomClick = (name: any) => {
-        // console.log(uuid);
-        router.push(`/dataroom/${name}`);
+    const handleDataRoomClick = (id: string) => {
+        router.push(`/dataroom/${id}`);
     };
 
     const handleAddDataroom = async () => {
-        if (newDataroomName.trim()) {
-            try {
+        const newDataroomNameExist = newDataroomName.trim();
+        if (newDataroomNameExist) {
+            console.log('Creating new dataroom:', newDataroomNameExist);
 
-                const newRoomName = newDataroomName.trim();
+            try {
                 const restOperation = post({
                     apiName: 'S3_API',
-                    path: `/create-data-room`,
+                    path: '/create-data-room',
                     options: {
                         headers: {
                             'Content-Type': 'application/json'
                         },
                         body: {
-                            bucketName: newRoomName
+                            bucketName: newDataroomNameExist
                         },
                         withCredentials: true
-                    },
+                    }
                 });
 
                 const { body } = await restOperation.response;
                 const responseText = await body.text();
-                const responseMain = JSON.parse(responseText);
-                console.log(responseMain);
+                const response = JSON.parse(responseText);
 
                 const newDataroom = {
-                    id: responseMain.uuid, // Use UUID from API response
+                    id: response.bucketId,
                     title: newDataroomName.trim(),
                     lastOpened: new Date().toLocaleString('en-US', {
                         year: 'numeric',
@@ -113,19 +122,72 @@ export default function GeneralDashboard() {
                         day: 'numeric',
                         hour: 'numeric',
                         minute: '2-digit'
-                    })
+                    }),
+                    permissionLevel: 'OWNER'
                 };
+
                 setDataRooms([...dataRooms, newDataroom]);
                 setIsAddDialogOpen(false);
                 setNewDataroomName('');
             } catch (error) {
-                console.log("error");
+                console.error('Error creating data room:', error);
             }
         }
     };
 
+    const handleFetchDataRooms = async () => {
+        try {
+            const { credentials } = await fetchAuthSession();
+            if (!credentials) {
+                throw new Error('User is not authenticated');
+            }
 
+            const restOperation = get({
+                apiName: 'S3_API',
+                path: '/get-data-rooms',
+                options: {
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    withCredentials: true
+                }
+            });
 
+            const { body } = await restOperation.response;
+            const responseText = await body.text();
+            const response = JSON.parse(responseText);
+            
+            // Update data rooms from the response
+            const newDataRooms = response.buckets.map((room: DataRoom) => ({
+                id: room.uuid,
+                title: room.bucketName,
+                lastOpened: new Date(room.addedAt).toLocaleString('en-US', {
+                    year: 'numeric',
+                    month: 'short',
+                    day: 'numeric',
+                    hour: 'numeric',
+                    minute: '2-digit'
+                }),
+                permissionLevel: room.permissionLevel,
+                sharedBy: room.sharedBy
+            }));
+
+            // Update invited rooms from the response
+            const newInvitedDatarooms = response.invited.map((room: InvitedRoom) => ({
+                bucketId: room.uuid,
+                bucketName: room.bucketName,
+                sharedBy: room.sharedBy,
+                permissionLevel: room.permissionLevel,
+                sharedAt: room.sharedAt
+            }));
+
+            setDataRooms(newDataRooms);
+            setInvitedDatarooms(newInvitedDatarooms);
+
+        } catch (error) {
+            console.error('Error fetching data rooms:', error);
+        }
+    };
 
     function handleTabClick(index: number): void {
         setActiveTab(index);
@@ -221,65 +283,6 @@ export default function GeneralDashboard() {
             setInvitedDatarooms(invitedDatarooms.filter(room => room.bucketId !== bucketId));
         } catch (error) {
             console.error('Error declining invite:', error);
-        }
-    };
-
-
-    const handleFetchDataRooms = async () => {
-        try {
-            const { credentials } = await fetchAuthSession();
-            if (!credentials) {
-                throw new Error('User is not authenticated');
-            }
-
-            const restOperation = get({
-                apiName: 'S3_API',
-                path: '/get-data-rooms',
-                options: {
-                    withCredentials: true
-                }
-            });
-
-            const { body } = await restOperation.response;
-            const responseText = await body.text();
-            console.log(responseText);
-
-            // Parse the response text to JSON
-            const response = JSON.parse(responseText);
-            const buckets = JSON.parse(response.listedBuckets).bucketList;
-            const uuids = JSON.parse(response.listedUuids).uuidList;
-            const invitedBuckets = JSON.parse(response.invitedBuckets)?.invitedList || {};
-
-            // Map the buckets to the dataRooms format
-            const newDataRooms = buckets.map((bucketName: string, index: number) => ({
-                id: uuids[index],
-                title: bucketName,
-                lastOpened: new Date().toLocaleString('en-US', {
-                    year: 'numeric',
-                    month: 'short',
-                    day: 'numeric',
-                    hour: 'numeric',
-                    minute: '2-digit'
-                }),
-                createdAt: new Date().toISOString(),
-                userId: user?.userId,
-                fullBucketName: bucketName
-            }));
-
-            // Map the invited buckets to the invitedDatarooms format
-            const newInvitedDatarooms = Object.entries(invitedBuckets).map(([bucketId, details]: [string, any]) => ({
-                bucketId,
-                bucketName: details.bucketName,
-                sharedBy: details.sharedBy,
-                permissionLevel: details.permissionLevel
-            }));
-
-            // Update both states
-            setDataRooms(newDataRooms);
-            setInvitedDatarooms(newInvitedDatarooms);
-
-        } catch (error) {
-            console.error('Error fetching buckets:', error);
         }
     };
 
@@ -402,17 +405,17 @@ export default function GeneralDashboard() {
                             </Button>
                         </div>
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                            
-                                {dataRooms.map((room) => (
-                                    <DataRoomCard
-                                      key={room.id}
-                                      id={room.id}
-                                      title={room.title}
-                                      lastOpened={room.lastOpened}
-                                      onClick={() => handleDataRoomClick(room.id)}
-                                    />
-                                  ))}
-                            
+                            {dataRooms.map((room) => (
+                                <DataRoomCard
+                                    key={room.id}
+                                    id={room.id}
+                                    title={room.title}
+                                    lastOpened={room.lastOpened}
+                                    permissionLevel={room.permissionLevel}
+                                    sharedBy={room.sharedBy}
+                                    onClick={() => handleDataRoomClick(room.id)}
+                                />
+                            ))}
                         </div>
 
                         <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>

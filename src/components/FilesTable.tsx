@@ -694,25 +694,26 @@ export function DataTableDemo({ onFileSelect }: DataTableDemoProps) {
         const fileExtension = file.name.split('.').pop() || '';
         // Ensure we're not using the identity ID in the visible part of the key
         const s3Key = `${bucketUuid}/${fileId}.${fileExtension}`;
+        return s3Key;
 
-        try {
-            const restOperation = post({
-                apiName: 'VDR_API',
-                path: `/${bucketUuid}/documents/upload`,
-                options: {
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: {
-                        file_paths: [s3Key]
-                    }
-                }
-            });
-            return s3Key;
-        } catch (error) {
-            console.error('Error uploading to S3:', error);
-            throw error;
-        }
+        // try {
+        //     const restOperation = post({
+        //         apiName: 'VDR_API',
+        //         path: `/${bucketUuid}/documents/upload`,
+        //         options: {
+        //             headers: {
+        //                 'Content-Type': 'application/json'
+        //             },
+        //             body: {
+        //                 file_paths: [s3Key]
+        //             }
+        //         }
+        //     });
+            
+        // } catch (error) {
+        //     console.error('Error uploading to S3:', error);
+        //     throw error;
+        // }
     };
 
     const formatFileSize = (bytes: number): string => {
