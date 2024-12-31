@@ -46,6 +46,7 @@ import { ScrollArea, ScrollBar } from "./ui/scroll-area";
 import { usePathname, useSearchParams } from 'next/navigation';
 // import { delete } from "aws-amplify/api";
 import { get } from "aws-amplify/api";
+import { useS3Store } from "./fileService";
 
 const data: Payment[] = [
 ]
@@ -64,7 +65,7 @@ export type Payment = {
     documentSummary?: string;
     isFolder?: boolean;
     itemCount?: number;
-    
+
 }
 
 interface FileViewerProps {
@@ -151,7 +152,7 @@ const getPresignedUrl = async (s3Key: string) => {
 const deleteS3Object = async (s3Key: string, bucketUuid: string) => {
     try {
         const deleteResponse = await get({
-            apiName: 'S3_API', 
+            apiName: 'S3_API',
             path: `/s3/${bucketUuid}/delete-url`,
             options: {
                 withCredentials: true,
@@ -176,7 +177,7 @@ const deleteS3Object = async (s3Key: string, bucketUuid: string) => {
 };
 
 function truncateString(str: string) {
-    if(str.length > 20) {
+    if (str.length > 20) {
         return str.substring(0, 20) + '...';
     }
 
@@ -241,23 +242,23 @@ export const columns: ColumnDef<Payment>[] = [
         accessorKey: "name",
         header: "Name",
         cell: ({ row }) => (
-          <div className="flex items-center">
-            {row.original.isFolder ? (
-              <>
-                <FolderIcon className="mr-2 h-4 w-4" />
-                {row.getValue("name")}
-              </>
-            ) : (
-              <>
-                <FileIcon className="mr-2 h-4 w-4" />
-                <div>{truncateString(row.getValue("name"))}</div>
-              </>
-            )}
-          </div>
+            <div className="flex items-center">
+                {row.original.isFolder ? (
+                    <>
+                        <FolderIcon className="mr-2 h-4 w-4" />
+                        {row.getValue("name")}
+                    </>
+                ) : (
+                    <>
+                        <FileIcon className="mr-2 h-4 w-4" />
+                        <div>{truncateString(row.getValue("name"))}</div>
+                    </>
+                )}
+            </div>
         ),
         enableResizing: true,
         size: 200,
-      },  
+    },
     {
         accessorKey: "type",
         header: "Type",
@@ -311,246 +312,252 @@ export function DataTableDemo({ onFileSelect }: DataTableDemoProps) {
     const [columnVisibility, setColumnVisibility] =
         React.useState<VisibilityState>({})
     const [rowSelection, setRowSelection] = React.useState({})
-    const [isLoading, setIsLoading] = React.useState(true);
+    // const [isLoading, setIsLoading] = React.useState(true);
     const [viewerOpen, setViewerOpen] = React.useState(false)
     const [currentDocument, setCurrentDocument] = React.useState<{ url?: string, name?: string }>({})
     const [currentPath, setCurrentPath] = React.useState<string[]>([]);
+    const { objects, isLoading, fetchObjects } = useS3Store();
+
 
     const Breadcrumb = ({ paths, onNavigate }: { paths: string[], onNavigate: (index: number) => void }) => {
         return (
-          <div className="flex items-center gap-2 text-sm text-gray-600 mb-4">
-            <span 
-              className="hover:text-blue-500 cursor-pointer"
-              onClick={() => onNavigate(-1)}
-            >
-              Home
-            </span>
-            {paths.map((path, index) => (
-              <React.Fragment key={index}>
-                <span className="text-gray-400">/</span>
-                <span 
-                  className="hover:text-blue-500 cursor-pointer"
-                  onClick={() => onNavigate(index)}
+            <div className="flex items-center gap-2 text-sm text-gray-600 mb-4">
+                <span
+                    className="hover:text-blue-500 cursor-pointer"
+                    onClick={() => onNavigate(-1)}
                 >
-                  {truncateString(path, 17)}
+                    Home
                 </span>
-              </React.Fragment>
-            ))}
-          </div>
+                {paths.map((path, index) => (
+                    <React.Fragment key={index}>
+                        <span className="text-gray-400">/</span>
+                        <span
+                            className="hover:text-blue-500 cursor-pointer"
+                            onClick={() => onNavigate(index)}
+                        >
+                            {truncateString(path, 17)}
+                        </span>
+                    </React.Fragment>
+                ))}
+            </div>
         );
-      };
+    };
 
-      const handleBreadcrumbNavigate = async (index: number) => {
+    const handleBreadcrumbNavigate = async (index: number) => {
         let newPath;
         if (index === -1) {
-          newPath = [];
+            newPath = [bucketUuid];
         } else {
-          newPath = currentPath.slice(0, index + 1);
+            newPath = currentPath.slice(0, index + 1);
         }
-        setCurrentPath(newPath);
-        
+        if (index !== -1) {
+            setCurrentPath(newPath);
+        } else {
+            setCurrentPath([]);
+        }
+
         const folderPath = newPath + "/";
         console.log("Navigating to folder:", folderPath);
         try {
             await getS3Client();
             const restOperation = get({
-              apiName: 'S3_API',
-              path: `/s3/${bucketUuid}/head-objects-for-bucket`,
-              options: { withCredentials: true }
+                apiName: 'S3_API',
+                path: `/s3/${bucketUuid}/head-objects-for-bucket`,
+                options: { withCredentials: true }
             });
-            
+
             const { body } = await restOperation.response;
             const responseText = await body.text();
             const responseMain = JSON.parse(responseText);
-      
+
             if (responseMain?.headObjects) {
-              const currentPath = folderPath;
-              
-              // Extract immediate subfolders only
-              const folders = new Set<string>();
-              responseMain.headObjects
-                .filter((object: { key?: string }) => {
-                  const key = object.key || '';
-                  if (!key.startsWith(currentPath)) return false;
-                  const relativePath = key.slice(currentPath.length);
-                  const parts = relativePath.split('/').filter(Boolean);
-                  return parts.length === 1 && key.endsWith('/');
-                })
-                .forEach((object: { key?: string }) => {
-                  if (object.key) {
-                    const folderName = object.key
-                      .slice(currentPath.length)
-                      .split('/')[0];
-                    folders.add(folderName);
-                  }
-                });
-      
-              // Create folder entries
-              const folderEntries: Payment[] = Array.from(folders).map(folder => ({
-                id: `folder-${folder}`,
-                type: 'FOLDER',
-                name: folder,
-                status: 'success',
-                size: '--',
-                date: '--',
-                uploadedBy: '--',
-                isFolder: true,
-                s3Key: `${currentPath}${folder}/`
-              }));
-      
-              // Get immediate files in current folder
-              const files = await Promise.all(
+                const currentPath = folderPath;
+
+                // Extract immediate subfolders only
+                const folders = new Set<string>();
                 responseMain.headObjects
-                  .filter((object: { key?: string }) => {
-                    const key = object.key || '';
-                    if (!key.startsWith(currentPath)) return false;
-                    const relativePath = key.slice(currentPath.length);
-                    const parts = relativePath.split('/').filter(Boolean);
-                    return parts.length === 1 && !key.endsWith('/');
-                  })
-                  .map(async (object: any) => {
-                    if (!object.key) return null;
-                    const metadata = object.metadata || {};
-                    return {
-                      id: object.key,
-                      type: object.key.split('.').pop()?.toUpperCase() || 'Unknown',
-                      name: metadata.Metadata?.originalname || object.key.split('/').pop() || '',
-                      status: "success" as const,
-                      size: formatFileSize(metadata.ContentLength || 0),
-                      date: metadata.LastModified?.split('T')[0] || '',
-                      uploadedBy: metadata.Metadata?.uploadedby || 'Unknown',
-                      s3Key: object.key,
-                      isFolder: false
-                    };
-                  })
-              );
-      
-              const validFiles = files.filter((file): file is Payment => 
-                file !== null && typeof file === 'object' && 'id' in file
-              );
-      
-              setTableData([...folderEntries, ...validFiles]);
+                    .filter((object: { key?: string }) => {
+                        const key = object.key || '';
+                        if (!key.startsWith(currentPath)) return false;
+                        const relativePath = key.slice(currentPath.length);
+                        const parts = relativePath.split('/').filter(Boolean);
+                        return parts.length === 1 && key.endsWith('/');
+                    })
+                    .forEach((object: { key?: string }) => {
+                        if (object.key) {
+                            const folderName = object.key
+                                .slice(currentPath.length)
+                                .split('/')[0];
+                            folders.add(folderName);
+                        }
+                    });
+
+                // Create folder entries
+                const folderEntries: Payment[] = Array.from(folders).map(folder => ({
+                    id: `folder-${folder}`,
+                    type: 'FOLDER',
+                    name: folder,
+                    status: 'success',
+                    size: ' ',
+                    date: ' ',
+                    uploadedBy: ' ',
+                    isFolder: true,
+                    s3Key: `${currentPath}${folder}/`
+                }));
+
+                // Get immediate files in current folder
+                const files = await Promise.all(
+                    responseMain.headObjects
+                        .filter((object: { key?: string }) => {
+                            const key = object.key || '';
+                            if (!key.startsWith(currentPath)) return false;
+                            const relativePath = key.slice(currentPath.length);
+                            const parts = relativePath.split('/').filter(Boolean);
+                            return parts.length === 1 && !key.endsWith('/');
+                        })
+                        .map(async (object: any) => {
+                            if (!object.key) return null;
+                            const metadata = object.metadata || {};
+                            return {
+                                id: object.key,
+                                type: object.key.split('.').pop()?.toUpperCase() || 'Unknown',
+                                name: metadata.Metadata?.originalname || object.key.split('/').pop() || '',
+                                status: "success" as const,
+                                size: formatFileSize(metadata.ContentLength || 0),
+                                date: metadata.LastModified?.split('T')[0] || '',
+                                uploadedBy: metadata.Metadata?.uploadedby || 'Unknown',
+                                s3Key: object.key,
+                                isFolder: false
+                            };
+                        })
+                );
+
+                const validFiles = files.filter((file): file is Payment =>
+                    file !== null && typeof file === 'object' && 'id' in file
+                );
+
+                setTableData([...folderEntries, ...validFiles]);
             }
-          } catch (error) {
+        } catch (error) {
             console.error('Error fetching folder contents:', error);
-          }
-      };
-      
-      
-     
+        }
+    };
+
+
+
 
     const handleRowDoubleClick = async (payment: Payment) => {
         if (payment.isFolder) {
             setCurrentPath(prev => [...prev, payment.name]);
 
-          try {
-            await getS3Client();
-            const restOperation = get({
-              apiName: 'S3_API',
-              path: `/s3/${bucketUuid}/head-objects-for-bucket`,
-              options: { withCredentials: true }
-            });
-            
-            const { body } = await restOperation.response;
-            const responseText = await body.text();
-            const responseMain = JSON.parse(responseText);
-      
-            if (responseMain?.headObjects) {
-              const currentPath = payment.s3Key;
-              
-              // Extract immediate subfolders only
-              const folders = new Set<string>();
-              responseMain.headObjects
-                .filter((object: { key?: string }) => {
-                  const key = object.key || '';
-                  if (!key.startsWith(currentPath)) return false;
-                  const relativePath = key.slice(currentPath.length);
-                  const parts = relativePath.split('/').filter(Boolean);
-                  return parts.length === 1 && key.endsWith('/');
-                })
-                .forEach((object: { key?: string }) => {
-                  if (object.key) {
-                    const folderName = object.key
-                      .slice(currentPath.length)
-                      .split('/')[0];
-                    folders.add(folderName);
-                  }
+            try {
+                await getS3Client();
+                const restOperation = get({
+                    apiName: 'S3_API',
+                    path: `/s3/${bucketUuid}/head-objects-for-bucket`,
+                    options: { withCredentials: true }
                 });
-      
-              // Create folder entries
-              const folderEntries: Payment[] = Array.from(folders).map(folder => ({
-                id: `folder-${folder}`,
-                type: 'FOLDER',
-                name: folder,
-                status: 'success',
-                size: '--',
-                date: '--',
-                uploadedBy: '--',
-                isFolder: true,
-                s3Key: `${currentPath}${folder}/`
-              }));
-      
-              // Get immediate files in current folder
-              const files = await Promise.all(
-                responseMain.headObjects
-                  .filter((object: { key?: string }) => {
-                    const key = object.key || '';
-                    if (!key.startsWith(currentPath)) return false;
-                    const relativePath = key.slice(currentPath.length);
-                    const parts = relativePath.split('/').filter(Boolean);
-                    return parts.length === 1 && !key.endsWith('/');
-                  })
-                  .map(async (object: any) => {
-                    if (!object.key) return null;
-                    const metadata = object.metadata || {};
-                    return {
-                      id: object.key,
-                      type: object.key.split('.').pop()?.toUpperCase() || 'Unknown',
-                      name: metadata.Metadata?.originalname || object.key.split('/').pop() || '',
-                      status: "success" as const,
-                      size: formatFileSize(metadata.ContentLength || 0),
-                      date: metadata.LastModified?.split('T')[0] || '',
-                      uploadedBy: metadata.Metadata?.uploadedby || 'Unknown',
-                      s3Key: object.key,
-                      isFolder: false
-                    };
-                  })
-              );
-      
-              const validFiles = files.filter((file): file is Payment => 
-                file !== null && typeof file === 'object' && 'id' in file
-              );
-      
-              setTableData([...folderEntries, ...validFiles]);
+
+                const { body } = await restOperation.response;
+                const responseText = await body.text();
+                const responseMain = JSON.parse(responseText);
+
+                if (responseMain?.headObjects) {
+                    const currentPath = payment.s3Key;
+
+                    // Extract immediate subfolders only
+                    const folders = new Set<string>();
+                    responseMain.headObjects
+                        .filter((object: { key?: string }) => {
+                            const key = object.key || '';
+                            if (!key.startsWith(currentPath)) return false;
+                            const relativePath = key.slice(currentPath.length);
+                            const parts = relativePath.split('/').filter(Boolean);
+                            return parts.length === 1 && key.endsWith('/');
+                        })
+                        .forEach((object: { key?: string }) => {
+                            if (object.key) {
+                                const folderName = object.key
+                                    .slice(currentPath.length)
+                                    .split('/')[0];
+                                folders.add(folderName);
+                            }
+                        });
+
+                    // Create folder entries
+                    const folderEntries: Payment[] = Array.from(folders).map(folder => ({
+                        id: `folder-${folder}`,
+                        type: 'FOLDER',
+                        name: folder,
+                        status: 'success',
+                        size: ' ',
+                        date: ' ',
+                        uploadedBy: ' ',
+                        isFolder: true,
+                        s3Key: `${currentPath}${folder}/`
+                    }));
+
+                    // Get immediate files in current folder
+                    const files = await Promise.all(
+                        responseMain.headObjects
+                            .filter((object: { key?: string }) => {
+                                const key = object.key || '';
+                                if (!key.startsWith(currentPath)) return false;
+                                const relativePath = key.slice(currentPath.length);
+                                const parts = relativePath.split('/').filter(Boolean);
+                                return parts.length === 1 && !key.endsWith('/');
+                            })
+                            .map(async (object: any) => {
+                                if (!object.key) return null;
+                                const metadata = object.metadata || {};
+                                return {
+                                    id: object.key,
+                                    type: object.key.split('.').pop()?.toUpperCase() || 'Unknown',
+                                    name: metadata.Metadata?.originalname || object.key.split('/').pop() || '',
+                                    status: "success" as const,
+                                    size: formatFileSize(metadata.ContentLength || 0),
+                                    date: metadata.LastModified?.split('T')[0] || '',
+                                    uploadedBy: metadata.Metadata?.uploadedby || 'Unknown',
+                                    s3Key: object.key,
+                                    isFolder: false
+                                };
+                            })
+                    );
+
+                    const validFiles = files.filter((file): file is Payment =>
+                        file !== null && typeof file === 'object' && 'id' in file
+                    );
+                    console.log("hii\n");
+                    // setTableData([...folderEntries, ...validFiles]);
+                }
+            } catch (error) {
+                console.error('Error fetching folder contents:', error);
             }
-          } catch (error) {
-            console.error('Error fetching folder contents:', error);
-          }
-          return;
+            return;
         }
         if (payment.s3Key) {
-          try {
-            const downloadResponse = await get({
-              apiName: 'S3_API',
-              path: `/s3/${bucketUuid}/download-url`,
-              options: {
-                withCredentials: true,
-                queryParams: { path: payment.s3Key }
-              }
-            });
-            const { body } = await downloadResponse.response;
-            const responseText = await body.text();
-            const { signedUrl } = JSON.parse(responseText);
-            onFileSelect({
-              ...payment,
-              s3Url: signedUrl,
-            });
-          } catch (error) {
-            console.error('Error getting presigned URL:', error);
-          }
+            try {
+                const downloadResponse = await get({
+                    apiName: 'S3_API',
+                    path: `/s3/${bucketUuid}/download-url`,
+                    options: {
+                        withCredentials: true,
+                        queryParams: { path: payment.s3Key }
+                    }
+                });
+                const { body } = await downloadResponse.response;
+                const responseText = await body.text();
+                const { signedUrl } = JSON.parse(responseText);
+                onFileSelect({
+                    ...payment,
+                    s3Url: signedUrl,
+                });
+            } catch (error) {
+                console.error('Error getting presigned URL:', error);
+            }
         }
-      }
-      
+    }
+
 
     const pathname = usePathname();
     const bucketUuid = pathname.split('/').pop() || '';
@@ -575,7 +582,7 @@ export function DataTableDemo({ onFileSelect }: DataTableDemoProps) {
                                     if (payment.s3Key) {
                                         try {
                                             const downloadResponse = await get({
-                                                apiName: 'S3_API', 
+                                                apiName: 'S3_API',
                                                 path: `/s3/${bucketUuid}/download-url`,
                                                 options: {
                                                     withCredentials: true,
@@ -584,7 +591,7 @@ export function DataTableDemo({ onFileSelect }: DataTableDemoProps) {
                                                     }
                                                 }
                                             });
-                                    
+
                                             const { body } = await downloadResponse.response;
                                             const responseText = await body.text();
                                             const { signedUrl } = JSON.parse(responseText);
@@ -677,7 +684,7 @@ export function DataTableDemo({ onFileSelect }: DataTableDemoProps) {
 
     React.useEffect(() => {
         getUserInfo().then(username => setCurrentUser(username));
-        listS3Objects();
+        // listS3Objects();
         console.log("Getting user info");
     }, []);
     React.useEffect(() => {
@@ -685,8 +692,84 @@ export function DataTableDemo({ onFileSelect }: DataTableDemoProps) {
     }, []);
 
     React.useEffect(() => {
-        listS3Objects();
-    }, []);
+        fetchObjects(bucketUuid);
+    }, [bucketUuid]);
+
+    React.useEffect(() => {
+        if (objects) {
+          const transformedData = transformObjectsToTableData(objects, currentPath);
+          setTableData(transformedData);
+        }
+      }, [objects, currentPath]);
+      
+
+    const transformObjectsToTableData = (objects: S3Object[], currentPath: string[] = []): Payment[] => {
+        const pathPrefix = currentPath.length > 0 
+          ? `${bucketUuid}/${currentPath.join('/')}/`
+          : `${bucketUuid}/`;
+      
+        // Extract immediate subfolders only
+        const folders = new Set<string>();
+        objects
+          .filter((object) => {
+            const key = object.key || '';
+            if (!key.startsWith(pathPrefix)) return false;
+            const relativePath = key.slice(pathPrefix.length);
+            const parts = relativePath.split('/').filter(Boolean);
+            return parts.length === 1 && key.endsWith('/');
+          })
+          .forEach((object) => {
+            if (object.key) {
+              const folderName = object.key
+                .slice(pathPrefix.length)
+                .split('/')[0];
+              folders.add(folderName);
+            }
+          });
+      
+        // Create folder entries
+        const folderEntries: Payment[] = Array.from(folders).map(folder => ({
+          id: `folder-${folder}`,
+          type: 'FOLDER',
+          name: folder,
+          status: 'success',
+          size: ' ',
+          date: ' ',
+          uploadedBy: ' ',
+          isFolder: true,
+          s3Key: `${pathPrefix}${folder}/`
+        }));
+      
+        // Get immediate files in current folder
+        const files = objects
+          .filter((object) => {
+            const key = object.key || '';
+            if (!key.startsWith(pathPrefix)) return false;
+            const relativePath = key.slice(pathPrefix.length);
+            const parts = relativePath.split('/').filter(Boolean);
+            return parts.length === 1 && !key.endsWith('/');
+          })
+          .map((object) => ({
+            id: object.key,
+            type: object.key.split('.').pop()?.toUpperCase() || 'Unknown',
+            name: object.metadata?.originalname || object.key.split('/').pop() || '',
+            status: "success" as const,
+            size: formatFileSize(object.metadata?.ContentLength || 0),
+            date: object.metadata?.LastModified?.split('T')[0] || '',
+            uploadedBy: object.metadata?.uploadedby || 'Unknown',
+            s3Key: object.key,
+            isFolder: false
+          }));
+      
+        return [...folderEntries, ...files];
+      };
+      
+    
+
+
+    // React.useEffect(() => {
+    //     listS3Objects();
+    // }, []);
 
 
     const uploadToS3 = async (file: File) => {
@@ -709,7 +792,7 @@ export function DataTableDemo({ onFileSelect }: DataTableDemoProps) {
         //             }
         //         }
         //     });
-            
+
         // } catch (error) {
         //     console.error('Error uploading to S3:', error);
         //     throw error;
@@ -735,106 +818,37 @@ export function DataTableDemo({ onFileSelect }: DataTableDemoProps) {
         return str.slice(0, maxLength - 3) + '...';
     };
 
-    const listS3Objects = async () => {
-        try {
-          setIsLoading(true);
-          const restOperation = get({
-            apiName: 'S3_API',
-            path: `/s3/${bucketUuid}/head-objects-for-bucket`,
-            options: { withCredentials: true }
-          });
-          
-          const { body } = await restOperation.response;
-          const responseText = await body.text();
-          const responseMain = JSON.parse(responseText);
-      
-          if (responseMain) {
-            // Extract folders first
-            const folders = new Set<string>();
-            responseMain.headObjects.forEach((object: { key?: string }) => {
-              if (object.key) {
-                const pathParts = object.key.split('/');
-                if (pathParts.length > 1) {
-                  folders.add(pathParts[0]);
-                }
-              }
-            });
-      
-            // Create folder entries
-            const folderEntries: Payment[] = Array.from(folders).map(folder => ({
-              id: `folder-${folder}`,
-              type: 'FOLDER',
-              name: folder,
-              status: 'success',
-              size: '--',
-              date: '--',
-              uploadedBy: '--',
-              isFolder: true,
-              s3Key: `${folder}/`
-            }));
-      
-            // Process files as before
-            const files = await Promise.all(
-              responseMain.headObjects
-                .filter((object: { key?: string }) => {
-                  const key = object.key || '';
-                  return !key.endsWith('/') && !key.includes('US-EAST-1:');
-                })
-                .map(async (object: any) => {
-                  // ... existing file mapping code ...
-                })
-            );
-      
-            const validFiles = files.filter((file): file is Payment => 
-              file !== null && typeof file === 'object' && 'id' in file
-            );
-      
-            // Combine folders and files
-            setTableData([...folderEntries, ...validFiles]);
-          }
-        } catch (error) {
-          console.error('Error listing S3 objects:', error);
-        } finally {
-          setIsLoading(false);
-        }
-      };
 
     const handleFilesUploaded = async (files: File[]) => {
         const uploadPromises = files.map(async (file) => {
             try {
-                // const s3Key = await uploadToS3(file);
                 const s3Key = await uploadToS3(file);
                 return {
                     id: uuidv4(),
                     type: file.name.split('.').pop()?.toUpperCase() || 'Unknown',
                     name: file.name,
                     status: "success" as const,
-                    size: `${(file.size / (1024 * 1024)).toFixed(2)} KB`,
+                    size: formatFileSize(file.size),
                     date: new Date().toISOString().split('T')[0],
                     uploadedBy: currentUser,
                     s3Key: s3Key
                 };
             } catch (error) {
                 console.error('Error uploading file:', error);
-                return {
-                    id: uuidv4(),
-                    type: file.name.split('.').pop()?.toUpperCase() || 'Unknown',
-                    name: file.name,
-                    status: "failed" as const,
-                    size: `${(file.size / (1024 * 1024)).toFixed(2)} MB`,
-                    date: new Date().toISOString().split('T')[0],
-                    uploadedBy: currentUser
-                };
+                return null;
             }
         });
 
-        const newData = await Promise.all(uploadPromises);
-        setTableData((prevData) => [...newData, ...prevData]);
-
-        await listS3Objects();
-
+        // const newData = (await Promise.all(uploadPromises)).filter((item): item is Payment => item !== null);
+        // setTableData(prevData => [...newData, ...prevData]);
+        const newFiles = (await Promise.all(uploadPromises)).filter((item): item is Payment => item !== null);
+        setTableData(prevData => [...prevData, ...newFiles]);
+  
+  // Then refresh the complete list from server
+  await fetchObjects(bucketUuid);
         setShowUploadOverlay(false);
     };
+
 
     return (
         <div className="select-none w-full py-4 h-full">
@@ -923,11 +937,11 @@ export function DataTableDemo({ onFileSelect }: DataTableDemoProps) {
             </div>
 
             <div className="px-6">
-      <Breadcrumb 
-        paths={currentPath}
-        onNavigate={handleBreadcrumbNavigate}
-      />
-    </div>
+                <Breadcrumb
+                    paths={currentPath}
+                    onNavigate={handleBreadcrumbNavigate}
+                />
+            </div>
             <ScrollArea className="w-full whitespace-nowrap rounded-md p-4 h-[85%]">
                 <div className="overflow-x-auto">
                     <Table>
@@ -1006,12 +1020,13 @@ export function DataTableDemo({ onFileSelect }: DataTableDemoProps) {
                 </div>
                 <ScrollBar orientation="horizontal" />
             </ScrollArea>
-         
+
 
             {showUploadOverlay && (
                 <DragDropOverlay
                     onClose={() => setShowUploadOverlay(false)}
                     onFilesUploaded={handleFilesUploaded}
+                    currentPath={currentPath} // Pass the current path
                 />
             )}
 

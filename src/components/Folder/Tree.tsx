@@ -8,6 +8,7 @@ import { S3Client } from "@aws-sdk/client-s3";
 import { usePathname } from 'next/navigation';
 import { get, post } from "aws-amplify/api";
 import { ScrollArea } from "../ui/scroll-area";
+import { useS3Store } from "../fileService";
 
 interface TreeFolderProps {
   onFileSelect: (file: any) => void;
@@ -40,7 +41,18 @@ const transformS3DataToTree = (headObjects: S3Object[]): TreeNode[] => {
   const pathMap = new Map<string, TreeNode>();
   pathMap.set('', root);
 
-  const sortedObjects = headObjects.sort((a, b) => a.key.localeCompare(b.key));
+  const sortedObjects = headObjects.sort((a, b) => {
+    const aIsFolder = a.key.endsWith('/');
+    const bIsFolder = b.key.endsWith('/');
+    
+    // If one is a folder and the other isn't, folders come first
+    if (aIsFolder !== bIsFolder) {
+      return aIsFolder ? -1 : 1;
+    }
+    
+    // If both are folders or both are files, sort alphabetically
+    return a.key.localeCompare(b.key);
+  });
 
   sortedObjects.forEach((obj) => {
     const keyWithoutPrefix = obj.key.split('/').slice(1).join('/');
@@ -49,7 +61,6 @@ const transformS3DataToTree = (headObjects: S3Object[]): TreeNode[] => {
 
     paths.forEach((segment, index) => {
       if (!segment && index === paths.length - 1) return;
-
       const prevPath = currentPath;
       currentPath = currentPath ? `${currentPath}/${segment}` : segment;
 
@@ -65,7 +76,16 @@ const transformS3DataToTree = (headObjects: S3Object[]): TreeNode[] => {
 
         const parentNode = pathMap.get(prevPath);
         if (parentNode && parentNode.children) {
+          // Sort children when adding new node
           parentNode.children.push(newNode);
+          parentNode.children.sort((a, b) => {
+            // If one is a folder and the other isn't, folders come first
+            if (a.isFolder !== b.isFolder) {
+              return a.isFolder ? -1 : 1;
+            }
+            // If both are folders or both are files, sort alphabetically
+            return a.name.localeCompare(b.name);
+          });
         }
         pathMap.set(currentPath, newNode);
       }
@@ -76,12 +96,14 @@ const transformS3DataToTree = (headObjects: S3Object[]): TreeNode[] => {
 }
 
 
+
 const TreeFolder: React.FC<TreeFolderProps> = ({ onFileSelect }) => {
   const [term, setTerm] = useState<string>("");
   const [treeData, setTreeData] = useState<TreeNode[]>([]);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
+  // const [isLoading, setIsLoading] = useState<boolean>(true);
   const treeRef = useRef(null);
   const pathname = usePathname();
+  const { objects, isLoading, fetchObjects } = useS3Store();
   const bucketUuid = pathname.split('/').pop() || '';
 
   const getS3Client = async () => {
@@ -102,36 +124,43 @@ const TreeFolder: React.FC<TreeFolderProps> = ({ onFileSelect }) => {
     }
   };
 
-  const listS3Objects = async () => {
-    setIsLoading(true);
-    try {
-      await getS3Client();
-      const restOperation = get({
-        apiName: 'S3_API',
-        path: `/s3/${bucketUuid}/head-objects-for-bucket`,
-        options: { withCredentials: true }
-      });
+  // const listS3Objects = async () => {
+  //   setIsLoading(true);
+  //   try {
+  //     await getS3Client();
+  //     const restOperation = get({
+  //       apiName: 'S3_API',
+  //       path: `/s3/${bucketUuid}/head-objects-for-bucket`,
+  //       options: { withCredentials: true }
+  //     });
 
-      const { body } = await restOperation.response;
-      const responseText = await body.text();
-      const response = JSON.parse(responseText);
+  //     const { body } = await restOperation.response;
+  //     const responseText = await body.text();
+  //     const response = JSON.parse(responseText);
 
-      if (response.headObjects) {
-        console.log('S3 objects:', response.headObjects);
-        const transformedData = transformS3DataToTree(response.headObjects);
-        console.log('Transformed tree data:', transformedData);
-        setTreeData(transformedData);
-      }
-    } catch (error) {
-      console.error('Error listing S3 objects:', error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  //     if (response.headObjects) {
+  //       console.log('S3 objects:', response.headObjects);
+  //       const transformedData = transformS3DataToTree(response.headObjects);
+  //       console.log('Transformed tree data:', transformedData);
+  //       setTreeData(transformedData);
+  //     }
+  //   } catch (error) {
+  //     console.error('Error listing S3 objects:', error);
+  //   } finally {
+  //     setIsLoading(false);
+  //   }
+  // };
 
   useEffect(() => {
-    listS3Objects();
+    fetchObjects(bucketUuid);
   }, [bucketUuid]);
+
+  useEffect(() => {
+    if (objects) {
+      const transformedData = transformS3DataToTree(objects);
+      setTreeData(transformedData);
+    }
+  }, [objects]);
 
   const [lastClickTime, setLastClickTime] = useState<number>(0);
   const [lastClickedNode, setLastClickedNode] = useState<any>(null);
@@ -143,8 +172,9 @@ const TreeFolder: React.FC<TreeFolderProps> = ({ onFileSelect }) => {
   const [folderError, setFolderError] = useState<string | null>(null);
 
 
-  const handleCreateFolder = () => {
+  const handleCreateFolder = async () => {
     setShowFolderInput(true);
+   
   };
 
   const handleFolderNameSubmit = async () => {
@@ -167,7 +197,7 @@ const TreeFolder: React.FC<TreeFolderProps> = ({ onFileSelect }) => {
       setTreeKey(prev => prev + 1);
       setNewFolderName('');
       setShowFolderInput(false);
-      await listS3Objects();
+      await fetchObjects(bucketUuid);
     } catch (error) {
       setFolderError('Failed to create folder. Please try again.');
       console.error('Error creating folder:', error);
@@ -467,6 +497,7 @@ const TreeFolder: React.FC<TreeFolderProps> = ({ onFileSelect }) => {
         onKeyPress={(e) => {
           if (e.key === 'Enter') {
             handleFolderNameSubmit();
+            
           }
         }}
         autoFocus

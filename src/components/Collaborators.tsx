@@ -22,6 +22,8 @@ interface UserManagementProps {
   dataroomId: string;
 }
 
+
+
 const UserManagement: React.FC<UserManagementProps> = () => {
   const [users, setUsers] = useState<User[]>([]);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
@@ -30,6 +32,35 @@ const UserManagement: React.FC<UserManagementProps> = () => {
   const [error, setError] = useState<string | null>(null);
   const pathname = usePathname();
   const bucketUuid = pathname.split('/').pop() || '';
+
+  const fetchPermissionLevel = async () => {
+    
+    try {
+      const restOperation = post({
+        apiName: 'S3_API',
+        path: `/share-folder/${bucketUuid}/get-permissions`,
+        options: {
+            headers: {
+                'Content-Type': 'application/json'
+            },
+          },
+      });
+
+      const { body } = await restOperation.response;
+      console.log('Body:', body);
+      const responseText = await body.text();
+      const response = JSON.parse(responseText);
+      console.log('Users response:', response);
+      setUsers(response.users);
+    } catch (error) {
+      setError('Failed to fetch users');
+      console.error('Error fetching users:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+
 
   useEffect(() => {
     const fetchAttributes = async () => {
@@ -110,6 +141,7 @@ const UserManagement: React.FC<UserManagementProps> = () => {
   useEffect(() => {
     if (bucketUuid) {
       fetchUsers();
+      fetchPermissionLevel();
     }
   }, [bucketUuid]);
 

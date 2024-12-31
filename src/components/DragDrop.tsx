@@ -18,22 +18,42 @@ interface FileUploads {
   [key: string]: FileUpload;
 }
 
-const DragDropOverlay: React.FC<DragDropOverlayProps> = ({ onClose, onFilesUploaded }) => {
+interface DragDropOverlayProps {
+  onClose: () => void;
+  onFilesUploaded: (files: File[]) => void;
+  currentPath?: string[];  // Add current path prop
+}
+
+const DragDropOverlay: React.FC<DragDropOverlayProps> = ({ 
+  onClose, 
+  onFilesUploaded,
+  currentPath = [] // Default to empty array for root folder
+}) => {
   const [fileUploads, setFileUploads] = useState<FileUploads>({});
   const [isConfirming, setIsConfirming] = useState(false);
   const pathname = usePathname();
   const bucketUuid = pathname.split('/').pop() || '';
 
+  const getFullPath = (fileName: string) => {
+    if (currentPath.length === 0) {
+      return fileName;
+    }
+    // Join current path with filename, ensuring proper formatting
+    return `${currentPath.join('/')}/${fileName}`;
+  };
+
   const uploadFile = async (file: File) => {
     try {
-      // Get presigned URL from API
+      const fullPath = getFullPath(file.name);
+      
+      // Get presigned URL from API with the full path
       const getUrlResponse = await post({
         apiName: 'S3_API',
         path: `/s3/${bucketUuid}/upload-url`,
         options: {
           withCredentials: true,
           body: JSON.stringify({
-            filePath: file.name,
+            filePath: fullPath,
             contentType: file.type
           })
         }
@@ -58,7 +78,7 @@ const DragDropOverlay: React.FC<DragDropOverlayProps> = ({ onClose, onFilesUploa
         throw new Error(`Upload failed: ${errorText}`);
       }
 
-      // After successful S3 upload, trigger post-upload processing
+      // After successful S3 upload, trigger post-upload processing with full path
       await post({
         apiName: 'S3_API', 
         path: `/s3/${bucketUuid}/post-upload`,
@@ -67,7 +87,7 @@ const DragDropOverlay: React.FC<DragDropOverlayProps> = ({ onClose, onFilesUploa
             'Content-Type': 'application/json'
           },
           body: {
-            filePaths: [file.name]
+            filePaths: [fullPath]
           }
         }
       });
@@ -92,6 +112,7 @@ const DragDropOverlay: React.FC<DragDropOverlayProps> = ({ onClose, onFilesUploa
       }));
     }
   };
+
 
   const onDrop = useCallback(async (acceptedFiles: File[]) => {
     const newUploads = acceptedFiles.reduce((acc, file) => {

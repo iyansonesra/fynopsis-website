@@ -63,7 +63,7 @@ const Node = ({ node, style, dragHandle, tree }) => {
               autoFocus
             />
           ) : (
-            <span>{node.data.name}</span>
+            <span className = "text-sm">{node.data.name}</span>
           )}
         </span>
       </div>
