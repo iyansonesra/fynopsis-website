@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { ArrowLeft, BadgeInfo, FileText, Search } from 'lucide-react';
+import React, { useEffect, useRef, useState } from 'react';
+import { ArrowLeft, ArrowUp, BadgeInfo, FileText, Search } from 'lucide-react';
 import { Input, Skeleton } from '@mui/material';
 import { Button } from './ui/button';
 import { post, get } from 'aws-amplify/api';
@@ -14,6 +14,10 @@ import aws4 from 'aws4';
 import { Sha256 } from '@aws-crypto/sha256-js';
 import { SignatureV4 } from '@aws-sdk/signature-v4';
 import { Credentials } from '@aws-sdk/types';
+import { TbH1 } from 'react-icons/tb';
+import logo from './../app/assets/fynopsis_noBG.png'
+import '../components/temp.css';
+
 // import { w3cwebsocket as W3CWebSocket } from "websocket";
 // import { Signer } from '@aws-amplify/core';
 
@@ -59,12 +63,13 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
     setShowDetailsView,
     selectedFile,
     onFileSelect }) => {
-    const [userSearch, setUserSearch] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const [searchResults, setSearchResults] = useState('');
     const [error, setError] = useState<string | null>(null);
     const [searchResult, setSearchResult] = useState<SearchResponse | null>(null);
     const [loadingSource, setLoadingSource] = useState<string | null>(null);
+    const [messageBuffer, setMessageBuffer] = useState('');
+
 
     const addOn = getUserPrefix();
     const S3_BUCKET_NAME = `vdr-documents/${addOn}`;
@@ -178,19 +183,9 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
     };
 
 
-    const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        setUserSearch(e.target.value);
-    };
 
-    const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-        if (e.key === 'Enter') {
-            setIsLoading(true);
-            queryAllDocuments(userSearch.trim());
-            setUserSearch('');
-        }
-    };
 
-    
+
 
     const queryAllDocuments = async (searchTerm: string) => {
         try {
@@ -200,7 +195,7 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
                 sources: {},
                 thread_id: ''
             });
-    
+
             const bucketUuid = window.location.pathname.split('/').pop() || '';
             const websocketHost = 'gttxjo67ij.execute-api.us-east-1.amazonaws.com';
 
@@ -222,9 +217,9 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
             });
 
             const ws = new WebSocket(websocketUrl);
-    
+
             let result = '';
-    
+
             return new Promise((resolve, reject) => {
                 ws.onopen = () => {
                     console.log('WebSocket connected successfully');
@@ -237,32 +232,23 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
                         }
                     }));
                 };
-    
+
                 ws.onmessage = (event) => {
                     try {
                         const data = JSON.parse(event.data);
-                        console.log('Received message:', data);
-    
                         if (data.type === 'content') {
                             setIsLoading(false);
-                            result += data.content;
-                            setSearchResult({
-                                response: result,
+                            setSearchResult(prevResult => ({
+                                response: (prevResult?.response || '') + data.content,
                                 sources: data.sources || {},
                                 thread_id: data.thread_id || ''
-                            });
-                        } else if (data.type === 'complete') {
-                            ws.close();
-                            resolve(result);
-                        } else if (data.error) {
-                            ws.close();
-                            reject(new Error(data.error));
+                            }));
                         }
                     } catch (error) {
                         console.error('Error processing message:', error);
                     }
                 };
-    
+
                 ws.onerror = (error) => {
                     console.error('WebSocket Error Details:', {
                         error,
@@ -271,8 +257,8 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
                     });
                     reject(new Error('WebSocket connection failed'));
                 };
-    
-    
+
+
                 ws.onclose = (event) => {
                     console.log('WebSocket closed:', {
                         code: event.code,
@@ -281,72 +267,12 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
                     });
                 };
             });
-    
+
         } catch (err) {
             console.error('Error querying collection:', err);
             setError('Failed to fetch search results. Please try again.');
             setIsLoading(false);
         }
-    };
-
-
-
-
-
-    const renderSearchResults = () => {
-        if (error) {
-            return (
-                <div className="text-red-500 mt-4">
-                    {error}
-                </div>
-            );
-        }
-
-        if (!searchResult && !isLoading) {
-            return null;
-        }
-
-        return (
-            <div className="mt-4">
-                <Card className="w-full">
-                    <CardContent className="p-4">
-                        <div className="prose max-w-none">
-                            <h3 className="text-lg font-semibold mb-4">Search Result</h3>
-                            <ReactMarkdown className="text-slate-700">
-                                {searchResult?.response || ''}
-                            </ReactMarkdown>
-                            {/* <p className="text-slate-700">{searchResult?.response}</p> */}
-
-                            {searchResult?.sources && Object.keys(searchResult.sources).length > 0 && (
-                                <div className="mt-4">
-                                    <h4 className="text-sm font-semibold text-slate-600">Sources:</h4>
-                                    <div className="mt-2 text-sm text-slate-500">
-                                        {Object.entries(searchResult.sources).map(([key, value]) => {
-                                            const sourceInfo = extractSourceInfo({ [key]: value });
-                                            if (!sourceInfo) return null;
-
-                                            return (
-                                                <div key={key} className="mb-4 p-3 border rounded-lg">
-                                                    <div className="font-medium mb-2">{sourceInfo.name}</div>
-                                                    {sourceInfo.descriptions && (
-                                                        <ul className="list-disc pl-4 mb-2">
-                                                            {sourceInfo.descriptions.map((desc, i) => (
-                                                                <li key={i} className="text-sm text-slate-600">{desc}</li>
-                                                            ))}
-                                                        </ul>
-                                                    )}
-                                                    {renderSourceButton(sourceInfo.key)}
-                                                </div>
-                                            );
-                                        })}
-                                    </div>
-                                </div>
-                            )}
-                        </div>
-                    </CardContent>
-                </Card>
-            </div>
-        );
     };
 
     const querySingleDocument = async (fileKey: string | number | boolean, searchTerm: any) => {
@@ -369,45 +295,152 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
         console.log(restOperation);
     };
 
+    const [inputValue, setInputValue] = useState('');
+    const [userSearch, setUserSearch] = useState('');
+
+    const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        setInputValue(e.target.value);
+    };
+
+    const [messages, setMessages] = useState<Array<{
+        type: 'question' | 'answer',
+        content: string,
+        sources?: Record<string, any>
+    }>>([]);
+
+    const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+        if (e.key === 'Enter') {
+            setIsLoading(true);
+            const query = inputValue.trim();
+            setMessages(prev => [...prev, { type: 'question', content: query }]);
+            queryAllDocuments(query);
+            //   handleSearch(query);
+            setInputValue('');
+        }
+    };
+
+    useEffect(() => {
+        if (searchResult && searchResult.response) {
+            // Update only the last message if it's an answer
+            setMessages(prev => {
+                const newMessages = [...prev];
+                if (newMessages.length > 0 && newMessages[newMessages.length - 1].type === 'answer') {
+                    newMessages[newMessages.length - 1] = {
+                        type: 'answer',
+                        content: searchResult.response,
+                        sources: searchResult.sources
+                    };
+                } else {
+                    newMessages.push({
+                        type: 'answer',
+                        content: searchResult.response,
+                        sources: searchResult.sources
+                    });
+                }
+                return newMessages;
+            });
+        }
+    }, [searchResult]);
+
+    const useScrollToBottom = (dependency: any) => {
+        const scrollRef = useRef<HTMLDivElement>(null);
+
+        useEffect(() => {
+            if (scrollRef.current) {
+                scrollRef.current.scrollIntoView({ behavior: "smooth" });
+            }
+        }, [dependency]);
+
+        return scrollRef;
+    };
+
+    const scrollRef = useScrollToBottom([messages, isLoading]);
+
+
+
+
     const renderAdvancedSearch = () => (
-        <>
-            <div className="flex flex-row gap-2 items-center">
-                <BadgeInfo className="h-6 w-6 text-slate-800" />
-                <h1 className="text-base font-semibold text-slate-800">Advanced Search</h1>
-            </div>
 
-            <div className="relative w-[80%]">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-slate-400" />
-                <Input
-                    className="w-full border-slate-200 rounded-xl outline-none pl-10 py-1 font-montserrat"
-                    placeholder="Search files..."
-                    value={userSearch}
-                    onChange={handleInputChange}
-                    onKeyDown={handleKeyDown}
-                />
-            </div>
 
-            {isLoading ? (
-                <div className="w-full max-w-md transition-opacity duration-300">
-                    <Skeleton animation="wave" className="h-5 w-full" />
-                    <Skeleton animation="wave" className="h-5 w-[80%]" />
-                    <Skeleton animation="wave" className="h-5 w-[60%]" />
+    
+            <div className="flex flex-col h-full">
+                <ScrollArea className="flex-1 overflow-auto p-4">
+                    {messages.map((message, index) => (
+                        <div key={index} className="flex flex-col gap-4 mb-4">
+                            {message.type === 'question' ? (
+                                <div className="ml-auto max-w-2xl bg-blue-100 text-black rounded-lg w-full py-4 flex flex-row px-4">
+                                    <img src={logo.src} alt="Fynopsis Logo" className="h-8 w-8 2xl:h-14 2xl:w-14 bg-white rounded-full" />
 
-                    <Skeleton animation="wave" className="h-5 w-full mt-4" />
-                    <Skeleton animation="wave" className="h-5 w-[80%]" />
+                                    <p className="ml-4 text-sm">{message.content}</p>
+                                </div>
+                            ) : (
+                                <div className="mr-auto w-full max-w-[55%]">
+                                    <h1 className="text-wrap max-w-[100%]">
+                                        {message.content}
+                                    </h1>
+                                    {message.sources && Object.keys(message.sources).length > 0 && (
+                                        <div className="mt-2 border-t pt-2">
+                                            <p className="text-xs text-gray-600 font-medium">Sources:</p>
+                                            {Object.entries(message.sources).map(([key, value]) => (
+                                                <div key={key} className="mt-2">
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="sm"
+                                                        className="text-xs text-blue-500 hover:text-blue-700"
+                                                        onClick={() => handleOpenSource(key, key.split('/').pop() || '')}
+                                                    >
+                                                        <FileText className="h-3 w-3 mr-1" />
+                                                        {key.split('/').pop()}
+                                                    </Button>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+                        </div>
+                    ))}
+                    {isLoading && (
+                        <div className="mr-auto w-full max-w-2xl">
+                            <div className="animate-pulse flex space-x-2">
+                                <div className="h-2 w-2 bg-gray-400 rounded-full"></div>
+                                <div className="h-2 w-2 bg-gray-400 rounded-full"></div>
+                                <div className="h-2 w-2 bg-gray-400 rounded-full"></div>
+                            </div>
+                        </div>
+                    )}
 
-                    <div className="flex flex-wrap w-full gap-2 mt-4">
-                        <Skeleton variant="rectangular" animation="wave" className="h-16 w-20 rounded-xl" />
-                        <Skeleton variant="rectangular" animation="wave" className="h-16 w-20 rounded-xl" />
-                        <Skeleton variant="rectangular" animation="wave" className="h-16 w-20 rounded-xl" />
-                        <Skeleton variant="rectangular" animation="wave" className="h-16 w-20 rounded-xl" />
+                    <div ref={scrollRef} />
+                </ScrollArea>
+
+                <div className="border-t p-4">
+                    <div className="relative max-w-3xl mx-auto">
+                        <input
+                            className="w-full h-12 pl-12 pr-24 rounded-xl border-2 border-gray-200 focus:border-blue-500 focus:ring-0 text-base"
+                            placeholder="Query your documents..."
+                            value={inputValue}
+                            onChange={handleInputChange}
+                            onKeyDown={handleKeyDown}
+                        />
+                        <Search
+                            className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400"
+                        />
+                        <div className="absolute right-4 top-1/2 transform -translate-y-1/2 flex items-center gap-2">
+                            <button
+                                className="p-2 hover:bg-gray-100 rounded-lg"
+                                onClick={() => queryAllDocuments(userSearch.trim())}
+                                disabled={isLoading}
+                            >
+                                <ArrowUp className="h-5 w-5 text-gray-500" />
+                            </button>
+                        </div>
                     </div>
                 </div>
-            ) : (
-                renderSearchResults()
-            )}
-        </>
-    );
+            </div>
+        );
+    
+
+
 
     const renderFileDetails = () => (
         <>
@@ -422,7 +455,7 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
             </div>
             {selectedFile && (
                 <>
-                    <div className = "text-sm">
+                    <div className="text-sm">
                         <p><strong>Name:</strong> {selectedFile.name}</p>
                         <p><strong>Type:</strong> {selectedFile.type}</p>
                         <p><strong>Size:</strong> {selectedFile.size}</p>
@@ -440,8 +473,8 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
     );
 
     return (
-        <ScrollArea className="h-full">
-            <div className="flex flex-col gap-2 px-4 py-4 overflow-auto">
+        <ScrollArea className="h-full ">
+            <div className="flex flex-col gap-2 px-4 py-4 overflow-auto h-screen">
                 {showDetailsView ? renderFileDetails() : renderAdvancedSearch()}
             </div>
         </ScrollArea>
