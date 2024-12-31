@@ -59,6 +59,9 @@ const getUserPrefix = async () => {
     }
 };
 
+
+
+
 const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
     setShowDetailsView,
     selectedFile,
@@ -69,6 +72,43 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
     const [searchResult, setSearchResult] = useState<SearchResponse | null>(null);
     const [loadingSource, setLoadingSource] = useState<string | null>(null);
     const [messageBuffer, setMessageBuffer] = useState('');
+    const [sourceUrls, setSourceUrls] = useState<string[]>([]);
+
+    const handleSourceCardClick = async (sourceUrl: string) => {
+        const bucketUuid = window.location.pathname.split('/').pop() || '';
+        try {
+            const s3Key = sourceUrl;
+            const downloadResponse = await get({
+                apiName: 'S3_API',
+                path: `/s3/${bucketUuid}/download-url`,
+                options: {
+                    withCredentials: true,
+                    queryParams: { path: s3Key }
+                }
+            });
+    
+            const { body } = await downloadResponse.response;
+            const responseText = await body.text();
+            const { signedUrl } = JSON.parse(responseText);
+    
+            const fileObject = {
+                id: sourceUrl.split('/').pop() || '',
+                name: sourceUrl.split('/').pop() || '',
+                s3Url: signedUrl,
+                type: sourceUrl.split('.').pop()?.toUpperCase() || 'Unknown',
+                size: 0,
+                status: "success" as const,
+                date: '',
+                uploadedBy: 'Unknown',
+                s3Key: s3Key
+            };
+    
+            onFileSelect(fileObject);
+        } catch (error) {
+            console.error('Error handling source card click:', error);
+        }
+    };
+
 
 
     const addOn = getUserPrefix();
@@ -321,19 +361,35 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
 
     useEffect(() => {
         if (searchResult && searchResult.response) {
-            // Update only the last message if it's an answer
+            // Extract source URL and clean message content
+            const sourceUrlMatch = searchResult.response.match(/{.*}/s);
+            let cleanedContent = searchResult.response;
+            let extractedUrl = '';
+
+            if (sourceUrlMatch) {
+                try {
+                    const sourceObj = JSON.parse(sourceUrlMatch[0]);
+                    extractedUrl = Object.keys(sourceObj)[0];
+                    // Remove the JSON object from content
+                    cleanedContent = searchResult.response.replace(sourceUrlMatch[0], '').trim();
+                    setSourceUrls(prev => [...prev, extractedUrl]);
+                } catch (error) {
+                    console.error('Error parsing source URL:', error);
+                }
+            }
+
             setMessages(prev => {
                 const newMessages = [...prev];
                 if (newMessages.length > 0 && newMessages[newMessages.length - 1].type === 'answer') {
                     newMessages[newMessages.length - 1] = {
                         type: 'answer',
-                        content: searchResult.response,
+                        content: cleanedContent,
                         sources: searchResult.sources
                     };
                 } else {
                     newMessages.push({
                         type: 'answer',
-                        content: searchResult.response,
+                        content: cleanedContent,
                         sources: searchResult.sources
                     });
                 }
@@ -354,97 +410,90 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
         return scrollRef;
     };
 
+
     const scrollRef = useScrollToBottom([messages, isLoading]);
 
-
-
-
     const renderAdvancedSearch = () => (
+        <div className="flex flex-col h-full overflow-none">
+            <ScrollArea className="flex-1 overflow-none">
+                {messages.map((message, index) => (
+                    <div key={index} className="flex flex-col gap-4 mb-4">
+                        {message.type === 'question' ? (
+                            <div className="ml-auto max-w-2xl bg-blue-100 text-black rounded-lg w-full py-4 mt-4 flex flex-row px-4">
+                                <img src={logo.src} alt="Fynopsis Logo" className="h-8 w-8 2xl:h-14 2xl:w-14 bg-white rounded-full" />
 
-
-    
-            <div className="flex flex-col h-full ">
-                <ScrollArea className="flex-1 overflow-auto">
-                    {messages.map((message, index) => (
-                        <div key={index} className="flex flex-col gap-4 mb-4">
-                            {message.type === 'question' ? (
-                                <div className="ml-auto max-w-2xl bg-blue-100 text-black rounded-lg w-full py-4 flex flex-row px-4">
-                                    <img src={logo.src} alt="Fynopsis Logo" className="h-8 w-8 2xl:h-14 2xl:w-14 bg-white rounded-full" />
-
-                                    <p className="ml-4 text-sm">{message.content}</p>
-                                </div>
-                            ) : (
-                                <div className="mr-auto w-full max-w-[55%]">
-                                    <h1 className="text-wrap max-w-[100%]">
-                                        {message.content}
-                                    </h1>
-                                    {message.sources && Object.keys(message.sources).length > 0 && (
-                                        <div className="mt-2 border-t pt-2">
-                                            <p className="text-xs text-gray-600 font-medium">Sources:</p>
-                                            {Object.entries(message.sources).map(([key, value]) => (
-                                                <div key={key} className="mt-2">
-                                                    <Button
-                                                        variant="ghost"
-                                                        size="sm"
-                                                        className="text-xs text-blue-500 hover:text-blue-700"
-                                                        onClick={() => handleOpenSource(key, key.split('/').pop() || '')}
-                                                    >
-                                                        <FileText className="h-3 w-3 mr-1" />
-                                                        {key.split('/').pop()}
-                                                    </Button>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    )}
-                                </div>
-                            )}
-                        </div>
-                    ))}
-                    {isLoading && (
-                        <div className="mr-auto w-full max-w-2xl">
-                            <div className="animate-pulse flex space-x-2">
-                                <div className="h-2 w-2 bg-gray-400 rounded-full"></div>
-                                <div className="h-2 w-2 bg-gray-400 rounded-full"></div>
-                                <div className="h-2 w-2 bg-gray-400 rounded-full"></div>
+                                <p className="ml-4 text-sm">{message.content}</p>
                             </div>
-                        </div>
-                    )}
+                        ) : (
+                            <div className="mr-auto w-full max-w-[65%]">
+                                <ReactMarkdown className="text-wrap max-w-[100%] text-sm">
+                                    {message.content}
+                                </ReactMarkdown>
+                                {sourceUrls.length > 0 && (
+                                    <Card
+                                        className="mt-2 p-2 cursor-pointer hover:bg-gray-50 transition-colors"
+                                        onClick={() => handleSourceCardClick(sourceUrls[sourceUrls.length - 1])}
+                                    >
+                                        <CardContent className="p-2">
+                                            <div className="flex items-center gap-2">
+                                                <FileText className="h-4 w-4" />
+                                                <span className="text-sm text-blue-500">
+                                                    {sourceUrls[sourceUrls.length - 1].split('/').pop()}
+                                                </span>
+                                            </div>
+                                        </CardContent>
+                                    </Card>
+                                )}
 
-                    <div ref={scrollRef} />
-                </ScrollArea>
-
-                <div className=" p-4">
-                    <div className="relative max-w-3xl mx-auto">
-                        <input
-                            className="w-full h-12 pl-12 pr-24 rounded-xl border-2 border-gray-200 focus:border-blue-500 focus:ring-0 text-base"
-                            placeholder="Query your documents..."
-                            value={inputValue}
-                            onChange={handleInputChange}
-                            onKeyDown={handleKeyDown}
-                        />
-                        <Search
-                            className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400"
-                        />
-                        <div className="absolute right-4 top-1/2 transform -translate-y-1/2 flex items-center gap-2">
-                            <button
-                                className="p-2 hover:bg-gray-100 rounded-lg"
-                                onClick={() => queryAllDocuments(userSearch.trim())}
-                                disabled={isLoading}
-                            >
-                                <ArrowUp className="h-5 w-5 text-gray-500" />
-                            </button>
+                            </div>
+                        )}
+                    </div>
+                ))}
+                {isLoading && (
+                    <div className="mr-auto w-full max-w-2xl">
+                        <div className="animate-pulse flex space-x-2">
+                            <div className="h-2 w-2 bg-gray-400 rounded-full"></div>
+                            <div className="h-2 w-2 bg-gray-400 rounded-full"></div>
+                            <div className="h-2 w-2 bg-gray-400 rounded-full"></div>
                         </div>
+                    </div>
+                )}
+
+                <div ref={scrollRef} />
+            </ScrollArea>
+
+            <div className=" p-4">
+                <div className="relative max-w-3xl mx-auto">
+                    <input
+                        className="w-full h-12 pl-12 pr-24 rounded-xl border-2 border-gray-200 focus:border-blue-500 focus:ring-0 text-base"
+                        placeholder="Query your documents..."
+                        value={inputValue}
+                        onChange={handleInputChange}
+                        onKeyDown={handleKeyDown}
+                    />
+                    <Search
+                        className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400"
+                    />
+                    <div className="absolute right-4 top-1/2 transform -translate-y-1/2 flex items-center gap-2">
+                        <button
+                            className="p-2 hover:bg-gray-100 rounded-lg"
+                            onClick={() => queryAllDocuments(userSearch.trim())}
+                            disabled={isLoading}
+                        >
+                            <ArrowUp className="h-5 w-5 text-gray-500" />
+                        </button>
                     </div>
                 </div>
             </div>
-        );
-    
+        </div>
+    );
+
 
 
 
     const renderFileDetails = () => (
         <>
-            <div className="flex justify-between items-center mb-4">
+            <div className="flex justify-between items-center mb-4 mt-2">
                 <h2 className="text-lg font-semibold">File Details</h2>
                 <Button
                     variant="outline"
@@ -474,7 +523,7 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
 
     return (
         <ScrollArea className="h-full ">
-            <div className="flex flex-col gap-2 overflow-auto h-screen">
+            <div className="flex flex-col gap-2 px-4 overflow-auto h-screen">
                 {showDetailsView ? renderFileDetails() : renderAdvancedSearch()}
             </div>
         </ScrollArea>
