@@ -524,7 +524,7 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
     return (
         <ScrollArea className="h-full ">
             <div className="flex flex-col gap-2 px-4 overflow-auto h-screen">
-                {showDetailsView ? renderFileDetails() : renderAdvancedSearch()}
+                {(showDetailsView && sourceUrls.length === 0) ? renderFileDetails() : renderAdvancedSearch()}
             </div>
         </ScrollArea>
 
