@@ -36,7 +36,7 @@ const UserManagement: React.FC<UserManagementProps> = () => {
   const fetchPermissionLevel = async () => {
     
     try {
-      const restOperation = post({
+      const restOperation = get({
         apiName: 'S3_API',
         path: `/share-folder/${bucketUuid}/get-permissions`,
         options: {
