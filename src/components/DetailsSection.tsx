@@ -363,7 +363,7 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
 
 
     
-            <div className="flex flex-col h-full">
+            <div className="flex flex-col h-full ">
                 <ScrollArea className="flex-1 overflow-auto p-4">
                     {messages.map((message, index) => (
                         <div key={index} className="flex flex-col gap-4 mb-4">
