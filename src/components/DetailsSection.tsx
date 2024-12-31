@@ -364,7 +364,7 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
 
     
             <div className="flex flex-col h-full ">
-                <ScrollArea className="flex-1 overflow-auto p-4">
+                <ScrollArea className="flex-1 overflow-auto">
                     {messages.map((message, index) => (
                         <div key={index} className="flex flex-col gap-4 mb-4">
                             {message.type === 'question' ? (
@@ -413,7 +413,7 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
                     <div ref={scrollRef} />
                 </ScrollArea>
 
-                <div className="border-t p-4">
+                <div className=" p-4">
                     <div className="relative max-w-3xl mx-auto">
                         <input
                             className="w-full h-12 pl-12 pr-24 rounded-xl border-2 border-gray-200 focus:border-blue-500 focus:ring-0 text-base"
@@ -474,7 +474,7 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
 
     return (
         <ScrollArea className="h-full ">
-            <div className="flex flex-col gap-2 px-4 py-4 overflow-auto h-screen">
+            <div className="flex flex-col gap-2 overflow-auto h-screen">
                 {showDetailsView ? renderFileDetails() : renderAdvancedSearch()}
             </div>
         </ScrollArea>
