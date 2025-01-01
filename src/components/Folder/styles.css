@@ -33,14 +33,14 @@
   color: black;
   min-width: 0;
   overflow: hidden;
-  text-overflow: ellipsis;
+  /* text-overflow: ellipsis; */
   white-space: nowrap;
 }
 
 .node-text {
   max-width: calc(100% + 500px); /* Adjust this value as needed */
   overflow: hidden;
-  text-overflow: ellipsis;
+  /* text-overflow: ellipsis; */
   white-space: nowrap;
 }
 
@@ -49,7 +49,6 @@
   padding: 0px 10px;
   outline: none;
   color: white;
-  border-radius: 2px;
 }
 
 .node-content input[type="text"] {
@@ -68,7 +67,7 @@
   /* margin: 1rem 0; */
   margin-bottom: 0.5rem;
   color: black;
-  border-radius: 10px;
+  border-radius: 5px;
 }
 
 .tree-container {
@@ -86,7 +85,7 @@
 }
 
 .file-actions {
-  height: 100%;
+  /* height: 100%; */
   display: flex;
 }
 
@@ -96,21 +95,15 @@
 
 .folderFileActions {
   display: flex;
-  flex-direction: row;
-  align-items: center;
-  margin-right: 10px;
+
 }
 
-.folderFileActions button {
+/* .folderFileActions button {
   display: flex;
   align-items: center;
   color: #999999;
   background-color: inherit;
-  border: none;
-  font-size: 16px;
-  height: 100%;
-  width: 24px;
-}
+} */
 
 .node-container .file-actions .folderFileActions {
   visibility: hidden;
@@ -135,13 +128,12 @@
   background: none;
   color: black;
   outline: red;
-  border: 1px solid #c6d0ed;
 }
 
 /* Right side content */
 .content {
   flex: 1;
-  padding: 32px;
+  padding: 10px;
 }
 
 .content ul {

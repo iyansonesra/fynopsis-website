@@ -90,11 +90,11 @@ const TabSystem: React.FC<TabSystemProps> = ({ tabs, activeTabId, setActiveTabId
                         {...provided.dragHandleProps}
                         data-tab-id={tab.id}
                         className={`flex items-center px-4 py-2 cursor-pointer whitespace-nowrap ${
-                          activeTabId === tab.id ? 'bg-white' : 'bg-gray-200'
+                          activeTabId === tab.id ? 'bg-white border-t-blue-500 border-r-0 border-l-0 border-b-0 border-t-2' : 'bg-gray-200'
                         }`}
                         onClick={() => setActiveTabId(tab.id)}
                       >
-                        <span className="mr-2">{truncateString(tab.title)}</span>
+                        <span className="mr-2 text-sm">{truncateString(tab.title)}</span>
                         {tab.title == "All Files" ? 
                          null : <button
                           onClick={(e) => {

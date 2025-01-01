@@ -1,22 +1,55 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { AiFillFolder, AiFillFile } from "react-icons/ai";
 import { MdArrowRight, MdArrowDropDown, MdEdit } from "react-icons/md";
 import { RxCross2 } from "react-icons/rx";
+import { ChevronRight, Folder, MoreHorizontal } from "lucide-react";
+import { ArrowUpDown, ChevronDown, FileIcon, FolderIcon, Upload } from "lucide-react"
+
+
+
+import { IconButton, Menu, MenuItem } from '@mui/material';
+import MoreHorizIcon from '@mui/icons-material/MoreHoriz';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 const Node = ({ node, style, dragHandle, tree }) => {
+  const [anchorEl, setAnchorEl] = useState(null);
   const CustomIcon = node.data.icon;
   const iconColor = node.data.iconColor;
 
+  const handleMenuOpen = (event) => {
+    event.stopPropagation();
+    setAnchorEl(event.currentTarget);
+  };
+
+  const handleMenuClose = () => {
+    setAnchorEl(null);
+  };
+
   const handleDelete = async () => {
+    handleMenuClose();
     if (window.confirm(`Are you sure you want to delete ${node.data.name}?`)) {
       const key = node.data.isFolder ? `${node.id}/` : node.id;
       await tree.props.onDelete(key);
     }
   };
 
+  const handleRename = () => {
+    handleMenuClose();
+    if (node.edit) {
+      node.edit();
+    } else {
+      console.error("Edit method not found. Make sure you have passed the correct props to the tree component.");
+    }
+  };
+
   return (
     <div
-      className={`node-container flex-row ${node.state.isSelected ? "isSelected" : ""}`}
+      className={`node-container flex-row ${node.state.isSelected ? "isSelected" : ""} `}
       style={style}
       ref={dragHandle}
     >
@@ -31,22 +64,16 @@ const Node = ({ node, style, dragHandle, tree }) => {
               {CustomIcon ? (
                 <CustomIcon color={iconColor ? iconColor : "#6bc7f6"} />
               ) : (
-                <AiFillFile color="#6bc7f6" />
+                <FileIcon size={12}/>
               )}
             </span>
           </>
         ) : (
           <>
             <span className="arrow">
-              {node.isOpen ? <MdArrowDropDown /> : <MdArrowRight />}
+              {node.isOpen ? <ChevronDown size={15}/> : <ChevronRight size={15}/>}
             </span>
-            <span className="file-folder-icon">
-              {CustomIcon ? (
-                <CustomIcon color={iconColor ? iconColor : "#f6cf60"} />
-              ) : (
-                <AiFillFolder color="#f6cf60" />
-              )}
-            </span>
+           
           </>
         )}
         <span className="node-text" title={node.data.name}>
@@ -63,19 +90,30 @@ const Node = ({ node, style, dragHandle, tree }) => {
               autoFocus
             />
           ) : (
-            <span className = "text-sm">{node.data.name}</span>
+            <span className = "text-xs">{node.data.name}</span>
           )}
         </span>
       </div>
 
       <div className="file-actions absolute right-0">
-        <div className="folderFileActions">
-          <button onClick={() => node.edit()} title="Rename...">
-            <MdEdit />
-          </button>
-          <button onClick={handleDelete} title="Delete">
-            <RxCross2 />
-          </button>
+        <div className="folderFileActions mr-1">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button className="bg-white p-1 rounded-lg shadow-2xl " >
+                <MoreHorizontal className="h-4 w-4" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={handleRename}>
+                <MdEdit className="mr-2" />
+                <span>Rename</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={handleDelete}>
+                <RxCross2 className="mr-2" />
+                <span>Delete</span>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
     </div>

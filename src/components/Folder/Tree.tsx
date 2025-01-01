@@ -44,12 +44,12 @@ const transformS3DataToTree = (headObjects: S3Object[]): TreeNode[] => {
   const sortedObjects = headObjects.sort((a, b) => {
     const aIsFolder = a.key.endsWith('/');
     const bIsFolder = b.key.endsWith('/');
-    
+
     // If one is a folder and the other isn't, folders come first
     if (aIsFolder !== bIsFolder) {
       return aIsFolder ? -1 : 1;
     }
-    
+
     // If both are folders or both are files, sort alphabetically
     return a.key.localeCompare(b.key);
   });
@@ -174,7 +174,7 @@ const TreeFolder: React.FC<TreeFolderProps> = ({ onFileSelect }) => {
 
   const handleCreateFolder = async () => {
     setShowFolderInput(true);
-   
+
   };
 
   const handleFolderNameSubmit = async () => {
@@ -245,13 +245,14 @@ const TreeFolder: React.FC<TreeFolderProps> = ({ onFileSelect }) => {
           }
         }
       });
-  
+
       const { body } = await response.response;
       const result = await body.json();
-      
+
       console.log('File moved successfully:', result);
+      await fetchObjects(bucketUuid);
       return result;
-  
+
     } catch (error) {
       console.error('Error moving file:', error);
       throw error;
@@ -291,15 +292,15 @@ const TreeFolder: React.FC<TreeFolderProps> = ({ onFileSelect }) => {
           const item = findAndRemoveItem(newData, id);
           return item;
         }).filter(Boolean);
-  
+
         // Handle S3 file movement
         draggedItems.forEach(async (item: TreeNode) => {
           if (!item.isFolder) {
             const sourceKey = item.id;
-            const destinationKey = parentId 
+            const destinationKey = parentId
               ? `${parentId}/${item.name}`
               : item.name;
-  
+
             try {
               console.log('Moving file:', sourceKey, 'to', destinationKey);
               await moveFile(sourceKey, destinationKey);
@@ -309,7 +310,7 @@ const TreeFolder: React.FC<TreeFolderProps> = ({ onFileSelect }) => {
             }
           }
         });
-  
+
         // Update local tree structure
         if (parentId) {
           const parent = findItem(newData, parentId);
@@ -319,7 +320,7 @@ const TreeFolder: React.FC<TreeFolderProps> = ({ onFileSelect }) => {
         } else {
           newData.splice(index, 0, ...draggedItems);
         }
-  
+
         return newData;
       });
     } catch (error) {
@@ -340,19 +341,19 @@ const TreeFolder: React.FC<TreeFolderProps> = ({ onFileSelect }) => {
           }
         }
       });
-  
+
       const { body } = await response.response;
       const result = await body.json();
-      
+
       console.log('Item deleted successfully:', result);
       return result;
-  
+
     } catch (error) {
       console.error('Error deleting item:', error);
       throw error;
     }
   };
-  
+
 
   // Replace your handleTest function with this
   const handleTest = () => {
@@ -425,56 +426,56 @@ const TreeFolder: React.FC<TreeFolderProps> = ({ onFileSelect }) => {
   }
 
   return (
-    <ScrollArea className="overflow-hidden w-full h-full font-montserrat px-3">
+    <ScrollArea className="overflow-hidden w-full h-full font-montserrat ">
       <input
         type="text"
         placeholder="Search..."
-        className="search-input w-full p-2 mb-2 border rounded font-montserrat"
+        className="search-input w-full p-2 mb-2 border  font-montserrat text-sm"
         value={term}
         onChange={(e) => setTerm(e.target.value)}
       />
-      <div className="ml-2 folderFileActions mb-2">
+      <div className=" folderFileActions mb-2">
         <button
           onClick={() => handleTest()}
           title="New Folder..."
           className="p-1 hover:bg-gray-100 rounded"
         >
-          <TbFolderPlus />
+          <TbFolderPlus size = {15}/>
         </button>
         <button
           onClick={() => treeRef.current?.createLeaf()}
           title="New File..."
           className="p-1 hover:bg-gray-100 rounded"
         >
-          <AiOutlineFileAdd />
+          <AiOutlineFileAdd size = {15}/>
         </button>
       </div>
       <div className="tree-container">
         {treeData.length > 0 ? (
-         <Tree
-         ref={treeRef}
-         data={treeData}
-         width="100%"
-         indent={24}
-         rowHeight={32}
-         searchTerm={term}
-         searchMatch={(node, term) => node.data.name.toLowerCase().includes(term.toLowerCase())}
-         onActivate={handleNodeClick}
-         key={treeKey}
-         onMove={handleMove}
-         onDelete={async (key) => {
-           try {
-             await deleteItem(key);
-             setTreeData(prevData => {
-               const newData = [...prevData];
-               findAndRemoveItem(newData, key.replace('/', ''));
-               return newData;
-             });
-           } catch (error) {
-             console.error('Error deleting item:', error);
-           }
-         }}
-       >
+          <Tree
+            ref={treeRef}
+            data={treeData}
+            width="100%"
+            indent={24}
+            rowHeight={32}
+            searchTerm={term}
+            searchMatch={(node, term) => node.data.name.toLowerCase().includes(term.toLowerCase())}
+            onActivate={handleNodeClick}
+            key={treeKey}
+            onMove={handleMove}
+            onDelete={async (key) => {
+              try {
+                await deleteItem(key);
+                setTreeData(prevData => {
+                  const newData = [...prevData];
+                  findAndRemoveItem(newData, key.replace('/', ''));
+                  return newData;
+                });
+              } catch (error) {
+                console.error('Error deleting item:', error);
+              }
+            }}
+          >
             {Node}
           </Tree>
         ) : (
@@ -482,50 +483,55 @@ const TreeFolder: React.FC<TreeFolderProps> = ({ onFileSelect }) => {
             No files or folders found
           </div>
         )}
+
+        {showFolderInput && (
+          <div className="absolute bottom-0 w-full ">
+            <div className="flex flex-col gap-2">
+              <input
+                type="text"
+                value={newFolderName}
+                onChange={(e) => setNewFolderName(e.target.value)}
+                placeholder="Enter folder name"
+                className="text-xs py-1 pl-2 select-none outline-none border rounded font-montserrat "
+                disabled={isCreatingFolder}
+                onKeyPress={(e) => {
+                  if (e.key === 'Enter') {
+                    handleFolderNameSubmit();
+
+                  }
+                }}
+                autoFocus
+              />
+              <div className="flex flex-row w-full gap-2">
+                <button
+                  onClick={handleFolderNameSubmit}
+                  className="px-3 text-xs py-1 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:opacity-50 flex-1"
+                  disabled={isCreatingFolder}
+                >
+                  {isCreatingFolder ? 'Creating...' : 'Add'}
+                </button>
+                <button
+                  onClick={() => {
+                    setShowFolderInput(false);
+                    setNewFolderName('');
+                    setFolderError(null);
+                  }}
+                  className="px-3 py-1 text-xs bg-white border-red-600 border text-red-600 rounded -400 flex-1"
+                  disabled={isCreatingFolder}
+                >
+                  Cancel
+                </button>
+              </div>
+
+            </div>
+            {folderError && (
+              <div className="text-red-500 text-sm mt-1">{folderError}</div>
+            )}
+          </div>
+        )}
       </div>
 
-      {showFolderInput && (
-  <div className="mb-2">
-    <div className="flex gap-2">
-      <input
-        type="text"
-        value={newFolderName}
-        onChange={(e) => setNewFolderName(e.target.value)}
-        placeholder="Enter folder name"
-        className="p-2 border rounded font-montserrat flex-1"
-        disabled={isCreatingFolder}
-        onKeyPress={(e) => {
-          if (e.key === 'Enter') {
-            handleFolderNameSubmit();
-            
-          }
-        }}
-        autoFocus
-      />
-      <button
-        onClick={handleFolderNameSubmit}
-        className="px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:opacity-50"
-        disabled={isCreatingFolder}
-      >
-        {isCreatingFolder ? 'Creating...' : 'Add'}
-      </button>
-      <button
-        onClick={() => {
-          setShowFolderInput(false);
-          setNewFolderName('');
-          setFolderError(null);
-        }}
-        className="px-3 py-1 bg-gray-300 rounded hover:bg-gray-400"
-        disabled={isCreatingFolder}
-      >
-        Cancel
-      </button>
-    </div>
-    {folderError && (
-      <div className="text-red-500 text-sm mt-1">{folderError}</div>
-    )}
-  </div>
-)}
+
 
     </ScrollArea>
   );

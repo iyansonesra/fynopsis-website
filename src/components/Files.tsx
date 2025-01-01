@@ -102,7 +102,7 @@ export default function Files({ setSelectedTab }: { setSelectedTab: React.Dispat
                 <div className="h-full flex flex-col px-4 py-2">
 
                     <Select>
-                        <SelectTrigger className="w-[120px] select-none outline-none border-none focus:ring-0 focus:ring-offset-0">
+                        <SelectTrigger className="w-[120px] text-left align-left select-none outline-none border-none focus:ring-0 focus:ring-offset-0">
                             <SelectValue placeholder="Theme" />
                         </SelectTrigger>
                         <SelectContent>
