@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Montserrat, Inter, Poppins, Cormorant } from "next/font/google";
+import { Montserrat, Inter, Poppins, Cormorant, Open_Sans } from "next/font/google";
 import "./globals.css";
 import { Amplify } from "aws-amplify";
 import { Authenticator as AmplifyAuthenticator } from "@aws-amplify/ui-react";
@@ -11,6 +11,13 @@ const montserrat = Montserrat({
   weight: ['100', '200', '300', '400', '500', '600', '700', '800', '900'],
   display: 'swap',
   variable: '--font-montserrat',
+});
+
+const open_sans = Open_Sans({
+  subsets: ["latin"],
+  weight: [ '300', '400', '500', '600', '700', '800'],
+  display: 'swap',
+  variable: '--font-open-sans',
 });
 
 const cormorant = Cormorant({
@@ -51,7 +58,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-        <body className={`${montserrat.variable} ${poppins.variable} ${inter.variable} ${cormorant.variable} ${inter.variable} font-sans`}>
+        <body className={`${montserrat.variable} ${poppins.variable} ${inter.variable} ${cormorant.variable} ${inter.variable}  ${open_sans.variable} font-sans`}>
           <ClientComponent>
             {children}
           </ClientComponent>
