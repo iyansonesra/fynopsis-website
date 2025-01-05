@@ -121,11 +121,13 @@ const TabSystem: React.FC<TabSystemProps> = ({ tabs, activeTabId, setActiveTabId
       </div>
       
       <div className="flex-grow bg-white p-4 relative">
-        {tabs.map(tab => (
+      {tabs.map(tab => (
           <div
             key={tab.id}
             style={{
-              display: tab.id === activeTabId ? 'block' : 'none',
+              // Change display:none to visibility and opacity
+              visibility: tab.id === activeTabId ? 'visible' : 'hidden',
+              opacity: tab.id === activeTabId ? 1 : 0,
               position: 'absolute',
               top: 0,
               left: 0,

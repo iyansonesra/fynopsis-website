@@ -17,6 +17,7 @@ import { Input } from "@/components/ui/input";
 import { get, post } from 'aws-amplify/api';
 import { Share } from "lucide-react";
 import UserManagement from "@/components/Collaborators";
+import ExcelViewer from '@/components/ExcelViewer';
 
 type IndicatorStyle = {
   top: string;
@@ -134,7 +135,7 @@ export default function Home() {
       case "library":
         return <Files setSelectedTab={setSelectedTab} />;
       case "form":
-        return <Files setSelectedTab={setSelectedTab} />;
+        return <ExcelViewer />;
       case "users":
         return <UserManagement dataroomId={''} />;
       default:

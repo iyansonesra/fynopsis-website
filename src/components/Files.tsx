@@ -23,6 +23,7 @@ import TabSystem from './TabSystem';
 import FileViewer from './FileViewer';
 import PDFViewer from './PDFViewer';
 import { ThemeProvider } from '../lib/ThemeContext';
+import SpreadsheetApp from './ExcelViewer';
 
 
 interface Tab {
@@ -50,9 +51,10 @@ export default function Files({ setSelectedTab }: { setSelectedTab: React.Dispat
 
 
     const [tabs, setTabs] = useState([
-        { id: '1', title: 'All Files', content: <DataTableDemo onFileSelect={handleFileSelect} /> }
-    ]);
+        { id: '1', title: 'All Files', content: <DataTableDemo onFileSelect={handleFileSelect} /> },    ]);
     const [activeTabId, setActiveTabId] = useState('1');
+
+  
 
     const addOrActivateTab = (newTab: { id: string; title: string; content: JSX.Element }) => {
         setTabs(prevTabs => {
