@@ -19,10 +19,11 @@ const DataRoomCard: React.FC<DataRoomCardProps> = ({ id, title, lastOpened, onCl
   const [isLeaveDialogOpen, setIsLeaveDialogOpen] = React.useState(false);
 
   const handleDelete = async () => {
+    console.log('Deleting dataroom:', id);
     try {
       const restOperation = del({
         apiName: 'S3_API',
-        path: `/s3/${id}/delete-room`,
+        path: `/share-folder/${id}/delete-room`,
         options: {
           headers: { 'Content-Type': 'application/json' },
           withCredentials: true,
@@ -54,7 +55,7 @@ const DataRoomCard: React.FC<DataRoomCardProps> = ({ id, title, lastOpened, onCl
 
   return (
     <>
-      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-md overflow-hidden cursor-pointer hover:shadow-lg transition-shadow duration-300 w-full max-w-sm relative group">
+      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-md overflow-hidden cursor-pointer hover:shadow-lg transition-shadow duration-300 w-full max-w-sm relative group ">
         <div className="absolute right-2 top-2">
           <Popover>
             <PopoverTrigger asChild>

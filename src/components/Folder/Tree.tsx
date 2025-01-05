@@ -376,49 +376,47 @@ const TreeFolder: React.FC<TreeFolderProps> = ({ onFileSelect }) => {
     const currentTime = new Date().getTime();
     const timeDiff = currentTime - lastClickTime;
 
-    // Check if same node was clicked within 300ms
     if (timeDiff < 300 && lastClickedNode?.data.id === node.data.id) {
-      // Double click detected
-      if (!node.isFolder) {
-        try {
-          const s3Key = `${bucketUuid}/${node.data.id}`;
-
-          const downloadResponse = await get({
-            apiName: 'S3_API',
-            path: `/s3/${bucketUuid}/download-url`,
-            options: {
-              withCredentials: true,
-              queryParams: { path: s3Key }
+        // Double click detected
+        if (!node.data.isFolder) {  // Only proceed if it's not a folder
+            try {
+                const s3Key = `${bucketUuid}/${node.data.id}`;
+                const downloadResponse = await get({
+                    apiName: 'S3_API',
+                    path: `/s3/${bucketUuid}/download-url`,
+                    options: {
+                        withCredentials: true,
+                        queryParams: { path: s3Key }
+                    }
+                });
+                
+                const { body } = await downloadResponse.response;
+                const responseText = await body.text();
+                const { signedUrl } = JSON.parse(responseText);
+                
+                const fileObject = {
+                    id: node.data.id,
+                    name: node.data.name,
+                    s3Url: signedUrl,
+                    type: node.data.name.split('.').pop()?.toUpperCase() || 'Unknown',
+                    size: node.data.metadata?.ContentLength || 0,
+                    status: "success" as const,
+                    date: node.data.metadata?.LastModified?.split('T')[0] || '',
+                    uploadedBy: node.data.metadata?.uploadedby || 'Unknown',
+                    s3Key: s3Key
+                };
+                
+                onFileSelect(fileObject);
+            } catch (error) {
+                console.error('Error getting signed URL:', error);
             }
-          });
-
-          const { body } = await downloadResponse.response;
-          const responseText = await body.text();
-          const { signedUrl } = JSON.parse(responseText);
-
-          const fileObject = {
-            id: node.data.id,
-            name: node.data.name,
-            s3Url: signedUrl,
-            type: node.data.name.split('.').pop()?.toUpperCase() || 'Unknown',
-            size: node.data.metadata?.ContentLength || 0,
-            status: "success" as const,
-            date: node.data.metadata?.LastModified?.split('T')[0] || '',
-            uploadedBy: node.data.metadata?.uploadedby || 'Unknown',
-            s3Key: s3Key
-          };
-
-          onFileSelect(fileObject);
-        } catch (error) {
-          console.error('Error getting signed URL:', error);
         }
-      }
     }
-
-    // Update last click time and node
+    
     setLastClickTime(currentTime);
     setLastClickedNode(node);
-  };
+};
+
 
   if (isLoading) {
     return (
@@ -429,7 +427,7 @@ const TreeFolder: React.FC<TreeFolderProps> = ({ onFileSelect }) => {
   }
 
   return (
-    <ScrollArea className="overflow-hidden w-full h-full font-montserrat ">
+    <ScrollArea className="overflow-hidden w-full h-full font-montserrat">
       <input
         type="text"
         placeholder="Search..."
@@ -466,20 +464,9 @@ const TreeFolder: React.FC<TreeFolderProps> = ({ onFileSelect }) => {
             onActivate={handleNodeClick}
             key={treeKey}
             onMove={handleMove}
-            onDelete={async ({ ids }) => {
-              try {
-                for (const id of ids) {
-                  await deleteItem(id);
-                  setTreeData(prevData => {
-                    const newData = [...prevData];
-                    findAndRemoveItem(newData, id.replace('/', ''));
-                    return newData;
-                  });
-                }
-              } catch (error) {
-                console.error('Error deleting item:', error);
-              }
-            }}
+            openByDefault={false}
+
+           
           >
             {Node}
           </Tree>

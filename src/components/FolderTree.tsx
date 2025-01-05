@@ -124,7 +124,6 @@ const FolderTreeComponent: React.FC = () => {
         height={384}
         indent={24}
         rowHeight={32}
-        onCreate={handleCreate}
         onMove={handleMove}
         onRename={handleRename}
       >

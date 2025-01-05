@@ -22,6 +22,8 @@ interface UserManagementProps {
   dataroomId: string;
 }
 
+type Role = 'READ' | 'WRITE' | 'ADMIN' | 'OWNER';
+
 
 
 const UserManagement: React.FC<UserManagementProps> = () => {
@@ -33,25 +35,69 @@ const UserManagement: React.FC<UserManagementProps> = () => {
   const pathname = usePathname();
   const bucketUuid = pathname.split('/').pop() || '';
 
-  const fetchPermissionLevel = async () => {
+  const canModifyUserRole = (currentUserRole: Role, targetUserRole: Role) => {
+    if (currentUserRole === 'OWNER') {
+      return true;  // OWNER can modify any role
+    }
+    if (currentUserRole === 'ADMIN') {
+      return targetUserRole !== 'OWNER' && targetUserRole !== 'ADMIN';  // ADMIN can only modify READ and WRITE roles
+    }
+    return false;  // Other roles cannot modify any roles
+  };
+  
+  const RoleSelect = ({ user, currentUserRole }: { user: User; currentUserRole: Role }) => {
+    const canModify = canModifyUserRole(currentUserRole, user.role as Role);
     
+    if (!canModify) {
+      return <div className="text-gray-600 font-medium">
+        {user.role.charAt(0).toUpperCase() + user.role.slice(1).toLowerCase()}
+      </div>;
+    }
+    
+    return (
+      <Select 
+        value={user.role} 
+        onValueChange={(newValue) => changeUserPermission(user.email, newValue)}
+      >
+        <SelectTrigger className="w-[140px] bg-white">
+          <SelectValue placeholder="Select permission" />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="READ">Read</SelectItem>
+          <SelectItem value="WRITE">Write</SelectItem>
+          <SelectItem value="ADMIN">Admin</SelectItem>
+          {currentUserRole === 'OWNER' && (
+            <SelectItem value="OWNER">Owner</SelectItem>
+          )}
+        </SelectContent>
+      </Select>
+    );
+  };
+
+
+  const fetchPermissionLevel = async () => {
+
     try {
       const restOperation = get({
         apiName: 'S3_API',
         path: `/share-folder/${bucketUuid}/get-permissions`,
         options: {
-            headers: {
-                'Content-Type': 'application/json'
-            },
+          headers: {
+            'Content-Type': 'application/json'
           },
+        },
       });
 
       const { body } = await restOperation.response;
-      console.log('Body:', body);
       const responseText = await body.text();
       const response = JSON.parse(responseText);
-      console.log('Users response:', response);
-      setUsers(response.users);
+      const permissions = {
+        role: response.role,
+        sharedBy: response.sharedBy,
+        addedAt: response.addedAt
+      };
+      console.log('Permissions retrieved:', permissions);
+      setUsers(response);
     } catch (error) {
       setError('Failed to fetch users');
       console.error('Error fetching users:', error);
@@ -66,11 +112,11 @@ const UserManagement: React.FC<UserManagementProps> = () => {
     const fetchAttributes = async () => {
       const userAttributes = await fetchUserAttributes();
       const currentUserEmail = userAttributes.email;
-      
+
       if (users.length > 0) {
         const current = users.find(user => user.email === currentUserEmail);
         const others = users.filter(user => user.email !== currentUserEmail);
-        
+
         setCurrentUser(current || null);
         setOtherUsers(others);
       }
@@ -83,7 +129,7 @@ const UserManagement: React.FC<UserManagementProps> = () => {
     setError(null);
 
     console.log("bucketUuid", bucketUuid);
-    
+
     try {
       const restOperation = get({
         apiName: 'S3_API',
@@ -126,13 +172,13 @@ const UserManagement: React.FC<UserManagementProps> = () => {
           withCredentials: true
         },
       });
-  
+
       const { body } = await restOperation.response;
       const responseText = await body.text();
       const response = JSON.parse(responseText);
-      
+
       await fetchUsers();
-      
+
     } catch (error) {
       console.error('Error changing user permissions:', error);
     }
@@ -184,19 +230,7 @@ const UserManagement: React.FC<UserManagementProps> = () => {
                     </div>
                   </div>
                   <div className="ml-6">
-                    <Select
-                      value={currentUser.role}
-                      onValueChange={(newValue) => changeUserPermission(currentUser.email, newValue)}
-                    >
-                      <SelectTrigger className="w-[140px] bg-white">
-                        <SelectValue placeholder="Select permission" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="READ">Read</SelectItem>
-                        <SelectItem value="WRITE">Write</SelectItem>
-                        <SelectItem value="ADMIN">Admin</SelectItem>
-                      </SelectContent>
-                    </Select>
+                    <RoleSelect user={currentUser} currentUserRole={currentUser.role as Role} />
                   </div>
                 </div>
               </div>
@@ -225,19 +259,7 @@ const UserManagement: React.FC<UserManagementProps> = () => {
                   </div>
                 </div>
                 <div className="ml-6">
-                  <Select
-                    value={user.role}
-                    onValueChange={(newValue) => changeUserPermission(user.email, newValue)}
-                  >
-                    <SelectTrigger className="w-[140px] bg-white">
-                      <SelectValue placeholder="Select permission" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="READ">Read</SelectItem>
-                      <SelectItem value="WRITE">Write</SelectItem>
-                      <SelectItem value="ADMIN">Admin</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <RoleSelect user={user} currentUserRole={currentUser?.role as Role} />
                 </div>
               </div>
             ))}

@@ -1,4 +1,8 @@
-const PDFViewer = ({ fileUrl }) => {
+interface PDFViewerProps {
+  fileUrl: string;
+}
+
+const PDFViewer = ({ fileUrl }: PDFViewerProps) => {
   return (
     <embed
       src={fileUrl}

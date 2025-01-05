@@ -274,6 +274,7 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
                 };
 
                 ws.onmessage = (event) => {
+                    console.log('WebSocket message:', event.data);
                     try {
                         const data = JSON.parse(event.data);
                         if (data.type === 'content') {
@@ -290,6 +291,7 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
                 };
 
                 ws.onerror = (error) => {
+                    console.log('WebSocket Error:', error);
                     console.error('WebSocket Error Details:', {
                         error,
                         url: websocketUrl.substring(0, 100) + '...',

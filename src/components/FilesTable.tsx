@@ -7,7 +7,6 @@ import {
     flexRender,
     getCoreRowModel,
     getFilteredRowModel,
-    getPaginationRowModel,
     getSortedRowModel,
     useReactTable,
 } from "@tanstack/react-table"
@@ -18,7 +17,6 @@ import { S3Client, PutObjectCommand, GetObjectCommand, DeleteObjectCommand, List
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { fetchAuthSession, getCurrentUser } from 'aws-amplify/auth';
 import { Button } from "@/components/ui/button"
-import { Checkbox } from "@/components/ui/checkbox"
 import {
     DropdownMenu,
     DropdownMenuCheckboxItem,
@@ -37,11 +35,7 @@ import {
     TableHeader,
     TableRow,
 } from "@/components/ui/table"
-import DocViewer, { DocViewerRenderers } from "@cyntler/react-doc-viewer";
 import "@cyntler/react-doc-viewer/dist/index.css";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import EnhancedFileViewer from "@/components/EnhancedFileviewer"
-import { post } from "aws-amplify/api";
 import { ScrollArea, ScrollBar } from "./ui/scroll-area";
 import { usePathname, useSearchParams } from 'next/navigation';
 // import { delete } from "aws-amplify/api";
@@ -84,7 +78,6 @@ const getUserPrefix = async () => {
         if (!identityId) {
             throw new Error('No identity ID available');
         }
-        console.log("The identity id:", identityId);
         return `${identityId}/`;
     } catch (error) {
         console.error('Error getting user prefix:', error);
@@ -118,7 +111,6 @@ const getS3Client = async () => {
 const getUserInfo = async () => {
     try {
         const userInfo = await getCurrentUser();
-        console.log(userInfo.username);
         return userInfo.username;
     } catch (error) {
         console.error('Error getting user info:', error);
@@ -128,12 +120,7 @@ const getUserInfo = async () => {
 
 const getPresignedUrl = async (s3Key: string) => {
     try {
-
-        console.log("Waiting on s3 client");
-
         const s3Client = await getS3Client();
-
-        console.log("Got the s3 client");
         const command = new GetObjectCommand({
             Bucket: S3_BUCKET_NAME,
             Key: s3Key
@@ -355,7 +342,6 @@ export function DataTableDemo({ onFileSelect }: DataTableDemoProps) {
         }
 
         const folderPath = newPath + "/";
-        console.log("Navigating to folder:", folderPath);
         try {
             await getS3Client();
             const restOperation = get({
@@ -526,7 +512,6 @@ export function DataTableDemo({ onFileSelect }: DataTableDemoProps) {
                     const validFiles = files.filter((file): file is Payment =>
                         file !== null && typeof file === 'object' && 'id' in file
                     );
-                    console.log("hii\n");
                     // setTableData([...folderEntries, ...validFiles]);
                 }
             } catch (error) {
@@ -683,8 +668,6 @@ export function DataTableDemo({ onFileSelect }: DataTableDemoProps) {
 
     React.useEffect(() => {
         getUserInfo().then(username => setCurrentUser(username));
-        // listS3Objects();
-        console.log("Getting user info");
     }, []);
     React.useEffect(() => {
         getUserInfo().then(username => setCurrentUser(username));

@@ -11,7 +11,7 @@ interface DragDropOverlayProps {
 interface FileUpload {
   file: File;
   progress: number;
-  status: 'uploading' | 'completed' | 'error';
+  status: 'uploading' | 'completed' | 'error' | 'invalid filename' | 'file too large' | 'invalid file type';
 }
 
 interface FileUploads {
@@ -24,11 +24,25 @@ interface DragDropOverlayProps {
   currentPath?: string[];  // Add current path prop
 }
 
-const DragDropOverlay: React.FC<DragDropOverlayProps> = ({ 
-  onClose, 
+
+const isValidFileType = (file: File): boolean => {
+  return ALLOWED_FILE_TYPES.includes(file.type);
+};
+
+const MAX_FILE_SIZE = 100 * 1024 * 1024; // 100MB in bytes
+const ALLOWED_FILE_TYPES = [
+  'application/pdf',
+  'application/vnd.ms-excel',
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+];
+
+
+const DragDropOverlay: React.FC<DragDropOverlayProps> = ({
+  onClose,
   onFilesUploaded,
   currentPath = [] // Default to empty array for root folder
 }) => {
+  const [pendingFiles, setPendingFiles] = useState<File[]>([]);
   const [fileUploads, setFileUploads] = useState<FileUploads>({});
   const [isConfirming, setIsConfirming] = useState(false);
   const pathname = usePathname();
@@ -45,7 +59,7 @@ const DragDropOverlay: React.FC<DragDropOverlayProps> = ({
   const uploadFile = async (file: File) => {
     try {
       const fullPath = getFullPath(file.name);
-      
+
       // Get presigned URL from API with the full path
       const getUrlResponse = await post({
         apiName: 'S3_API',
@@ -80,7 +94,7 @@ const DragDropOverlay: React.FC<DragDropOverlayProps> = ({
 
       // After successful S3 upload, trigger post-upload processing with full path
       await post({
-        apiName: 'S3_API', 
+        apiName: 'S3_API',
         path: `/s3/${bucketUuid}/post-upload`,
         options: {
           headers: {
@@ -107,19 +121,36 @@ const DragDropOverlay: React.FC<DragDropOverlayProps> = ({
         ...prev,
         [file.name]: {
           ...prev[file.name],
-          status: 'error'
+          status: 'invalid filename'
         }
       }));
     }
   };
 
+  const isValidFileName = (fileName: string): boolean => {
+    // Regex to check for special characters and slashes
+    console.log('fileName:', fileName);
+    const validFileNameRegex = /^[a-zA-Z0-9\s._-]+$/;
+    return validFileNameRegex.test(fileName);
+  };
+
 
   const onDrop = useCallback(async (acceptedFiles: File[]) => {
     const newUploads = acceptedFiles.reduce((acc, file) => {
+      let status: FileUpload['status'] = 'completed';
+
+      if (file.size > MAX_FILE_SIZE) {
+        status = 'file too large';
+      } else if (!isValidFileType(file)) {
+        status = 'invalid file type';
+      } else if (!isValidFileName(file.name)) {
+        status = 'invalid filename';
+      }
+
       acc[file.name] = {
         file,
         progress: 0,
-        status: 'uploading'
+        status
       };
       return acc;
     }, {} as FileUploads);
@@ -129,10 +160,13 @@ const DragDropOverlay: React.FC<DragDropOverlayProps> = ({
       ...newUploads
     }));
 
-    // Start uploads immediately
-    for (const file of acceptedFiles) {
-      await uploadFile(file);
-    }
+    const validFiles = acceptedFiles.filter(file =>
+      file.size <= MAX_FILE_SIZE &&
+      isValidFileType(file) &&
+      isValidFileName(file.name)
+    );
+
+    setPendingFiles(validFiles);
   }, []);
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({ onDrop });
@@ -140,10 +174,46 @@ const DragDropOverlay: React.FC<DragDropOverlayProps> = ({
   const handleConfirmUpload = async () => {
     setIsConfirming(true);
     try {
+      // Set all pending files to uploading state with 0 progress
+      setFileUploads(prev => {
+        const updated = { ...prev };
+        pendingFiles.forEach(file => {
+          updated[file.name] = {
+            ...updated[file.name],
+            status: 'uploading',
+            progress: 0
+          };
+        });
+        return updated;
+      });
+
+      // Upload all pending files
+      for (const file of pendingFiles) {
+        // Simulate progress updates
+        const updateProgress = (progress: number) => {
+          setFileUploads(prev => ({
+            ...prev,
+            [file.name]: {
+              ...prev[file.name],
+              progress
+            }
+          }));
+        };
+
+        // Update progress before upload starts
+        updateProgress(20);
+
+        // Start upload
+        await uploadFile(file);
+
+        // Set final progress
+        updateProgress(100);
+      }
+
       const uploadedFiles = Object.values(fileUploads)
         .filter(upload => upload.status === 'completed')
         .map(upload => upload.file);
-      
+
       onFilesUploaded(uploadedFiles);
       onClose();
     } catch (error) {
@@ -172,9 +242,8 @@ const DragDropOverlay: React.FC<DragDropOverlayProps> = ({
         {Object.keys(fileUploads).length === 0 ? (
           <div
             {...getRootProps()}
-            className={`border-2 border-dashed rounded-lg p-8 text-center cursor-pointer ${
-              isDragActive ? 'border-blue-500 bg-blue-50' : 'border-gray-300'
-            }`}
+            className={`border-2 border-dashed rounded-lg p-8 text-center cursor-pointer ${isDragActive ? 'border-blue-500 bg-blue-50' : 'border-gray-300'
+              }`}
           >
             <input {...getInputProps()} />
             <UploadIcon className="mx-auto h-12 w-12 text-gray-400" />
@@ -192,23 +261,25 @@ const DragDropOverlay: React.FC<DragDropOverlayProps> = ({
                     <span>{fileName}</span>
                     <span className="flex items-center">
                       {upload.status === 'completed' ? (
-                        <span className="text-green-600">Completed</span>
-                      ) : upload.status === 'error' ? (
-                        <span className="text-red-600">Error</span>
+                        <span className="text-green-600">Ready to Upload</span>
                       ) : (
-                        'Uploading...'
+                        <span className="text-red-600">
+                          {upload.status === 'file too large' && 'File exceeds 100MB limit'}
+                          {upload.status === 'invalid filename' && 'Invalid filename - use only letters, numbers, spaces, dots, underscores, or hyphens'}
+                          {upload.status === 'invalid file type' && 'Only PDF and Excel files are allowed'}
+                          {upload.status === 'error' && 'Error'}
+                        </span>
                       )}
                     </span>
                   </div>
                   <div className="w-full bg-gray-200 rounded-full h-2">
-                    <div 
-                      className={`h-2 rounded-full transition-all duration-300 ${
-                        upload.status === 'error' 
-                          ? 'bg-red-500' 
+                    <div
+                      className={`h-2 rounded-full transition-all duration-300 ${upload.status === 'error'
+                          ? 'bg-red-500'
                           : upload.status === 'completed'
                             ? 'bg-green-500'
                             : 'bg-blue-500'
-                      }`}
+                        }`}
                       style={{ width: `${Math.max(0, upload.progress)}%` }}
                     ></div>
                   </div>

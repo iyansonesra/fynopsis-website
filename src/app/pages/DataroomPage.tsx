@@ -7,14 +7,14 @@ import { Clipboard, LucideIcon } from "lucide-react";
 import { fetchUserAttributes, FetchUserAttributesOutput } from 'aws-amplify/auth';
 import { CircularProgress } from "@mui/material";
 import React, { useRef } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, usePathname, useRouter } from 'next/navigation';
 import { Library, Users, LogOut } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import Files from "@/components/Files";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { post } from 'aws-amplify/api';
+import { get, post } from 'aws-amplify/api';
 import { Share } from "lucide-react";
 import UserManagement from "@/components/Collaborators";
 
@@ -39,7 +39,10 @@ export default function Home() {
   const [isShareDialogOpen, setIsShareDialogOpen] = useState(false);
   const [userEmail, setUserEmail] = useState('');
   const [permissionLevel, setPermissionLevel] = useState('READ');
+  const pathname = usePathname();
+  const bucketUuid = pathname.split('/').pop() || '';
   const params = useParams();
+  const [hasPermission, setHasPermission] = useState<boolean>(true);
   const dataroomId = params.id;
 
   const tabs: Tab[] = [
@@ -75,6 +78,10 @@ export default function Home() {
   }, [activeTab]);
 
   useEffect(() => {
+    fetchPermissionLevel();
+  }, []);
+
+  useEffect(() => {
     if (tabRefs.current[0]) {
       setIndicatorStyle({
         top: `${tabRefs.current[0].offsetTop}px`,
@@ -82,6 +89,28 @@ export default function Home() {
       });
     }
   }, []); // This will set the initial indicator style for Library tab
+
+  const fetchPermissionLevel = async () => {
+    try {
+      const restOperation = get({
+        apiName: 'S3_API',
+        path: `/share-folder/${bucketUuid}/get-permissions`,
+        options: {
+          headers: { 'Content-Type': 'application/json' },
+        },
+      });
+      // await restOperation.response; // Wait for response to confirm permissions
+
+      const { body } = await restOperation.response;
+      console.log('Body:', body);
+      const responseText = await body.text();
+      const response = JSON.parse(responseText);
+      console.log('Users response:', response);
+      setHasPermission(true);
+    } catch (error) {
+      setHasPermission(false);
+    }
+  };
 
 
   const [isDarkMode, setIsDarkMode] = useState(false);
@@ -107,7 +136,7 @@ export default function Home() {
       case "form":
         return <Files setSelectedTab={setSelectedTab} />;
       case "users":
-        return <UserManagement dataroomId={''}/>;
+        return <UserManagement dataroomId={''} />;
       default:
         return <Files setSelectedTab={setSelectedTab} />;
     }
@@ -153,6 +182,25 @@ export default function Home() {
       document.documentElement.classList.remove('dark');
     }
   }, [isDarkMode]);
+
+  const handleReturnToDashboard = () => {
+    router.push('/dashboard');
+  };
+
+  if (!hasPermission) {
+    return (
+      <div className="grid h-screen place-items-center">
+        <div className="flex flex-col items-center gap-4">
+          <h2 className="text-xl font-semibold">This dataroom does not exist or you do not have proper permissions</h2>
+          <Button onClick={handleReturnToDashboard}>
+            Return to Dashboard
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+ 
 
   return (
     userAttributes ?

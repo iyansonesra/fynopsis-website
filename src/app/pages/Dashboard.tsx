@@ -93,9 +93,14 @@ export default function GeneralDashboard() {
     };
 
     const handleAddDataroom = async () => {
+        if (dataRooms.length >= 8) {
+            // You can show an error message or handle the limit however you prefer
+            alert("You have reached the maximum limit of 8 datarooms");
+            return;
+          }
+
         const newDataroomNameExist = newDataroomName.trim();
         if (newDataroomNameExist) {
-            console.log('Creating new dataroom:', newDataroomNameExist);
 
             try {
                 const restOperation = post({
@@ -116,15 +121,17 @@ export default function GeneralDashboard() {
                 const responseText = await body.text();
                 const response = JSON.parse(responseText);
 
+                console.log('Response:', response);
+
                 const newDataroom: DataRoom = {
                     bucketName: newDataroomNameExist,
-                    uuid: response.bucketId,
+                    uuid: response.uuid,
                     permissionLevel: 'OWNER',
                     addedAt: new Date().toISOString(),
                     sharedBy: user.username,
-                    id: undefined,
-                    title: 'undefined',
-                    lastOpened: 'undefined'
+                    id: response.uuid,
+                    title: response.bucketName,
+                    lastOpened: 'Never Opened'
                 };
 
                 setDataRooms([...dataRooms, newDataroom]);
@@ -158,7 +165,6 @@ export default function GeneralDashboard() {
             const responseText = await body.text();
             const response = JSON.parse(responseText);
 
-            console.log('Data rooms:', response);
             
             // Update data rooms from the response
             const newDataRooms = response.buckets.map((room: DataRoom) => ({
@@ -222,7 +228,6 @@ export default function GeneralDashboard() {
             const attributes = await fetchUserAttributes();
             setUserAttributes(attributes);
         } catch (error) {
-            console.log("error");
         }
     }
 

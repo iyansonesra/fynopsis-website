@@ -22,6 +22,8 @@ import DetailSection from './DetailsSection';
 import TabSystem from './TabSystem';
 import FileViewer from './FileViewer';
 import PDFViewer from './PDFViewer';
+import { ThemeProvider } from '../lib/ThemeContext';
+
 
 interface Tab {
     id: string;
@@ -66,12 +68,10 @@ export default function Files({ setSelectedTab }: { setSelectedTab: React.Dispat
 
     function handleFileSelect(file: { id: string; name: string; s3Url: string; }) {
         setSelectedFile(file);
-        console.log('Selected file:', file);
         setShowDetailsView(true);
         if (file.id && file.name && file.s3Url) {
             const newTabId = `file-${file.id}`;
-            console.log('New tab ID:', newTabId);
-            console.log('S3 URL:', file.s3Url);
+
             addOrActivateTab({
                 id: newTabId,
                 title: file.name,
@@ -83,48 +83,50 @@ export default function Files({ setSelectedTab }: { setSelectedTab: React.Dispat
     }
 
     return (
-        <ResizablePanelGroup
-            direction="horizontal"
-            className="flex w-full mb-2 flex-row h-full overflow-hidden font-montserrat"
-        >
-            <ResizablePanel defaultSize={25} maxSize={30} minSize={16} collapsible={true} collapsedSize={0}>
-                <div className="h-full flex flex-col px-4 py-2">
+        <ThemeProvider>
+            <ResizablePanelGroup
+                direction="horizontal"
+                className="bg-background flex w-full mb-2 flex-row h-full overflow-hidden font-montserrat"
+            >
+                <ResizablePanel defaultSize={25} maxSize={30} minSize={16} collapsible={true} collapsedSize={0}>
+                    <div className="h-full flex flex-col px-4 py-2 bg-background">
 
-                    <Select>
-                        <SelectTrigger className="w-[120px] text-left align-left select-none outline-none border-none focus:ring-0 focus:ring-offset-0">
-                            <SelectValue placeholder="Theme" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="light">By Name</SelectItem>
-                            <SelectItem value="dark">By AI</SelectItem>
-                        </SelectContent>
-                    </Select>
+                        <Select>
+                            <SelectTrigger className="w-[120px] text-left align-left select-none outline-none border-none focus:ring-0 focus:ring-offset-0">
+                                <SelectValue placeholder="Theme" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="light">By Name</SelectItem>
+                                <SelectItem value="dark">By AI</SelectItem>
+                            </SelectContent>
+                        </Select>
 
 
-                    <ScrollArea className="flex-grow p-0 h-64 overflow-auto">
-                        <TreeFolder onFileSelect={handleFileSelect} />
+                        <ScrollArea className="flex-grow p-0 h-64 overflow-auto">
+                            <TreeFolder onFileSelect={handleFileSelect} />
 
-                    </ScrollArea>
-                </div>
-            </ResizablePanel>
-            <ResizableHandle withHandle />
-            <ResizablePanel defaultSize={50} minSize={40}>
-                <TabSystem
-                    tabs={tabs}
-                    activeTabId={activeTabId}
-                    setActiveTabId={setActiveTabId}
-                    setTabs={setTabs}
-                />
-            </ResizablePanel>
-            <ResizableHandle withHandle />
-            <ResizablePanel defaultSize={25} minSize={20} collapsible={true} collapsedSize={0}>
-                <DetailSection
-                    showDetailsView={showDetailsView}
-                    setShowDetailsView={setShowDetailsView}
-                    selectedFile={selectedFile}
-                    onFileSelect={handleFileSelect}  // Add this line
-                />
-            </ResizablePanel>
-        </ResizablePanelGroup>
+                        </ScrollArea>
+                    </div>
+                </ResizablePanel>
+                <ResizableHandle withHandle />
+                <ResizablePanel defaultSize={50} minSize={40}>
+                    <TabSystem
+                        tabs={tabs}
+                        activeTabId={activeTabId}
+                        setActiveTabId={setActiveTabId}
+                        setTabs={setTabs}
+                    />
+                </ResizablePanel>
+                <ResizableHandle withHandle />
+                <ResizablePanel defaultSize={25} minSize={20} collapsible={true} collapsedSize={0}>
+                    <DetailSection
+                        showDetailsView={showDetailsView}
+                        setShowDetailsView={setShowDetailsView}
+                        selectedFile={selectedFile}
+                        onFileSelect={handleFileSelect}  // Add this line
+                    />
+                </ResizablePanel>
+            </ResizablePanelGroup>
+        </ThemeProvider>
     );
 }
