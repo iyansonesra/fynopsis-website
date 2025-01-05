@@ -9,6 +9,8 @@ import { usePathname } from 'next/navigation';
 import { get, post } from "aws-amplify/api";
 import { ScrollArea } from "../ui/scroll-area";
 import { useS3Store } from "../fileService";
+import { TreeApi } from "react-arborist";
+
 
 interface TreeFolderProps {
   onFileSelect: (file: any) => void;
@@ -101,7 +103,8 @@ const TreeFolder: React.FC<TreeFolderProps> = ({ onFileSelect }) => {
   const [term, setTerm] = useState<string>("");
   const [treeData, setTreeData] = useState<TreeNode[]>([]);
   // const [isLoading, setIsLoading] = useState<boolean>(true);
-  const treeRef = useRef(null);
+  
+  const treeRef = useRef<TreeApi<TreeNode> | null>(null);
   const pathname = usePathname();
   const { objects, isLoading, fetchObjects } = useS3Store();
   const bucketUuid = pathname.split('/').pop() || '';
@@ -463,14 +466,16 @@ const TreeFolder: React.FC<TreeFolderProps> = ({ onFileSelect }) => {
             onActivate={handleNodeClick}
             key={treeKey}
             onMove={handleMove}
-            onDelete={async (key) => {
+            onDelete={async ({ ids }) => {
               try {
-                await deleteItem(key);
-                setTreeData(prevData => {
-                  const newData = [...prevData];
-                  findAndRemoveItem(newData, key.replace('/', ''));
-                  return newData;
-                });
+                for (const id of ids) {
+                  await deleteItem(id);
+                  setTreeData(prevData => {
+                    const newData = [...prevData];
+                    findAndRemoveItem(newData, id.replace('/', ''));
+                    return newData;
+                  });
+                }
               } catch (error) {
                 console.error('Error deleting item:', error);
               }

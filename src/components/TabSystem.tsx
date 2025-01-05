@@ -5,7 +5,7 @@ import { X } from 'lucide-react';
 interface Tab {
   id: string;
   title: string;
-  content: React.ReactNode;
+  content: React.ReactElement; // Changed from ReactNode
 }
 
 interface TabSystemProps {
@@ -16,7 +16,7 @@ interface TabSystemProps {
 }
 
 const TabSystem: React.FC<TabSystemProps> = ({ tabs, activeTabId, setActiveTabId, setTabs }) => {
-  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const scrollContainerRef = useRef<HTMLDivElement | null>(null);
 
   const onDragEnd = (result: any) => {
     if (!result.destination) return;
@@ -74,7 +74,9 @@ const TabSystem: React.FC<TabSystemProps> = ({ tabs, activeTabId, setActiveTabId
                 ref={(element) => {
                   provided.innerRef(element);
                   if (scrollContainerRef) {
-                    scrollContainerRef.current = element;
+                    if (scrollContainerRef.current !== element) {
+                      scrollContainerRef.current = element;
+                    }
                   }
                 }}
                 {...provided.droppableProps}

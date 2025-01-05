@@ -6,14 +6,14 @@ import {
     Settings as SettingsIcon,
     Factory,
     Plus,
+    LucideIcon,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area";
 import logo from '../assets/fynopsis_noBG.png'
-import { useState, useEffect } from "react"
+import { useState, useEffect, Key } from "react"
 import StockSearch from "./StockSearch";
 import Settings from "./Settings";
-import IndustryPage from "./IndustryPage";
 import { useAuthenticator } from '@aws-amplify/ui-react';
 import { Sun, Moon } from "lucide-react";
 import { fetchUserAttributes, FetchUserAttributesOutput } from 'aws-amplify/auth';
@@ -43,6 +43,9 @@ type IndicatorStyle = {
 };
 
 type DataRoom = {
+    id: string | null | undefined;
+    title: string;
+    lastOpened: string;
     bucketName: string;
     uuid: string;
     permissionLevel: string;
@@ -85,7 +88,7 @@ export default function GeneralDashboard() {
     const [newDataroomName, setNewDataroomName] = useState('');
 
 
-    const handleDataRoomClick = (id: string) => {
+    const handleDataRoomClick = (id: string | null | undefined) => {
         router.push(`/dataroom/${id}`);
     };
 
@@ -113,17 +116,15 @@ export default function GeneralDashboard() {
                 const responseText = await body.text();
                 const response = JSON.parse(responseText);
 
-                const newDataroom = {
-                    id: response.bucketId,
-                    title: newDataroomName.trim(),
-                    lastOpened: new Date().toLocaleString('en-US', {
-                        year: 'numeric',
-                        month: 'short',
-                        day: 'numeric',
-                        hour: 'numeric',
-                        minute: '2-digit'
-                    }),
-                    permissionLevel: 'OWNER'
+                const newDataroom: DataRoom = {
+                    bucketName: newDataroomNameExist,
+                    uuid: response.bucketId,
+                    permissionLevel: 'OWNER',
+                    addedAt: new Date().toISOString(),
+                    sharedBy: user.username,
+                    id: undefined,
+                    title: 'undefined',
+                    lastOpened: 'undefined'
                 };
 
                 setDataRooms([...dataRooms, newDataroom]);
@@ -288,57 +289,57 @@ export default function GeneralDashboard() {
         }
     };
 
-    const handleDeleteDataroom = async (dataroomId: string) => {
-        try {
-            const restOperation = del({
-                apiName: 'S3_API',
-                path: `/s3/${dataroomId}/delete-room`,
-                options: {
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    withCredentials: true
-                },
-            });
+    // const handleDeleteDataroom = async (dataroomId: string) => {
+    //     try {
+    //         const restOperation = del({
+    //             apiName: 'S3_API',
+    //             path: `/s3/${dataroomId}/delete-room`,
+    //             options: {
+    //                 headers: {
+    //                     'Content-Type': 'application/json'
+    //                 },
+    //                 withCredentials: true
+    //             },
+    //         });
 
-            const { body } = await restOperation.response;
-            const response = await body.text();
-            const result = JSON.parse(response);
+    //         const { body } = await restOperation.response;
+    //         const response = await body.text();
+    //         const result = JSON.parse(response);
 
-            // Remove the dataroom from state
-            setDataRooms(dataRooms.filter(room => room.id !== dataroomId));
-            setIsDeleteDialogOpen(false);
-            setSelectedDataroom(null);
-        } catch (error) {
-            console.error('Error deleting dataroom:', error);
-        }
-    };
+    //         // Remove the dataroom from state
+    //         setDataRooms(dataRooms.filter(room => room.id !== dataroomId));
+    //         setIsDeleteDialogOpen(false);
+    //         setSelectedDataroom(null);
+    //     } catch (error) {
+    //         console.error('Error deleting dataroom:', error);
+    //     }
+    // };
 
-    const handleLeaveDataroom = async (dataroomId: string) => {
-        try {
-            const restOperation = post({
-                apiName: 'S3_API',
-                path: `/s3/${dataroomId}/leave-room`,
-                options: {
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    withCredentials: true
-                },
-            });
+    // const handleLeaveDataroom = async (dataroomId: string) => {
+    //     try {
+    //         const restOperation = post({
+    //             apiName: 'S3_API',
+    //             path: `/s3/${dataroomId}/leave-room`,
+    //             options: {
+    //                 headers: {
+    //                     'Content-Type': 'application/json'
+    //                 },
+    //                 withCredentials: true
+    //             },
+    //         });
 
-            const { body } = await restOperation.response;
-            const response = await body.text();
-            const result = JSON.parse(response);
+    //         const { body } = await restOperation.response;
+    //         const response = await body.text();
+    //         const result = JSON.parse(response);
 
-            // Remove the dataroom from state
-            setDataRooms(dataRooms.filter(room => room.id !== dataroomId));
-            setIsLeaveDialogOpen(false);
-            setSelectedDataroom(null);
-        } catch (error) {
-            console.error('Error leaving dataroom:', error);
-        }
-    };
+    //         // Remove the dataroom from state
+    //         setDataRooms(dataRooms.filter(room => room.id !== dataroomId));
+    //         setIsLeaveDialogOpen(false);
+    //         setSelectedDataroom(null);
+    //     } catch (error) {
+    //         console.error('Error leaving dataroom:', error);
+    //     }
+    // };
 
 
     useEffect(() => {
@@ -410,11 +411,11 @@ export default function GeneralDashboard() {
                             {dataRooms.map((room) => (
                                 <DataRoomCard
                                     key={room.id}
-                                    id={room.id}
+                                    id={room.id || ''}
                                     title={room.title}
                                     lastOpened={room.lastOpened}
                                     permissionLevel={room.permissionLevel}
-                                    sharedBy={room.sharedBy}
+                                    sharedBy={room.sharedBy || ''}
                                     onClick={() => handleDataRoomClick(room.id)}
                                 />
                             ))}

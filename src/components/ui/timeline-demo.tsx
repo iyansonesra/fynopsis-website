@@ -67,7 +67,7 @@ export function TimelineDemo() {
     },
   ];
   return (
-    <div className="w-full bg-black">
+    <div className="w-full flex items-center justify-center">
       <Timeline data={data} />
     </div>
   );

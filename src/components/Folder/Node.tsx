@@ -4,11 +4,6 @@ import { MdArrowRight, MdArrowDropDown, MdEdit } from "react-icons/md";
 import { RxCross2 } from "react-icons/rx";
 import { ChevronRight, Folder, MoreHorizontal } from "lucide-react";
 import { ArrowUpDown, ChevronDown, FileIcon, FolderIcon, Upload } from "lucide-react"
-
-
-
-import { IconButton, Menu, MenuItem } from '@mui/material';
-import MoreHorizIcon from '@mui/icons-material/MoreHoriz';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -16,15 +11,11 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
-const Node = ({ node, style, dragHandle, tree }) => {
+const Node = ({ node, style, dragHandle, tree }: { node: any; style: any; dragHandle?: any; tree: any; }) => {
   const [anchorEl, setAnchorEl] = useState(null);
   const CustomIcon = node.data.icon;
   const iconColor = node.data.iconColor;
 
-  const handleMenuOpen = (event) => {
-    event.stopPropagation();
-    setAnchorEl(event.currentTarget);
-  };
 
   const handleMenuClose = () => {
     setAnchorEl(null);

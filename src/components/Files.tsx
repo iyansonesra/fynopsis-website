@@ -9,10 +9,8 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select"
-import { BadgeInfo, ChevronDown, ChevronLeft, ChevronRight, Folder, Sparkles, Star, Upload, X } from 'lucide-react';
 import { DataTableDemo } from './FilesTable';
-import { Payment, columns } from './FilesTable';
-import FolderTreeComponent from './FolderTree'; // Add this import
+
 import {
     ResizableHandle,
     ResizablePanel,
@@ -24,18 +22,19 @@ import DetailSection from './DetailsSection';
 import TabSystem from './TabSystem';
 import FileViewer from './FileViewer';
 import PDFViewer from './PDFViewer';
-import { Console } from 'console';
+
+interface Tab {
+    id: string;
+    title: string;
+    content: React.ReactNode;
+}
 
 export default function Files({ setSelectedTab }: { setSelectedTab: React.Dispatch<React.SetStateAction<string>> }) {
-    const [searchFileText, setSearchFileText] = useState('');
-    const [searchFolderText, setSearchFolderText] = useState('');
     const [showFolderTree, setShowFolderTree] = useState(true);
     const [folderViewWidth, setFolderViewWidth] = useState('54%');
-    const [folderSearchQuery, setFolderSearchQuery] = useState('');
-    const [showUploadOverlay, setShowUploadOverlay] = useState(false);
 
     const [showDetailsView, setShowDetailsView] = useState(false);
-    const [selectedFile, setSelectedFile] = useState(null);
+    const [selectedFile, setSelectedFile] = useState<{ id: string; name: string; s3Url: string } | null>(null);
 
     useEffect(() => {
         if (!showFolderTree && !showDetailsView) {
@@ -47,31 +46,21 @@ export default function Files({ setSelectedTab }: { setSelectedTab: React.Dispat
         }
     }, [showFolderTree, showDetailsView]);
 
-    const handleClearFileSearch = () => {
-        setSearchFileText('');
-    };
-
-    const handleClearFolderSearch = () => {
-        setSearchFolderText('');
-    };
 
     const [tabs, setTabs] = useState([
         { id: '1', title: 'All Files', content: <DataTableDemo onFileSelect={handleFileSelect} /> }
     ]);
     const [activeTabId, setActiveTabId] = useState('1');
 
-    const addOrActivateTab = (newTab) => {
+    const addOrActivateTab = (newTab: { id: string; title: string; content: JSX.Element }) => {
         setTabs(prevTabs => {
             const existingTab = prevTabs.find(tab => tab.id === newTab.id);
             if (existingTab) {
-                // If the tab already exists, return the current tabs array
                 return prevTabs;
             } else {
-                // If it's a new tab, add it
                 return [...prevTabs, newTab];
             }
         });
-        // Always set the active tab to the new or existing tab
         setActiveTabId(newTab.id);
     };
 

@@ -1,43 +1,16 @@
-import { Library, Users, TrendingUp, LucideIcon, LogOut, ArrowRight, ChevronRight } from 'lucide-react';
-import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/hover-card';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import {
-    Card,
-    CardContent,
-    CardDescription,
-    CardFooter,
-    CardHeader,
-    CardTitle,
-} from "@/components/ui/card"
-import NewsListing from "@/components/NewsListing"
-import { ScrollArea } from "@/components/ui/scroll-area"
-import { Separator } from "@/components/ui/separator"
-import RecentNews from "@/components/RecentNews"
-import RecentSearch from "@/components/RecentSearch"
-import { Instagram, Linkedin, MoveRight, Search, Sparkle, Star, User } from "lucide-react"
-import PinnedCompany from "@/components/PinnedCompanies"
+import { Library, Users, TrendingUp, LucideIcon, ChevronRight } from 'lucide-react';
 import React, { useRef, useEffect, useState } from 'react';
-import demo from "../assets/demo.png"
-import Stock from "@/components/Stock"
 import logo from "../assets/fynopsis_noBG.png"
-import backgrnd from "../assets/backgrnd.png"
-import demo1 from "../assets/demo_page.png"
-import graphZoom from '../assets/graphZoom.png'
 import FadeInSlideUp from './../../components/animation/FadeInSlideUp';
 import { useRouter } from 'next/navigation';
-import { Fade } from '@mui/material';
 import darkDemo from '../assets/dark_demo.png';
 import AnimatedGridPattern from '@/components/ui/animated-grid-pattern';
 import { cn } from '@/lib/utils';
 import AnimatedGradientText from '@/components/ui/animated-gradient-text';
 import { HoverBorderGradient } from '@/components/ui/hover-border-gradient';
-import { MagicCard } from '@/components/ui/magic-card';
 import { NeonGradientCard } from '@/components/ui/neon-gradient-card';
-import { AnimatedBeamDemo } from '@/components/ui/beamDemo';
-import { BentoGridSecondDemo } from '@/components/ui/bentoDemo';
 import GradientBox from '@/components/ui/gradient-card';
 import { Database, ChevronsUp } from 'lucide-react';
-import { Timeline } from '@/components/ui/timeline';
 import { TimelineDemo } from '@/components/ui/timeline-demo';
 
 
@@ -63,17 +36,6 @@ const FrontPage: React.FC = () => {
         { icon: TrendingUp, label: 'Trending' }
     ];
 
-    function signIn(): void {
-        router.push('/signin');
-    }
-
-    function handleLogout(): void {
-        console.log('Logout clicked');
-    }
-
-    function handleTabClick(index: number): void {
-        setActiveTab(index);
-    }
 
     useEffect(() => {
         if (activeTab !== null && tabRefs.current[activeTab]) {
@@ -87,37 +49,14 @@ const FrontPage: React.FC = () => {
         }
     }, [activeTab]);
 
-    const [color, setColor] = useState("#ffffff");
-
 
     return (
         <div className="relative min-h-screen w-full">
-            {/* Background with grid and mask */}
             <div className="absolute inset-0">
                 <div className="w-full h-full bg-black" />
-                {/* <div className="absolute inset-0 [mask-image:radial-gradient(ellipse_at_center,transparent_20%,black)]" /> */}
             </div>
 
-            {/* Content container */}
-            <div className="relative z-10">
-                {/* <AuroraBackground>
-                    <motion.div
-                        initial={{ opacity: 0.0, y: 40 }}
-                        whileInView={{ opacity: 1, y: 0 }}
-                        transition={{
-                            delay: 0.3,
-                            duration: 0.8,
-                            ease: "easeInOut",
-                        }}
-                        className="absolute top-0 flex flex-col gap-4 items-center justify-center px-4"
-                        color='black'
-                    >
-
-                    </motion.div>
-                    <div className="opacity=100"></div>
-
-                </AuroraBackground> */}
-
+            <div className="relative z-10 w-full">
                 <AnimatedGridPattern
                     numSquares={30}
                     maxOpacity={0.1}
@@ -141,11 +80,10 @@ const FrontPage: React.FC = () => {
                             <span className="font-semibold text-xl text-white font-montserrat">Fynopsis</span>
                         </div>
 
-                        {/* Right side - Auth buttons */}
                         <div className="flex items-center gap-4">
                             <button
                                 className="px-4 py-2 text-sm font-medium text-white hover:text-blue-200 transition-colors"
-                                onClick={() => router.push('/login')}
+                                onClick={() => router.push('/signin')}
                             >
                                 Log in
                             </button>
@@ -158,7 +96,7 @@ const FrontPage: React.FC = () => {
                         </div>
                     </div>
                 </div>
-                <div className="w-full min-h-screen flex flex-col gap-4">
+                <div className="w-full min-h-screen flex flex-col gap-4 ">
                     <div className="mt-28 flex items-center flex-col justify-center mx-auto gap-4">
                         <AnimatedGradientText>
                             <span
@@ -204,25 +142,11 @@ const FrontPage: React.FC = () => {
                                     }}
                                 />
                             </NeonGradientCard>
-                            {/* <div
-                                className="absolute inset-0 transform translate-y-[-4] blur-xl opacity-20"
-                                style={{
-                                    background: 'linear-gradient(145deg, #000000 0%, transparent 100%)',
-                                    borderRadius: '1rem'
-                                }}
-                            /> */}
-
                         </FadeInSlideUp>
                     </div>
 
                     <div className="mt-12 flex flex-col items-center justify-center w-full  gap-4 z-40">
-                        {/* <FadeInSlideUp className="mt-16 max-w-[80%]  flex items-center justify-center mx-auto">
-                            <h1 className="text-5xl text-center font-semibold font-cormorant text-white">
-                                Your complete solution to cluttered data.
-                            </h1>
-
-                        </FadeInSlideUp> */}
-
+                    
                         <div
                             className={
                                 "mt-8 flex  w-[80%] flex-col gap-4 lg:flex-row  z-40"
@@ -298,7 +222,7 @@ const FrontPage: React.FC = () => {
                     </div>
 
                 </div>
-                <div className='w-full flex items-center justify-center bg-green-100'>
+                <div className='w-full min-h-screen flex flex-col gap-4 '>
                     <TimelineDemo />
 
 

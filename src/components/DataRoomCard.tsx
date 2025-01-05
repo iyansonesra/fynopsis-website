@@ -5,7 +5,16 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { del, post } from 'aws-amplify/api';
 
-const DataRoomCard = ({ id, title, lastOpened, onClick }) => {
+interface DataRoomCardProps {
+  id: string;
+  title: string;
+  lastOpened: string;
+  onClick: () => void;
+  permissionLevel: string;
+  sharedBy: string;
+}
+
+const DataRoomCard: React.FC<DataRoomCardProps> = ({ id, title, lastOpened, onClick, permissionLevel, sharedBy }) => {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = React.useState(false);
   const [isLeaveDialogOpen, setIsLeaveDialogOpen] = React.useState(false);
 

@@ -46,27 +46,25 @@ import { ScrollArea, ScrollBar } from "./ui/scroll-area";
 import { usePathname, useSearchParams } from 'next/navigation';
 // import { delete } from "aws-amplify/api";
 import { get } from "aws-amplify/api";
-import { useS3Store } from "./fileService";
+import { S3Object, useS3Store } from "./fileService";
 
 const data: Payment[] = [
 ]
 
-export type Payment = {
-    id: string,
-    type: string,
-    name: string,
-    size: string,
-    status: "pending" | "processing" | "success" | "failed",
-    date: string,
-    uploadedBy: string,
-    s3Key?: string,
+interface Payment {
+    id: string;
+    type: string;
+    name: string;
+    status: "success"; // Make this a literal type instead of string
+    size: string;
+    date: string;
+    uploadedBy: string;
+    s3Key: string;
     s3Url: string;
-    tags?: string[];
-    documentSummary?: string;
     isFolder?: boolean;
-    itemCount?: number;
 
-}
+  }
+  
 
 interface FileViewerProps {
     isOpen: boolean
@@ -246,7 +244,7 @@ export const columns: ColumnDef<Payment>[] = [
                 {row.original.isFolder ? (
                     <>
                         <FolderIcon className="mr-2 h-4 w-4" />
-                        {row.getValue("name")}
+                        <div>{row.getValue("name")}</div>
                     </>
                 ) : (
                     <>
@@ -402,7 +400,8 @@ export function DataTableDemo({ onFileSelect }: DataTableDemoProps) {
                     date: ' ',
                     uploadedBy: ' ',
                     isFolder: true,
-                    s3Key: `${currentPath}${folder}/`
+                    s3Key: `${currentPath}${folder}/`,
+                    s3Url: ''
                 }));
 
                 // Get immediate files in current folder
@@ -485,17 +484,17 @@ export function DataTableDemo({ onFileSelect }: DataTableDemoProps) {
                         });
 
                     // Create folder entries
-                    const folderEntries: Payment[] = Array.from(folders).map(folder => ({
-                        id: `folder-${folder}`,
-                        type: 'FOLDER',
-                        name: folder,
-                        status: 'success',
-                        size: ' ',
-                        date: ' ',
-                        uploadedBy: ' ',
-                        isFolder: true,
-                        s3Key: `${currentPath}${folder}/`
-                    }));
+                    // const folderEntries: Payment[] = Array.from(folders).map(folder => ({
+                    //     id: `folder-${folder}`,
+                    //     type: 'FOLDER',
+                    //     name: folder,
+                    //     status: 'success',
+                    //     size: ' ',
+                    //     date: ' ',
+                    //     uploadedBy: ' ',
+                    //     isFolder: true,
+                    //     s3Key: `${currentPath}${folder}/`
+                    // }));
 
                     // Get immediate files in current folder
                     const files = await Promise.all(
@@ -729,18 +728,18 @@ export function DataTableDemo({ onFileSelect }: DataTableDemoProps) {
       
         // Create folder entries
         const folderEntries: Payment[] = Array.from(folders).map(folder => ({
-          id: `folder-${folder}`,
-          type: 'FOLDER',
-          name: folder,
-          status: 'success',
-          size: ' ',
-          date: ' ',
-          uploadedBy: ' ',
-          isFolder: true,
-          s3Key: `${pathPrefix}${folder}/`
+            id: `folder-${folder}`,
+            type: 'FOLDER',
+            name: folder,
+            status: 'success',
+            size: ' ',
+            date: ' ',
+            uploadedBy: ' ',
+            isFolder: true,
+            s3Key: `${pathPrefix}${folder}/`,
+            s3Url: ''
         }));
-      
-        // Get immediate files in current folder
+
         const files = objects
           .filter((object) => {
             const key = object.key || '';
@@ -758,19 +757,34 @@ export function DataTableDemo({ onFileSelect }: DataTableDemoProps) {
             date: object.metadata?.LastModified?.split('T')[0] || '',
             uploadedBy: object.metadata?.uploadedby || 'Unknown',
             s3Key: object.key,
-            isFolder: false
+            isFolder: false,
+            s3Url: ''
           }));
+      
+        // Get immediate files in current folder
+        // const files = objects
+        //   .filter((object) => {
+        //     const key = object.key || '';
+        //     if (!key.startsWith(pathPrefix)) return false;
+        //     const relativePath = key.slice(pathPrefix.length);
+        //     const parts = relativePath.split('/').filter(Boolean);
+        //     return parts.length === 1 && !key.endsWith('/');
+        //   })
+        //   .map((object) => ({
+        //     id: object.key,
+        //     type: object.key.split('.').pop()?.toUpperCase() || 'Unknown',
+        //     name: object.metadata?.originalname || object.key.split('/').pop() || '',
+        //     status: "success" as const,
+        //     size: formatFileSize(object.metadata?.ContentLength || 0),
+        //     date: object.metadata?.LastModified?.split('T')[0] || '',
+        //     uploadedBy: object.metadata?.uploadedby || 'Unknown',
+        //     s3Key: object.key,
+        //     isFolder: false
+        //   }));
       
         return [...folderEntries, ...files];
       };
       
-    
-
-
-    // React.useEffect(() => {
-    //     listS3Objects();
-    // }, []);
-
 
     const uploadToS3 = async (file: File) => {
         const fileId = file.name.split('.')[0];

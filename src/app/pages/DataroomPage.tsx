@@ -1,32 +1,32 @@
 "use client";
-import Link from "next/link"
-import {
-  Bell,
-  Search,
-  Settings as SettingsIcon,
-  Factory,
-} from "lucide-react"
 
 import logo from '../assets/fynopsis_noBG.png'
 import { useState, useEffect } from "react"
-
 import { useAuthenticator } from '@aws-amplify/ui-react';
-import { Sun, Moon, Clipboard } from "lucide-react";
+import { Clipboard, LucideIcon } from "lucide-react";
 import { fetchUserAttributes, FetchUserAttributesOutput } from 'aws-amplify/auth';
 import { CircularProgress } from "@mui/material";
 import React, { useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { Library, Users, TrendingUp, LucideIcon, LogOut } from 'lucide-react';
+import { Library, Users, LogOut } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import AdvancedSearch from "@/components/Analytics";
 import Files from "@/components/Files";
-import SimpliFill from "@/components/SimpliFill/SimpliFill";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { post } from 'aws-amplify/api';
 import { Share } from "lucide-react";
 import UserManagement from "@/components/Collaborators";
+
+type IndicatorStyle = {
+  top: string;
+  height: string;
+};
+
+type Tab = {
+  icon: LucideIcon;
+  label: string;
+};
 
 export default function Home() {
   const [selectedTab, setSelectedTab] = useState("Library");
@@ -48,9 +48,7 @@ export default function Home() {
     { icon: Users, label: 'Users' },
   ];
 
-  function signIn(): void {
-    router.push('/signin');
-  }
+
   function handleTabClick(index: number): void {
     setActiveTab(index);
     setSelectedTab(tabs[index].label);
@@ -109,7 +107,7 @@ export default function Home() {
       case "form":
         return <Files setSelectedTab={setSelectedTab} />;
       case "users":
-        return <UserManagement/>;
+        return <UserManagement dataroomId={''}/>;
       default:
         return <Files setSelectedTab={setSelectedTab} />;
     }
@@ -171,7 +169,7 @@ export default function Home() {
               {tabs.map((tab, index) => (
                 <div
                   key={tab.label}
-                  ref={(el) => (tabRefs.current[index] = el)}
+                  ref={(el) => { tabRefs.current[index] = el; }}
                   className={`relative z-10 p-2 mb-4 cursor-pointer ${activeTab === index ? 'text-slate-900' : 'text-white'
                     }`}
                   onClick={() => handleTabClick(index)}

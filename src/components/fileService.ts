@@ -1,12 +1,12 @@
 import { create } from 'zustand';
 import { get } from "aws-amplify/api";
 
-interface S3Object {
+export interface S3Object {
   key: string;
   metadata: any;
 }
 
-interface S3State {
+export interface S3State {
   objects: S3Object[];
   isLoading: boolean;
   fetchObjects: (bucketUuid: string) => Promise<void>;
