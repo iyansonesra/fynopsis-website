@@ -73,12 +73,18 @@ export default function Files({ setSelectedTab }: { setSelectedTab: React.Dispat
         setShowDetailsView(true);
         if (file.id && file.name && file.s3Url) {
             const newTabId = `file-${file.id}`;
+            console.log('url:', file.s3Url);
 
             addOrActivateTab({
                 id: newTabId,
                 title: file.name,
-                content: <PDFViewer fileUrl={file.s3Url} />
-            });
+                content: (
+                  <PDFViewer 
+                    documentUrl={file.s3Url} 
+                    containerId={`pdf-viewer-${file.id}`}
+                  />
+                )
+              });
         } else {
             console.error('Incomplete file information:', file);
         }

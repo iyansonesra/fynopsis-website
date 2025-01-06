@@ -11,7 +11,7 @@ import { registerLicense } from '@syncfusion/ej2-base';
 
 
 
-registerLicense('Ngo9BigBOggjHTQxAR8/V1NMaF5cXmBCf0x3R3xbf1x1ZFFMZVlbR3BPIiBoS35Rc0ViWXpfdnFQRWZaUUR1');
+registerLicense('ORg4AjUWIQA/Gnt2XVhhQlJHfV5AQmBIYVp/TGpJfl96cVxMZVVBJAtUQF1hTH5SdkNiW3xecHFdTmhf');
 
 export default function page() {
 

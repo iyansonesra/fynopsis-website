@@ -17,6 +17,15 @@ interface TabSystemProps {
 
 const TabSystem: React.FC<TabSystemProps> = ({ tabs, activeTabId, setActiveTabId, setTabs }) => {
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
+  const contentRef = useRef<HTMLDivElement | null>(null);
+
+
+  // Add effect to manage focus when switching tabs
+  useEffect(() => {
+    if (contentRef.current) {
+      contentRef.current.focus();
+    }
+  }, [activeTabId]);
 
   const onDragEnd = (result: any) => {
     if (!result.destination) return;
@@ -30,10 +39,10 @@ const TabSystem: React.FC<TabSystemProps> = ({ tabs, activeTabId, setActiveTabId
 
   function truncateString(str: string) {
     if (str.length > 20) {
-        return str.slice(0, 17) + '...';
+      return str.slice(0, 17) + '...';
     }
     return str;
-}
+  }
 
   const closeTab = (tabId: string) => {
     const newTabs = tabs.filter(tab => tab.id !== tabId);
@@ -91,24 +100,23 @@ const TabSystem: React.FC<TabSystemProps> = ({ tabs, activeTabId, setActiveTabId
                         {...provided.draggableProps}
                         {...provided.dragHandleProps}
                         data-tab-id={tab.id}
-                        className={`flex items-center px-4 py-2 cursor-pointer whitespace-nowrap ${
-                          activeTabId === tab.id ? 'bg-white border-t-blue-500 border-r-0 border-l-0 border-b-0 border-t-2' : 'bg-gray-200'
-                        }`}
+                        className={`flex items-center px-4 py-2 cursor-pointer whitespace-nowrap ${activeTabId === tab.id ? 'bg-white border-t-blue-500 border-r-0 border-l-0 border-b-0 border-t-2' : 'bg-gray-200'
+                          }`}
                         onClick={() => setActiveTabId(tab.id)}
                       >
                         <span className="mr-2 text-sm">{truncateString(tab.title)}</span>
-                        {tab.title == "All Files" ? 
-                         null : <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            closeTab(tab.id);
-                          }}
-                          className="text-gray-400 hover:text-gray-600"
-                        >
-                          <X size={16} />
-                        </button>
+                        {tab.title == "All Files" ?
+                          null : <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              closeTab(tab.id);
+                            }}
+                            className="text-gray-400 hover:text-gray-600"
+                          >
+                            <X size={16} />
+                          </button>
                         }
-                       
+
                       </div>
                     )}
                   </Draggable>
@@ -119,13 +127,15 @@ const TabSystem: React.FC<TabSystemProps> = ({ tabs, activeTabId, setActiveTabId
           </Droppable>
         </DragDropContext>
       </div>
-      
+
       <div className="flex-grow bg-white p-4 relative">
-      {tabs.map(tab => (
+        {tabs.map(tab => (
           <div
             key={tab.id}
+            ref={tab.id === activeTabId ? contentRef : null}
+            tabIndex={tab.id === activeTabId ? 0 : -1}
+            aria-hidden={tab.id !== activeTabId}
             style={{
-              // Change display:none to visibility and opacity
               visibility: tab.id === activeTabId ? 'visible' : 'hidden',
               opacity: tab.id === activeTabId ? 1 : 0,
               position: 'absolute',
@@ -133,13 +143,15 @@ const TabSystem: React.FC<TabSystemProps> = ({ tabs, activeTabId, setActiveTabId
               left: 0,
               right: 0,
               bottom: 0,
-              overflow: 'auto'
+              overflow: 'auto',
+              pointerEvents: tab.id === activeTabId ? 'auto' : 'none'
             }}
           >
             {tab.content}
           </div>
         ))}
       </div>
+
 
       <style jsx global>{`
         .hide-scrollbar::-webkit-scrollbar {
