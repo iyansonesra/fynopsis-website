@@ -93,18 +93,18 @@ const DragDropOverlay: React.FC<DragDropOverlayProps> = ({
       }
 
       // After successful S3 upload, trigger post-upload processing with full path
-      await post({
-        apiName: 'S3_API',
-        path: `/s3/${bucketUuid}/post-upload`,
-        options: {
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: {
-            filePaths: [fullPath]
-          }
-        }
-      });
+      // await post({
+      //   apiName: 'S3_API',
+      //   path: `/s3/${bucketUuid}/post-upload`,
+      //   options: {
+      //     headers: {
+      //       'Content-Type': 'application/json'
+      //     },
+      //     body: {
+      //       filePaths: [fullPath]
+      //     }
+      //   }
+      // });
 
       setFileUploads(prev => ({
         ...prev,
