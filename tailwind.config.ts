@@ -137,8 +137,7 @@ darkMode: 'class',
   		},
   		fontFamily: {
   			montserrat: [
-  				'Montserrat',
-  				'sans'
+  				'var(--font-montserrat)'
   			],
   			inter: [
   				'var(--font-inter)'

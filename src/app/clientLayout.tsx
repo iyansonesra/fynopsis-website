@@ -35,9 +35,14 @@ const poppins = Poppins({
 
 const theme = createTheme({
   typography: {
+    fontFamily: [
+      montserrat.style.fontFamily,
+      poppins.style.fontFamily,
+      cormorant.style.fontFamily,
+      inter.style.fontFamily,
+    ].join(", "),
     allVariants: {
-      fontFamily: montserrat.style.fontFamily,
-      textTransform: 'none',
+      textTransform: "none",
       fontSize: 16,
     },
   },
