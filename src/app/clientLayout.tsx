@@ -35,9 +35,14 @@ const poppins = Poppins({
 
 const theme = createTheme({
   typography: {
+    fontFamily: [
+      montserrat.style.fontFamily,
+      poppins.style.fontFamily,
+      cormorant.style.fontFamily,
+      inter.style.fontFamily,
+    ].join(", "),
     allVariants: {
-      fontFamily: montserrat.style.fontFamily,
-      textTransform: 'none',
+      textTransform: "none",
       fontSize: 16,
     },
   },
@@ -74,12 +79,12 @@ Amplify.configure({
     REST: {
       VDR_API: {
         endpoint:
-          'https://t87zcr0ug0.execute-api.us-east-1.amazonaws.com/prod', // main
+          'https://md22ny64ii.execute-api.us-east-1.amazonaws.com/prod', // main
         region: 'us-east-1' // Optional
       },
       S3_API: {
         endpoint:
-          'https://barfwuro11.execute-api.us-east-1.amazonaws.com/prod',
+          'https://sn2eu87rii.execute-api.us-east-1.amazonaws.com/prod',
         region: 'us-east-1' // Optional
       }
     }
