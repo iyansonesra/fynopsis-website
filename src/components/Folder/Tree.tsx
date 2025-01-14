@@ -427,7 +427,7 @@ const TreeFolder: React.FC<TreeFolderProps> = ({ onFileSelect }) => {
   }
 
   return (
-    <ScrollArea className="overflow-hidden w-full h-full font-montserrat">
+    <ScrollArea className="overflow-hidden w-full h-full font-montserrat dark:bg-darkbg">
       <input
         type="text"
         placeholder="Search..."
@@ -441,14 +441,14 @@ const TreeFolder: React.FC<TreeFolderProps> = ({ onFileSelect }) => {
           title="New Folder..."
           className="p-1 hover:bg-gray-100 rounded"
         >
-          <TbFolderPlus size = {15}/>
+          <TbFolderPlus size = {15} className="dark:text-white"/>
         </button>
         <button
           onClick={() => treeRef.current?.createLeaf()}
           title="New File..."
           className="p-1 hover:bg-gray-100 rounded"
         >
-          <AiOutlineFileAdd size = {15}/>
+          <AiOutlineFileAdd size = {15} className = "dark:text-white"/>
         </button>
       </div>
       <div className="tree-container">

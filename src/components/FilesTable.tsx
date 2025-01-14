@@ -230,13 +230,13 @@ export const columns: ColumnDef<Payment>[] = [
             <div className="flex items-center">
                 {row.original.isFolder ? (
                     <>
-                        <FolderIcon className="mr-2 h-4 w-4" />
-                        <div>{row.getValue("name")}</div>
+                        <FolderIcon className="mr-2 h-4 w-4 dark:text-white" />
+                        <div className = "dark:text-white">{row.getValue("name")}</div>
                     </>
                 ) : (
                     <>
-                        <FileIcon className="mr-2 h-4 w-4" />
-                        <div>{truncateString(row.getValue("name"))}</div>
+                        <FileIcon className="mr-2 h-4 w-4 dark:text-white" />
+                        <div className = "dark:text-white">{truncateString(row.getValue("name"))}</div>
                     </>
                 )}
             </div>
@@ -247,28 +247,28 @@ export const columns: ColumnDef<Payment>[] = [
     {
         accessorKey: "type",
         header: "Type",
-        cell: ({ row }) => <div className="capitalize">{row.getValue("type")}</div>,
+        cell: ({ row }) => <div className="capitalize  dark:text-white">{row.getValue("type")}</div>,
         enableResizing: true,
         size: 100,
     },
     {
         accessorKey: "date",
         header: "Date Uploaded",
-        cell: ({ row }) => <div className="capitalize">{row.getValue("date")}</div>,
+        cell: ({ row }) => <div className="capitalize  dark:text-white">{row.getValue("date")}</div>,
         enableResizing: true,
         size: 150,
     },
     {
         accessorKey: "size",
         header: "Size",
-        cell: ({ row }) => <div className="">{row.getValue("size")}</div>,
+        cell: ({ row }) => <div className=" dark:text-white">{row.getValue("size")}</div>,
         enableResizing: true,
         size: 100,
     },
     {
         accessorKey: "uploadedBy",
         header: "Uploaded By",
-        cell: ({ row }) => <div className="">{row.getValue("uploadedBy")}</div>,
+        cell: ({ row }) => <div className=" dark:text-white">{row.getValue("uploadedBy")}</div>,
         enableResizing: true,
         size: 100,
     },
@@ -848,7 +848,7 @@ export function DataTableDemo({ onFileSelect }: DataTableDemoProps) {
 
 
     return (
-        <div className="select-none w-full py-4 h-full">
+        <div className="select-none w-full dark:bg-darkbg py-4 h-full">
             <style jsx>{`
                 .resizer {
                     position: absolute;
@@ -885,14 +885,9 @@ export function DataTableDemo({ onFileSelect }: DataTableDemoProps) {
                     border-spacing: 0;
                 }
                 
-                th, td {
-                    border-bottom: 1px solid #e5e7eb;
-                    overflow: hidden;
-                    text-overflow: ellipsis;
-                    white-space: nowrap;
-                }
+         
             `}</style>
-            <div className="flex items-center py-4 h-[10%] px-6">
+            <div className="flex items-center  py-4 h-[10%] px-6">
                 <div className="buttons flex flex-row gap-2">
                     <button
                         className="flex items-center gap-2 bg-blue-500 text-white px-4 py-1 rounded-full hover:bg-blue-700"
@@ -948,7 +943,7 @@ export function DataTableDemo({ onFileSelect }: DataTableDemoProps) {
                                     {headerGroup.headers.map((header) => (
                                         <TableHead
                                             key={header.id}
-                                            className="text-xs font-medium py-3 relative"
+                                            className="text-xs font-medium py-3 relative dark:text-white"
                                             style={{ width: header.getSize() }}
                                         >
                                             {header.isPlaceholder
@@ -986,7 +981,7 @@ export function DataTableDemo({ onFileSelect }: DataTableDemoProps) {
                                         key={row.id}
                                         data-state={row.getIsSelected() && "selected"}
                                         onDoubleClick={() => handleRowDoubleClick(row.original)}
-                                        className="cursor-pointer hover:bg-gray-100"
+                                        className="cursor-pointer hover:bg-gray-100 dark:hover:bg-slate-900"
                                     >
                                         {row.getVisibleCells().map((cell) => (
                                             <TableCell
@@ -1015,7 +1010,7 @@ export function DataTableDemo({ onFileSelect }: DataTableDemoProps) {
                         </TableBody>
                     </Table>
                 </div>
-                <ScrollBar orientation="horizontal" />
+                <ScrollBar orientation="horizontal" className="dark:bg-darkbg dark:text-slate-900" />
             </ScrollArea>
 
 

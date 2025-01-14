@@ -124,7 +124,7 @@ const Node = ({ node, style, dragHandle, tree }: { node: any; style: any; dragHa
 
   return (
     <div
-      className={`node-container flex-row ${node.state.isSelected ? "isSelected" : ""} `}
+      className={`node-container flex-row dark:hover:bg-slate-900 ${node.state.isSelected ? "dark:bg-slate-900" : ""} `}
       style={style}
       ref={dragHandle}
     >
@@ -139,14 +139,14 @@ const Node = ({ node, style, dragHandle, tree }: { node: any; style: any; dragHa
               {CustomIcon ? (
                 <CustomIcon color={iconColor ? iconColor : "#6bc7f6"} />
               ) : (
-                <FileIcon size={12}/>
+                <FileIcon size={12} className = "dark:text-white"/>
               )}
             </span>
           </>
         ) : (
           <>
             <span className="arrow">
-              {node.isOpen ? <ChevronDown size={15}/> : <ChevronRight size={15}/>}
+              {node.isOpen ? <ChevronDown size={15} className='dark:text-white'/> : <ChevronRight size={15} className='dark:text-white'/>}
             </span>
            
           </>
@@ -165,7 +165,7 @@ const Node = ({ node, style, dragHandle, tree }: { node: any; style: any; dragHa
               autoFocus
             />
           ) : (
-            <span className = "text-xs">{node.data.name}</span>
+            <span className = "text-xs dark:text-white">{node.data.name}</span>
           )}
         </span>
       </div>
@@ -174,9 +174,9 @@ const Node = ({ node, style, dragHandle, tree }: { node: any; style: any; dragHa
         <div className="folderFileActions mr-1">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <button className="bg-white p-1 rounded-lg shadow-2xl " 
+              <button className="bg-white dark:bg-darkbg p-1 rounded-lg shadow-2xl " 
               onClick={() => node.edit()}>
-                <MoreHorizontal className="h-4 w-4" />
+                <MoreHorizontal className="h-4 w-4 dark:text-white" />
               </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">

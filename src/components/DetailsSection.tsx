@@ -416,7 +416,7 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
     const scrollRef = useScrollToBottom([messages, isLoading]);
 
     const renderAdvancedSearch = () => (
-        <div className="flex flex-col h-full overflow-none">
+        <div className="flex flex-col h-full overflow-none dark:bg-darkbg">
             <ScrollArea className="flex-1 overflow-none">
                 {messages.map((message, index) => (
                     <div key={index} className="flex flex-col gap-4 mb-4">
@@ -495,7 +495,7 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
 
     const renderFileDetails = () => (
         <>
-            <div className="flex justify-between items-center mb-4 mt-2">
+            <div className="flex justify-between items-center mb-4 mt-2 dark:bg-darkbg">
                 <h2 className="text-lg font-semibold">File Details</h2>
                 <Button
                     variant="outline"

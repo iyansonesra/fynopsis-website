@@ -74,8 +74,8 @@ const TabSystem: React.FC<TabSystemProps> = ({ tabs, activeTabId, setActiveTabId
   }, [activeTabId]);
 
   return (
-    <div className="flex flex-col h-full">
-      <div className="relative flex bg-gray-300">
+    <div className="flex flex-col h-full dark:bg-darkbg">
+      <div className="relative flex bg-gray-300 dark:bg-gray-950">
         <DragDropContext onDragEnd={onDragEnd}>
           <Droppable droppableId="tabs" direction="horizontal">
             {(provided) => (
@@ -100,11 +100,11 @@ const TabSystem: React.FC<TabSystemProps> = ({ tabs, activeTabId, setActiveTabId
                         {...provided.draggableProps}
                         {...provided.dragHandleProps}
                         data-tab-id={tab.id}
-                        className={`flex items-center px-4 py-2 cursor-pointer whitespace-nowrap ${activeTabId === tab.id ? 'bg-white border-t-blue-500 border-r-0 border-l-0 border-b-0 border-t-2' : 'bg-gray-200'
+                        className={`flex items-center px-4 py-2 cursor-pointer whitespace-nowrap ${activeTabId === tab.id ? 'bg-white dark:bg-darkbg border-t-blue-500 border-r-0 border-l-0 border-b-0 border-t-2' : 'bg-gray-200 dark:bg-gray-900'
                           }`}
                         onClick={() => setActiveTabId(tab.id)}
                       >
-                        <span className="mr-2 text-sm">{truncateString(tab.title)}</span>
+                        <span className="mr-2 text-sm dark:text-white">{truncateString(tab.title)}</span>
                         {tab.title == "All Files" ?
                           null : <button
                             onClick={(e) => {

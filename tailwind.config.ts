@@ -31,6 +31,7 @@ darkMode: 'class',
   	},
   	extend: {
   		colors: {
+		'darkbg': '#000E18',
         backgroundImage: {
           'gradient-border': 'linear-gradient(white, white), linear-gradient(to bottom, rgba(255, 255, 255, 0.3), #0000ff)'
         },

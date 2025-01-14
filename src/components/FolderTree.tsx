@@ -116,7 +116,7 @@ const FolderTreeComponent: React.FC = () => {
   };
 
   return (
-    <div className="w-64 h-96 border border-gray-300 rounded">
+    <div className="w-64 h-96 border border-gray-300 rounded dark:bg-darkbg">
       <Tree
         data={data}
         openByDefault={false}

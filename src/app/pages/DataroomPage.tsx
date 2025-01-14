@@ -18,6 +18,7 @@ import { get, post } from 'aws-amplify/api';
 import { Share } from "lucide-react";
 import UserManagement from "@/components/Collaborators";
 import ExcelViewer from '@/components/ExcelViewer';
+import DarkModeToggle from '@/components/DarkModeToggle';
 
 type IndicatorStyle = {
   top: string;
@@ -227,6 +228,8 @@ export default function Home() {
                 </div>
               ))}
             </div>
+
+            <DarkModeToggle/>
 
           </div>
 
