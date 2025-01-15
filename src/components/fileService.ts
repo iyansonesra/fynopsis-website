@@ -1,24 +1,29 @@
 import { create } from 'zustand';
-import { get } from "aws-amplify/api";
+import * as AmplifyAPI from "aws-amplify/api";
 
-export interface S3Object {
+interface S3Object {
   key: string;
   metadata: any;
 }
 
-export interface S3State {
+interface S3State {
   objects: S3Object[];
   isLoading: boolean;
+  searchQuery: string;
+  filteredObjects: S3Object[];
   fetchObjects: (bucketUuid: string) => Promise<void>;
+  setSearchQuery: (query: string) => void;
 }
 
-export const useS3Store = create<S3State>((set) => ({
+export const useS3Store = create<S3State>()(((set, get) => ({
   objects: [],
   isLoading: false,
+  searchQuery: '',
+  filteredObjects: [],
   fetchObjects: async (bucketUuid: string) => {
     set({ isLoading: true });
     try {
-      const restOperation = get({
+      const restOperation = AmplifyAPI.get({
         apiName: 'S3_API',
         path: `/s3/${bucketUuid}/head-objects-for-bucket`,
         options: { withCredentials: true }
@@ -28,12 +33,27 @@ export const useS3Store = create<S3State>((set) => ({
       const response = JSON.parse(responseText);
       
       if (response.headObjects) {
-        set({ objects: response.headObjects });
+        const objects = response.headObjects;
+        set({ 
+          objects,
+          filteredObjects: objects
+        });
       }
     } catch (error) {
       console.error('Error fetching S3 objects:', error);
     } finally {
       set({ isLoading: false });
     }
+  },
+  setSearchQuery: (query: string) => {
+    const state = get();
+    const filtered = state.objects.filter(obj => {
+      const fileName = obj.metadata?.originalname || obj.key.split('/').pop() || '';
+      return fileName.toLowerCase().includes(query.toLowerCase());
+    });
+    set({ 
+      searchQuery: query,
+      filteredObjects: filtered
+    });
   }
-}));
+})));

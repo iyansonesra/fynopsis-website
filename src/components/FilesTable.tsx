@@ -57,8 +57,8 @@ interface Payment {
     s3Url: string;
     isFolder?: boolean;
 
-  }
-  
+}
+
 
 interface FileViewerProps {
     isOpen: boolean
@@ -231,12 +231,12 @@ export const columns: ColumnDef<Payment>[] = [
                 {row.original.isFolder ? (
                     <>
                         <FolderIcon className="mr-2 h-4 w-4 dark:text-white" />
-                        <div className = "dark:text-white">{row.getValue("name")}</div>
+                        <div className="dark:text-white">{row.getValue("name")}</div>
                     </>
                 ) : (
                     <>
                         <FileIcon className="mr-2 h-4 w-4 dark:text-white" />
-                        <div className = "dark:text-white">{truncateString(row.getValue("name"))}</div>
+                        <div className="dark:text-white">{truncateString(row.getValue("name"))}</div>
                     </>
                 )}
             </div>
@@ -273,6 +273,13 @@ export const columns: ColumnDef<Payment>[] = [
         size: 100,
     },
     {
+        accessorKey: "uploadProcess",
+        header: "Document Status",
+        cell: ({ row }) => <div className=" dark:text-white">{row.getValue("uploadProcess") === "BATCHED" ? "Processing" : "Uploaded"}</div>,
+        enableResizing: true,
+        size: 100,
+    },
+    {
         accessorKey: "tags",
         header: "Tags",
         cell: ({ row }) => <TagDisplay tags={row.getValue("tags") || []} />,
@@ -301,12 +308,27 @@ export function DataTableDemo({ onFileSelect }: DataTableDemoProps) {
     const [viewerOpen, setViewerOpen] = React.useState(false)
     const [currentDocument, setCurrentDocument] = React.useState<{ url?: string, name?: string }>({})
     const [currentPath, setCurrentPath] = React.useState<string[]>([]);
-    const { objects, isLoading, fetchObjects } = useS3Store();
+    const { filteredObjects, setSearchQuery, fetchObjects, isLoading } = useS3Store();
+    const [searchValue, setSearchValue] = React.useState('');
+
+    const handleSearch = (event: React.ChangeEvent<HTMLInputElement>) => {
+        const value = event.target.value;
+        setSearchValue(value);
+        setSearchQuery(value);
+    };
+
+    React.useEffect(() => {
+        if (filteredObjects) {
+            const transformedData = transformObjectsToTableData(filteredObjects, currentPath);
+            setTableData(transformedData);
+        }
+    }, [filteredObjects, currentPath]);
+
 
 
     const Breadcrumb = ({ paths, onNavigate }: { paths: string[], onNavigate: (index: number) => void }) => {
         return (
-            <div className="flex items-center gap-2 text-sm text-gray-600 mb-4">
+            <div className="flex items-center gap-2 text-md text-gray-600 ">
                 <span
                     className="hover:text-blue-500 cursor-pointer"
                     onClick={() => onNavigate(-1)}
@@ -315,7 +337,7 @@ export function DataTableDemo({ onFileSelect }: DataTableDemoProps) {
                 </span>
                 {paths.map((path, index) => (
                     <React.Fragment key={index}>
-                        <span className="text-gray-400">/</span>
+                        <span className="text-gray-400">&gt;</span>
                         <span
                             className="hover:text-blue-500 cursor-pointer"
                             onClick={() => onNavigate(index)}
@@ -447,6 +469,8 @@ export function DataTableDemo({ onFileSelect }: DataTableDemoProps) {
                 const responseText = await body.text();
                 const responseMain = JSON.parse(responseText);
 
+                console.log(responseMain);
+
                 if (responseMain?.headObjects) {
                     const currentPath = payment.s3Key;
 
@@ -469,18 +493,6 @@ export function DataTableDemo({ onFileSelect }: DataTableDemoProps) {
                             }
                         });
 
-                    // Create folder entries
-                    // const folderEntries: Payment[] = Array.from(folders).map(folder => ({
-                    //     id: `folder-${folder}`,
-                    //     type: 'FOLDER',
-                    //     name: folder,
-                    //     status: 'success',
-                    //     size: ' ',
-                    //     date: ' ',
-                    //     uploadedBy: ' ',
-                    //     isFolder: true,
-                    //     s3Key: `${currentPath}${folder}/`
-                    // }));
 
                     // Get immediate files in current folder
                     const files = await Promise.all(
@@ -502,7 +514,7 @@ export function DataTableDemo({ onFileSelect }: DataTableDemoProps) {
                                     status: "success" as const,
                                     size: formatFileSize(metadata.ContentLength || 0),
                                     date: metadata.LastModified?.split('T')[0] || '',
-                                    uploadedBy: metadata.Metadata?.uploadedby || 'Unknown',
+                                    uploadedBy: metadata.Metadata?.uploadbyname || 'Unknown',
                                     s3Key: object.key,
                                     isFolder: false
                                 };
@@ -532,6 +544,8 @@ export function DataTableDemo({ onFileSelect }: DataTableDemoProps) {
                 const { body } = await downloadResponse.response;
                 const responseText = await body.text();
                 const { signedUrl } = JSON.parse(responseText);
+
+                console.log(signedUrl);
                 onFileSelect({
                     ...payment,
                     s3Url: signedUrl,
@@ -678,37 +692,39 @@ export function DataTableDemo({ onFileSelect }: DataTableDemoProps) {
     }, [bucketUuid]);
 
     React.useEffect(() => {
-        if (objects) {
-          const transformedData = transformObjectsToTableData(objects, currentPath);
-          setTableData(transformedData);
+        if (filteredObjects) {
+            const transformedData = transformObjectsToTableData(filteredObjects, currentPath);
+            setTableData(transformedData);
         }
-      }, [objects, currentPath]);
-      
+    }, [filteredObjects, currentPath]);
+
 
     const transformObjectsToTableData = (objects: S3Object[], currentPath: string[] = []): Payment[] => {
-        const pathPrefix = currentPath.length > 0 
-          ? `${bucketUuid}/${currentPath.join('/')}/`
-          : `${bucketUuid}/`;
-      
+        const pathPrefix = currentPath.length > 0
+            ? `${bucketUuid}/${currentPath.join('/')}/`
+            : `${bucketUuid}/`;
+
         // Extract immediate subfolders only
         const folders = new Set<string>();
         objects
-          .filter((object) => {
-            const key = object.key || '';
-            if (!key.startsWith(pathPrefix)) return false;
-            const relativePath = key.slice(pathPrefix.length);
-            const parts = relativePath.split('/').filter(Boolean);
-            return parts.length === 1 && key.endsWith('/');
-          })
-          .forEach((object) => {
-            if (object.key) {
-              const folderName = object.key
-                .slice(pathPrefix.length)
-                .split('/')[0];
-              folders.add(folderName);
-            }
-          });
-      
+            .filter((object) => {
+                const key = object.key || '';
+                if (!key.startsWith(pathPrefix)) return false;
+                const relativePath = key.slice(pathPrefix.length);
+                const parts = relativePath.split('/').filter(Boolean);
+                return parts.length === 1 && key.endsWith('/');
+            })
+            .forEach((object) => {
+                if (object.key) {
+                    const folderName = object.key
+                        .slice(pathPrefix.length)
+                        .split('/')[0];
+                    folders.add(folderName);
+                }
+            });
+
+        console.log(objects);
+
         // Create folder entries
         const folderEntries: Payment[] = Array.from(folders).map(folder => ({
             id: `folder-${folder}`,
@@ -720,30 +736,34 @@ export function DataTableDemo({ onFileSelect }: DataTableDemoProps) {
             uploadedBy: ' ',
             isFolder: true,
             s3Key: `${pathPrefix}${folder}/`,
-            s3Url: ''
+            s3Url: '',
+            uploadProcess: ''
         }));
 
         const files = objects
-          .filter((object) => {
-            const key = object.key || '';
-            if (!key.startsWith(pathPrefix)) return false;
-            const relativePath = key.slice(pathPrefix.length);
-            const parts = relativePath.split('/').filter(Boolean);
-            return parts.length === 1 && !key.endsWith('/');
-          })
-          .map((object) => ({
-            id: object.key,
-            type: object.key.split('.').pop()?.toUpperCase() || 'Unknown',
-            name: object.metadata?.originalname || object.key.split('/').pop() || '',
-            status: "success" as const,
-            size: formatFileSize(object.metadata?.ContentLength || 0),
-            date: object.metadata?.LastModified?.split('T')[0] || '',
-            uploadedBy: object.metadata?.uploadedby || 'Unknown',
-            s3Key: object.key,
-            isFolder: false,
-            s3Url: ''
-          }));
-      
+            .filter((object) => {
+                const key = object.key || '';
+                if (!key.startsWith(pathPrefix)) return false;
+                const relativePath = key.slice(pathPrefix.length);
+                const parts = relativePath.split('/').filter(Boolean);
+                return parts.length === 1 && !key.endsWith('/');
+            })
+
+
+            .map((object) => ({
+                id: object.key,
+                type: object.key.split('.').pop()?.toUpperCase() || 'Unknown',
+                name: object.metadata?.originalname || object.key.split('/').pop() || '',
+                status: "success" as const,
+                size: formatFileSize(object.metadata?.ContentLength || 0),
+                date: object.metadata?.LastModified?.split('T')[0] || '',
+                uploadedBy: object.metadata?.Metadata.uploadbyname || 'Unknown',
+                uploadProcess: object.metadata?.Metadata.pre_upload || 'Unknown',
+                s3Key: object.key,
+                isFolder: false,
+                s3Url: ''
+            }));
+
         // Get immediate files in current folder
         // const files = objects
         //   .filter((object) => {
@@ -764,10 +784,10 @@ export function DataTableDemo({ onFileSelect }: DataTableDemoProps) {
         //     s3Key: object.key,
         //     isFolder: false
         //   }));
-      
+
         return [...folderEntries, ...files];
-      };
-      
+    };
+
 
     const uploadToS3 = async (file: File) => {
         const fileId = file.name.split('.')[0];
@@ -840,9 +860,9 @@ export function DataTableDemo({ onFileSelect }: DataTableDemoProps) {
         // setTableData(prevData => [...newData, ...prevData]);
         const newFiles = (await Promise.all(uploadPromises)).filter((item): item is Payment => item !== null);
         setTableData(prevData => [...prevData, ...newFiles]);
-  
-  // Then refresh the complete list from server
-  await fetchObjects(bucketUuid);
+
+        // Then refresh the complete list from server
+        await fetchObjects(bucketUuid);
         setShowUploadOverlay(false);
     };
 
@@ -887,7 +907,7 @@ export function DataTableDemo({ onFileSelect }: DataTableDemoProps) {
                 
          
             `}</style>
-            <div className="flex items-center  py-4 h-[10%] px-6">
+            <div className="flex justify-between items-center  py-4 h-[10%] px-6">
                 <div className="buttons flex flex-row gap-2">
                     <button
                         className="flex items-center gap-2 bg-blue-500 text-white px-4 py-1 rounded-full hover:bg-blue-700"
@@ -895,15 +915,33 @@ export function DataTableDemo({ onFileSelect }: DataTableDemoProps) {
                         <Upload size={16} />
                         <span className="text-sm">Upload</span>
                     </button>
-                    <button className="flex items-center gap-2 bg-gray-200 text-gray-800 px-4 py-1 rounded-full hover:bg-slate-300">
+                    <button className="flex items-center gap-2 bg-gray-200 text-gray-800 px-4 py-1 rounded-full hover:bg-slate-300 dark:bg-darkbg dark:text-white dark:border dark:border-slate-600 ">
                         <span className="text-sm">Manage Documents</span>
                         <ChevronDown size={16} />
                     </button>
                 </div>
-                <DropdownMenu>
+
+               
+            <Input
+                    placeholder="Search files..."
+                    value={searchValue}
+                    onChange={handleSearch}
+                    className="max-w-sm border 
+                     dark:border-slate-600 border-slate-200 dark:bg-darkbg dark:text-white outline-none select-none"
+                />
+               
+            </div>
+
+
+            <div className="flex flex-row items-center justify-center px-6 ">
+                <Breadcrumb
+                    paths={currentPath}
+                    onNavigate={handleBreadcrumbNavigate}
+                />
+                 <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                        <Button variant="outline" className="ml-auto text-xs">
-                            Columns <ChevronDown className="ml-2 h-3 w-3" />
+                        <Button variant="outline" className="ml-auto text-xs dark:bg-darkbg dark:text-white dark:border dark:border-slate-600">
+                            Columns <ChevronDown className="ml-2 h-3 w-3 dark:text-slate-600" />
                         </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end" className="text-xs">
@@ -926,13 +964,6 @@ export function DataTableDemo({ onFileSelect }: DataTableDemoProps) {
                             })}
                     </DropdownMenuContent>
                 </DropdownMenu>
-            </div>
-
-            <div className="px-6">
-                <Breadcrumb
-                    paths={currentPath}
-                    onNavigate={handleBreadcrumbNavigate}
-                />
             </div>
             <ScrollArea className="w-full whitespace-nowrap rounded-md p-4 h-[85%]">
                 <div className="overflow-x-auto">

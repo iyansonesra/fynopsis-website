@@ -17,6 +17,7 @@ import { Credentials } from '@aws-sdk/types';
 import { TbH1 } from 'react-icons/tb';
 import logo from './../app/assets/fynopsis_noBG.png'
 import '../components/temp.css';
+import loadingAnimation from './../app/assets/fyn_loading.svg'
 
 // import { w3cwebsocket as W3CWebSocket } from "websocket";
 // import { Signer } from '@aws-amplify/core';
@@ -86,11 +87,11 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
                     queryParams: { path: s3Key }
                 }
             });
-    
+
             const { body } = await downloadResponse.response;
             const responseText = await body.text();
             const { signedUrl } = JSON.parse(responseText);
-    
+
             const fileObject = {
                 id: sourceUrl.split('/').pop() || '',
                 name: sourceUrl.split('/').pop() || '',
@@ -102,7 +103,7 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
                 uploadedBy: 'Unknown',
                 s3Key: s3Key
             };
-    
+
             onFileSelect(fileObject);
         } catch (error) {
             console.error('Error handling source card click:', error);
@@ -340,9 +341,15 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
     const [inputValue, setInputValue] = useState('');
     const [userSearch, setUserSearch] = useState('');
 
-    const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const handleInputChange = (e) => {
+        const textarea = e.target;
         setInputValue(e.target.value);
-    };
+
+        // Reset height to auto to get the correct scrollHeight
+        textarea.style.height = 'auto';
+        // Set new height based on scrollHeight
+        textarea.style.height = `${textarea.scrollHeight}px`;
+    }
 
     const [messages, setMessages] = useState<Array<{
         type: 'question' | 'answer',
@@ -356,7 +363,7 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
             const query = inputValue.trim();
             setMessages(prev => [...prev, { type: 'question', content: query }]);
             queryAllDocuments(query);
-            //   handleSearch(query);
+            // //   handleSearch(query);
             setInputValue('');
         }
     };
@@ -400,95 +407,137 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
         }
     }, [searchResult]);
 
-    const useScrollToBottom = (dependency: any) => {
-        const scrollRef = useRef<HTMLDivElement>(null);
+
+    const textareaRef = useRef(null);
+
+    const adjustHeight = () => {
+        const textarea = textareaRef.current;
+        if (!textarea) return;
+
+        textarea.style.height = 'auto';
+        textarea.style.height = `${Math.min(textarea.scrollHeight, 150)}px`;
+    };
+
+    useEffect(() => {
+        adjustHeight();
+    }, [inputValue]);
+
+    const TextArea = ({ placeholder, value, onChange }) => {
+        const textareaRef = useRef(null);
 
         useEffect(() => {
-            if (scrollRef.current) {
-                scrollRef.current.scrollIntoView({ behavior: "smooth" });
+            if (textareaRef.current) {
+                textareaRef.current.style.height = 'auto';
+                textareaRef.current.style.height = `${textareaRef.current.scrollHeight}px`;
             }
-        }, [dependency]);
+        }, [value]);
 
-        return scrollRef;
+        return (
+            <textarea
+                ref={textareaRef}
+                className="w-full min-h-[48px] pl-4 pr-12 py-3 rounded-xl text-sm 
+                       border dark:border-slate-600 dark:bg-darkbg dark:text-white 
+                       outline-none resize-none overflow-hidden"
+                placeholder={placeholder}
+                value={value}
+                onChange={onChange}
+                rows={1}
+            />
+        );
     };
 
 
-    const scrollRef = useScrollToBottom([messages, isLoading]);
 
-    const renderAdvancedSearch = () => (
-        <div className="flex flex-col h-full overflow-none dark:bg-darkbg">
-            <ScrollArea className="flex-1 overflow-none">
-                {messages.map((message, index) => (
-                    <div key={index} className="flex flex-col gap-4 mb-4">
-                        {message.type === 'question' ? (
-                            <div className="ml-auto max-w-2xl bg-blue-100 text-black rounded-lg w-full py-4 mt-4 flex flex-row px-4">
-                                <img src={logo.src} alt="Fynopsis Logo" className="h-8 w-8 2xl:h-14 2xl:w-14 bg-white rounded-full" />
 
-                                <p className="ml-4 text-sm">{message.content}</p>
-                            </div>
-                        ) : (
-                            <div className="mr-auto w-full max-w-[65%]">
-                                <ReactMarkdown className="text-wrap max-w-[100%] text-sm">
-                                    {message.content}
-                                </ReactMarkdown>
-                                {sourceUrls.length > 0 && (
-                                    <Card
-                                        className="mt-2 p-2 cursor-pointer hover:bg-gray-50 transition-colors"
-                                        onClick={() => handleSourceCardClick(sourceUrls[sourceUrls.length - 1])}
-                                    >
-                                        <CardContent className="p-2">
-                                            <div className="flex items-center gap-2">
-                                                <FileText className="h-4 w-4" />
-                                                <span className="text-sm text-blue-500">
-                                                    {sourceUrls[sourceUrls.length - 1].split('/').pop()}
-                                                </span>
-                                            </div>
-                                        </CardContent>
-                                    </Card>
+
+
+    const renderAdvancedSearch = () => {
+     
+
+        return (
+            <div className="flex flex-col h-full overflow-none dark:bg-darkbg w-full">
+                <ScrollArea
+                 
+                    className="flex-1 overflow-none w-full px-4"
+                   
+                >
+             
+                        {messages.map((message, index) => (
+                            <div key={index} className="flex flex-col gap-4 mb-4" ref={index + 1 === messages.length ? cardRef : null}>
+                                {message.type === 'question' ? (
+                                    <div className="flex items-end justify-end self-end dark:text-white  mt-4 max-w-[70%]">
+                                        {/* <img src={logo.src} alt="Fynopsis Logo" className="h-8 w-8 2xl:h-14 2xl:w-14 bg-white rounded-full" /> */}
+
+                                        <p className="text-sm text-white bg-blue-500  p-2 rounded-lg">{message.content}</p>
+                                    </div>
+                                ) : (
+                                    <div>
+                                        <div className="mr-auto max-w-[70%] mb-4 dark:text-white bg-slate-100 dark:bg-gradient-to-b dark:from-slate-800 dark:to-darkbg rounded-lg">
+                                            <ReactMarkdown className="text-wrap text-sm p-4">
+                                                {message.content}
+                                            </ReactMarkdown>
+                                        </div>
+                                        <div>
+                                            {sourceUrls.length > 0 && (
+                                                <Card
+                                                    className="mt-2 p-2 inline-block cursor-pointer hover:bg-gray-50 transition-colors dark:bg-darkbg border"
+                                                    onClick={() => handleSourceCardClick(sourceUrls[sourceUrls.length - 1])}
+                                                >
+                                                    <CardContent className="p-2">
+                                                        <div className="flex items-center gap-2">
+                                                            <FileText className="h-4 w-4 text-white" />
+                                                            <span className="text-sm text-blue-500 dark:text-white">
+                                                                {sourceUrls[sourceUrls.length - 1].split('/').pop()}
+                                                            </span>
+                                                        </div>
+                                                    </CardContent>
+                                                </Card>
+                                            )}
+                                        </div>
+
+                                    </div>
+
                                 )}
-
+                            </div>
+                        ))}
+                        {isLoading && (
+                            <div className="mr-auto w-full max-w-2xl flex justify-start">
+                                <object type="image/svg+xml" data={loadingAnimation.src} className="h-8 w-8">
+                                    svg-animation
+                                </object>
                             </div>
                         )}
-                    </div>
-                ))}
-                {isLoading && (
-                    <div className="mr-auto w-full max-w-2xl">
-                        <div className="animate-pulse flex space-x-2">
-                            <div className="h-2 w-2 bg-gray-400 rounded-full"></div>
-                            <div className="h-2 w-2 bg-gray-400 rounded-full"></div>
-                            <div className="h-2 w-2 bg-gray-400 rounded-full"></div>
+                </ScrollArea>
+
+                <div className="p-4">
+                    <div className="relative max-w-3xl mx-auto">
+                        <textarea
+                            className="w-full sm:min-h-[48px] min-h-[64px] pl-4 pr-12 py-3 rounded-xl text-sm border 
+                     dark:border-slate-600 border-slate-200 dark:bg-darkbg dark:text-white outline-none 
+                     select-none resize-none overflow-hidden"
+                            placeholder="Query your documents..."
+                            value={inputValue}
+                            onChange={handleInputChange}
+                            onKeyDown={handleKeyDown}
+                            rows={2}
+                        />
+                        <div className="absolute right-2 bottom-4 flex items-center gap-2 
+                      bg-blue-500 rounded-xl">
+                            <button
+                                className="p-2 hover:bg-gray-100 rounded-lg"
+                                onClick={() => queryAllDocuments(userSearch.trim())}
+                                disabled={isLoading}
+                            >
+                                <ArrowUp className="h-4 w-4 text-white" />
+                            </button>
                         </div>
                     </div>
-                )}
-
-                <div ref={scrollRef} />
-            </ScrollArea>
-
-            <div className=" p-4">
-                <div className="relative max-w-3xl mx-auto">
-                    <input
-                        className="w-full h-12 pl-12 pr-24 rounded-xl border-2 border-gray-200 focus:border-blue-500 focus:ring-0 text-base"
-                        placeholder="Query your documents..."
-                        value={inputValue}
-                        onChange={handleInputChange}
-                        onKeyDown={handleKeyDown}
-                    />
-                    <Search
-                        className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400"
-                    />
-                    <div className="absolute right-4 top-1/2 transform -translate-y-1/2 flex items-center gap-2">
-                        <button
-                            className="p-2 hover:bg-gray-100 rounded-lg"
-                            onClick={() => queryAllDocuments(userSearch.trim())}
-                            disabled={isLoading}
-                        >
-                            <ArrowUp className="h-5 w-5 text-gray-500" />
-                        </button>
-                    </div>
                 </div>
-            </div>
-        </div>
-    );
+
+
+            </div >
+        );
+    }
 
 
 
@@ -525,7 +574,7 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
 
     return (
         <ScrollArea className="h-full ">
-            <div className="flex flex-col gap-2 px-4 overflow-auto h-screen">
+            <div className="flex flex-col gap-2 overflow-auto h-screen">
                 {(showDetailsView && sourceUrls.length === 0) ? renderFileDetails() : renderAdvancedSearch()}
             </div>
         </ScrollArea>
