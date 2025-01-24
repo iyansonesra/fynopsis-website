@@ -19,6 +19,8 @@ import { Share } from "lucide-react";
 import UserManagement from "@/components/Collaborators";
 import ExcelViewer from '@/components/ExcelViewer';
 import DarkModeToggle from '@/components/DarkModeToggle';
+import { FileSystem } from '@/components/ElevatedTable';
+import { Separator } from '@radix-ui/react-separator';
 
 type IndicatorStyle = {
   top: string;
@@ -31,13 +33,13 @@ type Tab = {
 };
 
 export default function Home() {
-  const [selectedTab, setSelectedTab] = useState("Library");
+  const [selectedTab, setSelectedTab] = useState("library");
   const { user, signOut } = useAuthenticator((context) => [context.user]);
   const [userAttributes, setUserAttributes] = useState<FetchUserAttributesOutput | null>(null);
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState<number>(0);
+    const [activeTab, setActiveTab] = useState<number | null>(0);
   const [indicatorStyle, setIndicatorStyle] = useState<IndicatorStyle>({} as IndicatorStyle);
-  const tabRefs = useRef<(HTMLDivElement | null)[]>([]);
+    const tabRefs = useRef<(HTMLDivElement | null)[]>([]);
   const [isShareDialogOpen, setIsShareDialogOpen] = useState(false);
   const [userEmail, setUserEmail] = useState('');
   const [permissionLevel, setPermissionLevel] = useState('READ');
@@ -49,48 +51,41 @@ export default function Home() {
 
   const tabs: Tab[] = [
     { icon: Library, label: 'Library' },
-    { icon: Clipboard, label: 'Form' },
     { icon: Users, label: 'Users' },
   ];
 
 
+  
   function handleTabClick(index: number): void {
     setActiveTab(index);
-    setSelectedTab(tabs[index].label);
+    setSelectedTab(tabs[index].label.toLowerCase());
+}
 
-    // Update indicator style
-    if (tabRefs.current[index]) {
-      setIndicatorStyle({
-        top: `${tabRefs.current[index].offsetTop}px`,
-        height: `${tabRefs.current[index].offsetHeight}px`,
-      });
-    }
-  }
-
-  useEffect(() => {
-    if (activeTab !== null && tabRefs.current[activeTab]) {
-      const tabElement = tabRefs.current[activeTab];
-      if (tabElement) {
-        setIndicatorStyle({
-          top: `${tabElement.offsetTop}px`,
-          height: `${tabElement.offsetHeight}px`,
-        });
-      }
-    }
-  }, [activeTab]);
+    useEffect(() => {
+          console.log("checking for tab color!");
+          if (activeTab !== null && tabRefs.current[activeTab]) {
+              const tabElement = tabRefs.current[activeTab];
+              if (tabElement) {
+                  setIndicatorStyle({
+                      top: `${tabElement.offsetTop}px`,
+                      height: `${tabElement.offsetHeight}px`,
+                  });
+              }
+          }
+      }, [activeTab]);
 
   useEffect(() => {
     fetchPermissionLevel();
   }, []);
 
-  useEffect(() => {
-    if (tabRefs.current[0]) {
-      setIndicatorStyle({
-        top: `${tabRefs.current[0].offsetTop}px`,
-        height: `${tabRefs.current[0].offsetHeight}px`,
-      });
-    }
-  }, []); // This will set the initial indicator style for Library tab
+  // useEffect(() => {
+  //   if (tabRefs.current[0]) {
+  //     setIndicatorStyle({
+  //       top: `${tabRefs.current[0].offsetTop}px`,
+  //       height: `${tabRefs.current[0].offsetHeight}px`,
+  //     });
+  //   }
+  // }, []); // This will set the initial indicator style for Library tab
 
   const fetchPermissionLevel = async () => {
     try {
@@ -115,7 +110,25 @@ export default function Home() {
   };
 
 
-  const [isDarkMode, setIsDarkMode] = useState(false);
+  const [isDarkMode, setIsDarkMode] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('color-theme') === 'dark';
+    }
+    return true;
+  });
+
+  const toggleDarkMode = () => {
+    setIsDarkMode(!isDarkMode);
+    if (isDarkMode) {
+      document.documentElement.classList.remove('dark');
+      localStorage.setItem('color-theme', 'light');
+    } else {
+      document.documentElement.classList.add('dark');
+      localStorage.setItem('color-theme', 'dark');
+    }
+  };
+
+
 
   useEffect(() => {
     if (user) {
@@ -202,7 +215,7 @@ export default function Home() {
     );
   }
 
- 
+
 
   return (
     userAttributes ?
@@ -211,16 +224,20 @@ export default function Home() {
           <div className="flex items-center flex-col">
             <img src={logo.src} alt="logo" className="h-14 w-auto mb-8" />
             <div className="relative flex flex-col items-center">
-              {/* Remove the activeTab !== null check */}
-              <div
-                className="absolute left-0 w-full bg-blue-300 rounded-xl transition-all duration-300 ease-in-out"
-                style={indicatorStyle}
-              />
+              {activeTab !== null && (
+                <div
+                  className="absolute left-0 w-full bg-blue-300 rounded-xl transition-all duration-300 ease-in-out z-20"
+                  style={{
+                    top: `${tabRefs.current[activeTab]?.offsetTop || 0}px`,
+                    height: `${tabRefs.current[activeTab]?.offsetHeight || 0}px`
+                  }}
+                />
+              )}
               {tabs.map((tab, index) => (
                 <div
                   key={tab.label}
-                  ref={(el) => { tabRefs.current[index] = el; }}
-                  className={`relative z-10 p-2 mb-4 cursor-pointer ${activeTab === index ? 'text-slate-900' : 'text-white'
+                  ref={(el) => { tabRefs.current[index] = el }}
+                  className={`relative z-30 p-2 mb-4 cursor-pointer ${activeTab === index ? 'text-slate-900' : 'text-white'
                     }`}
                   onClick={() => handleTabClick(index)}
                 >
@@ -229,7 +246,8 @@ export default function Home() {
               ))}
             </div>
 
-            <DarkModeToggle/>
+
+            {/* <DarkModeToggle/> */}
 
           </div>
 
@@ -274,18 +292,28 @@ export default function Home() {
               <PopoverContent className="w-auto p-0">
                 <button
                   onClick={signOut}
-                  className="flex items-center space-x-2 px-4 py-2 text-red-500 hover:bg-gray-100 w-full"
+                  className="flex items-center space-x-2 px-4 py-2 text-red-500 hover:bg-gray-100 w-full text-sm"
                 >
-                  <LogOut size={18} />
+                  <LogOut size={14} />
                   <span>Logout</span>
                 </button>
+                <Separator orientation="horizontal" />
+                <button
+                  onClick={toggleDarkMode}
+                  className="flex items-center space-x-2 px-4 py-2 text-red-500 hover:bg-gray-100 w-full text-sm gap-2"
+                >
+                  {isDarkMode ? '🌙' : '☀️'}
+                  {isDarkMode ? <span className="text-black">Dark</span> : <span className="text-black">Light</span>}
+                </button>
+
               </PopoverContent>
+
             </Popover>
           </div>
 
         </div>
 
-        <div className="flex-1 overflow-hidden">
+        <div className="flex-1 overflow-hidden flex h-full">
           {renderSelectedScreen()}
         </div>
       </div> :

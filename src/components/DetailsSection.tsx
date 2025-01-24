@@ -447,66 +447,77 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
     };
 
 
+    const messagesEndRef = useRef<HTMLDivElement>(null);
+    const scrollToBottom = () => {
+        messagesEndRef.current?.scrollIntoView({ 
+            behavior: "smooth",
+            block: "end",
+            inline: "nearest"
+        });
+    };
 
+    useEffect(() => {
+        scrollToBottom();
+    }, [messages, searchResult]);
 
 
 
     const renderAdvancedSearch = () => {
-     
 
         return (
             <div className="flex flex-col h-full overflow-none dark:bg-darkbg w-full">
                 <ScrollArea
-                 
+
                     className="flex-1 overflow-none w-full px-4"
-                   
+
                 >
-             
-                        {messages.map((message, index) => (
-                            <div key={index} className="flex flex-col gap-4 mb-4" ref={index + 1 === messages.length ? cardRef : null}>
-                                {message.type === 'question' ? (
-                                    <div className="flex items-end justify-end self-end dark:text-white  mt-4 max-w-[70%]">
-                                        {/* <img src={logo.src} alt="Fynopsis Logo" className="h-8 w-8 2xl:h-14 2xl:w-14 bg-white rounded-full" /> */}
 
-                                        <p className="text-sm text-white bg-blue-500  p-2 rounded-lg">{message.content}</p>
+                    {messages.map((message, index) => (
+                        <div key={index} className="flex flex-col gap-4 mb-4" >
+                            {message.type === 'question' ? (
+                                <div className="flex items-end justify-end self-end dark:text-white  mt-4 max-w-[70%]">
+                                    <p className="text-sm text-white bg-blue-500  p-2 rounded-lg">{message.content}</p>
+                                </div>
+                            ) : (
+                                <div>
+                                    <div className="mr-auto max-w-[70%] mb-4 dark:text-white bg-slate-100 dark:bg-gradient-to-b dark:from-slate-800 dark:to-darkbg rounded-lg">
+                                        <ReactMarkdown className="text-wrap text-sm p-4">
+                                            {message.content}
+                                        </ReactMarkdown>
                                     </div>
-                                ) : (
                                     <div>
-                                        <div className="mr-auto max-w-[70%] mb-4 dark:text-white bg-slate-100 dark:bg-gradient-to-b dark:from-slate-800 dark:to-darkbg rounded-lg">
-                                            <ReactMarkdown className="text-wrap text-sm p-4">
-                                                {message.content}
-                                            </ReactMarkdown>
-                                        </div>
-                                        <div>
-                                            {sourceUrls.length > 0 && (
-                                                <Card
-                                                    className="mt-2 p-2 inline-block cursor-pointer hover:bg-gray-50 transition-colors dark:bg-darkbg border"
-                                                    onClick={() => handleSourceCardClick(sourceUrls[sourceUrls.length - 1])}
-                                                >
-                                                    <CardContent className="p-2">
-                                                        <div className="flex items-center gap-2">
-                                                            <FileText className="h-4 w-4 text-white" />
-                                                            <span className="text-sm text-blue-500 dark:text-white">
-                                                                {sourceUrls[sourceUrls.length - 1].split('/').pop()}
-                                                            </span>
-                                                        </div>
-                                                    </CardContent>
-                                                </Card>
-                                            )}
-                                        </div>
-
+                                        {sourceUrls.length > 0 && (
+                                            <Card
+                                                className="mt-2 p-2 inline-block cursor-pointer hover:bg-gray-50 transition-colors dark:bg-darkbg border"
+                                                onClick={() => handleSourceCardClick(sourceUrls[sourceUrls.length - 1])}
+                                            >
+                                                <CardContent className="p-2">
+                                                    <div className="flex items-center gap-2">
+                                                        <FileText className="h-4 w-4 text-white" />
+                                                        <span className="text-sm text-blue-500 dark:text-white">
+                                                            {sourceUrls[sourceUrls.length - 1].split('/').pop()}
+                                                        </span>
+                                                    </div>
+                                                </CardContent>
+                                            </Card>
+                                        )}
                                     </div>
 
-                                )}
-                            </div>
-                        ))}
-                        {isLoading && (
-                            <div className="mr-auto w-full max-w-2xl flex justify-start">
-                                <object type="image/svg+xml" data={loadingAnimation.src} className="h-8 w-8">
-                                    svg-animation
-                                </object>
-                            </div>
-                        )}
+                                </div>
+
+                            )}
+                        </div>
+                    ))}
+                    {isLoading && (
+                        <div className="mr-auto w-full max-w-2xl flex justify-start">
+                            <object type="image/svg+xml" data={loadingAnimation.src} className="h-8 w-8">
+                                svg-animation
+                            </object>
+                        </div>
+                    )}
+
+<div ref={messagesEndRef} style={{ height: 0 }} /> {/* Add this line */}
+
                 </ScrollArea>
 
                 <div className="p-4">
@@ -544,23 +555,24 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
 
     const renderFileDetails = () => (
         <>
-            <div className="flex justify-between items-center mb-4 mt-2 dark:bg-darkbg">
-                <h2 className="text-lg font-semibold">File Details</h2>
+            <div className="flex justify-between items-center mb-2 mt-2 dark:bg-darkbg px-4 pt-2">
+                <h2 className="text-base font-semibold dark:text-white">File Details</h2>
                 <Button
                     variant="outline"
                     onClick={() => setShowDetailsView(false)}
+                    className="dark:bg-darkbg dark:text-white text-sm"
                 >
                     Back to Search
                 </Button>
             </div>
             {selectedFile && (
                 <>
-                    <div className="text-sm">
+                    <div className="text-sm dark:text-white px-4">
                         <p><strong>Name:</strong> {selectedFile.name}</p>
                         <p><strong>Type:</strong> {selectedFile.type}</p>
                         <p><strong>Size:</strong> {selectedFile.size}</p>
                         <p><strong>Uploaded By:</strong> {selectedFile.uploadedBy}</p>
-                        <p><strong>Date:</strong> {selectedFile.date}</p>
+                        <p><strong>Date:</strong> {new Date(selectedFile.date).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
                         <p><strong>Detailed Summary:</strong> {selectedFile.documentSummary}</p>
                         {/* Add more details as needed */}
                     </div>

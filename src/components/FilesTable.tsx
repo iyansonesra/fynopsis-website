@@ -10,7 +10,7 @@ import {
     getSortedRowModel,
     useReactTable,
 } from "@tanstack/react-table"
-import { ArrowUpDown, ChevronDown, FileIcon, FolderIcon, MoreHorizontal, Upload } from "lucide-react"
+import { ArrowUpDown, ChevronDown, FileIcon, FolderIcon, MoreHorizontal, Plus, Upload } from "lucide-react"
 import DragDropOverlay from "./DragDrop"
 import { v4 as uuidv4 } from 'uuid';
 import { S3Client, PutObjectCommand, GetObjectCommand, DeleteObjectCommand, ListObjectsV2Command, HeadObjectCommand } from "@aws-sdk/client-s3";
@@ -203,27 +203,7 @@ const TagDisplay = ({ tags }: { tags: string[] }) => {
 
 
 export const columns: ColumnDef<Payment>[] = [
-    // {
-    //     id: "select",
-    //     header: ({ table }) => (
-    //         <Checkbox
-    //             checked={table.getIsAllPageRowsSelected() || (table.getIsSomePageRowsSelected() && "indeterminate")}
-    //             onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
-    //             aria-label="Select all"
-    //         />
-    //     ),
-    //     cell: ({ row }) => (
-    //         <Checkbox
-    //             checked={row.getIsSelected()}
-    //             onCheckedChange={(value) => row.toggleSelected(!!value)}
-    //             aria-label="Select row"
-    //         />
-    //     ),
-    //     enableSorting: false,
-    //     enableHiding: false,
-    //     enableResizing: false,
-    // },
-    {
+{
         accessorKey: "name",
         header: "Name",
         cell: ({ row }) => (
@@ -305,7 +285,7 @@ export function DataTableDemo({ onFileSelect }: DataTableDemoProps) {
         React.useState<VisibilityState>({})
     const [rowSelection, setRowSelection] = React.useState({})
     // const [isLoading, setIsLoading] = React.useState(true);
-    const [viewerOpen, setViewerOpen] = React.useState(false)
+    const [viewerOpen, setViewerOpen] = React.useState(false);
     const [currentDocument, setCurrentDocument] = React.useState<{ url?: string, name?: string }>({})
     const [currentPath, setCurrentPath] = React.useState<string[]>([]);
     const { filteredObjects, setSearchQuery, fetchObjects, isLoading } = useS3Store();
@@ -450,9 +430,6 @@ export function DataTableDemo({ onFileSelect }: DataTableDemoProps) {
         }
     };
 
-
-
-
     const handleRowDoubleClick = async (payment: Payment) => {
         if (payment.isFolder) {
             setCurrentPath(prev => [...prev, payment.name]);
@@ -532,6 +509,7 @@ export function DataTableDemo({ onFileSelect }: DataTableDemoProps) {
             return;
         }
         if (payment.s3Key) {
+            console.log("key", payment.s3Key);
             try {
                 const downloadResponse = await get({
                     apiName: 'S3_API',
@@ -571,7 +549,7 @@ export function DataTableDemo({ onFileSelect }: DataTableDemoProps) {
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                             <Button variant="ghost" className="h-8 w-8 p-0">
-                                <MoreHorizontal className="h-4 w-4" />
+                                <MoreHorizontal className="h-4 w-4 dark:text-white" />
                             </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
@@ -764,30 +742,8 @@ export function DataTableDemo({ onFileSelect }: DataTableDemoProps) {
                 s3Url: ''
             }));
 
-        // Get immediate files in current folder
-        // const files = objects
-        //   .filter((object) => {
-        //     const key = object.key || '';
-        //     if (!key.startsWith(pathPrefix)) return false;
-        //     const relativePath = key.slice(pathPrefix.length);
-        //     const parts = relativePath.split('/').filter(Boolean);
-        //     return parts.length === 1 && !key.endsWith('/');
-        //   })
-        //   .map((object) => ({
-        //     id: object.key,
-        //     type: object.key.split('.').pop()?.toUpperCase() || 'Unknown',
-        //     name: object.metadata?.originalname || object.key.split('/').pop() || '',
-        //     status: "success" as const,
-        //     size: formatFileSize(object.metadata?.ContentLength || 0),
-        //     date: object.metadata?.LastModified?.split('T')[0] || '',
-        //     uploadedBy: object.metadata?.uploadedby || 'Unknown',
-        //     s3Key: object.key,
-        //     isFolder: false
-        //   }));
-
         return [...folderEntries, ...files];
     };
-
 
     const uploadToS3 = async (file: File) => {
         const fileId = file.name.split('.')[0];
@@ -796,24 +752,6 @@ export function DataTableDemo({ onFileSelect }: DataTableDemoProps) {
         const s3Key = `${bucketUuid}/${fileId}.${fileExtension}`;
         return s3Key;
 
-        // try {
-        //     const restOperation = post({
-        //         apiName: 'VDR_API',
-        //         path: `/${bucketUuid}/documents/upload`,
-        //         options: {
-        //             headers: {
-        //                 'Content-Type': 'application/json'
-        //             },
-        //             body: {
-        //                 file_paths: [s3Key]
-        //             }
-        //         }
-        //     });
-
-        // } catch (error) {
-        //     console.error('Error uploading to S3:', error);
-        //     throw error;
-        // }
     };
 
     const formatFileSize = (bytes: number): string => {
@@ -916,8 +854,8 @@ export function DataTableDemo({ onFileSelect }: DataTableDemoProps) {
                         <span className="text-sm">Upload</span>
                     </button>
                     <button className="flex items-center gap-2 bg-gray-200 text-gray-800 px-4 py-1 rounded-full hover:bg-slate-300 dark:bg-darkbg dark:text-white dark:border dark:border-slate-600 ">
-                        <span className="text-sm">Manage Documents</span>
-                        <ChevronDown size={16} />
+                        <span className="text-sm">Create Folder</span>
+                        <Plus size={16} />
                     </button>
                 </div>
 

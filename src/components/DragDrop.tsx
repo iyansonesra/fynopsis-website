@@ -3,6 +3,8 @@ import { useDropzone } from 'react-dropzone';
 import { Upload as UploadIcon, X } from 'lucide-react';
 import { post } from 'aws-amplify/api';
 import { usePathname } from 'next/navigation';
+import { useS3Store, TreeNode } from "./fileService";
+
 interface DragDropOverlayProps {
   onClose: () => void;
   onFilesUploaded: (files: File[]) => void;
@@ -58,7 +60,16 @@ const DragDropOverlay: React.FC<DragDropOverlayProps> = ({
 
   const uploadFile = async (file: File) => {
     try {
-      const fullPath = getFullPath(file.name);
+      const fullPath = getCurrentPathString(useS3Store.getState().currentNode);
+      let filePathOut = `${fullPath}${file.name}`;
+      if(fullPath === '/') {
+        filePathOut = filePathOut.slice(1);
+      }
+
+      
+
+      console.log('filePathOut:', filePathOut);
+
 
       // Get presigned URL from API with the full path
       const getUrlResponse = await post({
@@ -67,7 +78,7 @@ const DragDropOverlay: React.FC<DragDropOverlayProps> = ({
         options: {
           withCredentials: true,
           body: JSON.stringify({
-            filePath: fullPath,
+            filePath: filePathOut,
             contentType: file.type
           })
         }
@@ -92,19 +103,6 @@ const DragDropOverlay: React.FC<DragDropOverlayProps> = ({
         throw new Error(`Upload failed: ${errorText}`);
       }
 
-      // After successful S3 upload, trigger post-upload processing with full path
-      // await post({
-      //   apiName: 'S3_API',
-      //   path: `/s3/${bucketUuid}/post-upload`,
-      //   options: {
-      //     headers: {
-      //       'Content-Type': 'application/json'
-      //     },
-      //     body: {
-      //       filePaths: [fullPath]
-      //     }
-      //   }
-      // });
 
       setFileUploads(prev => ({
         ...prev,
@@ -308,5 +306,17 @@ const DragDropOverlay: React.FC<DragDropOverlayProps> = ({
     </div>
   );
 };
+
+function getCurrentPathString(node: TreeNode): string {
+  const pathParts: string[] = [];
+  let current = node;
+  while (current.name !== 'root') {
+    pathParts.unshift(current.name);
+    current = current.parent as TreeNode;
+  }
+  // Remove the first path part and join the rest with forward slashes
+ const output = pathParts.slice(1).join('/') + '/';
+ return output;
+}
 
 export default DragDropOverlay;

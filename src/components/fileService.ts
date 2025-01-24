@@ -1,5 +1,19 @@
 import { create } from 'zustand';
 import * as AmplifyAPI from "aws-amplify/api";
+import { post } from 'aws-amplify/api';
+import { usePathname } from 'next/navigation';
+
+
+export interface TreeNode {
+  name: string;
+  type: 'file' | 'folder';
+  metadata: any;
+  s3Key?: string;
+  children: { [key: string]: TreeNode };
+  parent?: TreeNode;
+  size?: number;
+  LastModified?: string;
+}
 
 interface S3Object {
   key: string;
@@ -8,19 +22,73 @@ interface S3Object {
 
 interface S3State {
   objects: S3Object[];
+  tree: TreeNode;
+  currentNode: TreeNode;
   isLoading: boolean;
   searchQuery: string;
   filteredObjects: S3Object[];
   fetchObjects: (bucketUuid: string) => Promise<void>;
   setSearchQuery: (query: string) => void;
+  navigateToPath: (path: string[]) => void;
+  createFolder: (folderName: string, bucketUuid: string) => Promise<void>;
+  // updateFolderStatus: (folderPath: string, isPending: boolean) => void;
+  deleteItem: (folderName: string, bucketUuid: string, isFolder: boolean) => Promise<void>;
+  changeCurrentNode: (child: string) => void;
+  goBack: () => void;
 }
 
+const createTreeStructure = (objects: S3Object[]): TreeNode => {
+  const tree: TreeNode = {
+    name: 'root',
+    type: 'folder',
+    metadata: {},
+    children: {}
+  };
+
+  for (const obj of objects) {
+    const parts = obj.key.split('/').filter(part => part !== '');
+    console.log('obj:', obj);
+
+    let currentLevel = tree;
+    let currKey = "";
+    for (let i = 0; i < parts.length; i++) {
+      const part = parts[i];
+      currKey += part;
+      const isLastPart = i === parts.length - 1;
+      const isFile = !obj.key.endsWith('/') && isLastPart;
+
+      if (!currentLevel.children[part]) {
+        currentLevel.children[part] = {
+          name: part,
+          type: isFile ? 'file' : 'folder',
+          metadata: isLastPart ? obj.metadata.Metadata : {},
+          s3Key: isFile ? currKey : currKey + '/',
+          children: {},
+          parent: currentLevel,
+          size: (isLastPart && isFile) ? obj.metadata.ContentLength : 0,
+          LastModified: obj.metadata.LastModified
+        };
+      }
+      currentLevel = currentLevel.children[part];
+      currKey += "/";
+    }
+  }
+
+  return tree;
+};
+
+
+
 export const useS3Store = create<S3State>()(((set, get) => ({
+
   objects: [],
+  tree: { name: 'root', type: 'folder', metadata: {}, children: {} },
+  currentNode: { name: 'root', type: 'folder', metadata: {}, children: {} },
   isLoading: false,
   searchQuery: '',
   filteredObjects: [],
   fetchObjects: async (bucketUuid: string) => {
+
     set({ isLoading: true });
     try {
       const restOperation = AmplifyAPI.get({
@@ -31,19 +99,44 @@ export const useS3Store = create<S3State>()(((set, get) => ({
       const { body } = await restOperation.response;
       const responseText = await body.text();
       const response = JSON.parse(responseText);
-      
+
       if (response.headObjects) {
         const objects = response.headObjects;
-        set({ 
+        const tree = createTreeStructure(objects);
+        set({ currentNode: tree.children[bucketUuid] });
+        set({
           objects,
+          tree,
           filteredObjects: objects
         });
       }
     } catch (error) {
       console.error('Error fetching S3 objects:', error);
     } finally {
+      console.log('finally');
       set({ isLoading: false });
+      console.log('isLoading:', get().isLoading);
     }
+  },
+  navigateToPath: (path: string[]) => {
+    return new Promise<void>((resolve) => {
+      const state = get();
+      let node = state.tree;
+
+      for (const pathPart of path) {
+        if (node.children[pathPart]) {
+          node = node.children[pathPart];
+        } else {
+          console.error(`Path segment ${pathPart} not found`);
+          resolve();
+          return;
+        }
+      }
+
+
+      set({ currentNode: node });
+      resolve();
+    });
   },
   setSearchQuery: (query: string) => {
     const state = get();
@@ -51,9 +144,180 @@ export const useS3Store = create<S3State>()(((set, get) => ({
       const fileName = obj.metadata?.originalname || obj.key.split('/').pop() || '';
       return fileName.toLowerCase().includes(query.toLowerCase());
     });
-    set({ 
+    set({
       searchQuery: query,
       filteredObjects: filtered
     });
+  },
+  createFolder: async (folderName: string, bucketUuid: string) => {
+    const state = get();
+    const currentPath = getCurrentPathString(state.currentNode);
+    const folderPath = `${currentPath}${folderName}/`;
+
+    // Add folder to tree immediately with pending status
+    const newFolder: TreeNode = {
+      name: folderName,
+      type: 'folder',
+      metadata: { isPending: true },
+      children: {},
+      parent: state.currentNode
+    };
+
+    // Update current node with new folder
+    const updatedNode = {
+      ...state.currentNode,
+      children: {
+        ...state.currentNode.children,
+        [folderName]: newFolder
+      }
+    };
+
+    let tempo = state.currentNode;
+    tempo.children[folderName] = newFolder;
+
+    set({ currentNode: tempo });
+
+    
+
+    try {
+      console.log('folderPath:', folderPath);
+      const response = await post({
+        apiName: 'S3_API',
+        path: `/s3/${bucketUuid}/create-folder`,
+        options: {
+          withCredentials: true,
+          body: {
+            folderPath: folderPath
+          }
+        }
+      });
+
+      const { body } = await response.response;
+      const result = await body.json();
+
+      // get().updateFolderStatus(folderPath, false);
+
+    } catch (error) {
+      console.error('Error creating folder:', error);
+      // Remove folder from tree if API call fails
+      const { [folderName]: removed, ...remainingChildren } = state.currentNode.children;
+      const updatedNodeAfterError = {
+        ...state.currentNode,
+        children: remainingChildren
+      };
+      set({ currentNode: updatedNodeAfterError });
+      throw error;
+    }
+  },
+  // updateFolderStatus: (folderPath: string, isPending: boolean) => {
+  //   const state = get();
+  //   const pathParts = folderPath.split('/').filter(part => part !== '');
+  //   let currentNode = state.tree;
+
+  //   // Navigate to the folder's parent
+  //   for (let i = 0; i < pathParts.length - 1; i++) {
+  //     currentNode = currentNode.children[pathParts[i]];
+  //   }
+
+  //   // Update the folder's metadata
+  //   const folderName = pathParts[pathParts.length - 1];
+  //   if (currentNode.children[folderName]) {
+  //     currentNode.children[folderName].metadata = {
+  //       ...currentNode.children[folderName].metadata,
+  //       isPending
+  //     };
+  //     set({ tree: { ...state.tree } });
+  //   }
+  // },
+  deleteItem: async (folderName: string, bucketUuid: string, isFolder: boolean) => {
+    const state = get();
+    const currentPath = getCurrentPathString(state.currentNode);
+    const folderPath = `${currentPath}${folderName}/`;
+    const filePath = `${currentPath}${folderName}`;
+
+    console.log('folderPath:', folderPath.slice(1));
+    console.log('filePath:', filePath.slice(1));
+
+    // Mark folder as pending deletion in the tree
+    const updatedNode = {
+      ...state.currentNode,
+      children: {
+        ...state.currentNode.children,
+        [folderName]: {
+          ...state.currentNode.children[folderName],
+          metadata: { ...state.currentNode.children[folderName].metadata, isDeleting: true }
+        }
+      }
+    };
+
+    set({ currentNode: updatedNode });
+
+    console.log('isFolder:', isFolder);
+
+    try {
+      // Make API call to delete folder
+      const response = await post({
+        apiName: 'S3_API',
+        path: `/s3/${bucketUuid}/delete-url`,
+        options: {
+          withCredentials: true,
+          queryParams: {
+            key: isFolder ? folderPath.slice(1) : filePath.slice(1)
+          }
+        }
+      });
+
+      const { body } = await response.response;
+      const result = await body.json();
+
+      // Remove folder from tree after successful deletion
+      const { [folderName]: removed, ...remainingChildren } = state.currentNode.children;
+      delete state.currentNode.children[folderName];
+      console.log('Folder deleted successfully:', result);
+
+    } catch (error) {
+      console.error('Error deleting folder:', error);
+      // Revert the pending deletion status if the API call fails
+      const revertedNode = {
+        ...state.currentNode,
+        children: {
+          ...state.currentNode.children,
+          [folderName]: {
+            ...state.currentNode.children[folderName],
+            metadata: { ...state.currentNode.children[folderName].metadata, isDeleting: false }
+          }
+        }
+      };
+      set({ currentNode: revertedNode });
+      throw error;
+    }
+  },
+  changeCurrentNode: (child: string) => {
+    const state = get();
+    const node = state.currentNode.children[child];
+    if (node) {
+      set({ currentNode: node });
+    }
+  },
+  goBack: () => {
+    const state = get();
+    if (state.currentNode.parent) {
+      set({ currentNode: state.currentNode.parent });
+    }
   }
 })));
+
+
+function getCurrentPathString(node: TreeNode): string {
+  const pathParts: string[] = [];
+  let current = node;
+  while (current.name !== 'root') {
+    pathParts.unshift(current.name);
+    current = current.parent as TreeNode;
+  }
+  // Remove the first path part and join the rest with forward slashes
+ const output = pathParts.slice(1).join('/') + '/';
+ return output;
+}
+
+

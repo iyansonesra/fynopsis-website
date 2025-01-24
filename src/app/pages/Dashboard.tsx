@@ -28,6 +28,7 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "
 import { Input } from "@/components/ui/input";
 import { post, get, del } from 'aws-amplify/api';
 import { fetchAuthSession } from 'aws-amplify/auth';
+import { Separator } from "@radix-ui/react-separator";
 
 
 
@@ -66,7 +67,7 @@ export default function GeneralDashboard() {
     const { user, signOut } = useAuthenticator((context) => [context.user]);
     const [userAttributes, setUserAttributes] = useState<FetchUserAttributesOutput | null>(null);
     const router = useRouter();
-    const [activeTab, setActiveTab] = useState<number | null>(null);
+    const [activeTab, setActiveTab] = useState<number | null>(0);
     const [indicatorStyle, setIndicatorStyle] = useState<IndicatorStyle>({} as IndicatorStyle);
     const tabRefs = useRef<(HTMLDivElement | null)[]>([]);
     const [invitedDatarooms, setInvitedDatarooms] = useState<any[]>([]);
@@ -75,7 +76,7 @@ export default function GeneralDashboard() {
     const [selectedDataroom, setSelectedDataroom] = useState<string | null>(null);
 
     const tabs: Tab[] = [
-        { icon: DoorOpen, label: 'Rooms' },
+        { icon: Factory, label: 'Library' },
     ];
 
     function signIn(): void {
@@ -97,7 +98,7 @@ export default function GeneralDashboard() {
             // You can show an error message or handle the limit however you prefer
             alert("You have reached the maximum limit of 8 datarooms");
             return;
-          }
+        }
 
         const newDataroomNameExist = newDataroomName.trim();
         if (newDataroomNameExist) {
@@ -165,7 +166,7 @@ export default function GeneralDashboard() {
             const responseText = await body.text();
             const response = JSON.parse(responseText);
 
-            
+
             // Update data rooms from the response
             const newDataRooms = response.buckets.map((room: DataRoom) => ({
                 id: room.uuid,
@@ -204,6 +205,7 @@ export default function GeneralDashboard() {
     }
 
     useEffect(() => {
+        console.log("checking for tab color!");
         if (activeTab !== null && tabRefs.current[activeTab]) {
             const tabElement = tabRefs.current[activeTab];
             if (tabElement) {
@@ -215,7 +217,12 @@ export default function GeneralDashboard() {
         }
     }, [activeTab]);
 
-    const [isDarkMode, setIsDarkMode] = useState(false);
+    const [isDarkMode, setIsDarkMode] = useState(() => {
+        if (typeof window !== 'undefined') {
+            return localStorage.getItem('color-theme') === 'dark';
+        }
+        return true;
+    });
 
     useEffect(() => {
         if (user) {
@@ -294,57 +301,19 @@ export default function GeneralDashboard() {
         }
     };
 
-    // const handleDeleteDataroom = async (dataroomId: string) => {
-    //     try {
-    //         const restOperation = del({
-    //             apiName: 'S3_API',
-    //             path: `/s3/${dataroomId}/delete-room`,
-    //             options: {
-    //                 headers: {
-    //                     'Content-Type': 'application/json'
-    //                 },
-    //                 withCredentials: true
-    //             },
-    //         });
 
-    //         const { body } = await restOperation.response;
-    //         const response = await body.text();
-    //         const result = JSON.parse(response);
 
-    //         // Remove the dataroom from state
-    //         setDataRooms(dataRooms.filter(room => room.id !== dataroomId));
-    //         setIsDeleteDialogOpen(false);
-    //         setSelectedDataroom(null);
-    //     } catch (error) {
-    //         console.error('Error deleting dataroom:', error);
-    //     }
-    // };
+    const toggleDarkMode = () => {
+        setIsDarkMode(!isDarkMode);
+        if (isDarkMode) {
+            document.documentElement.classList.remove('dark');
+            localStorage.setItem('color-theme', 'light');
+        } else {
+            document.documentElement.classList.add('dark');
+            localStorage.setItem('color-theme', 'dark');
+        }
+    };
 
-    // const handleLeaveDataroom = async (dataroomId: string) => {
-    //     try {
-    //         const restOperation = post({
-    //             apiName: 'S3_API',
-    //             path: `/s3/${dataroomId}/leave-room`,
-    //             options: {
-    //                 headers: {
-    //                     'Content-Type': 'application/json'
-    //                 },
-    //                 withCredentials: true
-    //             },
-    //         });
-
-    //         const { body } = await restOperation.response;
-    //         const response = await body.text();
-    //         const result = JSON.parse(response);
-
-    //         // Remove the dataroom from state
-    //         setDataRooms(dataRooms.filter(room => room.id !== dataroomId));
-    //         setIsLeaveDialogOpen(false);
-    //         setSelectedDataroom(null);
-    //     } catch (error) {
-    //         console.error('Error leaving dataroom:', error);
-    //     }
-    // };
 
 
     useEffect(() => {
@@ -370,8 +339,11 @@ export default function GeneralDashboard() {
                         <div className="relative flex flex-col items-center">
                             {activeTab !== null && (
                                 <div
-                                    className="absolute left-0 w-full bg-blue-300 rounded-xl transition-all duration-300 ease-in-out"
-                                    style={indicatorStyle}
+                                    className="absolute left-0 w-full bg-blue-300 rounded-xl transition-all duration-300 ease-in-out z-0"
+                                    style={{
+                                        top: `${tabRefs.current[activeTab]?.offsetTop || 0}px`,
+                                        height: `${tabRefs.current[activeTab]?.offsetHeight || 0}px`
+                                    }}
                                 />
                             )}
                             {tabs.map((tab, index) => (
@@ -394,20 +366,30 @@ export default function GeneralDashboard() {
                         <PopoverContent className="w-auto p-0">
                             <button
                                 onClick={signOut}
-                                className="flex items-center space-x-2 px-4 py-2 text-red-500 hover:bg-gray-100 w-full"
+                                className="flex items-center space-x-2 px-4 py-2 text-red-500 hover:bg-gray-100 w-full text-sm"
                             >
-                                <LogOut size={18} />
+                                <LogOut size={14} />
                                 <span>Logout</span>
                             </button>
+                            <Separator orientation="horizontal" />
+                            <button
+                                onClick={toggleDarkMode}
+                                className="flex items-center space-x-2 px-4 py-2 text-red-500 hover:bg-gray-100 w-full text-sm gap-2"
+                            >
+                                {isDarkMode ? '🌙' : '☀️'}
+                                {isDarkMode ? <span className="text-black">Dark</span> : <span className="text-black">Light</span>}
+                            </button>
+
                         </PopoverContent>
+
                     </Popover>
                 </div>
 
 
-                <div className="flex-1 overflow-hidden flex flex-col">
+                <div className="flex-1 overflow-hidden flex flex-col dark:bg-darkbg">
                     <div className="flex-[2] px-4 py-4">
                         <div className="flex justify-between items-center mb-4">
-                            <h1 className="font-semibold text-xl">Your Datarooms</h1>
+                            <h1 className="font-semibold text-xl dark:text-white">Your Datarooms</h1>
                             <Button onClick={() => setIsAddDialogOpen(true)}>
                                 <Plus className="mr-2 h-4 w-4" /> Add Dataroom
                             </Button>
@@ -444,19 +426,19 @@ export default function GeneralDashboard() {
                         </Dialog>
                     </div>
                     <div className="flex-1 px-4 py-4">
-                        <h1 className="font-semibold text-xl">Recent Activity</h1>
+                        <h1 className="font-semibold text-xl dark:text-white">Recent Activity</h1>
 
                     </div>
-                    <div className="w-64 border-l border-gray-200 p-4 overflow-y-auto">
-                        <h2 className="font-semibold text-lg mb-4">Pending Invites</h2>
+                    <div className="w-64 p-4 overflow-y-auto">
+                        <h2 className="font-semibold text-lg mb-4 dark:text-white">Pending Invites</h2>
                         {invitedDatarooms.length > 0 ? (
                             invitedDatarooms.map((room) => (
                                 <div
                                     key={room.bucketId}
-                                    className="bg-white rounded-lg shadow p-4 mb-3 border border-gray-100"
+                                    className="bg-white  dark:bg-gray-800 rounded-lg shadow p-4 mb-3 border border-gray-100"
                                 >
                                     <h3 className="font-medium text-sm">{room.bucketName}</h3>
-                                    <p className="text-xs text-gray-500 mt-1">
+                                    <p className="text-xs text-gray-500 mt-1 dark:text-white">
                                         Shared by: {room.sharedBy}
                                     </p>
                                     <div className="flex gap-2 mt-3">
@@ -480,7 +462,7 @@ export default function GeneralDashboard() {
                                 </div>
                             ))
                         ) : (
-                            <p className="text-sm text-gray-500">No pending invites</p>
+                            <p className="text-sm text-gray-500 dark:text-white">No pending invites</p>
                         )}
                     </div>
                 </div>
