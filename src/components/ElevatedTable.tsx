@@ -19,7 +19,7 @@ import { CSS } from '@dnd-kit/utilities';
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { useS3Store, TreeNode } from "./fileService";
 import { usePathname } from 'next/navigation';
-import { ChevronRight, FileIcon, FolderIcon, Plus, Upload } from 'lucide-react';
+import { ChevronRight, FileIcon, FolderIcon, Plus, RefreshCcw, Upload } from 'lucide-react';
 import { Input } from './ui/input';
 import DragDropOverlay from './DragDrop';
 import { v4 as uuidv4 } from 'uuid';
@@ -134,7 +134,7 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
     const [searchValue, setSearchValue] = React.useState('');
     const [showUploadOverlay, setShowUploadOverlay] = React.useState(false);
     const [currentUser, setCurrentUser] = React.useState<string>('');
-    const [userInfo, setUserInfo] = React.useState<JWT | undefined>('');
+    const [userInfo, setUserInfo] = React.useState<JWT | undefined>(undefined);
     const [showFolderModal, setShowFolderModal] = useState(false);
     const [newFolderName, setNewFolderName] = useState('');
     const [tableData, setTableData] = React.useState<Payment[]>(data);
@@ -627,8 +627,8 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
                         <div style={{
                             flexShrink: 0, // Prevent icon from shrinking
                         }}>
-                            {item.isFolder ? 
-                                <FolderIcon className="mr-2 h-4 w-4 dark:text-white" /> : 
+                            {item.isFolder ?
+                                <FolderIcon className="mr-2 h-4 w-4 dark:text-white" /> :
                                 <FileIcon className="mr-2 h-4 w-4 dark:text-white" />
                             }
                         </div>
@@ -716,7 +716,7 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
             const idToken = session.tokens?.idToken;
             // console.log('idToken:', idToken);
             setUserInfo(idToken);
-      
+
             return userInfo.username;
         } catch (error) {
             console.error('Error getting user info:', error);
@@ -894,7 +894,7 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
                             tags: [],
                         },
                     },
-                    
+
                 };
 
                 return newFile;
@@ -1218,6 +1218,14 @@ th {
                         <span className="text-sm">Create Folder</span>
 
                         <Plus size={16} />
+                    </button>
+
+                    <button
+                        onClick={() => fetchObjects(bucketUuid)}
+                        className="flex items-center justify-center p-2 text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-white transition-colors"
+                        aria-label="Refresh"
+                    >
+                        <RefreshCcw size={16} />
                     </button>
 
                     {/* <TagDisplay tags={['lol', 'wow', 'cool']} /> */}
