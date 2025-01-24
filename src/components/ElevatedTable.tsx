@@ -23,11 +23,12 @@ import { ChevronRight, FileIcon, FolderIcon, Plus, Upload } from 'lucide-react';
 import { Input } from './ui/input';
 import DragDropOverlay from './DragDrop';
 import { v4 as uuidv4 } from 'uuid';
-import { getCurrentUser } from 'aws-amplify/auth';
+import { fetchAuthSession, getCurrentUser, JWT } from 'aws-amplify/auth';
 import { Skeleton } from '@mui/material';
 import { get, post } from 'aws-amplify/api';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from './ui/dropdown-menu';
 import { Folder, File } from 'lucide-react';
+import { TagDisplay } from './TagsHover';
 
 
 
@@ -133,6 +134,7 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
     const [searchValue, setSearchValue] = React.useState('');
     const [showUploadOverlay, setShowUploadOverlay] = React.useState(false);
     const [currentUser, setCurrentUser] = React.useState<string>('');
+    const [userInfo, setUserInfo] = React.useState<JWT | undefined>('');
     const [showFolderModal, setShowFolderModal] = useState(false);
     const [newFolderName, setNewFolderName] = useState('');
     const [tableData, setTableData] = React.useState<Payment[]>(data);
@@ -148,10 +150,10 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
 
     const [columnWidths, setColumnWidths] = useState<{ [key in 'name' | 'owner' | 'lastModified' | 'fileSize' | 'tags' | 'actions']: string }>({
         name: '35%',
-        owner: '20%',
+        owner: '15%',
         lastModified: '15%',
         fileSize: '10%',
-        tags: '15%',
+        tags: '20%',
         actions: '5%'
     });
     const [isResizing, setIsResizing] = useState(false);
@@ -486,7 +488,7 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
                     style={{
                         transform: CSS.Transform.toString(transform),
                         transition,
-                        willChange: 'transform',
+                        // willChange: 'transform',
                         backgroundColor: isSelected ? 'rgba(59, 130, 246, 0.1)' : 'transparent',
                         cursor: isDragging ? 'grabbing' : 'default',
                         opacity: item.uploadProcess === 'PENDING' ? 0.5 : 1,
@@ -499,6 +501,9 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
                     onClick={handleClick}
 
                 >
+                    <div><TagDisplay tags={['hi', 'lol', 'wowowow']} /></div>
+
+
                     <td style={{
                         width: columnWidths.name,
                         padding: '8px 16px',
@@ -515,7 +520,7 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
                             overflow: 'hidden',
                             textOverflow: 'ellipsis'
                         }}>
-                            <Skeleton variant="text" width={'100%'} className='dark:bg-slate-700'/>
+                            <Skeleton variant="text" width={'100%'} className='dark:bg-slate-700' />
                         </div>
                     </td>
                     <td style={{
@@ -525,7 +530,7 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
                         overflow: 'hidden',
                         textOverflow: 'ellipsis'
                     }}>
-                        <Skeleton variant="text" width={'100%'}  className='dark:bg-slate-700'/>
+                        <Skeleton variant="text" width={'100%'} className='dark:bg-slate-700' />
                     </td>
                     <td style={{
                         width: columnWidths.lastModified,
@@ -533,7 +538,7 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
                         whiteSpace: 'nowrap',
                         overflow: 'hidden',
                         textOverflow: 'ellipsis'
-                    }}> <Skeleton variant="text" width={'100%'}  className='dark:bg-slate-700'/></td>
+                    }}> <Skeleton variant="text" width={'100%'} className='dark:bg-slate-700' /></td>
                     <td style={{
                         width: columnWidths.fileSize,
                         padding: '8px 16px',
@@ -547,7 +552,7 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
                         whiteSpace: 'nowrap',
                         overflow: 'hidden',
                         textOverflow: 'ellipsis'
-                    }}> <Skeleton variant="text" width={'100%'}  className='dark:bg-slate-700'/></td>
+                    }}> <Skeleton variant="text" width={'100%'} className='dark:bg-slate-700' /></td>
                     <td style={{
                         width: columnWidths.actions,
                         padding: '8px 16px',
@@ -555,9 +560,10 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
                         overflow: 'hidden',
                         textOverflow: 'ellipsis'
                     }}>
-                        <Skeleton variant="text" width={'100%'}  className='dark:bg-slate-700'/>
+                        <Skeleton variant="text" width={'100%'} className='dark:bg-slate-700' />
                     </td>
                 </tr>
+
             );
         }
 
@@ -592,19 +598,21 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
                 style={{
                     transform: CSS.Transform.toString(transform),
                     transition,
-                    willChange: 'transform',
+                    // willChange: 'transform',
                     backgroundColor: isSelected ? 'rgba(59, 130, 246, 0.1)' : 'transparent',
                     cursor: isDragging ? 'grabbing' : 'default',
                     opacity: item.uploadProcess === 'PENDING' ? 0.5 : 1,
+                    overflow: 'visible'
                 }}
                 {...attributes}
                 {...listeners}
                 data-is-folder={item.isFolder}
-                className="text-xs transition-all duration-200 hover:bg-blue-50 cursor-pointer dark:text-white border-b border-[#e0e0e0] dark:border-[#333]"
+                className="text-xs transition-all duration-200 hover:bg-blue-50 cursor-pointer dark:text-white border-b border-[#e0e0e0] dark:border-[#333] "
                 onDoubleClick={handleDoubleClick}
                 onClick={handleClick}
 
             >
+                {/* <div><TagDisplay tags={['hi', 'lol', 'wowowow']} /></div> */}
                 <td style={{
                     width: columnWidths.name,
                     padding: '8px 16px',
@@ -652,7 +660,9 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
                     whiteSpace: 'nowrap',
                     overflow: 'hidden',
                     textOverflow: 'ellipsis'
-                }}></td>
+                }}>
+                    <TagDisplay tags={item.tags} />
+                </td>
                 <td style={{
                     width: columnWidths.actions,
                     padding: '8px 16px',
@@ -675,6 +685,8 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
                     </DropdownMenu>
                 </td>
             </tr>
+
+
         );
     });
 
@@ -690,7 +702,12 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
     const getUserInfo = async () => {
         try {
             const userInfo = await getCurrentUser();
-            console.log('User Info:', userInfo);
+            const session = await fetchAuthSession();
+
+            const idToken = session.tokens?.idToken;
+            console.log('idToken:', idToken);
+            setUserInfo(idToken);
+      
             return userInfo.username;
         } catch (error) {
             console.error('Error getting user info:', error);
@@ -747,8 +764,13 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
             const isFolder = (node as any).type === 'folder';
             const metadata = (node as any).metadata;
 
+            const parsedTags = metadata.tags ? JSON.parse(metadata.tags) : [];
+            console.log("metadata tags:", metadata.tags);
+            console.log('parsed tags:', parsedTags);
 
-            console.log('metadata:', metadata);
+
+
+            // console.log('metadata:', metadata);
 
             tableData.push({
                 id: metadata.Metadata?.id || crypto.randomUUID(),
@@ -762,7 +784,7 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
                 s3Url: metadata.url || '',
                 isFolder: isFolder,
                 uploadProcess: metadata.Metadata?.pre_upload || 'COMPLETED',
-                tags: metadata.Metadata?.tags || []
+                tags: parsedTags || []
             });
 
         }
@@ -825,7 +847,7 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
                     status: "success" as const,
                     size: formatFileSize(file.size),
                     date: new Date().toISOString().split('T')[0],
-                    uploadedBy: currentUser,
+                    uploadedBy: `${(userInfo?.payload?.given_name as string) || ''} ${(userInfo?.payload?.family_name as string) || ''} `.trim(),
                     s3Key: s3Key
                 };
 
@@ -856,13 +878,14 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
                     children: {},
                     LastModified: new Date().toISOString(),
                     metadata: {
-                        uploadbyname: currentUser,
+                        uploadbyname: `${(userInfo?.payload?.family_name as string) || ''} ${(userInfo?.payload?.given_name as string) || ''}`.trim(),
                         Metadata: {
                             id: newFile.id,
                             pre_upload: 'COMPLETED',
-                            tags: []
-                        }
-                    }
+                            tags: [],
+                        },
+                    },
+                    
                 };
 
                 return newFile;
@@ -873,6 +896,7 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
         });
 
         const newFiles = (await Promise.all(uploadPromises)).filter((item): item is Payment => item !== null);
+        console.log("new files:", newFiles);
         setTableData(prevData => [...prevData, ...newFiles]);
         setShowUploadOverlay(false);
     };
@@ -946,8 +970,8 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
 
         const { delta } = event;
         const coordinates = {
-          x: delta.x,
-          y: delta.y
+            x: delta.x,
+            y: delta.y
         };
 
         // Get the bounds using the ref
@@ -1186,6 +1210,8 @@ th {
 
                         <Plus size={16} />
                     </button>
+
+                    {/* <TagDisplay tags={['lol', 'wow', 'cool']} /> */}
                 </div>
 
 
@@ -1199,25 +1225,31 @@ th {
 
             </div>
 
-
             <ScrollArea data-drop-zone className="w-full h-full ">
-                <div ref={dropZoneRef} className="flex flex-grow">
+                <div className="flex flex-grow ">
+
                     <DndContext
                         sensors={sensors}
                         collisionDetection={closestCenter}
                         onDragStart={handleDragStart}
                         onDragEnd={handleDragEnd}
                     >
+
                         <div style={{ paddingLeft: '20px' }} className="text-xs dark:text-white text-slate-800 mb-2" >
+
                             <table style={{
                                 width: '100%',
                                 minWidth: '800px', // Set your desired minimum width
                                 borderCollapse: 'collapse',
-                                tableLayout: 'fixed'
+                                tableLayout: 'fixed',
                             }}>
+
                                 <thead>
+
                                     <tr className="text-xs font-thin dark:text-white text-slate-600">
-                                        <ResizableHeader column="name" width={columnWidths.name} 
+
+
+                                        <ResizableHeader column="name" width={columnWidths.name}
                                         >
                                             Name
                                         </ResizableHeader>
@@ -1229,7 +1261,7 @@ th {
                                         >
                                             Last modified
                                         </ResizableHeader>
-                                        <ResizableHeader column="fileSize" width={columnWidths.fileSize} 
+                                        <ResizableHeader column="fileSize" width={columnWidths.fileSize}
                                         >
                                             File size
                                         </ResizableHeader>
@@ -1237,7 +1269,7 @@ th {
                                         >
                                             Tags
                                         </ResizableHeader>
-                                        <ResizableHeader column="actions" width={columnWidths.actions} 
+                                        <ResizableHeader column="actions" width={columnWidths.actions}
                                         >
                                             {' '}
                                         </ResizableHeader>
@@ -1245,8 +1277,9 @@ th {
                                     </tr>
                                 </thead>
                                 <tbody className="w-full">
-                                    <SortableContext items={tableData} strategy={horizontalListSortingStrategy}>
 
+
+                                    <SortableContext items={tableData} strategy={horizontalListSortingStrategy}>
                                         {isLoading ? (
                                             <>
                                                 <SortableItem

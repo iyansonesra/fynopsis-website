@@ -21,6 +21,7 @@ import ExcelViewer from '@/components/ExcelViewer';
 import DarkModeToggle from '@/components/DarkModeToggle';
 import { FileSystem } from '@/components/ElevatedTable';
 import { Separator } from '@radix-ui/react-separator';
+import { TagDisplay } from '@/components/TagsHover';
 
 type IndicatorStyle = {
   top: string;
@@ -247,7 +248,7 @@ export default function Home() {
             </div>
 
 
-            {/* <DarkModeToggle/> */}
+            {/* <TagDisplay tags={['lol', 'wow', 'cool']} /> */}
 
           </div>
 

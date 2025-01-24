@@ -35,6 +35,7 @@
     "@radix-ui/react-select": "^2.1.1",
     "@radix-ui/react-separator": "^1.1.0",
     "@radix-ui/react-slot": "^1.1.0",
+    "@radix-ui/react-tooltip": "^1.1.7",
     "@syncfusion/ej2": "^28.1.37",
     "@syncfusion/ej2-react-pdfviewer": "^28.1.37",
     "@syncfusion/ej2-react-spreadsheet": "^28.1.37",
