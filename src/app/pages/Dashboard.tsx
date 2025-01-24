@@ -409,7 +409,7 @@ export default function GeneralDashboard() {
                         </div>
 
                         <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-                            <DialogContent>
+                            <DialogContent className="dark:bg-darkbg dark:text-white border-none"> 
                                 <DialogHeader>
                                     <DialogTitle>Create New Dataroom</DialogTitle>
                                 </DialogHeader>
@@ -417,10 +417,11 @@ export default function GeneralDashboard() {
                                     value={newDataroomName}
                                     onChange={(e) => setNewDataroomName(e.target.value)}
                                     placeholder="Enter dataroom name"
+                                    className="outline-none select-none dark:bg-darkbg dark:text-white"
                                 />
                                 <DialogFooter>
-                                    <Button variant="outline" onClick={() => setIsAddDialogOpen(false)}>Cancel</Button>
-                                    <Button onClick={handleAddDataroom}>Create</Button>
+                                    <Button variant="outline" onClick={() => setIsAddDialogOpen(false)} className="dark:bg-darkbg dark:border dark:hover:text-slate-400">Cancel</Button>
+                                    <Button onClick={handleAddDataroom} className="dark:hover:text-slate-400">Create</Button>
                                 </DialogFooter>
                             </DialogContent>
                         </Dialog>

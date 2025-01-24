@@ -9,7 +9,6 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select"
-import { DataTableDemo } from './FilesTable';
 
 import {
     ResizableHandle,

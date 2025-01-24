@@ -1,4 +1,4 @@
-import { Library, Users, TrendingUp, LucideIcon, ChevronRight } from 'lucide-react';
+import { Library, Users, TrendingUp, LucideIcon, ChevronRight, Lock } from 'lucide-react';
 import React, { useRef, useEffect, useState } from 'react';
 import logo from "../assets/fynopsis_noBG.png"
 import FadeInSlideUp from './../../components/animation/FadeInSlideUp';
@@ -126,7 +126,7 @@ const FrontPage: React.FC = () => {
                                     <input type="text" placeholder="Enter your email" className="w-72 md:w-80 lg:w-96 py-2 px-4 outline-none rounded-full bg-transparent border-white border-opacity-50 border text-white placeholder-white placeholder-opacity-50 z-20" />
 
                                 </HoverBorderGradient>
-                                <button className="bg-gradient-to-r from-[#1e6aa3] via-[#3148b3] to-[#003580] w-48 lg:w-48 text-white rounded-full py-3 px-6 ml-2 hover:opacity-90 transition-all">Get Started</button>
+                                <button className="bg-gradient-to-r from-[#1e6aa3] via-[#3148b3] to-[#003580] w-48 lg:w-48 text-white rounded-full py-3 px-6 ml-2 hover:opacity-90 transition-all">Request a Demo</button>
                             </div>
                         </div>
 
@@ -185,7 +185,7 @@ const FrontPage: React.FC = () => {
                                 </FadeInSlideUp>
 
                                 <FadeInSlideUp>
-                                    <GradientBox hasGradient={false} title='Secure & Reliable' />
+                                    <GradientBox hasGradient={false} title='Secure & Reliable' icon={<Lock/>}/>
 
                                 </FadeInSlideUp>
 

@@ -76,7 +76,7 @@ interface SortableItemProps {
 interface ResizableHeaderProps {
     column: string;
     width: string;
-    onResize: (column: string, width: string) => void;
+    // onResize: (column: string, width: string) => void;
     children: React.ReactNode;
 }
 
@@ -146,7 +146,7 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
 
 
 
-    const [columnWidths, setColumnWidths] = useState({
+    const [columnWidths, setColumnWidths] = useState<{ [key in 'name' | 'owner' | 'lastModified' | 'fileSize' | 'tags' | 'actions']: string }>({
         name: '35%',
         owner: '20%',
         lastModified: '15%',
@@ -158,7 +158,7 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
     const [currentResizer, setCurrentResizer] = useState<string | null>(null);
 
 
-    const ResizableHeader: React.FC<ResizableHeaderProps> = ({ column, width, onResize, children }) => {
+    const ResizableHeader: React.FC<ResizableHeaderProps> = ({ column, width, children }) => {
         const resizerRef = useRef<HTMLDivElement>(null);
         const headerRef = useRef<HTMLTableHeaderCellElement>(null);
 
@@ -184,11 +184,11 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
                 const widthReduction = (newPercentage - parseFloat(width)) / remainingColumns;
 
                 const newColumnWidths = { ...columnWidths };
-                Object.keys(newColumnWidths).forEach(key => {
+                (Object.keys(newColumnWidths) as (keyof typeof newColumnWidths)[]).forEach(key => {
                     if (key === column) {
                         newColumnWidths[key] = `${newPercentage}%`;
                     } else {
-                        const currentWidth = parseFloat(newColumnWidths[key]);
+                        const currentWidth = parseFloat(newColumnWidths[key as keyof typeof columnWidths]);
                         newColumnWidths[key] = `${currentWidth - widthReduction}%`;
                     }
                 });
@@ -242,7 +242,7 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
 
 
 
-    const BreadcrumbNav = ({ pathNodes, onNavigate }) => {
+    const BreadcrumbNav: React.FC<{ pathNodes: TreeNode[], onNavigate: (node: TreeNode) => void }> = ({ pathNodes, onNavigate }) => {
         return (
             <nav className="flex items-center text-base">
                 {pathNodes.map((node, index) => (
@@ -265,7 +265,7 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
         );
     };
 
-    const handleBreadcrumbClick = (node) => {
+    const handleBreadcrumbClick = (node: TreeNode) => {
         if (node.s3Key === '/') {
             // Handle click on Home node
             setPathNodes([HOME_NODE]);
@@ -419,14 +419,6 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
         } = useSortable({
             id: item.id,
             disabled: false,
-            modifiers: [{
-                name: 'DelayConstraint',
-                options: {
-                    delay: 500,
-                    tolerance: 5,
-                    measure: null,
-                },
-            }]
         });
 
         const handleDoubleClick = async () => {
@@ -1082,13 +1074,13 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
         }
     };
 
-    const handleColumnResize = (column: string, newWidth: string) => {
+    const handleColumnResize = (column: "name" | "owner" | "lastModified" | "fileSize" | "tags" | "actions", newWidth: string) => {
         const newColumnWidths = { ...columnWidths };
         const widthDiff = parseFloat(newWidth) - parseFloat(columnWidths[column]);
         const remainingColumns = Object.keys(columnWidths).length - 1;
         const adjustment = widthDiff / remainingColumns;
 
-        Object.keys(newColumnWidths).forEach(key => {
+        (Object.keys(newColumnWidths) as (keyof typeof columnWidths)[]).forEach(key => {
             if (key === column) {
                 newColumnWidths[key] = newWidth;
             } else {
@@ -1225,27 +1217,27 @@ th {
                             }}>
                                 <thead>
                                     <tr className="text-xs font-thin dark:text-white text-slate-600">
-                                        <ResizableHeader column="name" width={columnWidths.name} onResize={handleColumnResize}
+                                        <ResizableHeader column="name" width={columnWidths.name} 
                                         >
                                             Name
                                         </ResizableHeader>
-                                        <ResizableHeader column="owner" width={columnWidths.owner} onResize={handleColumnResize}
+                                        <ResizableHeader column="owner" width={columnWidths.owner}
                                         >
                                             Owner
                                         </ResizableHeader>
-                                        <ResizableHeader column="lastModified" width={columnWidths.lastModified} onResize={handleColumnResize}
+                                        <ResizableHeader column="lastModified" width={columnWidths.lastModified}
                                         >
                                             Last modified
                                         </ResizableHeader>
-                                        <ResizableHeader column="fileSize" width={columnWidths.fileSize} onResize={handleColumnResize}
+                                        <ResizableHeader column="fileSize" width={columnWidths.fileSize} 
                                         >
                                             File size
                                         </ResizableHeader>
-                                        <ResizableHeader column="tags" width={columnWidths.tags} onResize={handleColumnResize}
+                                        <ResizableHeader column="tags" width={columnWidths.tags}
                                         >
                                             Tags
                                         </ResizableHeader>
-                                        <ResizableHeader column="actions" width={columnWidths.actions} onResize={handleColumnResize}
+                                        <ResizableHeader column="actions" width={columnWidths.actions} 
                                         >
                                             {' '}
                                         </ResizableHeader>

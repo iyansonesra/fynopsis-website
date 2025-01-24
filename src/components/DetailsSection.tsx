@@ -341,7 +341,9 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
     const [inputValue, setInputValue] = useState('');
     const [userSearch, setUserSearch] = useState('');
 
-    const handleInputChange = (e) => {
+    interface InputChangeEvent extends React.ChangeEvent<HTMLTextAreaElement> {}
+
+    const handleInputChange = (e: InputChangeEvent) => {
         const textarea = e.target;
         setInputValue(e.target.value);
 
@@ -357,7 +359,7 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
         sources?: Record<string, any>
     }>>([]);
 
-    const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
         if (e.key === 'Enter') {
             setIsLoading(true);
             const query = inputValue.trim();
@@ -408,10 +410,10 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
     }, [searchResult]);
 
 
-    const textareaRef = useRef(null);
+    const textareaRef = useRef<HTMLTextAreaElement>(null);
 
     const adjustHeight = () => {
-        const textarea = textareaRef.current;
+        const textarea = textareaRef.current as HTMLTextAreaElement;
         if (!textarea) return;
 
         textarea.style.height = 'auto';
@@ -422,29 +424,29 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
         adjustHeight();
     }, [inputValue]);
 
-    const TextArea = ({ placeholder, value, onChange }) => {
-        const textareaRef = useRef(null);
+    // const TextArea = ({ placeholder, value, onChange }) => {
+    //     const textareaRef = useRef(null);
 
-        useEffect(() => {
-            if (textareaRef.current) {
-                textareaRef.current.style.height = 'auto';
-                textareaRef.current.style.height = `${textareaRef.current.scrollHeight}px`;
-            }
-        }, [value]);
+    //     useEffect(() => {
+    //         if (textareaRef.current) {
+    //             textareaRef.current.style.height = 'auto';
+    //             textareaRef.current.style.height = `${textareaRef.current.scrollHeight}px`;
+    //         }
+    //     }, [value]);
 
-        return (
-            <textarea
-                ref={textareaRef}
-                className="w-full min-h-[48px] pl-4 pr-12 py-3 rounded-xl text-sm 
-                       border dark:border-slate-600 dark:bg-darkbg dark:text-white 
-                       outline-none resize-none overflow-hidden"
-                placeholder={placeholder}
-                value={value}
-                onChange={onChange}
-                rows={1}
-            />
-        );
-    };
+    //     return (
+    //         <textarea
+    //             ref={textareaRef}
+    //             className="w-full min-h-[48px] pl-4 pr-12 py-3 rounded-xl text-sm 
+    //                    border dark:border-slate-600 dark:bg-darkbg dark:text-white 
+    //                    outline-none resize-none overflow-hidden"
+    //             placeholder={placeholder}
+    //             value={value}
+    //             onChange={onChange}
+    //             rows={1}
+    //         />
+    //     );
+    // };
 
 
     const messagesEndRef = useRef<HTMLDivElement>(null);
