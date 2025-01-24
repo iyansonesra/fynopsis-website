@@ -254,9 +254,9 @@ export default function Home() {
 
 
           <Dialog open={isShareDialogOpen} onOpenChange={setIsShareDialogOpen}>
-            <DialogContent>
+            <DialogContent className = "dark:bg-darkbg outline-none border-none">
               <DialogHeader>
-                <DialogTitle>Share Dataroom</DialogTitle>
+                <DialogTitle className='dark:text-white'>Share Dataroom</DialogTitle>
               </DialogHeader>
               <div className="space-y-4 py-4">
                 <Input
@@ -264,6 +264,7 @@ export default function Home() {
                   onChange={(e) => setUserEmail(e.target.value)}
                   placeholder="Enter user email"
                   type="email"
+                  className='outline-none select-none dark:bg-darkbg dark:text-white'
                 />
                 <select
                   value={permissionLevel}

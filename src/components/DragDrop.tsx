@@ -128,7 +128,7 @@ const DragDropOverlay: React.FC<DragDropOverlayProps> = ({
   const isValidFileName = (fileName: string): boolean => {
     // Regex to check for special characters and slashes
     console.log('fileName:', fileName);
-    const validFileNameRegex = /^[a-zA-Z0-9\s._-]+$/;
+    const validFileNameRegex = /^[a-zA-Z0-9\s._()-]+$/;
     return validFileNameRegex.test(fileName);
   };
 
