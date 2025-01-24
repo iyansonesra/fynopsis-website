@@ -74,8 +74,8 @@ const TabSystem: React.FC<TabSystemProps> = ({ tabs, activeTabId, setActiveTabId
   }, [activeTabId]);
 
   return (
-    <div className="flex flex-col h-full dark:bg-darkbg">
-      <div className="relative flex bg-gray-300 dark:bg-gray-950">
+    <div className="flex flex-col h-full dark:bg-darkbg outline-none">
+      <div className="relative flex bg-gray-300 dark:bg-gray-950 outline-none">
         <DragDropContext onDragEnd={onDragEnd}>
           <Droppable droppableId="tabs" direction="horizontal">
             {(provided) => (
@@ -128,12 +128,12 @@ const TabSystem: React.FC<TabSystemProps> = ({ tabs, activeTabId, setActiveTabId
         </DragDropContext>
       </div>
 
-      <div className="flex-grow bg-white p-4 relative">
+      <div className="flex-grow bg-white relative outline-none">
         {tabs.map(tab => (
           <div
             key={tab.id}
             ref={tab.id === activeTabId ? contentRef : null}
-            tabIndex={tab.id === activeTabId ? 0 : -1}
+            // tabIndex={tab.id === activeTabId ? 0 : -1}
             aria-hidden={tab.id !== activeTabId}
             style={{
               visibility: tab.id === activeTabId ? 'visible' : 'hidden',

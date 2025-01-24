@@ -49,7 +49,7 @@ const UserManagement: React.FC<UserManagementProps> = () => {
     const canModify = canModifyUserRole(currentUserRole, user.role as Role);
     
     if (!canModify) {
-      return <div className="text-gray-600 font-medium">
+      return <div className="text-gray-600 font-medium dark:text-white">
         {user.role.charAt(0).toUpperCase() + user.role.slice(1).toLowerCase()}
       </div>;
     }
@@ -58,14 +58,15 @@ const UserManagement: React.FC<UserManagementProps> = () => {
       <Select 
         value={user.role} 
         onValueChange={(newValue) => changeUserPermission(user.email, newValue)}
+        
       >
         <SelectTrigger className="w-[140px] bg-white">
           <SelectValue placeholder="Select permission" />
         </SelectTrigger>
-        <SelectContent>
-          <SelectItem value="READ">Read</SelectItem>
-          <SelectItem value="WRITE">Write</SelectItem>
-          <SelectItem value="ADMIN">Admin</SelectItem>
+        <SelectContent className='dark:text-white'>
+          <SelectItem value="READ" className='dark:text-white'>Read</SelectItem>
+          <SelectItem value="WRITE" className='dark:text-white'>Write</SelectItem>
+          <SelectItem value="ADMIN" className='dark:text-white'>Admin</SelectItem>
           {currentUserRole === 'OWNER' && (
             <SelectItem value="OWNER">Owner</SelectItem>
           )}
@@ -200,30 +201,30 @@ const UserManagement: React.FC<UserManagementProps> = () => {
   }
 
   return (
-    <div className="max-w-4xl mx-auto px-4 py-6">
-      <h2 className="text-2xl font-bold mb-6 text-gray-800">User Management</h2>
+    <div className="mx-auto px-4 py-6 flex flex-col w-full dark:bg-darkbg">
+      <h2 className="text-2xl font-bold mb-6 text-gray-800 dark:text-white">User Management</h2>
       <div className="bg-white rounded-lg shadow-md overflow-hidden">
         {users.length === 0 ? (
           <div className="p-6 text-center text-gray-500">No users found</div>
         ) : (
-          <div className="divide-y divide-gray-200">
+          <div className="divide-y divide-gray-200 dark:divide-gray-700">
             {/* Current User Section */}
             {currentUser && (
-              <div className="bg-blue-50 p-6">
+              <div className="bg-blue-50 dark:bg-slate-800 p-6">
                 <div className="flex items-center justify-between">
                   <div className="flex-grow">
                     <div className="flex items-center space-x-3">
-                      <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center">
-                        <span className="text-blue-600 font-medium">
+                      <div className="h-10 w-10 rounded-full bg-blue-100 dark:bg-blue-500 flex items-center justify-center">
+                        <span className="text-blue-600 font-medium dark:text-white">
                           {currentUser.name.charAt(0).toUpperCase()}
                         </span>
                       </div>
                       <div>
-                        <p className="font-medium text-gray-900">
+                        <p className="font-medium text-gray-900 dark:text-white">
                           {currentUser.name} <span className="text-blue-600 text-sm">(You)</span>
                         </p>
-                        <p className="text-sm text-gray-500">{currentUser.email}</p>
-                        <p className="text-xs text-gray-400 mt-1">
+                        <p className="text-sm text-gray-500 dark:text-gray-300">{currentUser.email}</p>
+                        <p className="text-xs text-gray-400 mt-1 dark:text-gray-200">
                           Added: {new Date(currentUser.addedAt).toLocaleDateString()}
                         </p>
                       </div>
@@ -240,25 +241,25 @@ const UserManagement: React.FC<UserManagementProps> = () => {
             {otherUsers.map((user) => (
               <div
                 key={user.userId}
-                className="flex items-center justify-between p-6 hover:bg-gray-50 transition-colors"
+                className="flex items-center justify-between p-6 hover:bg-gray-50 transition-colors dark:bg-slate-700"
               >
                 <div className="flex-grow">
                   <div className="flex items-center space-x-3">
-                    <div className="h-10 w-10 rounded-full bg-gray-100 flex items-center justify-center">
-                      <span className="text-gray-600 font-medium">
+                    <div className="h-10 w-10 rounded-full bg-gray-100 dark:bg-blue-400 flex items-center justify-center">
+                      <span className="text-gray-600 font-medium dark:text-white">
                         {user.name.charAt(0).toUpperCase()}
                       </span>
                     </div>
                     <div>
-                      <p className="font-medium text-gray-900">{user.name}</p>
-                      <p className="text-sm text-gray-500">{user.email}</p>
-                      <p className="text-xs text-gray-400 mt-1">
+                      <p className="font-medium text-gray-900 dark:text-white">{user.name}</p>
+                      <p className="text-sm text-gray-500 dark:text-gray-300">{user.email}</p>
+                      <p className="text-xs text-gray-400 mt-1 dark:text-gray-200">
                         Added: {new Date(user.addedAt).toLocaleDateString()}
                       </p>
                     </div>
                   </div>
                 </div>
-                <div className="ml-6">
+                <div className="ml-6 dark:text-white">
                   <RoleSelect user={user} currentUserRole={currentUser?.role as Role} />
                 </div>
               </div>

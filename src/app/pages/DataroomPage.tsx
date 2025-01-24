@@ -317,7 +317,7 @@ export default function Home() {
           {renderSelectedScreen()}
         </div>
       </div> :
-      <div className="grid h-screen place-items-center">
+      <div className="grid h-screen place-items-center dark:bg-darkbg">
         <CircularProgress value={0.5} />
       </div>
   );

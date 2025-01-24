@@ -523,7 +523,7 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
                             overflow: 'hidden',
                             textOverflow: 'ellipsis'
                         }}>
-                            <Skeleton variant="text" width={'100%'} />
+                            <Skeleton variant="text" width={'100%'} className='dark:bg-slate-700'/>
                         </div>
                     </td>
                     <td style={{
@@ -533,7 +533,7 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
                         overflow: 'hidden',
                         textOverflow: 'ellipsis'
                     }}>
-                        <Skeleton variant="text" width={'100%'} />
+                        <Skeleton variant="text" width={'100%'}  className='dark:bg-slate-700'/>
                     </td>
                     <td style={{
                         width: columnWidths.lastModified,
@@ -541,21 +541,21 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
                         whiteSpace: 'nowrap',
                         overflow: 'hidden',
                         textOverflow: 'ellipsis'
-                    }}> <Skeleton variant="text" width={'100%'} /></td>
+                    }}> <Skeleton variant="text" width={'100%'}  className='dark:bg-slate-700'/></td>
                     <td style={{
                         width: columnWidths.fileSize,
                         padding: '8px 16px',
                         whiteSpace: 'nowrap',
                         overflow: 'hidden',
                         textOverflow: 'ellipsis'
-                    }}> <Skeleton variant="text" width={'100%'} /></td>
+                    }}> <Skeleton variant="text" width={'100%'} className='dark:bg-slate-700' /></td>
                     <td style={{
                         width: columnWidths.tags,
                         padding: '8px 16px',
                         whiteSpace: 'nowrap',
                         overflow: 'hidden',
                         textOverflow: 'ellipsis'
-                    }}> <Skeleton variant="text" width={'100%'} /></td>
+                    }}> <Skeleton variant="text" width={'100%'}  className='dark:bg-slate-700'/></td>
                     <td style={{
                         width: columnWidths.actions,
                         padding: '8px 16px',
@@ -563,7 +563,7 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
                         overflow: 'hidden',
                         textOverflow: 'ellipsis'
                     }}>
-                        <Skeleton variant="text" width={'100%'} />
+                        <Skeleton variant="text" width={'100%'}  className='dark:bg-slate-700'/>
                     </td>
                 </tr>
             );
