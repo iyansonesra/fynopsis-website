@@ -38,9 +38,9 @@ export default function Home() {
   const { user, signOut } = useAuthenticator((context) => [context.user]);
   const [userAttributes, setUserAttributes] = useState<FetchUserAttributesOutput | null>(null);
   const router = useRouter();
-    const [activeTab, setActiveTab] = useState<number | null>(0);
+  const [activeTab, setActiveTab] = useState<number | null>(0);
   const [indicatorStyle, setIndicatorStyle] = useState<IndicatorStyle>({} as IndicatorStyle);
-    const tabRefs = useRef<(HTMLDivElement | null)[]>([]);
+  const tabRefs = useRef<(HTMLDivElement | null)[]>([]);
   const [isShareDialogOpen, setIsShareDialogOpen] = useState(false);
   const [userEmail, setUserEmail] = useState('');
   const [permissionLevel, setPermissionLevel] = useState('READ');
@@ -56,24 +56,24 @@ export default function Home() {
   ];
 
 
-  
+
   function handleTabClick(index: number): void {
     setActiveTab(index);
     setSelectedTab(tabs[index].label.toLowerCase());
-}
+  }
 
-    useEffect(() => {
-          console.log("checking for tab color!");
-          if (activeTab !== null && tabRefs.current[activeTab]) {
-              const tabElement = tabRefs.current[activeTab];
-              if (tabElement) {
-                  setIndicatorStyle({
-                      top: `${tabElement.offsetTop}px`,
-                      height: `${tabElement.offsetHeight}px`,
-                  });
-              }
-          }
-      }, [activeTab]);
+  useEffect(() => {
+    console.log("checking for tab color!");
+    if (activeTab !== null && tabRefs.current[activeTab]) {
+      const tabElement = tabRefs.current[activeTab];
+      if (tabElement) {
+        setIndicatorStyle({
+          top: `${tabElement.offsetTop}px`,
+          height: `${tabElement.offsetHeight}px`,
+        });
+      }
+    }
+  }, [activeTab]);
 
   useEffect(() => {
     fetchPermissionLevel();
@@ -223,8 +223,14 @@ export default function Home() {
       <div className="relative h-screen w-full flex flex-row sans-serif">
         <div className="w-20 bg-slate-900 h-full flex flex-col items-center justify-between pt-4 pb-6">
           <div className="flex items-center flex-col">
-            <img src={logo.src} alt="logo" className="h-14 w-auto mb-8" />
+            <img
+              src={logo.src}
+              alt="logo"
+              className="h-14 w-auto mb-8 cursor-pointer"
+              onClick={() => router.push('/dashboard')}
+            />            
             <div className="relative flex flex-col items-center">
+
               {activeTab !== null && (
                 <div
                   className="absolute left-0 w-full bg-blue-300 rounded-xl transition-all duration-300 ease-in-out z-20"
@@ -255,7 +261,7 @@ export default function Home() {
 
 
           <Dialog open={isShareDialogOpen} onOpenChange={setIsShareDialogOpen}>
-            <DialogContent className = "dark:bg-darkbg outline-none border-none">
+            <DialogContent className="dark:bg-darkbg outline-none border-none">
               <DialogHeader>
                 <DialogTitle className='dark:text-white'>Share Dataroom</DialogTitle>
               </DialogHeader>
@@ -315,7 +321,7 @@ export default function Home() {
 
         </div>
 
-        <div className="flex-1 overflow-hidden flex h-full">
+        <div className="flex-1 overflow-hidden flex h-full dark:bg-darkbg">
           {renderSelectedScreen()}
         </div>
       </div> :

@@ -501,8 +501,6 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
                     onClick={handleClick}
 
                 >
-                    <div><TagDisplay tags={['hi', 'lol', 'wowowow']} /></div>
-
 
                     <td style={{
                         width: columnWidths.name,
@@ -624,13 +622,24 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
                     <div style={{
                         display: 'flex',
                         alignItems: 'center',
-                        gap: '8px',
-                        whiteSpace: 'nowrap',
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis'
+                        minWidth: 0, // Allow flex items to shrink below their minimum content size
                     }}>
-                        {item.isFolder ? <FolderIcon className="mr-2 h-4 w-4 dark:text-white" /> : <FileIcon className="mr-2 h-4 w-4 dark:text-white" />}
-                        {item.name}
+                        <div style={{
+                            flexShrink: 0, // Prevent icon from shrinking
+                        }}>
+                            {item.isFolder ? 
+                                <FolderIcon className="mr-2 h-4 w-4 dark:text-white" /> : 
+                                <FileIcon className="mr-2 h-4 w-4 dark:text-white" />
+                            }
+                        </div>
+                        <div style={{
+                            minWidth: 0, // Allow text container to shrink
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            whiteSpace: 'nowrap'
+                        }}>
+                            {item.name}
+                        </div>
                     </div>
                 </td>
                 <td style={{
@@ -705,7 +714,7 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
             const session = await fetchAuthSession();
 
             const idToken = session.tokens?.idToken;
-            console.log('idToken:', idToken);
+            // console.log('idToken:', idToken);
             setUserInfo(idToken);
       
             return userInfo.username;
@@ -968,18 +977,18 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
         // Get the drop coordinates from the event
         // const { x, y } = event.activatorEvent as MouseEvent;
 
-        const { delta } = event;
-        const coordinates = {
-            x: delta.x,
-            y: delta.y
-        };
+        // const { delta } = event;
+        // const coordinates = {
+        //     x: delta.x,
+        //     y: delta.y
+        // };
 
-        // Get the bounds using the ref
-        const dropZoneElement = dropZoneRef.current;
-        if (!dropZoneElement) {
-            setActiveId(null);
-            return;
-        }
+        // // Get the bounds using the ref
+        // const dropZoneElement = dropZoneRef.current;
+        // if (!dropZoneElement) {
+        //     setActiveId(null);
+        //     return;
+        // }
 
         // const bounds = dropZoneElement.getBoundingClientRect();
         // console.log(bounds);

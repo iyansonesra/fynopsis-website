@@ -38,7 +38,7 @@ export const TagDisplay: React.FC<TagDisplayProps> = ({ tags }) => {
                 </TooltipTrigger>
                 {remainingCount > 0 && (
                     <TooltipContent 
-                        className="flex flex-wrap gap-1 max-w-[200px] p-2 z-[9999]"
+                        className="flex flex-wrap gap-1 max-w-[200px] p-2 z-[9999] dark:bg-gray-900 dark:border-none"
                         sideOffset={5}
                     >
                         {tagsArray.slice(1).map((tag, index) => (
