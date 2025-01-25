@@ -557,7 +557,8 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
 
     const renderFileDetails = () => (
         <>
-            <div className="flex justify-between items-center mb-2 mt-2 dark:bg-darkbg px-4 pt-2">
+        <ScrollArea>
+        <div className="flex justify-between items-center mb-2 mt-2 dark:bg-darkbg px-4 pt-2">
                 <h2 className="text-base font-semibold dark:text-white">File Details</h2>
                 <Button
                     variant="outline"
@@ -575,7 +576,7 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
                         <p><strong>Size:</strong> {selectedFile.size}</p>
                         <p><strong>Uploaded By:</strong> {selectedFile.uploadedBy}</p>
                         <p><strong>Date:</strong> {new Date(selectedFile.date).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
-                        <p><strong>Detailed Summary:</strong> {selectedFile.documentSummary}</p>
+                        <p><strong>Detailed Summary:</strong> {selectedFile.summary?.replace(/^"|"$/, '')}</p>
                         {/* Add more details as needed */}
                     </div>
 
@@ -583,6 +584,8 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
 
 
             )}
+        </ScrollArea>
+          
         </>
     );
 

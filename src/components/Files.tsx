@@ -25,6 +25,7 @@ import { ThemeProvider } from '../lib/ThemeContext';
 import SpreadsheetApp from './ExcelViewer';
 import { DataTable } from './newFilesTable';
 import {FileSystem} from './ElevatedTable';
+import { useTabStore } from './tabStore';
 
 
 interface Tab {
@@ -39,6 +40,19 @@ export default function Files({ setSelectedTab }: { setSelectedTab: React.Dispat
 
     const [showDetailsView, setShowDetailsView] = useState(false);
     const [selectedFile, setSelectedFile] = useState<{ id: string; name: string; s3Url: string } | null>(null);
+    const { 
+        currentTabs,
+        setCurrentTabs,
+        activeTabId,
+        setActiveTabId,
+        initializeDefaultTab 
+    } = useTabStore();
+
+    useEffect(() => {
+        initializeDefaultTab(handleFileSelect);
+    }, []);
+
+
 
     useEffect(() => {
         if (!showFolderTree && !showDetailsView) {
@@ -50,46 +64,48 @@ export default function Files({ setSelectedTab }: { setSelectedTab: React.Dispat
         }
     }, [showFolderTree, showDetailsView]);
 
-
-    const [tabs, setTabs] = useState([
-        { id: '1', title: 'All Files', content: <FileSystem onFileSelect={handleFileSelect}/> },    ]);
-    const [activeTabId, setActiveTabId] = useState('1');
-
-  
-
     const addOrActivateTab = (newTab: { id: string; title: string; content: JSX.Element }) => {
-        setTabs(prevTabs => {
-            const existingTab = prevTabs.find(tab => tab.id === newTab.id);
+        setCurrentTabs(prevTabs => {
+            const existingTab = prevTabs.find(tab => tab.title === newTab.title);
             if (existingTab) {
+                // If tab exists, just activate it
+                setActiveTabId(existingTab.id);
                 return prevTabs;
             } else {
+                // If it's a new tab, add it and activate it
+                setActiveTabId(newTab.id);  // Set active tab ID for the new tab
                 return [...prevTabs, newTab];
             }
         });
-        setActiveTabId(newTab.id);
     };
-
+    
     function handleFileSelect(file: { id: string; name: string; s3Url: string; }) {
         setSelectedFile(file);
         setShowDetailsView(true);
+        
         if (file.id && file.name && file.s3Url) {
             const newTabId = `file-${file.id}`;
-            console.log('url:', file.s3Url);
-
-            addOrActivateTab({
-                id: newTabId,
-                title: file.name,
-                content: (
-                  <PDFViewer 
-                    documentUrl={file.s3Url} 
-                    containerId={`pdf-viewer-${file.id}`}
-                  />
-                )
-              });
-        } else {
-            console.error('Incomplete file information:', file);
+            
+            // Check if a tab with the same title already exists
+            const existingTab = currentTabs.find(tab => tab.title === file.name);
+            
+            if (existingTab) {
+                setActiveTabId(existingTab.id);
+            } else {
+                addOrActivateTab({
+                    id: newTabId,
+                    title: file.name,
+                    content: (
+                        <PDFViewer 
+                            documentUrl={file.s3Url} 
+                            containerId={`pdf-viewer-${file.id}`}
+                        />
+                    )
+                });
+            }
         }
     }
+    
 
     return (
         <ThemeProvider>
@@ -99,11 +115,11 @@ export default function Files({ setSelectedTab }: { setSelectedTab: React.Dispat
             >
 
                 <ResizablePanel defaultSize={75} minSize={40}>
-                    <TabSystem
-                        tabs={tabs}
+                <TabSystem
+                        tabs={currentTabs}
                         activeTabId={activeTabId}
                         setActiveTabId={setActiveTabId}
-                        setTabs={setTabs}
+                        setTabs={setCurrentTabs}
                     />
                 </ResizablePanel>
                 <ResizableHandle withHandle className='dark:bg-slate-900'/>

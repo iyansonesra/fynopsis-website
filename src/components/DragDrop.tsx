@@ -231,7 +231,7 @@ const DragDropOverlay: React.FC<DragDropOverlayProps> = ({
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white p-8 rounded-lg shadow-lg w-2/3 max-w-2xl">
+      <div className="bg-white p-8 rounded-lg shadow-lg w-2/3 max-w-2xl dark:bg-darkbg">
         <div className="flex justify-end">
           <button onClick={onClose} className="text-gray-500 hover:text-gray-700">
             <X className="h-6 w-6" />
@@ -245,13 +245,13 @@ const DragDropOverlay: React.FC<DragDropOverlayProps> = ({
           >
             <input {...getInputProps()} />
             <UploadIcon className="mx-auto h-12 w-12 text-gray-400" />
-            <p className="mt-2 text-sm text-gray-600">
+            <p className="mt-2 text-sm text-gray-600 dark:text-gray-200">
               Drag and drop files here, or click to select files
             </p>
           </div>
         ) : (
           <div className="mt-4">
-            <h3 className="text-lg font-semibold mb-2">Uploading Files:</h3>
+            <h3 className="text-lg font-semibold mb-2 dark:text-gray-200">Uploading Files:</h3>
             <ul className="space-y-4">
               {Object.entries(fileUploads).map(([fileName, upload]) => (
                 <li key={fileName} className="space-y-2">

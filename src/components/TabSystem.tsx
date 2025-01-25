@@ -1,6 +1,8 @@
 import React, { useRef, useEffect } from 'react';
 import { DragDropContext, Droppable, Draggable } from 'react-beautiful-dnd';
 import { X } from 'lucide-react';
+import { useTabStore } from './tabStore';
+
 
 interface Tab {
   id: string;
@@ -11,11 +13,13 @@ interface Tab {
 interface TabSystemProps {
   tabs: Tab[];
   activeTabId: string;
-  setActiveTabId: React.Dispatch<React.SetStateAction<string>>;
+  setActiveTabId: (id: string) => void;
   setTabs: React.Dispatch<React.SetStateAction<Tab[]>>;
 }
 
-const TabSystem: React.FC<TabSystemProps> = ({ tabs, activeTabId, setActiveTabId, setTabs }) => {
+const TabSystem: React.FC<TabSystemProps> = ({ tabs, setTabs }) => {
+  const { activeTabId, setActiveTabId } = useTabStore();
+
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
   const contentRef = useRef<HTMLDivElement | null>(null);
 
@@ -29,13 +33,24 @@ const TabSystem: React.FC<TabSystemProps> = ({ tabs, activeTabId, setActiveTabId
 
   const onDragEnd = (result: any) => {
     if (!result.destination) return;
+    
+    setTabs(prevTabs => {
+        const newTabs = Array.from(prevTabs);
+        const [reorderedItem] = newTabs.splice(result.source.index, 1);
+        newTabs.splice(result.destination.index, 0, reorderedItem);
+        return newTabs;
+    });
+};
 
-    const newTabs = Array.from(tabs);
-    const [reorderedItem] = newTabs.splice(result.source.index, 1);
-    newTabs.splice(result.destination.index, 0, reorderedItem);
-
-    setTabs(newTabs);
-  };
+  const closeTab = (tabId: string) => {
+    setTabs(prevTabs => {
+        const newTabs = prevTabs.filter(tab => tab.id !== tabId);
+        if (activeTabId === tabId) {
+            setActiveTabId(newTabs[0]?.id || '');
+        }
+        return newTabs;
+    });
+};
 
   function truncateString(str: string) {
     if (str.length > 20) {
@@ -44,23 +59,44 @@ const TabSystem: React.FC<TabSystemProps> = ({ tabs, activeTabId, setActiveTabId
     return str;
   }
 
-  const closeTab = (tabId: string) => {
-    const newTabs = tabs.filter(tab => tab.id !== tabId);
-    setTabs(newTabs);
+  // const closeTab = (tabId: string) => {
+  //   const newTabs = tabs.filter(tab => tab.id !== tabId);
+  //   setTabs(newTabs);
 
-    if (activeTabId === tabId) {
-      setActiveTabId(newTabs[0]?.id || '');
-    }
+  //   if (activeTabId === tabId) {
+  //     setActiveTabId(newTabs[0]?.id || '');
+  //   }
+  // };
+
+  // // Updated function to add or activate a tab
+  // const addOrActivateTab = (newTab: Tab) => {
+  //   const existingTab = tabs.find(tab => tab.id === newTab.id);
+  //   if (existingTab) {
+  //     // If the tab already exists, just activate it
+  //     setActiveTabId(existingTab.id);
+  //   } else {
+  //     // If it's a new tab, add it and activate it
+  //     setTabs([...tabs, newTab]);
+  //     setActiveTabId(newTab.id);
+  //   }
+  // };
+
+  const findTabByTitle = (tabs: Tab[], title: string): Tab | undefined => {
+    return tabs.find(tab => tab.title === title);
   };
 
-  // Updated function to add or activate a tab
+  // useEffect(() => {
+  //   useTabStore.getState().setCurrentTabs(tabs);
+  // }, [tabs]);
+
+  // Update the addOrActivateTab function
   const addOrActivateTab = (newTab: Tab) => {
-    const existingTab = tabs.find(tab => tab.id === newTab.id);
+    const existingTab = findTabByTitle(tabs, newTab.title);
     if (existingTab) {
-      // If the tab already exists, just activate it
+      // If a tab with the same title exists, just activate it
       setActiveTabId(existingTab.id);
     } else {
-      // If it's a new tab, add it and activate it
+      // If no tab with this title exists, add it and activate it
       setTabs([...tabs, newTab]);
       setActiveTabId(newTab.id);
     }

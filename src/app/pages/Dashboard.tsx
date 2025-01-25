@@ -7,6 +7,7 @@ import {
     Factory,
     Plus,
     LucideIcon,
+    Library,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -76,7 +77,7 @@ export default function GeneralDashboard() {
     const [selectedDataroom, setSelectedDataroom] = useState<string | null>(null);
 
     const tabs: Tab[] = [
-        { icon: Factory, label: 'Library' },
+        { icon: Library, label: 'Library' },
     ];
 
     function signIn(): void {

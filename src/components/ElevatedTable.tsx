@@ -44,6 +44,7 @@ interface Payment {
     s3Url: string;
     isFolder?: boolean;
     uploadProcess: string;
+    summary: string;
     tags: string[];
 }
 
@@ -63,6 +64,7 @@ const dummy: Payment = {
     s3Url: '',
     isFolder: false,
     uploadProcess: '',
+    summary: '',
     tags: []
 };
 
@@ -793,7 +795,8 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
                 s3Url: metadata.url || '',
                 isFolder: isFolder,
                 uploadProcess: metadata.Metadata?.pre_upload || 'COMPLETED',
-                tags: parsedTags || []
+                tags: parsedTags || [],
+                summary: metadata.document_summary || '',
             });
 
         }
@@ -1075,12 +1078,13 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
             status: "success",
             size: '',
             date: new Date().toISOString(),
-            uploadedBy: currentUser,
+            uploadedBy: "",
             s3Key: `${currentPath.join('/')}/${newFolderName}`,
             s3Url: '',
             isFolder: true,
             uploadProcess: 'PENDING',
-            tags: []
+            tags: [],
+            summary: '',
         };
 
         // Add to UI immediately with pending state
