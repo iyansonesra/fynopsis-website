@@ -1139,23 +1139,25 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
         
         const traverse = (node: TreeNode) => {
             for (const [name, childNode] of Object.entries(node.children)) {
-                if (name.toLowerCase().includes(query)) {
+                // Only include files, skip folders
+                if (childNode.type !== 'folder' && name.toLowerCase().includes(query)) {
                     matches.push({
                         id: childNode.metadata?.id || crypto.randomUUID(),
                         name: name,
-                        type: childNode.type === 'folder' ? 'folder' : name.split('.').pop()?.toUpperCase() || 'Unknown',
+                        type: name.split('.').pop()?.toUpperCase() || 'Unknown',
                         status: "success",
-                        size: childNode.type === 'folder' ? '' : formatFileSize(childNode.size || 0),
+                        size: formatFileSize(childNode.size || 0),
                         date: childNode.LastModified || new Date().toISOString(),
                         uploadedBy: childNode.metadata?.uploadbyname || '',
                         s3Key: childNode.s3Key || name,
                         s3Url: childNode.metadata?.url || '',
-                        isFolder: childNode.type === 'folder',
+                        isFolder: false,
                         uploadProcess: childNode.metadata?.pre_upload || 'COMPLETED',
                         tags: childNode.metadata?.tags || [],
                         summary: childNode.metadata?.document_summary || ''
                     });
                 }
+                // Still traverse into folders to find files
                 if (childNode.type === 'folder') {
                     traverse(childNode);
                 }
@@ -1170,18 +1172,19 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
         const matches: Payment[] = [];
         
         for (const [name, childNode] of Object.entries(currentNode.children)) {
-            if (name.toLowerCase().includes(query)) {
+            // Only include files, skip folders
+            if (childNode.type !== 'folder' && name.toLowerCase().includes(query)) {
                 matches.push({
                     id: childNode.metadata?.id || crypto.randomUUID(),
                     name: name,
-                    type: childNode.type === 'folder' ? 'folder' : name.split('.').pop()?.toUpperCase() || 'Unknown',
+                    type: name.split('.').pop()?.toUpperCase() || 'Unknown',
                     status: "success",
-                    size: childNode.type === 'folder' ? '' : formatFileSize(childNode.size || 0),
+                    size: formatFileSize(childNode.size || 0),
                     date: childNode.LastModified || new Date().toISOString(),
                     uploadedBy: childNode.metadata?.uploadbyname || '',
                     s3Key: childNode.s3Key || name,
                     s3Url: childNode.metadata?.url || '',
-                    isFolder: childNode.type === 'folder',
+                    isFolder: false,
                     uploadProcess: childNode.metadata?.pre_upload || 'COMPLETED',
                     tags: childNode.metadata?.tags || [],
                     summary: childNode.metadata?.document_summary || ''
@@ -1191,6 +1194,7 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
         
         return matches;
     };
+    
     
 
 
