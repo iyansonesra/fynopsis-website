@@ -125,7 +125,12 @@ darkMode: 'class',
   				'100%': {
   					'offset-distance': '100%'
   				}
-  			}
+  			},
+			fadeIn: {
+			  '0%': { opacity: '0' },
+			  '100%': { opacity: '1' }
+			},
+    
   		},
   		animation: {
   			'accordion-down': 'accordion-down 0.2s ease-out',
@@ -134,7 +139,9 @@ darkMode: 'class',
   			gradient: 'gradient 8s linear infinite',
   			shimmer: 'shimmer 2s linear infinite',
   			'background-position-spin': 'background-position-spin 3000ms infinite alternate',
-  			'border-beam': 'border-beam calc(var(--duration)*1s) infinite linear'
+  			'border-beam': 'border-beam calc(var(--duration)*1s) infinite linear',
+            'fade-in': 'fadeIn 0.3s ease both',
+      
   		},
   		fontFamily: {
   			montserrat: [

@@ -1100,30 +1100,30 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
     const handleSearch = (event: React.ChangeEvent<HTMLInputElement>) => {
         const value = event.target.value;
         setSearchValue(value);
-        
+
         const currentNode = useS3Store.getState().currentNode;
-        
+
         // If search query is empty, show current folder contents
         if (!value.trim()) {
             const currentFolderContents = Object.entries(currentNode.children).map(([name, childNode]) => ({
-                            id: childNode.metadata?.id || crypto.randomUUID(),
-                            name: name,
-                            type: childNode.type === 'folder' ? 'folder' : name.split('.').pop()?.toUpperCase() || 'Unknown',
-                            status: "success" as const,
-                            size: childNode.type === 'folder' ? '' : formatFileSize(childNode.size || 0),
-                            date: childNode.LastModified || new Date().toISOString(),
-                            uploadedBy: childNode.metadata?.uploadbyname || '',
-                            s3Key: childNode.s3Key || name,
-                            s3Url: childNode.metadata?.url || '',
-                            isFolder: childNode.type === 'folder',
-                            uploadProcess: childNode.metadata?.pre_upload || 'COMPLETED',
-                            tags: childNode.metadata?.tags || [],
-                            summary: childNode.metadata?.document_summary || ''
+                id: childNode.metadata?.id || crypto.randomUUID(),
+                name: name,
+                type: childNode.type === 'folder' ? 'folder' : name.split('.').pop()?.toUpperCase() || 'Unknown',
+                status: "success" as const,
+                size: childNode.type === 'folder' ? '' : formatFileSize(childNode.size || 0),
+                date: childNode.LastModified || new Date().toISOString(),
+                uploadedBy: childNode.metadata?.uploadbyname || '',
+                s3Key: childNode.s3Key || name,
+                s3Url: childNode.metadata?.url || '',
+                isFolder: childNode.type === 'folder',
+                uploadProcess: childNode.metadata?.pre_upload || 'COMPLETED',
+                tags: childNode.metadata?.tags || [],
+                summary: childNode.metadata?.document_summary || ''
             }));
             setTableData(sortTableData(currentFolderContents));
             return;
         }
-        
+
         if (searchScope === 'all') {
             const allMatches = searchAllFiles(tree, value.toLowerCase());
             setTableData(sortTableData(allMatches));
@@ -1132,11 +1132,11 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
             setTableData(sortTableData(currentMatches));
         }
     };
-    
-    
+
+
     const searchAllFiles = (tree: TreeNode, query: string): Payment[] => {
         const matches: Payment[] = [];
-        
+
         const traverse = (node: TreeNode) => {
             for (const [name, childNode] of Object.entries(node.children)) {
                 // Only include files, skip folders
@@ -1163,14 +1163,14 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
                 }
             }
         };
-        
+
         traverse(tree);
         return matches;
     };
-    
+
     const searchCurrentFolder = (currentNode: TreeNode, query: string): Payment[] => {
         const matches: Payment[] = [];
-        
+
         for (const [name, childNode] of Object.entries(currentNode.children)) {
             // Only include files, skip folders
             if (childNode.type !== 'folder' && name.toLowerCase().includes(query)) {
@@ -1191,11 +1191,11 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
                 });
             }
         }
-        
+
         return matches;
     };
-    
-    
+
+
 
 
     return (

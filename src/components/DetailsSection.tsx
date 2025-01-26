@@ -18,6 +18,7 @@ import { TbH1 } from 'react-icons/tb';
 import logo from './../app/assets/fynopsis_noBG.png'
 import '../components/temp.css';
 import loadingAnimation from './../app/assets/fyn_loading.svg'
+import { Separator } from './ui/separator';
 
 // import { w3cwebsocket as W3CWebSocket } from "websocket";
 // import { Signer } from '@aws-amplify/core';
@@ -275,11 +276,21 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
                 };
 
                 ws.onmessage = (event) => {
-                    console.log('WebSocket message:', event.data);
                     try {
                         const data = JSON.parse(event.data);
                         if (data.type === 'content') {
                             setIsLoading(false);
+                            const words = data.content.split(/(\s+)/);
+                            
+                            setCurrentBatch(prevBatch => {
+                                const newBatch = [...prevBatch, ...words];
+                                if (newBatch.length >= 8) {
+                                    setContentBatches(prev => [...prev, newBatch.join('')]);
+                                    return [];
+                                }
+                                return newBatch;
+                            });
+                            
                             setSearchResult(prevResult => ({
                                 response: (prevResult?.response || '') + data.content,
                                 sources: data.sources || {},
@@ -318,6 +329,18 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
         }
     };
 
+    const fadeInAnimation = `
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+
+    .batch-fade-in {
+        animation: fadeIn 0.5s ease-out forwards;
+        opacity: 0;
+    }
+`;
+
     const querySingleDocument = async (fileKey: string | number | boolean, searchTerm: any) => {
         // const userPrefix = await getUserPrefix();
         const bucketUuid = window.location.pathname.split('/').pop() || '';
@@ -341,7 +364,7 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
     const [inputValue, setInputValue] = useState('');
     const [userSearch, setUserSearch] = useState('');
 
-    interface InputChangeEvent extends React.ChangeEvent<HTMLTextAreaElement> {}
+    interface InputChangeEvent extends React.ChangeEvent<HTMLTextAreaElement> { }
 
     const handleInputChange = (e: InputChangeEvent) => {
         const textarea = e.target;
@@ -370,25 +393,14 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
         }
     };
 
+    const [contentBatches, setContentBatches] = useState<string[]>([]);
+    const [currentBatch, setCurrentBatch] = useState<string[]>([]);
+
+    // Modify the useEffect for searchResult
     useEffect(() => {
         if (searchResult && searchResult.response) {
-            // Extract source URL and clean message content
-            const sourceUrlMatch = searchResult.response.match(/{.*}/s);
-            let cleanedContent = searchResult.response;
-            let extractedUrl = '';
-
-            if (sourceUrlMatch) {
-                try {
-                    const sourceObj = JSON.parse(sourceUrlMatch[0]);
-                    extractedUrl = Object.keys(sourceObj)[0];
-                    // Remove the JSON object from content
-                    cleanedContent = searchResult.response.replace(sourceUrlMatch[0], '').trim();
-                    setSourceUrls(prev => [...prev, extractedUrl]);
-                } catch (error) {
-                    console.error('Error parsing source URL:', error);
-                }
-            }
-
+            const cleanedContent = searchResult.response.replace(/{.*}/s, '').trim();
+            setDisplayedContent(cleanedContent); // Set the full content immediately
             setMessages(prev => {
                 const newMessages = [...prev];
                 if (newMessages.length > 0 && newMessages[newMessages.length - 1].type === 'answer') {
@@ -408,7 +420,6 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
             });
         }
     }, [searchResult]);
-
 
     const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -448,10 +459,34 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
     //     );
     // };
 
+    const [displayedContent, setDisplayedContent] = useState<string>('');
+    const [isNewContentFading, setIsNewContentFading] = useState(false);
+
+    const fadeInStyles = `
+.fade-in {
+    opacity: 0;
+    animation: fadeIn 0.5s ease-in forwards;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+`;
+
+    const splitIntoBatches = (text: string, batchSize: number = 15): string[] => {
+        const words = text.split(' ');
+        const batches = [];
+        for (let i = 0; i < words.length; i += batchSize) {
+            batches.push(words.slice(i, i + batchSize).join(' '));
+        }
+        return batches;
+    }
+
 
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const scrollToBottom = () => {
-        messagesEndRef.current?.scrollIntoView({ 
+        messagesEndRef.current?.scrollIntoView({
             behavior: "smooth",
             block: "end",
             inline: "nearest"
@@ -475,15 +510,22 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
                 >
 
                     {messages.map((message, index) => (
-                        <div key={index} className="flex flex-col gap-4 mb-4" >
+                        <div key={index} className="flex flex-col gap-4 mb-4 pl-2" >
                             {message.type === 'question' ? (
-                                <div className="flex items-end justify-end self-end dark:text-white  mt-4 max-w-[70%]">
-                                    <p className="text-sm text-white bg-blue-500  p-2 rounded-lg">{message.content}</p>
+                                <div className="flex items-end  dark:text-white  mt-4">
+                                    <p className="text-2xl font-medium text-white pr-4 rounded-lg">{message.content}</p>
                                 </div>
                             ) : (
                                 <div>
-                                    <div className="mr-auto max-w-[70%] mb-4 dark:text-white bg-slate-100 dark:bg-gradient-to-b dark:from-slate-800 dark:to-darkbg rounded-lg">
-                                        <ReactMarkdown className="text-wrap text-sm p-4">
+                                    <div className="mr-auto mb-4 rounded-lg">
+                                        <div className='flex flex-row gap-2 items-center mb-3'>
+                                            <object type="image/svg+xml" data={loadingAnimation.src} className="h-6 w-6">
+                                                svg-animation
+                                            </object>
+                                            <h1 className='dark:text-white font-semibold'>Answer</h1>
+                                        </div>
+
+                                        <ReactMarkdown className="text-wrap text-sm pr-4 dark:text-white">
                                             {message.content}
                                         </ReactMarkdown>
                                     </div>
@@ -504,21 +546,35 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
                                             </Card>
                                         )}
                                     </div>
+                                    <div className="w-full flex items-center justify-center ">
+                                        <Separator className="bg-slate-800 w-full" orientation='horizontal' />
+
+
+                                    </div>
 
                                 </div>
 
                             )}
                         </div>
                     ))}
+
                     {isLoading && (
-                        <div className="mr-auto w-full max-w-2xl flex justify-start">
-                            <object type="image/svg+xml" data={loadingAnimation.src} className="h-8 w-8">
+                        <div className='flex flex-row gap-2 items-center mb-3'>
+                            <object type="image/svg+xml" data={loadingAnimation.src} className="h-6 w-6">
                                 svg-animation
                             </object>
+                            <h1 className='dark:text-white font-semibold'>Answer</h1>
                         </div>
+                        // <div className="flex flex-row">
+                        //     <object type="image/svg+xml" data={loadingAnimation.src} className="h-8 w-8">
+                        //         svg-animation
+                        //     </object>
+                        //     <h1 className='dark:text-white'>Answer</h1>
+                        // </div>
                     )}
 
-<div ref={messagesEndRef} style={{ height: 0 }} /> {/* Add this line */}
+
+                    <div ref={messagesEndRef} style={{ height: 0 }} /> {/* Add this line */}
 
                 </ScrollArea>
 
@@ -557,35 +613,35 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
 
     const renderFileDetails = () => (
         <>
-        <ScrollArea>
-        <div className="flex justify-between items-center mb-2 mt-2 dark:bg-darkbg px-4 pt-2">
-                <h2 className="text-base font-semibold dark:text-white">File Details</h2>
-                <Button
-                    variant="outline"
-                    onClick={() => setShowDetailsView(false)}
-                    className="dark:bg-darkbg dark:text-white text-sm"
-                >
-                    Back to Search
-                </Button>
-            </div>
-            {selectedFile && (
-                <>
-                    <div className="text-sm dark:text-white px-4">
-                        <p><strong>Name:</strong> {selectedFile.name}</p>
-                        <p><strong>Type:</strong> {selectedFile.type}</p>
-                        <p><strong>Size:</strong> {selectedFile.size}</p>
-                        <p><strong>Uploaded By:</strong> {selectedFile.uploadedBy}</p>
-                        <p><strong>Date:</strong> {new Date(selectedFile.date).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
-                        <p><strong>Detailed Summary:</strong> {selectedFile.summary?.replace(/^"|"$/, '')}</p>
-                        {/* Add more details as needed */}
-                    </div>
+            <ScrollArea>
+                <div className="flex justify-between items-center mb-2 mt-2 dark:bg-darkbg px-4 pt-2">
+                    <h2 className="text-base font-semibold dark:text-white">File Details</h2>
+                    <Button
+                        variant="outline"
+                        onClick={() => setShowDetailsView(false)}
+                        className="dark:bg-darkbg dark:text-white text-sm"
+                    >
+                        Back to Search
+                    </Button>
+                </div>
+                {selectedFile && (
+                    <>
+                        <div className="text-sm dark:text-white px-4">
+                            <p><strong>Name:</strong> {selectedFile.name}</p>
+                            <p><strong>Type:</strong> {selectedFile.type}</p>
+                            <p><strong>Size:</strong> {selectedFile.size}</p>
+                            <p><strong>Uploaded By:</strong> {selectedFile.uploadedBy}</p>
+                            <p><strong>Date:</strong> {new Date(selectedFile.date).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
+                            <p><strong>Detailed Summary:</strong> {selectedFile.summary?.replace(/^"|"$/, '')}</p>
+                            {/* Add more details as needed */}
+                        </div>
 
-                </>
+                    </>
 
 
-            )}
-        </ScrollArea>
-          
+                )}
+            </ScrollArea>
+
         </>
     );
 
