@@ -238,7 +238,7 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
             });
 
             const bucketUuid = window.location.pathname.split('/').pop() || '';
-            const websocketHost = '8f6ks8bh1k.execute-api.us-east-1.amazonaws.com';
+            const websocketHost = 'gh1md77cx1.execute-api.us-east-1.amazonaws.com';
 
             const idToken = await getIdToken();
             if (!idToken) {
