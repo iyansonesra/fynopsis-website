@@ -21,13 +21,17 @@ export default function SignInDetails() {
         }
     }, [user, router]);
 
-  
+
 
     return (
-        <Authenticator>
-            <div className="grid h-screen place-items-center">
-                <CircularProgress value={0.5} />
-            </div>
-        </Authenticator>
+        <div className = "bg-darkbg">
+            <h1>HIIIIIIIIIIIIIIIIIII</h1>
+            <Authenticator>
+                <div className="grid h-screen place-items-center">
+                    <CircularProgress value={0.5} />
+                </div>
+            </Authenticator>
+        </div>
+
     );
 }

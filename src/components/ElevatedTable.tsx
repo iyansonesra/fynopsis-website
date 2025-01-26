@@ -29,6 +29,7 @@ import { get, post } from 'aws-amplify/api';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from './ui/dropdown-menu';
 import { Folder, File } from 'lucide-react';
 import { TagDisplay } from './TagsHover';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 
 
 
@@ -147,6 +148,8 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
     const [cutNode, setCutNode] = useState<TreeNode | null>(null);
     const [cutPayment, setCutPayment] = useState<Payment | null>(null);
     const dropZoneRef = useRef<HTMLTableSectionElement>(null);
+    const [searchScope, setSearchScope] = useState('current');
+
 
 
 
@@ -731,11 +734,11 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
     }, []);
 
 
-    const handleSearch = (event: React.ChangeEvent<HTMLInputElement>) => {
-        const value = event.target.value;
-        setSearchValue(value);
-        setSearchQuery(value);
-    };
+    // const handleSearch = (event: React.ChangeEvent<HTMLInputElement>) => {
+    //     const value = event.target.value;
+    //     setSearchValue(value);
+    //     setSearchQuery(value);
+    // };
 
     const handleUploadClick = () => {
         setShowUploadOverlay(true);
@@ -858,7 +861,7 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
                     name: file.name,
                     status: "success" as const,
                     size: formatFileSize(file.size),
-                    date: new Date().toISOString().split('T')[0],
+                    date: new Date().toISOString(),
                     uploadedBy: `${(userInfo?.payload?.given_name as string) || ''} ${(userInfo?.payload?.family_name as string) || ''} `.trim(),
                     s3Key: s3Key
                 };
@@ -962,7 +965,6 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
         const activeItem = tableData.find(item => item.id === active.id);
         const overItem = tableData.find(item => item.id === over.id);
 
-        // Additional check to ensure we have both items and they're different
         if (!activeItem || !overItem || activeItem === overItem) {
             setActiveId(null);
             return;
@@ -977,40 +979,6 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
         }
 
         // Get the drop coordinates from the event
-        // Get the drop coordinates from the event
-        // const { x, y } = event.activatorEvent as MouseEvent;
-
-        // const { delta } = event;
-        // const coordinates = {
-        //     x: delta.x,
-        //     y: delta.y
-        // };
-
-        // // Get the bounds using the ref
-        // const dropZoneElement = dropZoneRef.current;
-        // if (!dropZoneElement) {
-        //     setActiveId(null);
-        //     return;
-        // }
-
-        // const bounds = dropZoneElement.getBoundingClientRect();
-        // console.log(bounds);
-        // console.log("x:", coordinates.x, "y:", coordinates.y);
-
-        // // Check if the drop occurred within bounds
-        // const isInBounds = (
-        //     coordinates.x >= bounds.left &&
-        //     coordinates.x <= bounds.right &&
-        //     coordinates.y >= bounds.top &&
-        //     coordinates.y <= bounds.bottom
-        // );
-
-        // if (!isInBounds) {
-        //     setActiveId(null);
-        //     return;
-        // }
-
-
         // Proceed with the existing file movement logic
         try {
             const cleanKey = (key: string): string => {
@@ -1079,7 +1047,7 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
             size: '',
             date: new Date().toISOString(),
             uploadedBy: "",
-            s3Key: `${currentPath.join('/')}/${newFolderName}`,
+            s3Key: `${currentPath.join('/')}/${newFolderName}/`,
             s3Url: '',
             isFolder: true,
             uploadProcess: 'PENDING',
@@ -1129,6 +1097,101 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
         setColumnWidths(newColumnWidths);
     };
 
+    const handleSearch = (event: React.ChangeEvent<HTMLInputElement>) => {
+        const value = event.target.value;
+        setSearchValue(value);
+        
+        const currentNode = useS3Store.getState().currentNode;
+        
+        // If search query is empty, show current folder contents
+        if (!value.trim()) {
+            const currentFolderContents = Object.entries(currentNode.children).map(([name, childNode]) => ({
+                            id: childNode.metadata?.id || crypto.randomUUID(),
+                            name: name,
+                            type: childNode.type === 'folder' ? 'folder' : name.split('.').pop()?.toUpperCase() || 'Unknown',
+                            status: "success" as const,
+                            size: childNode.type === 'folder' ? '' : formatFileSize(childNode.size || 0),
+                            date: childNode.LastModified || new Date().toISOString(),
+                            uploadedBy: childNode.metadata?.uploadbyname || '',
+                            s3Key: childNode.s3Key || name,
+                            s3Url: childNode.metadata?.url || '',
+                            isFolder: childNode.type === 'folder',
+                            uploadProcess: childNode.metadata?.pre_upload || 'COMPLETED',
+                            tags: childNode.metadata?.tags || [],
+                            summary: childNode.metadata?.document_summary || ''
+            }));
+            setTableData(sortTableData(currentFolderContents));
+            return;
+        }
+        
+        if (searchScope === 'all') {
+            const allMatches = searchAllFiles(tree, value.toLowerCase());
+            setTableData(sortTableData(allMatches));
+        } else {
+            const currentMatches = searchCurrentFolder(currentNode, value.toLowerCase());
+            setTableData(sortTableData(currentMatches));
+        }
+    };
+    
+    
+    const searchAllFiles = (tree: TreeNode, query: string): Payment[] => {
+        const matches: Payment[] = [];
+        
+        const traverse = (node: TreeNode) => {
+            for (const [name, childNode] of Object.entries(node.children)) {
+                if (name.toLowerCase().includes(query)) {
+                    matches.push({
+                        id: childNode.metadata?.id || crypto.randomUUID(),
+                        name: name,
+                        type: childNode.type === 'folder' ? 'folder' : name.split('.').pop()?.toUpperCase() || 'Unknown',
+                        status: "success",
+                        size: childNode.type === 'folder' ? '' : formatFileSize(childNode.size || 0),
+                        date: childNode.LastModified || new Date().toISOString(),
+                        uploadedBy: childNode.metadata?.uploadbyname || '',
+                        s3Key: childNode.s3Key || name,
+                        s3Url: childNode.metadata?.url || '',
+                        isFolder: childNode.type === 'folder',
+                        uploadProcess: childNode.metadata?.pre_upload || 'COMPLETED',
+                        tags: childNode.metadata?.tags || [],
+                        summary: childNode.metadata?.document_summary || ''
+                    });
+                }
+                if (childNode.type === 'folder') {
+                    traverse(childNode);
+                }
+            }
+        };
+        
+        traverse(tree);
+        return matches;
+    };
+    
+    const searchCurrentFolder = (currentNode: TreeNode, query: string): Payment[] => {
+        const matches: Payment[] = [];
+        
+        for (const [name, childNode] of Object.entries(currentNode.children)) {
+            if (name.toLowerCase().includes(query)) {
+                matches.push({
+                    id: childNode.metadata?.id || crypto.randomUUID(),
+                    name: name,
+                    type: childNode.type === 'folder' ? 'folder' : name.split('.').pop()?.toUpperCase() || 'Unknown',
+                    status: "success",
+                    size: childNode.type === 'folder' ? '' : formatFileSize(childNode.size || 0),
+                    date: childNode.LastModified || new Date().toISOString(),
+                    uploadedBy: childNode.metadata?.uploadbyname || '',
+                    s3Key: childNode.s3Key || name,
+                    s3Url: childNode.metadata?.url || '',
+                    isFolder: childNode.type === 'folder',
+                    uploadProcess: childNode.metadata?.pre_upload || 'COMPLETED',
+                    tags: childNode.metadata?.tags || [],
+                    summary: childNode.metadata?.document_summary || ''
+                });
+            }
+        }
+        
+        return matches;
+    };
+    
 
 
     return (
@@ -1232,17 +1295,33 @@ th {
                         <RefreshCcw size={16} />
                     </button>
 
-                    {/* <TagDisplay tags={['lol', 'wow', 'cool']} /> */}
                 </div>
 
 
-                <Input
-                    placeholder="Search files..."
-                    value={searchValue}
-                    onChange={handleSearch}
-                    className=" border xl:w-[35%] 2xl:bg-slate-400 
-                     dark:border-slate-600 border-slate-200 dark:bg-darkbg dark:text-white outline-none select-none"
-                />
+                <div className="relative xl:w-[45%] flex">
+                    <Select defaultValue="current" onValueChange={(value) => setSearchScope(value)}>
+                        <SelectTrigger
+                            className="absolute left-[10px] top-[20%] h-[60%] w-[120px] border dark:border-slate-600 rounded-ml 
+            dark:bg-transparent dark:text-slate-300 focus-visible:ring-0 focus-visible:ring-offset-0 
+            focus:outline-none focus-visible:outline-none ring-0"
+                        >
+                            <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent className='dark:bg-darkbg dark:text-white outline-none border dark:border-slate-600'>
+                            <SelectItem value="current" className='dark:text-slate-300'>Folder</SelectItem>
+                            <SelectItem value="all" className='dark:text-slate-300'>All Files</SelectItem>
+                        </SelectContent>
+                    </Select>
+                    <Input
+                        placeholder="Search files..."
+                        value={searchValue}
+                        onChange={handleSearch}
+                        className="pl-[140px] w-full dark:border-slate-600 
+        border-slate-200 dark:bg-darkbg dark:text-white outline-none"
+                    />
+                </div>
+
+
 
             </div>
 
