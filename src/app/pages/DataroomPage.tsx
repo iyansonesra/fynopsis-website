@@ -34,46 +34,76 @@ type Tab = {
 };
 
 export default function Home() {
-  const [selectedTab, setSelectedTab] = useState("library");
-  const { user, signOut } = useAuthenticator((context) => [context.user]);
-  const [userAttributes, setUserAttributes] = useState<FetchUserAttributesOutput | null>(null);
-  const router = useRouter();
-  const [activeTab, setActiveTab] = useState<number | null>(0);
-  const [indicatorStyle, setIndicatorStyle] = useState<IndicatorStyle>({} as IndicatorStyle);
-  const tabRefs = useRef<(HTMLDivElement | null)[]>([]);
-  const [isShareDialogOpen, setIsShareDialogOpen] = useState(false);
-  const [userEmail, setUserEmail] = useState('');
-  const [permissionLevel, setPermissionLevel] = useState('READ');
-  const pathname = usePathname();
-  const bucketUuid = pathname.split('/').pop() || '';
-  const params = useParams();
-  const [hasPermission, setHasPermission] = useState<boolean>(true);
-  const dataroomId = params.id;
+   const [selectedTab, setSelectedTab] = useState("library");
+      const { user, signOut } = useAuthenticator((context) => [context.user]);
+      const [userAttributes, setUserAttributes] = useState<FetchUserAttributesOutput | null>(null);
+      const router = useRouter();
+      const [activeTab, setActiveTab] = useState<number | null>(0);
+      const [indicatorStyle, setIndicatorStyle] = useState<IndicatorStyle>({} as IndicatorStyle);
+      const tabRefs = useRef<(HTMLDivElement | null)[]>([]);
+      const [isShareDialogOpen, setIsShareDialogOpen] = useState(false);
+      const [userEmail, setUserEmail] = useState('');
+      const [permissionLevel, setPermissionLevel] = useState('READ');
+      const pathname = usePathname();
+      const bucketUuid = pathname.split('/').pop() || '';
+      const params = useParams();
+      const [hasPermission, setHasPermission] = useState<boolean>(true);
+      const dataroomId = params.id;
 
-  const tabs: Tab[] = [
-    { icon: Library, label: 'Library' },
-    { icon: Users, label: 'Users' },
-  ];
+  
+      const tabs: Tab[] = [
+          { icon: Library, label: 'Library' },
 
-
-
-  function handleTabClick(index: number): void {
-    setActiveTab(index);
-    setSelectedTab(tabs[index].label.toLowerCase());
-  }
-
-  useEffect(() => {
-    console.log("checking for tab color!");
-    if (activeTab !== null && tabRefs.current[activeTab]) {
-      const tabElement = tabRefs.current[activeTab];
-      if (tabElement) {
-        setIndicatorStyle({
-          top: `${tabElement.offsetTop}px`,
-          height: `${tabElement.offsetHeight}px`,
-        });
+          { icon: Users, label: 'Users' },
+        
+      ];
+  
+      function signIn(): void {
+          router.push('/signin');
       }
+  
+  
+      const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+      const [newDataroomName, setNewDataroomName] = useState('');
+  
+  
+  
+  
+    
+      function handleTabClick(index: number): void {
+          setActiveTab(index);
+          setSelectedTab(tabs[index].label.toLowerCase());
+      }
+  
+      useEffect(() => {
+          console.log("checking for tab color!");
+          if (activeTab !== null && tabRefs.current[activeTab]) {
+              const tabElement = tabRefs.current[activeTab];
+              if (tabElement) {
+                  setIndicatorStyle({
+                      top: `${tabElement.offsetTop}px`,
+                      height: `${tabElement.offsetHeight}px`,
+                  });
+              }
+          }
+      }, [activeTab]);
+  
+ 
+  
+      useEffect(() => {
+          if (user) {
+              handleFetchUserAttributes();
+          }
+      }, [user]);
+
+
+ 
+  const [isDarkMode, setIsDarkMode] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('color-theme') === 'dark';
     }
-  }, [activeTab]);
+    return true;
+  });
 
   useEffect(() => {
     fetchPermissionLevel();
@@ -110,14 +140,6 @@ export default function Home() {
     }
   };
 
-
-  const [isDarkMode, setIsDarkMode] = useState(() => {
-    if (typeof window !== 'undefined') {
-      return localStorage.getItem('color-theme') === 'dark';
-    }
-    return true;
-  });
-
   const toggleDarkMode = () => {
     setIsDarkMode(!isDarkMode);
     if (isDarkMode) {
@@ -126,35 +148,6 @@ export default function Home() {
     } else {
       document.documentElement.classList.add('dark');
       localStorage.setItem('color-theme', 'dark');
-    }
-  };
-
-
-
-  useEffect(() => {
-    if (user) {
-      handleFetchUserAttributes();
-    }
-  }, [user]);
-
-  async function handleFetchUserAttributes() {
-    try {
-      const attributes = await fetchUserAttributes();
-      setUserAttributes(attributes);
-    } catch (error) {
-      console.log("error");
-    }
-  }
-  const renderSelectedScreen = () => {
-    switch (selectedTab.toLowerCase()) {
-      case "library":
-        return <Files setSelectedTab={setSelectedTab} />;
-      case "form":
-        return <ExcelViewer />;
-      case "users":
-        return <UserManagement dataroomId={''} />;
-      default:
-        return <Files setSelectedTab={setSelectedTab} />;
     }
   };
 
@@ -191,6 +184,36 @@ export default function Home() {
     }
   };
 
+
+
+  useEffect(() => {
+    if (user) {
+      handleFetchUserAttributes();
+    }
+  }, [user]);
+
+  async function handleFetchUserAttributes() {
+    try {
+      const attributes = await fetchUserAttributes();
+      setUserAttributes(attributes);
+    } catch (error) {
+      console.log("error");
+    }
+  }
+  const renderSelectedScreen = () => {
+    switch (selectedTab.toLowerCase()) {
+      case "library":
+        return <Files setSelectedTab={setSelectedTab} />;
+      case "form":
+        return <ExcelViewer />;
+      case "users":
+        return <UserManagement dataroomId={''} />;
+      default:
+        return <Files setSelectedTab={setSelectedTab} />;
+    }
+  };
+
+ 
   useEffect(() => {
     if (isDarkMode) {
       document.documentElement.classList.add('dark');
@@ -216,11 +239,11 @@ export default function Home() {
     );
   }
 
-
+  
 
   return (
     userAttributes ?
-      <div className="relative h-screen w-full flex flex-row sans-serif">
+   <div className="relative h-screen w-full flex flex-row sans-serif">
         <div className="w-20 bg-slate-900 h-full flex flex-col items-center justify-between pt-4 pb-6">
           <div className="flex items-center flex-col">
             <img
@@ -325,8 +348,8 @@ export default function Home() {
           {renderSelectedScreen()}
         </div>
       </div> :
-      <div className="grid h-screen place-items-center dark:bg-darkbg">
-        <CircularProgress value={0.5} />
-      </div>
+<div className="grid h-screen place-items-center dark:bg-darkbg">
+    <CircularProgress value={0.5} />
+</div>
   );
 }
