@@ -1,7 +1,7 @@
 "use client";
 import { Amplify } from "aws-amplify";
 import { Authenticator as AmplifyAuthenticator } from "@aws-amplify/ui-react";
-import { useEffect } from 'react';
+import { use, useEffect } from 'react';
 import { Sign } from "crypto";
 import { useAuthenticator } from '@aws-amplify/ui-react';
 import { useRouter } from 'next/navigation';
