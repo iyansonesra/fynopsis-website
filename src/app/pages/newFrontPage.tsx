@@ -157,7 +157,7 @@ const FrontPage: React.FC = () => {
 
                         <div
                             className={
-                                "mt-8 flex  w-[80%] flex-col gap-4 lg:flex-row  z-40"
+                                "mt-8 xl:mt-16 2xl:mt-24 flex  w-[80%] flex-col gap-4 lg:flex-row  z-40"
                             }
                         >
 
@@ -166,7 +166,7 @@ const FrontPage: React.FC = () => {
                                     <div className="relative rounded-lg shadow-md h-64  relative overflow-hidden flex flex-col">
                                         <div className="absolute inset-0 [mask-image:radial-gradient(100px,transparent_20%,green)]" />
 
-                                        <h1 className="text-6xl text-left font-semibold font-cormorant text-white">
+                                        <h1 className="text-6xl 2xl:text-7xl text-left font-semibold font-cormorant text-white">
                                             Do more with more of your{' '}
                                             <span className="bg-gradient-to-r from-[#38B6FF] to-[#004AAD] bg-clip-text text-transparent">
                                                 Files.
@@ -204,10 +204,10 @@ const FrontPage: React.FC = () => {
                     <div className="flex md:flex-row flex-col w-[80%] ">
                         <div className="flex flex-1 md:max-w-[50%]">
                             <div className="flex-1 flex-col max-w-[100%] flex justify-center items-center ">
-                                <h1 className="md:text-left text-center text-5xl font-semibold mb-2 text-white font-cormorant">Stay in the Loop with  <span className="bg-gradient-to-r from-[#38B6FF] to-[#004AAD] bg-clip-text text-transparent">
+                                <h1 className="md:text-left text-center text-5xl 2xl:text-6xl font-semibold mb-2 text-white font-cormorant">Stay in the Loop with  <span className="bg-gradient-to-r from-[#38B6FF] to-[#004AAD] bg-clip-text text-transparent">
                                     Smart
                                 </span> Document Digests</h1>
-                                <h1 className="md:text-left text-center text-xl font-montserrat text-slate-300 font-thin">Get instant, AI-powered summaries of document changes and updates across your data room, ensuring you never miss critical modifications.</h1>
+                                <h1 className="md:text-left text-center text-xl 2xl:text-2xl font-montserrat text-slate-300 font-thin">Get instant, AI-powered summaries of document changes and updates across your data room, ensuring you never miss critical modifications.</h1>
                             </div>
 
                         </div>
@@ -229,10 +229,10 @@ const FrontPage: React.FC = () => {
 
                         <div className="flex flex-1 md:max-w-[50%]">
                             <div className="flex-1 max-w-[100%]">
-                                <h1 className="md:text-right text-center text-5xl font-semibold font-cormorant mb-2 text-white">Smart Document Tagging &  <span className="bg-gradient-to-r from-[#38B6FF] to-[#004AAD] bg-clip-text text-transparent">
+                                <h1 className="md:text-right text-center text-5xl 2xl:text-6xl font-semibold font-cormorant mb-2 text-white">Smart Document Tagging &  <span className="bg-gradient-to-r from-[#38B6FF] to-[#004AAD] bg-clip-text text-transparent">
                                     Instant
                                 </span> Summaries</h1>
-                                <h1 className="md:text-right text-center text-xl font-montserrat font-thin text-slate-300">Every document is automatically categorized and condensed, turning complex files into clear, searchable insights in seconds</h1>
+                                <h1 className="md:text-right text-center text-xl 2xl:text-2xl font-montserrat font-thin text-slate-300">Every document is automatically categorized and condensed, turning complex files into clear, searchable insights in seconds</h1>
 
                             </div>
                         </div>

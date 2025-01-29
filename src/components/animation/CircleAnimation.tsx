@@ -161,24 +161,24 @@ const CircleBurstAnimation = () => {
       `}>
         <div className="rounded-lg shadow-lg p-6 max-w-2xl mx-auto font-montserrat bg-neutral-950 relative overflow-hidden">
           <div className="flex flex-col space-y-4 relative z-10">
-            <h2 className="text-xl font-bold text-gray-200 truncate">
+            <h2 className="text-xl 2xl:text-2xl font-bold text-gray-200 truncate">
               2024_Finance_Report.pdf
             </h2>
             
             <div className="flex flex-nowrap gap-2 overflow-x-auto pb-2">
-              <span className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-xs md:text-sm whitespace-nowrap">
+              <span className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-xs 2xl:text-base md:text-sm whitespace-nowrap">
           Finance
               </span>
-              <span className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-xs md:text-sm whitespace-nowrap">
+              <span className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-xs  2xl:text-base md:text-sm whitespace-nowrap">
           Annual Report
               </span>
-              <span className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-xs md:text-sm whitespace-nowrap">
+              <span className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-xs  2xl:text-base  md:text-sm whitespace-nowrap">
           2024
               </span>
             </div>
             
             <div className="text-gray-400">
-              <p className="text-xs md:text-sm">
+              <p className="text-xs md:text-sm 2xl:text-lg">
               This annual financial report covers the fiscal year 2024, highlighting key performance indicators,
               revenue growth of 15%, and strategic initiatives. The document includes detailed sections on 
               market analysis, risk assessment, and future projections.

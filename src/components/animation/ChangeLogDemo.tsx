@@ -88,7 +88,7 @@ const ChangeLogDemo = () => {
   }, [isInView]); // Dependency on isInView
 
   return (
-    <div ref={ref} className="relative w-full max-w-lg mx-auto p-4 h-96 flex justify-center items-center font-montserrat">
+    <div ref={ref} className="relative max-w-lg 2xl:max-w-xl  mx-auto p-4 h-96 flex justify-center items-center font-montserrat">
       <div className="space-y-3">
         {changeLogs.map((log, index) => (
           <div
@@ -101,7 +101,7 @@ const ChangeLogDemo = () => {
               transitionDelay: `${index * 100}ms`
             }}
           >
-            <Card className="p-3 bg-neutral-900 border-none text-white shadow-sm">
+            <Card className="p-3 2xl:p-6 bg-neutral-900 border-none text-white shadow-sm">
               <p className="text-sm">
                 <span className="font-semibold">{log.user}</span> {log.action}
                 <span className="text-gray-500 ml-2">{log.time}</span>
@@ -132,8 +132,8 @@ const ChangeLogDemo = () => {
           }`}
       >
         <Card className="p-4 bg-neutral-950 shadow-lg transform transition-transform border-none relative overflow-hidden">
-          <h3 className="font-semibold mb-2 text-white relative z-10">Recent Changes Summary</h3>
-          <p className="text-sm text-gray-500 relative z-10">
+          <h3 className="font-semibold mb-2 text-white relative z-10 2xl:text-xl">Recent Changes Summary</h3>
+          <p className="text-sm 2xl:text-lg text-gray-500 relative z-10">
         In the last 15 minutes, there have been 4 document updates:
         modifications to financial projections and company overview documents,
         a new version of the legal agreement, and an updated term sheet.
