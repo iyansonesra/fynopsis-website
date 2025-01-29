@@ -126,6 +126,7 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
     const [activeId, setActiveId] = useState<string | null>(null);
     const tree = useS3Store(state => state.tree);
     const fetchObjects = useS3Store(state => state.fetchObjects);
+    const clearTree = useS3Store(state => state.clearTree);
     const setSearchQuery = useS3Store(state => state.setSearchQuery);
     const changeCurrentNode = useS3Store(state => state.changeCurrentNode);
     const navigateToPath = useS3Store(state => state.navigateToPath);
@@ -309,30 +310,44 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
                                 : item
                         ));
 
-                        console.log('Cut:', selectedItem.s3Key);
+                        // console.log('Cut:', selectedItem.s3Key);
                     }
                 } else if (e.key === 'v' && cutFileKey) {
+                
                     let fullPath = cutFileKey.split('/');
+                    // console.log('full path:', fullPath);
                     fullPath = fullPath.slice(1);
+                    // console.log('full path:', fullPath);
                     let sourceKey = fullPath.join('/');
+                    // console.log('source key:', sourceKey);
                     if (cutPayment?.isFolder) fullPath.pop();
                     let fileName = fullPath.pop() || '';
+                    
 
                     if (cutPayment?.isFolder) fileName += '/';
+
+                    // console.log('filename:', fileName);
 
                     const currentNode = useS3Store.getState().currentNode;
 
                     let destinationKey = currentNode.s3Key;
+
+                    // console.log('destination key:', destinationKey);
                     let destFullPath = ["empty"];
                     if (destinationKey)
                         destFullPath = destinationKey.split('/');
 
                     destFullPath = destFullPath.slice(1);
+                    // console.log('dest full path:', destFullPath);
 
                     destinationKey = destFullPath.join('/') + fileName;
 
-                    console.log('source key;', sourceKey, 'dest key', destinationKey);
-                    console.log('filename:', fileName);
+
+                    // console.log('source key;', sourceKey, 'dest key', destinationKey);
+                    // console.log('filename:', fileName);
+
+                    console.log("original s3 key", sourceKey);
+                    console.log("destination s3 key", destinationKey);
 
 
 
@@ -353,10 +368,16 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
                         }
 
                         let newS3key = bucketUuid + '/' + destinationKey;
-                        console.log('new s3 key:', newS3key);
+
+                        // if(cutPayment?.isFolder) newS3key += '/';
+                        // console.log('new s3 key:', newS3key);
+                        console.log('filename is:', fileName);
                         if (oldNode) {
                             oldNode.s3Key = newS3key;
-                            currentNode.children[fileName.slice(0, fileName.length - 1)] = oldNode;
+                            if(cutPayment?.isFolder) 
+                                currentNode.children[fileName.slice(0, fileName.length - 1)] = oldNode;
+                            else
+                                currentNode.children[fileName.slice(0, fileName.length)] = oldNode;
                         }
 
 
@@ -410,7 +431,7 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
         const handleClick = (e: React.MouseEvent) => {
             e.stopPropagation();
             onSelect(item.id);
-            console.log("selected items s3Key:", item.s3Key);
+            // console.log("selected items s3Key:", item.s3Key);
         };
         const pathname = usePathname();
         const bucketUuid = pathname.split('/').pop() || '';
@@ -431,7 +452,7 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
         const handleDoubleClick = async () => {
             if (!item.isFolder && item.s3Key) {
                 try {
-                    console.log(item.s3Key);
+                    // console.log(item.s3Key);
                     const downloadResponse = await get({
                         apiName: 'S3_API',
                         path: `/s3/${bucketUuid}/download-url`,
@@ -771,7 +792,7 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
         // Transform immediate children into table data
         const currentNode = useS3Store.getState().currentNode;
 
-        console.log('currentNode:', currentNode);
+        // console.log('currentNode:', currentNode);
         const tableData: Payment[] = [];
 
         for (const [name, node] of Object.entries(currentNode.children)) {
@@ -779,8 +800,8 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
             const metadata = (node as any).metadata;
 
             const parsedTags = metadata.tags ? JSON.parse(metadata.tags) : [];
-            console.log("metadata tags:", metadata.tags);
-            console.log('parsed tags:', parsedTags);
+            // console.log("metadata tags:", metadata.tags);
+            // console.log('parsed tags:', parsedTags);
 
 
 
@@ -854,7 +875,10 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
     const handleFilesUploaded = async (files: File[]) => {
         const uploadPromises = files.map(async (file) => {
             try {
+                const currentNode = useS3Store.getState().currentNode;
                 const s3Key = await uploadToS3(file);
+                const temps3Key = getCurrentPathString(currentNode) + file.name;
+                // console.log("s3key of file in s3", temps3Key);
                 const newFile = {
                     id: uuidv4(),
                     type: file.name.split('.').pop()?.toUpperCase() || 'Unknown',
@@ -863,11 +887,10 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
                     size: formatFileSize(file.size),
                     date: new Date().toISOString(),
                     uploadedBy: `${(userInfo?.payload?.given_name as string) || ''} ${(userInfo?.payload?.family_name as string) || ''} `.trim(),
-                    s3Key: s3Key
+                    s3Key: temps3Key,
                 };
 
                 // Add the file to the current node's children
-                const currentNode = useS3Store.getState().currentNode;
 
                 function getCurrentPathString(node: TreeNode): string {
                     const pathParts: string[] = [];
@@ -882,8 +905,10 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
                 }
 
 
-                const temps3Key = getCurrentPathString(currentNode) + file.name;
-                console.log("temps3Key", temps3Key);
+                
+                // console.log("temps3Key", temps3Key);
+
+                // console.log("s3key of file in tree", temps3Key);
 
                 currentNode.children[file.name] = {
                     name: file.name,
@@ -911,7 +936,7 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
         });
 
         const newFiles = (await Promise.all(uploadPromises)).filter((item): item is Payment => item !== null);
-        console.log("new files:", newFiles);
+        // console.log("new files:", newFiles);
         setTableData(prevData => [...prevData, ...newFiles]);
         setShowUploadOverlay(false);
     };
@@ -940,7 +965,7 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
             const { body } = await response.response;
             const result = await body.json();
 
-            console.log('File moved successfully:', result);
+            // console.log('File moved successfully:', result);
             return result;
 
         } catch (error) {
@@ -955,7 +980,7 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
         // If there's no over target, it means the item was dropped outside any valid drop zone
         if (!over) {
             setActiveId(null);
-            console.log("no over");
+            // console.log("no over");
 
             return;
         }
@@ -972,7 +997,7 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
 
         // Only proceed if dropping onto a folder
         if (!overItem.isFolder) {
-            console.log("not a folder");
+            // console.log("not a folder");
 
             setActiveId(null);
             return;
@@ -991,6 +1016,14 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
             if (activeItem.isFolder && !destinationKey.endsWith('/')) {
                 destinationKey += '/';
             }
+
+            // console.log('sourceKey:', sourceKey);
+            // console.log('destinationKey:', destinationKey);
+            // console.log('activeItem:', activeItem);
+            // console.log('overItem:', overItem);
+
+            console.log("original s3:", sourceKey);
+            console.log("new s3 location:", destinationKey);
 
             // Set items to pending state
             setTableData(prevData => prevData.map(item =>
@@ -1012,7 +1045,7 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
             // Update the tree structure
             const currentNode = useS3Store.getState().currentNode;
             const nodeBeingMoved = currentNode.children[activeItem.name];
-            nodeBeingMoved.s3Key = `${overItem.s3Key}${activeItem.name}`;
+            nodeBeingMoved.s3Key = `${bucketUuid}/${destinationKey}`;
             currentNode.children[overItem.name].children[activeItem.name] = nodeBeingMoved;
             delete currentNode.children[activeItem.name];
 
@@ -1039,6 +1072,11 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
     const handleCreateFolder = async () => {
         if (!newFolderName.trim()) return;
 
+        const currentNode = useS3Store.getState().currentNode;
+        let currS3key = currentNode.s3Key;
+
+        // console.log("s3key stored in table:", `${currS3key}${newFolderName}/`);
+
         const newFolder: Payment = {
             id: uuidv4(),
             type: 'folder',
@@ -1047,13 +1085,15 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
             size: '',
             date: new Date().toISOString(),
             uploadedBy: "",
-            s3Key: `${currentPath.join('/')}/${newFolderName}/`,
+            s3Key: `${currS3key}${newFolderName}/`,
             s3Url: '',
             isFolder: true,
             uploadProcess: 'PENDING',
             tags: [],
             summary: '',
         };
+
+        // console.log('new folder:', newFolder);
 
         // Add to UI immediately with pending state
         setTableData(prevData => sortTableData([...prevData, newFolder]));
@@ -1132,6 +1172,21 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
             setTableData(sortTableData(currentMatches));
         }
     };
+
+    const handleRefresh = () => {
+        clearTree();
+        fetchObjects(bucketUuid);
+        if (tree) {
+            transformTreeToTableData(tree, currentPath)
+                .then(transformedData => {
+                    setTableData(transformedData);
+                    setTimeout(() => {
+                        setIsLoading(false);
+                    }, 500);
+                });
+        }
+
+    }
 
 
     const searchAllFiles = (tree: TreeNode, query: string): Payment[] => {
@@ -1292,7 +1347,7 @@ th {
                     </button>
 
                     <button
-                        onClick={() => fetchObjects(bucketUuid)}
+                        onClick={handleRefresh}
                         className="flex items-center justify-center p-2 text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-white transition-colors"
                         aria-label="Refresh"
                     >

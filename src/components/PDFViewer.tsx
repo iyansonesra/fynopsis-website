@@ -6,6 +6,9 @@ import {
   FormDesigner, Inject
 } from '@syncfusion/ej2-react-pdfviewer';
 import styled from 'styled-components';
+import "@cyntler/react-doc-viewer/dist/index.css";
+import DocViewer, { DocViewerRenderers } from "@cyntler/react-doc-viewer";
+
 
 
 const ViewerContainer = styled.div`
@@ -44,7 +47,14 @@ const PDFViewer: React.FC<PDFViewerProps> = ({
 }) => {
   const viewerRef = useRef<PdfViewerComponent>(null);
 
+  const docs = [
+    { uri: documentUrl },
+  ];
+
   useEffect(() => {
+    console.log('PDFViewer render');
+    console.log('documentUrl:', documentUrl);
+
     return () => {
       // Cleanup on unmount
       if (viewerRef.current) {
@@ -53,32 +63,10 @@ const PDFViewer: React.FC<PDFViewerProps> = ({
     };
   }, []);
 
+
   return (
     <ViewerContainer>
-      <PdfViewerComponent
-        ref={viewerRef}
-        documentPath={documentUrl}
-        serviceUrl="https://services.syncfusion.com/react/production/api/pdfviewer"
-        enableDownload={true}
-        enablePrint={true}
-        height={'100%'}
-        width={'100%'}
-      >
-        <Inject services={[
-          Toolbar,
-          Magnification,
-          Navigation,
-          Annotation,
-          LinkAnnotation,
-          BookmarkView,
-          ThumbnailView,
-          Print,
-          TextSelection,
-          TextSearch,
-          FormFields,
-          FormDesigner
-        ]} />
-      </PdfViewerComponent>
+      <DocViewer documents={docs} pluginRenderers={DocViewerRenderers} />
     </ViewerContainer>
   );
 };
