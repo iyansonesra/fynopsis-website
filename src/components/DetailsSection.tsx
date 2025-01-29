@@ -248,7 +248,7 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
             });
 
             const bucketUuid = window.location.pathname.split('/').pop() || '';
-            const websocketHost = `${process.env.NEXT_PUBLIC_SEARCH_API_CODE}.execute-api.us-east-1.amazonaws.com`;
+            const websocketHost = 'gh1md77cx1.execute-api.us-east-1.amazonaws.com';
 
             const idToken = await getIdToken();
             if (!idToken) {
@@ -424,15 +424,16 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
     useEffect(() => {
         if (searchResult && searchResult.response) {
             let response = searchResult.response;
+            console.log("SEARCH RESULT", searchResult);
 
             if (inThoughts) {
                 console.log("IN THOUGHTS\n");
                 if (response.includes('<answer>')) {
                     // If </thoughts> is found but <thoughts> is not, it means we are closing the thoughts section
 
-                    const thoughtsEndIndex = response.indexOf('</thoughts>');
-                    const thoughtsStartIndex = response.indexOf('<thoughts>');
-                    const thoughtsContent = response.substring(thoughtsStartIndex + '<thoughts>'.length, thoughtsEndIndex).trim();
+                    const thoughtsEndIndex = response.indexOf('</think>');
+                    const thoughtsStartIndex = response.indexOf('<think>');
+                    const thoughtsContent = response.substring(thoughtsStartIndex + '<think>'.length, thoughtsEndIndex).trim();
                     console.log(thoughtsContent);
                     setThoughts(thoughtsContent);
                     // Split thoughts into array by line and filter out empty lines
@@ -514,15 +515,18 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
 
                 if (response.includes('</sources>')) {
                     // Match all strings between quotation marks
+                    console.log("GETTIIN INNNNN\n")
                     const matches = response.match(/"([^"]*)"/g);
                     const extractedUrls: string[] = [];
 
-
+                    console.log("MATCHES", matches);
                     if (matches) {
                         // Process matches in pairs (url, name)
                         for (let i = 0; i < matches.length; i++) {
                             const extractedUrl = matches[i]?.replace(/"/g, '');
+                            console.log("EXTRACTED URL", extractedUrl);
                             if (extractedUrl && extractedUrl.includes(bucketUuid)) {
+                                console.log("We extraced it");
                                 extractedUrls.push(extractedUrl);
                             }
                         }
@@ -530,22 +534,24 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
                         setMessages(prev => {
                             const newMessages = [...prev];
                             if (newMessages.length > 0) {
+                                console.log("some messages exist");
                                 const lastMessage = newMessages[newMessages.length - 1];
                                 if (lastMessage.type === 'answer') {
-                                    lastMessage.sources = extractedUrls.reduce((acc, url) => {
-                                        acc[url] = [];
-                                        return acc;
-                                    }, {} as Record<string, any>);
+                                    console.log("ADDING SOURCES");
+                                    const sourcesObject: Record<string, any> = {};
+                                    extractedUrls.forEach(url => {
+                                        sourcesObject[url] = {};
+                                    });
+                                    lastMessage.sources = sourcesObject;
                                 }
                             }
                             return newMessages;
                         });
                     }
 
-                    setGeneratingSources(false);
-                    setIsGeneratingComplete(true);
                     setInThoughts(true);
                     setInSource(false);
+                    setGeneratingSources(false);
                 }
 
                 console.log("THOUGHTS", thoughts);
@@ -683,8 +689,12 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
                                             </div>
                                         )}
                                         {isGeneratingComplete && message.sources && Object.keys(message.sources).length > 0 && (
-                                            <SourcesList sources={message.sources} />
-                                        )}}
+                                            <div>
+                                                <h1>HIIIIIIIIIIIIIIIIII</h1>
+                                                <SourcesList sources={message.sources} />
+
+                                            </div>
+                                        )}
 
 
                                     </div>
@@ -695,10 +705,12 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
                                     </div>
 
                                 </div>
+                            )
+                            }
 
-                            )}
                         </div>
                     ))}
+
 
                     {isLoading && (
                         <div className='flex flex-row gap-2 items-center mb-3'>

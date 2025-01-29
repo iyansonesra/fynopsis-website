@@ -1,73 +1,44 @@
-import React, { useRef, useEffect } from 'react';
-import {
-  PdfViewerComponent, Toolbar, Magnification, Navigation,
-  LinkAnnotation, BookmarkView, ThumbnailView, Print,
-  TextSelection, TextSearch, Annotation, FormFields,
-  FormDesigner, Inject
-} from '@syncfusion/ej2-react-pdfviewer';
+import React, { useState } from 'react';
 import styled from 'styled-components';
-import "@cyntler/react-doc-viewer/dist/index.css";
-import DocViewer, { DocViewerRenderers } from "@cyntler/react-doc-viewer";
 
-
-
-const ViewerContainer = styled.div`
+const PDFContainer = styled.div`
   width: 100%;
-  height: 100%;
-
-  .e-pv-viewer-container::-webkit-scrollbar {
-    width: 10px;
+  height: 100vh;
+  position: relative;
+  
+  iframe {
+    border: none;
+    width: 100%;
+    height: 100%;
   }
 
-  .e-pv-viewer-container::-webkit-scrollbar-track {
-    background: #f1f1f1;
-    border-radius: 10px;
-  }
-
-  .e-pv-viewer-container::-webkit-scrollbar-thumb {
-    background: #888;
-    border-radius: 10px;
-  }
-
-  .e-pv-viewer-container::-webkit-scrollbar-thumb:hover {
-    background: #555;
+  .loading {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 1.2rem;
+    color: #666;
   }
 `;
 
 interface PDFViewerProps {
   documentUrl: string;
-  height?: string;
-  containerId: string;
 }
 
-const PDFViewer: React.FC<PDFViewerProps> = ({
-  documentUrl,
-  height = '640px',
-  containerId
-}) => {
-  const viewerRef = useRef<PdfViewerComponent>(null);
-
-  const docs = [
-    { uri: documentUrl },
-  ];
-
-  useEffect(() => {
-    console.log('PDFViewer render');
-    console.log('documentUrl:', documentUrl);
-
-    return () => {
-      // Cleanup on unmount
-      if (viewerRef.current) {
-        viewerRef.current.destroy();
-      }
-    };
-  }, []);
-
+const PDFViewer: React.FC<PDFViewerProps> = ({ documentUrl }) => {
+  const [isLoaded, setIsLoaded] = useState(false);
 
   return (
-    <ViewerContainer>
-      <DocViewer documents={docs} pluginRenderers={DocViewerRenderers} />
-    </ViewerContainer>
+    <PDFContainer>
+      {!isLoaded && <div className="loading">Loading document...</div>}
+      <iframe
+        src={documentUrl}
+        onLoad={() => setIsLoaded(true)}
+        style={{ display: isLoaded ? 'block' : 'none' }}
+        title="PDF Viewer"
+      />
+    </PDFContainer>
   );
 };
 
