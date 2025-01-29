@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { ArrowLeft, ArrowUp, BadgeInfo, FileText, Search } from 'lucide-react';
+import { ArrowLeft, ArrowUp, BadgeInfo, FileText, Footprints, Search } from 'lucide-react';
 import { Input, Skeleton } from '@mui/material';
 import { Button } from './ui/button';
 import { post, get } from 'aws-amplify/api';
@@ -19,6 +19,15 @@ import logo from './../app/assets/fynopsis_noBG.png'
 import '../components/temp.css';
 import loadingAnimation from './../app/assets/fyn_loading.svg'
 import { Separator } from './ui/separator';
+import { usePathname } from 'next/navigation';
+import {
+    Accordion,
+    AccordionContent,
+    AccordionItem,
+    AccordionTrigger,
+} from "@/components/ui/accordion";
+import { TextShimmer } from './ui/text-shimmer';
+import { AIInputWithSearch } from './ui/ai-input-with-search';
 
 // import { w3cwebsocket as W3CWebSocket } from "websocket";
 // import { Signer } from '@aws-amplify/core';
@@ -276,21 +285,11 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
                 };
 
                 ws.onmessage = (event) => {
+                    // console.log('WebSocket message:', event.data);
                     try {
                         const data = JSON.parse(event.data);
                         if (data.type === 'content') {
-                            setIsLoading(false);
-                            const words = data.content.split(/(\s+)/);
-                            
-                            setCurrentBatch(prevBatch => {
-                                const newBatch = [...prevBatch, ...words];
-                                if (newBatch.length >= 8) {
-                                    setContentBatches(prev => [...prev, newBatch.join('')]);
-                                    return [];
-                                }
-                                return newBatch;
-                            });
-                            
+                            console.log("RETURNING!!\n");
                             setSearchResult(prevResult => ({
                                 response: (prevResult?.response || '') + data.content,
                                 sources: data.sources || {},
@@ -341,6 +340,15 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
     }
 `;
 
+    const items = [
+        {
+            id: "1",
+            title: "What makes Origin UI different?",
+            content:
+                "Origin UI focuses on developer experience and performance. Built with TypeScript, it offers excellent type safety, follows accessibility standards, and provides comprehensive documentation with regular updates.",
+        },
+    ];
+
     const querySingleDocument = async (fileKey: string | number | boolean, searchTerm: any) => {
         // const userPrefix = await getUserPrefix();
         const bucketUuid = window.location.pathname.split('/').pop() || '';
@@ -376,11 +384,14 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
         textarea.style.height = `${textarea.scrollHeight}px`;
     }
 
-    const [messages, setMessages] = useState<Array<{
-        type: 'question' | 'answer',
-        content: string,
-        sources?: Record<string, any>
-    }>>([]);
+    interface Message {
+        type: 'question' | 'answer';
+        content: string;
+        sources?: Record<string, any>;
+        steps?: string[];  // Add steps to the message interface
+    }
+
+    const [messages, setMessages] = useState<Message[]>([]);
 
     const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
         if (e.key === 'Enter') {
@@ -393,35 +404,184 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
         }
     };
 
-    const [contentBatches, setContentBatches] = useState<string[]>([]);
-    const [currentBatch, setCurrentBatch] = useState<string[]>([]);
 
-    // Modify the useEffect for searchResult
+    const [inThoughts, setInThoughts] = useState(true);
+    const [inAnswer, setInAnswer] = useState(false);
+    const [inSource, setInSource] = useState(false);
+    const [generatingSources, setGeneratingSources] = useState(false);
+    const [isGeneratingComplete, setIsGeneratingComplete] = useState(false);
+
+    const [stepsTaken, setStepsTaken] = useState<string[]>([]);
+
+    const [thoughts, setThoughts] = useState('');
+
+    const pathname = usePathname();
+
+    const bucketUuid = pathname.split('/').pop() || '';
+
+
+
     useEffect(() => {
         if (searchResult && searchResult.response) {
-            const cleanedContent = searchResult.response.replace(/{.*}/s, '').trim();
-            setDisplayedContent(cleanedContent); // Set the full content immediately
-            setMessages(prev => {
-                const newMessages = [...prev];
-                if (newMessages.length > 0 && newMessages[newMessages.length - 1].type === 'answer') {
-                    newMessages[newMessages.length - 1] = {
-                        type: 'answer',
-                        content: cleanedContent,
-                        sources: searchResult.sources
-                    };
+            let response = searchResult.response;
+
+            if (inThoughts) {
+                console.log("IN THOUGHTS\n");
+                if (response.includes('<answer>')) {
+                    // If </thoughts> is found but <thoughts> is not, it means we are closing the thoughts section
+
+                    const thoughtsEndIndex = response.indexOf('</thoughts>');
+                    const thoughtsStartIndex = response.indexOf('<thoughts>');
+                    const thoughtsContent = response.substring(thoughtsStartIndex + '<thoughts>'.length, thoughtsEndIndex).trim();
+                    console.log(thoughtsContent);
+                    setThoughts(thoughtsContent);
+                    // Split thoughts into array by line and filter out empty lines
+                    const thoughtLines = thoughtsContent.split('\n')
+                        .map(line => line.trim())
+                        .filter(line => line.length > 0)
+                        // Remove the number prefix (e.g., "1. ", "2. ") from each line
+                        .map(line => line.replace(/^\d+\.\s*/, ''));
+
+                    setStepsTaken(thoughtLines);
+
+                    // console.log('thoughtLines', thoughtLines);
+                    setInThoughts(false);
+                    setInAnswer(true);
+
+                    // Remove the thoughts section from the response
+                    response = response.substring(response.indexOf('<answer>') + '<answer>'.length).trim();
+                    setSearchResult(prev => prev ? { ...prev, response: response.trim() } : null);
+
+                }
+            } else if (inAnswer) {
+                console.log("IN ANSWER\n");
+
+                setIsLoading(false);
+                if (response.includes('</answer>')) {
+                    const remaining = response.substring(0, response.indexOf('</answer>'));
+
+                    setMessages(prev => {
+                        const newMessages = [...prev];
+                        if (newMessages.length > 0 && newMessages[newMessages.length - 1].type === 'answer') {
+                            newMessages[newMessages.length - 1] = {
+                                type: 'answer',
+                                content: remaining,
+                                sources: searchResult.sources,
+                                steps: stepsTaken
+                            };
+                        } else {
+                            newMessages.push({
+                                type: 'answer',
+                                content: remaining,
+                                sources: searchResult.sources,
+                                steps: stepsTaken
+                            });
+                        }
+                        return newMessages;
+                    });
+
+                    response = response.substring(response.indexOf('</answer>') + '</answer>'.length).trim();
+                    setSearchResult(prev => prev ? { ...prev, response: response.trim() } : null);
+                    setInAnswer(false);
+                    setInSource(true);
                 } else {
-                    newMessages.push({
-                        type: 'answer',
-                        content: cleanedContent,
-                        sources: searchResult.sources
+                    // console.log(response);
+
+                    setMessages(prev => {
+                        const newMessages = [...prev];
+                        if (newMessages.length > 0 && newMessages[newMessages.length - 1].type === 'answer') {
+                            newMessages[newMessages.length - 1] = {
+                                type: 'answer',
+                                content: response,
+                                sources: searchResult.sources,
+                                steps: stepsTaken
+                            };
+                        } else {
+                            newMessages.push({
+                                type: 'answer',
+                                content: response,
+                                sources: searchResult.sources,
+                                steps: stepsTaken
+                            });
+                        }
+                        return newMessages;
                     });
                 }
-                return newMessages;
-            });
+            } else if (inSource) {
+                console.log("source response", response);
+                console.log("IN SOURCE\n");
+                setGeneratingSources(true);
+
+                if (response.includes('</sources>')) {
+                    // Match all strings between quotation marks
+                    const matches = response.match(/"([^"]*)"/g);
+                    const extractedUrls: string[] = [];
+
+
+                    if (matches) {
+                        // Process matches in pairs (url, name)
+                        for (let i = 0; i < matches.length; i++) {
+                            const extractedUrl = matches[i]?.replace(/"/g, '');
+                            if (extractedUrl && extractedUrl.includes(bucketUuid)) {
+                                extractedUrls.push(extractedUrl);
+                            }
+                        }
+
+                        setMessages(prev => {
+                            const newMessages = [...prev];
+                            if (newMessages.length > 0) {
+                                const lastMessage = newMessages[newMessages.length - 1];
+                                if (lastMessage.type === 'answer') {
+                                    lastMessage.sources = extractedUrls.reduce((acc, url) => {
+                                        acc[url] = [];
+                                        return acc;
+                                    }, {} as Record<string, any>);
+                                }
+                            }
+                            return newMessages;
+                        });
+                    }
+
+                    setGeneratingSources(false);
+                    setIsGeneratingComplete(true);
+                    setInThoughts(true);
+                    setInSource(false);
+                }
+
+                console.log("THOUGHTS", thoughts);
+            }
+
         }
-    }, [searchResult]);
+    }, [searchResult, inThoughts]);
 
     const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+    const SourcesList: React.FC<{ sources: Record<string, any> }> = ({ sources }) => {
+        return (
+            <div className="mt-4">
+                <h3 className="text-sm font-semibold mb-2 dark:text-white">Sources</h3>
+                <div className="flex flex-wrap gap-2">
+                    {Object.entries(sources).map(([key, value], index) => (
+                        <Card
+                            key={index}
+                            className="p-2 inline-block cursor-pointer hover:bg-gray-50 transition-colors dark:bg-darkbg border"
+                            onClick={() => handleSourceCardClick(key)}
+                        >
+                            <CardContent className="p-2">
+                                <div className="flex items-center gap-2">
+                                    <FileText className="h-4 w-4 text-white" />
+                                    <span className="text-sm text-blue-500 dark:text-white">
+                                        {key.split('/').pop()}
+                                    </span>
+                                </div>
+                            </CardContent>
+                        </Card>
+                    ))}
+                </div>
+            </div>
+        );
+    };
+
 
     const adjustHeight = () => {
         const textarea = textareaRef.current as HTMLTextAreaElement;
@@ -434,55 +594,6 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
     useEffect(() => {
         adjustHeight();
     }, [inputValue]);
-
-    // const TextArea = ({ placeholder, value, onChange }) => {
-    //     const textareaRef = useRef(null);
-
-    //     useEffect(() => {
-    //         if (textareaRef.current) {
-    //             textareaRef.current.style.height = 'auto';
-    //             textareaRef.current.style.height = `${textareaRef.current.scrollHeight}px`;
-    //         }
-    //     }, [value]);
-
-    //     return (
-    //         <textarea
-    //             ref={textareaRef}
-    //             className="w-full min-h-[48px] pl-4 pr-12 py-3 rounded-xl text-sm 
-    //                    border dark:border-slate-600 dark:bg-darkbg dark:text-white 
-    //                    outline-none resize-none overflow-hidden"
-    //             placeholder={placeholder}
-    //             value={value}
-    //             onChange={onChange}
-    //             rows={1}
-    //         />
-    //     );
-    // };
-
-    const [displayedContent, setDisplayedContent] = useState<string>('');
-    const [isNewContentFading, setIsNewContentFading] = useState(false);
-
-    const fadeInStyles = `
-.fade-in {
-    opacity: 0;
-    animation: fadeIn 0.5s ease-in forwards;
-}
-
-@keyframes fadeIn {
-    from { opacity: 0; }
-    to { opacity: 1; }
-}
-`;
-
-    const splitIntoBatches = (text: string, batchSize: number = 15): string[] => {
-        const words = text.split(' ');
-        const batches = [];
-        for (let i = 0; i < words.length; i += batchSize) {
-            batches.push(words.slice(i, i + batchSize).join(' '));
-        }
-        return batches;
-    }
-
 
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const scrollToBottom = () => {
@@ -504,20 +615,50 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
         return (
             <div className="flex flex-col h-full overflow-none dark:bg-darkbg w-full">
                 <ScrollArea
-
-                    className="flex-1 overflow-none w-full px-4"
-
+                    className="flex-1 overflow-none w-full px-4 [mask-image:linear-gradient(to_bottom,white_calc(100%-64px),transparent)]"
                 >
 
                     {messages.map((message, index) => (
                         <div key={index} className="flex flex-col gap-4 mb-4 pl-2" >
                             {message.type === 'question' ? (
                                 <div className="flex items-end  dark:text-white  mt-4">
-                                    <p className="text-2xl font-medium text-white pr-4 rounded-lg">{message.content}</p>
+                                    <p className="text-2xl font-medium dark:text-white pr-4 rounded-lg">{message.content}</p>
                                 </div>
                             ) : (
-                                <div>
-                                    <div className="mr-auto mb-4 rounded-lg">
+                                <div className="w-full">
+                                    <div className="w-full pr-4">
+                                        <Accordion type="single" collapsible className="w-full -space-y-px mb-6">
+                                            <AccordionItem
+                                                value="steps"
+                                                className="border bg-background px-4 py-1 rounded-lg dark:bg-darkbg dark:border-slate-800"
+                                            >
+                                                <AccordionTrigger className="py-1 text-[15px] leading-6 hover:no-underline dark:text-slate-400 flex items-center justify-center ">
+                                                    <div className="flex flex-row gap-2 items-center w-full justify-between pr-2">
+                                                        <div className="flex flex-row gap-2 items-center">
+                                                            <Footprints className="h-4 w-4 text-gray-500" />
+                                                            <h1>Search Steps</h1>
+                                                        </div>
+
+                                                        <h1 className="text-sm font-light">{message.steps?.length} steps</h1>
+                                                    </div>
+
+                                                </AccordionTrigger>
+                                                <AccordionContent className="pb-2 pt-2 text-muted-foreground">
+                                                    {message.steps?.map((step, stepIndex) => (
+                                                        <div key={stepIndex} className="flex flex-row gap-2 items-center mb-2">
+                                                            <span className="text-xs text-gray-500">{stepIndex + 1}.</span>
+                                                            <span className="text-xs text-gray-700 dark:text-gray-300 font-normal">
+                                                                {step}
+                                                            </span>
+                                                        </div>
+                                                    ))}
+                                                </AccordionContent>
+                                            </AccordionItem>
+                                        </Accordion>
+
+                                    </div>
+
+                                    <div className="mr-auto mb-6 rounded-lg">
                                         <div className='flex flex-row gap-2 items-center mb-3'>
                                             <object type="image/svg+xml" data={loadingAnimation.src} className="h-6 w-6">
                                                 svg-animation
@@ -525,28 +666,29 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
                                             <h1 className='dark:text-white font-semibold'>Answer</h1>
                                         </div>
 
-                                        <ReactMarkdown className="text-wrap text-sm pr-4 dark:text-white">
+                                        <ReactMarkdown className="text-wrap text-sm pr-4 dark:text-white leading-7">
                                             {message.content}
                                         </ReactMarkdown>
                                     </div>
                                     <div>
-                                        {sourceUrls.length > 0 && (
-                                            <Card
-                                                className="mt-2 p-2 inline-block cursor-pointer hover:bg-gray-50 transition-colors dark:bg-darkbg border"
-                                                onClick={() => handleSourceCardClick(sourceUrls[sourceUrls.length - 1])}
-                                            >
-                                                <CardContent className="p-2">
-                                                    <div className="flex items-center gap-2">
-                                                        <FileText className="h-4 w-4 text-white" />
-                                                        <span className="text-sm text-blue-500 dark:text-white">
-                                                            {sourceUrls[sourceUrls.length - 1].split('/').pop()}
-                                                        </span>
-                                                    </div>
-                                                </CardContent>
-                                            </Card>
+                                        {!isGeneratingComplete && generatingSources && (
+                                            <div className='flex flex-row gap-2 items-center mb-3'>
+                                                <TextShimmer
+                                                    key="generating-sources"
+                                                    className='text-sm'
+                                                    duration={1}
+                                                >
+                                                    Generating sources...
+                                                </TextShimmer>
+                                            </div>
                                         )}
+                                        {isGeneratingComplete && message.sources && Object.keys(message.sources).length > 0 && (
+                                            <SourcesList sources={message.sources} />
+                                        )}}
+
+
                                     </div>
-                                    <div className="w-full flex items-center justify-center ">
+                                    <div className="w-full flex items-center justify-center mt-4 ">
                                         <Separator className="bg-slate-800 w-full" orientation='horizontal' />
 
 
@@ -565,12 +707,6 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
                             </object>
                             <h1 className='dark:text-white font-semibold'>Answer</h1>
                         </div>
-                        // <div className="flex flex-row">
-                        //     <object type="image/svg+xml" data={loadingAnimation.src} className="h-8 w-8">
-                        //         svg-animation
-                        //     </object>
-                        //     <h1 className='dark:text-white'>Answer</h1>
-                        // </div>
                     )}
 
 
@@ -578,29 +714,22 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
 
                 </ScrollArea>
 
-                <div className="p-4">
-                    <div className="relative max-w-3xl mx-auto">
-                        <textarea
-                            className="w-full sm:min-h-[48px] min-h-[64px] pl-4 pr-12 py-3 rounded-xl text-sm border 
-                     dark:border-slate-600 border-slate-200 dark:bg-darkbg dark:text-white outline-none 
-                     select-none resize-none overflow-hidden"
-                            placeholder="Query your documents..."
-                            value={inputValue}
-                            onChange={handleInputChange}
-                            onKeyDown={handleKeyDown}
-                            rows={2}
-                        />
-                        <div className="absolute right-2 bottom-4 flex items-center gap-2 
-                      bg-blue-500 rounded-xl">
-                            <button
-                                className="p-2 hover:bg-gray-100 rounded-lg"
-                                onClick={() => queryAllDocuments(userSearch.trim())}
-                                disabled={isLoading}
-                            >
-                                <ArrowUp className="h-4 w-4 text-white" />
-                            </button>
-                        </div>
-                    </div>
+                <div className="px-4 bg-transparent">
+                    <AIInputWithSearch
+                        onSubmit={(value, withSearch) => {
+                            console.log('Message:', value);
+                            console.log('Search enabled:', withSearch);
+
+                            setIsLoading(true);
+                            const query = value.trim();
+                            setMessages(prev => [...prev, { type: 'question', content: value }]);
+                            queryAllDocuments(value);
+                        }}
+                        onFileSelect={(file) => {
+                            console.log('Selected file:', file);
+                        }}
+                    />
+
                 </div>
 
 

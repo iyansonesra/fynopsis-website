@@ -14,7 +14,6 @@ import { useState, useEffect } from "react"
 import Dashboard from "./Dashboard";
 import StockSearch from "./StockSearch";
 import Settings from "./Settings";
-import IndustryPage from "./IndustryPage";
 import { useAuthenticator } from '@aws-amplify/ui-react';
 import { Sun, Moon } from "lucide-react";
 import { fetchUserAttributes, FetchUserAttributesOutput } from 'aws-amplify/auth';
@@ -79,12 +78,6 @@ export default function Home() {
 
       case "settings":
         return <Settings setSelectedTab={setSelectedTab} />
-      case "industryPage":
-        return <IndustryPage 
-        setSelectedTab={setSelectedTab} 
-        remainingRequests={remainingRequests}
-        setRemainingRequests={setRemainingRequests}
-      />
       default:
         return <StockSearch 
         setSelectedTab={setSelectedTab} 
