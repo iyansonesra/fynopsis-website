@@ -27,7 +27,6 @@ import { DataTable } from './newFilesTable';
 import {FileSystem} from './ElevatedTable';
 import { useTabStore } from './tabStore';
 
-
 interface Tab {
     id: string;
     title: string;

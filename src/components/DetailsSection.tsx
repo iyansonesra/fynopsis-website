@@ -84,6 +84,8 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
     const [loadingSource, setLoadingSource] = useState<string | null>(null);
     const [messageBuffer, setMessageBuffer] = useState('');
     const [sourceUrls, setSourceUrls] = useState<string[]>([]);
+    const [currentThreadId, setCurrentThreadId] = useState<string>('');
+
 
     const handleSourceCardClick = async (sourceUrl: string) => {
         const bucketUuid = window.location.pathname.split('/').pop() || '';
@@ -275,13 +277,25 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
                 ws.onopen = () => {
                     console.log('WebSocket connected successfully');
                     // Send query once connected
-                    ws.send(JSON.stringify({
-                        action: 'query',
-                        data: {
-                            collection_name: bucketUuid,
-                            query: searchTerm
-                        }
-                    }));
+                    if (currentThreadId) {
+                        ws.send(JSON.stringify({
+                            action: 'continue',
+                            data: {
+                                thread_id: currentThreadId,
+                                collection_name: bucketUuid,
+                                query: searchTerm
+                            }
+                        }));
+                    }
+                    else {
+                        ws.send(JSON.stringify({
+                            action: 'query',
+                            data: {
+                                collection_name: bucketUuid,
+                                query: searchTerm
+                            }
+                        }));
+                    }
                 };
 
                 ws.onmessage = (event) => {
@@ -290,6 +304,9 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
                         const data = JSON.parse(event.data);
                         if (data.type === 'content') {
                             console.log("RETURNING!!\n");
+                            if (data.thread_id) {
+                                setCurrentThreadId(data.thread_id);
+                            }
                             setSearchResult(prevResult => ({
                                 response: (prevResult?.response || '') + data.content,
                                 sources: data.sources || {},
