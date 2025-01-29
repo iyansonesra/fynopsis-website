@@ -79,13 +79,13 @@ Amplify.configure({
     REST: {
       VDR_API: {
         endpoint:
-          'https://lpbbyyz9tj.execute-api.us-east-1.amazonaws.com/prod', // main
-        region: 'us-east-1' // Optional
+          `https://${process.env.NEXT_PUBLIC_VDR_API_CODE}.execute-api.us-east-1.amazonaws.com/prod`, // main
+        region: process.env.NEXT_PUBLIC_REGION // Optional
       },
       S3_API: {
         endpoint:
-          'https://j7o9uvd6ol.execute-api.us-east-1.amazonaws.com/prod',
-        region: 'us-east-1' // Optional
+          `https://${process.env.NEXT_PUBLIC_S3_API_CODE}.execute-api.us-east-1.amazonaws.com/prod`,
+        region: process.env.NEXT_PUBLIC_REGION // Optional
       }
     }
   },
