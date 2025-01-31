@@ -441,141 +441,121 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
     useEffect(() => {
         if (searchResult && searchResult.response) {
             let response = searchResult.response;
-            console.log("SEARCH RESULT", searchResult);
 
-            if (inThoughts) {
-                console.log("IN THOUGHTS\n");
-                if (response.includes('<answer>')) {
-                    // If </thoughts> is found but <thoughts> is not, it means we are closing the thoughts section
+            // Helper function to check if a tag is complete
+            const isTagComplete = (text: string, startTag: string, endTag: string) => {
+                const startIndex = text.indexOf(startTag);
+                const endIndex = text.indexOf(endTag);
+                return startIndex !== -1 && endIndex !== -1 && endIndex > startIndex;
+            };
 
-                    const thoughtsEndIndex = response.indexOf('</think>');
-                    const thoughtsStartIndex = response.indexOf('<think>');
-                    const thoughtsContent = response.substring(thoughtsStartIndex + '<think>'.length, thoughtsEndIndex).trim();
-                    console.log(thoughtsContent);
-                    setThoughts(thoughtsContent);
-                    // Split thoughts into array by line and filter out empty lines
-                    const thoughtLines = thoughtsContent.split('\n')
+            // Helper function to extract content between tags
+            const extractContent = (text: string, startTag: string, endTag: string) => {
+                const startIndex = text.indexOf(startTag);
+                const endIndex = text.indexOf(endTag);
+                if (startIndex === -1) return null;
+                
+                // If we have start tag but no end tag, return all content after start tag
+                if (endIndex === -1) {
+                    return {
+                        content: text.substring(startIndex + startTag.length),
+                        remaining: '',
+                        isComplete: false
+                    };
+                }
+                
+                const content = text.substring(startIndex + startTag.length, endIndex).trim();
+                const remaining = text.substring(endIndex + endTag.length).trim();
+                return { content, remaining, isComplete: true };
+            };
+
+            // Process thinking section
+            const thinkResult = extractContent(response, '<think>', '</think>');
+            if (thinkResult) {
+                if (thinkResult.isComplete) {
+                    const thoughtLines = thinkResult.content
+                        .split('\n')
                         .map(line => line.trim())
                         .filter(line => line.length > 0)
-                        // Remove the number prefix (e.g., "1. ", "2. ") from each line
                         .map(line => line.replace(/^\d+\.\s*/, ''));
 
+                    setThoughts(thinkResult.content);
                     setStepsTaken(thoughtLines);
-
-                    // console.log('thoughtLines', thoughtLines);
-                    setInThoughts(false);
-                    setInAnswer(true);
-
-                    // Remove the thoughts section from the response
-                    response = response.substring(response.indexOf('<answer>') + '<answer>'.length).trim();
-                    setSearchResult(prev => prev ? { ...prev, response: response.trim() } : null);
-
-                }
-            } else if (inAnswer) {
-                console.log("IN ANSWER\n");
-
-                setIsLoading(false);
-                if (response.includes('</answer>')) {
-                    const remaining = response.substring(0, response.indexOf('</answer>'));
-
-                    setMessages(prev => {
-                        const newMessages = [...prev];
-                        if (newMessages.length > 0 && newMessages[newMessages.length - 1].type === 'answer') {
-                            newMessages[newMessages.length - 1] = {
-                                type: 'answer',
-                                content: remaining,
-                                sources: searchResult.sources,
-                                steps: stepsTaken
-                            };
-                        } else {
-                            newMessages.push({
-                                type: 'answer',
-                                content: remaining,
-                                sources: searchResult.sources,
-                                steps: stepsTaken
-                            });
-                        }
-                        return newMessages;
-                    });
-
-                    response = response.substring(response.indexOf('</answer>') + '</answer>'.length).trim();
-                    setSearchResult(prev => prev ? { ...prev, response: response.trim() } : null);
-                    setInAnswer(false);
-                    setInSource(true);
+                    response = thinkResult.remaining;
                 } else {
-                    // console.log(response);
-
-                    setMessages(prev => {
-                        const newMessages = [...prev];
-                        if (newMessages.length > 0 && newMessages[newMessages.length - 1].type === 'answer') {
-                            newMessages[newMessages.length - 1] = {
-                                type: 'answer',
-                                content: response,
-                                sources: searchResult.sources,
-                                steps: stepsTaken
-                            };
-                        } else {
-                            newMessages.push({
-                                type: 'answer',
-                                content: response,
-                                sources: searchResult.sources,
-                                steps: stepsTaken
-                            });
-                        }
-                        return newMessages;
-                    });
+                    // Still receiving thinking content
+                    setThoughts(thinkResult.content);
                 }
-            } else if (inSource) {
-                console.log("source response", response);
-                console.log("IN SOURCE\n");
-                setGeneratingSources(true);
-
-                if (response.includes('</sources>')) {
-                    // Match all strings between quotation marks
-                    console.log("GETTIIN INNNNN\n")
-                    const matches = response.match(/"([^"]*)"/g);
-                    const extractedUrls: string[] = [];
-
-                    console.log("MATCHES", matches);
-                    if (matches) {
-                        // Process matches in pairs (url, name)
-                        for (let i = 0; i < matches.length; i++) {
-                            const extractedUrl = matches[i]?.replace(/"/g, '');
-                            console.log("EXTRACTED URL", extractedUrl);
-                            if (extractedUrl && extractedUrl.includes(bucketUuid)) {
-                                console.log("We extraced it");
-                                extractedUrls.push(extractedUrl);
-                            }
-                        }
-
-                        setMessages(prev => {
-                            const newMessages = [...prev];
-                            if (newMessages.length > 0) {
-                                console.log("some messages exist");
-                                const lastMessage = newMessages[newMessages.length - 1];
-                                if (lastMessage.type === 'answer') {
-                                    console.log("ADDING SOURCES");
-                                    const sourcesObject: Record<string, any> = {};
-                                    extractedUrls.forEach(url => {
-                                        sourcesObject[url] = {};
-                                    });
-                                    lastMessage.sources = sourcesObject;
-                                }
-                            }
-                            return newMessages;
-                        });
-                    }
-
-                    setInThoughts(true);
-                    setInSource(false);
-                    setGeneratingSources(false);
-                }
-
-                console.log("THOUGHTS", thoughts);
             }
 
+            // Process answer section
+            const answerResult = extractContent(response, '<answer>', '</answer>');
+            if (answerResult) {
+                setMessages(prev => {
+                    const newMessages = [...prev];
+                    const lastMessage = newMessages.length > 0 ? newMessages[newMessages.length - 1] : null;
+                    
+                    const messageContent = {
+                        type: 'answer' as const,
+                        content: answerResult.content,
+                        sources: searchResult.sources,
+                        steps: thinkResult?.isComplete ? stepsTaken : undefined
+                    };
+
+                    if (lastMessage?.type === 'answer') {
+                        newMessages[newMessages.length - 1] = messageContent;
+                    } else {
+                        newMessages.push(messageContent);
+                    }
+                    return newMessages;
+                });
+
+                if (answerResult.isComplete) {
+                    response = answerResult.remaining;
+                }
+            }
+
+            // Process sources section
+            const sourcesResult = extractContent(response, '<sources>', '</sources>');
+            if (sourcesResult && sourcesResult.isComplete) {
+                const matches = sourcesResult.content.match(/"([^"]*)"/g);
+                if (matches) {
+                    const extractedUrls = matches
+                        .map(match => match.replace(/"/g, ''))
+                        .filter(url => url.includes(bucketUuid));
+
+                    setMessages(prev => {
+                        const newMessages = [...prev];
+                        if (newMessages.length > 0) {
+                            const lastMessage = newMessages[newMessages.length - 1];
+                            if (lastMessage.type === 'answer') {
+                                const sourcesObject: Record<string, any> = {};
+                                extractedUrls.forEach(url => {
+                                    sourcesObject[url] = {};
+                                });
+                                lastMessage.sources = sourcesObject;
+                            }
+                        }
+                        return newMessages;
+                    });
+                    setGeneratingSources(false);
+                }
+            }
+
+            // Handle streaming content that's not within any tags
+            if (!thinkResult && !answerResult && !sourcesResult && response.trim()) {
+                setMessages(prev => {
+                    const newMessages = [...prev];
+                    if (newMessages.length > 0 && newMessages[newMessages.length - 1].type === 'answer') {
+                        newMessages[newMessages.length - 1].content += response.trim();
+                    }
+                    return newMessages;
+                });
+            }
+
+            setIsLoading(false);
         }
-    }, [searchResult, inThoughts]);
+    }, [searchResult, bucketUuid]);
 
     const textareaRef = useRef<HTMLTextAreaElement>(null);
 
