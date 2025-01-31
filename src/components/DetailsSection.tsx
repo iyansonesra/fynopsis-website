@@ -85,6 +85,7 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
     const [messageBuffer, setMessageBuffer] = useState('');
     const [sourceUrls, setSourceUrls] = useState<string[]>([]);
     const [currentThreadId, setCurrentThreadId] = useState<string>('');
+    const [isAnswerLoading, setIsAnswerLoading] = useState(false);
 
 
     const handleSourceCardClick = async (sourceUrl: string) => {
@@ -253,8 +254,8 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
             setStepsTaken([]);
             setThoughts('');
 
-            setMessages(prev => [...prev, { type: 'question', content: searchTerm }]);
             setIsLoading(true);
+            setMessages(prev => [...prev, { type: 'question', content: searchTerm }]);
             setSearchResult({
                 response: '',
                 sources: {},
@@ -454,6 +455,7 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
 
     useEffect(() => {
         if (searchResult && searchResult.response) {
+            setIsAnswerLoading(true);  // Start loading when processing begins
             let response = searchResult.response;
 
             // Helper function to extract content between tags
@@ -509,6 +511,7 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
                 }
                 
                 // If we have an error (complete or not), stop processing
+                setIsAnswerLoading(false);  // Stop loading on error
                 setIsLoading(false);
                 return;
             }
@@ -599,6 +602,7 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
                 });
 
                 if (answerResult.isComplete) {
+                    setIsAnswerLoading(false);  // Stop loading when answer is complete
                     response = answerResult.remaining;
                 }
             }
@@ -719,7 +723,18 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
         scrollToBottom();
     }, [messages, searchResult]);
 
-
+    const renderAnswerHeader = () => (
+        <div className='flex flex-row gap-2 items-center mb-3'>
+            <object 
+                type="image/svg+xml" 
+                data={loadingAnimation.src} 
+                className="h-6 w-6"
+            >
+                svg-animation
+            </object>
+            <h1 className='dark:text-white font-semibold'>Answer</h1>
+        </div>
+    );
 
     const renderAdvancedSearch = () => {
 
@@ -766,46 +781,39 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
                                 </div>
                             ) : (
                                 <div className="w-full">
-                                    <div className="w-full pr-4">
-                                        <Accordion type="single" collapsible className="w-full -space-y-px mb-6">
-                                            <AccordionItem
-                                                value="steps"
-                                                className="border bg-background px-4 py-1 rounded-lg dark:bg-darkbg dark:border-slate-800"
-                                            >
-                                                <AccordionTrigger className="py-1 text-[15px] leading-6 hover:no-underline dark:text-slate-400 flex items-center justify-center ">
-                                                    <div className="flex flex-row gap-2 items-center w-full justify-between pr-2">
-                                                        <div className="flex flex-row gap-2 items-center">
-                                                            <Footprints className="h-4 w-4 text-gray-500" />
-                                                            <h1>Search Steps</h1>
+                                    {message.steps && message.steps.length > 0 && (
+                                        <div className="w-full pr-4">
+                                            <Accordion type="single" collapsible className="w-full -space-y-px mb-6">
+                                                <AccordionItem
+                                                    value="steps"
+                                                    className="border bg-background px-4 py-1 rounded-lg dark:bg-darkbg dark:border-slate-800"
+                                                >
+                                                    <AccordionTrigger className="py-1 text-[15px] leading-6 hover:no-underline dark:text-slate-400 flex items-center justify-center ">
+                                                        <div className="flex flex-row gap-2 items-center w-full justify-between pr-2">
+                                                            <div className="flex flex-row gap-2 items-center">
+                                                                <Footprints className="h-4 w-4 text-gray-500" />
+                                                                <h1>Search Steps</h1>
+                                                            </div>
+                                                            <h1 className="text-sm font-light">{message.steps.length} steps</h1>
                                                         </div>
-
-                                                        <h1 className="text-sm font-light">{message.steps?.length} steps</h1>
-                                                    </div>
-
-                                                </AccordionTrigger>
-                                                <AccordionContent className="pb-2 pt-2 text-muted-foreground">
-                                                    {message.steps?.map((step, stepIndex) => (
-                                                        <div key={stepIndex} className="flex flex-row gap-2 items-center mb-2">
-                                                            <span className="text-xs text-gray-500">{stepIndex + 1}.</span>
-                                                            <span className="text-xs text-gray-700 dark:text-gray-300 font-normal">
-                                                                {step}
-                                                            </span>
-                                                        </div>
-                                                    ))}
-                                                </AccordionContent>
-                                            </AccordionItem>
-                                        </Accordion>
-
-                                    </div>
+                                                    </AccordionTrigger>
+                                                    <AccordionContent className="pb-2 pt-2 text-muted-foreground">
+                                                        {message.steps.map((step, stepIndex) => (
+                                                            <div key={stepIndex} className="flex flex-row gap-2 items-center mb-2">
+                                                                <span className="text-xs text-gray-500">{stepIndex + 1}.</span>
+                                                                <span className="text-xs text-gray-700 dark:text-gray-300 font-normal">
+                                                                    {step}
+                                                                </span>
+                                                            </div>
+                                                        ))}
+                                                    </AccordionContent>
+                                                </AccordionItem>
+                                            </Accordion>
+                                        </div>
+                                    )}
 
                                     <div className="mr-auto mb-6 rounded-lg">
-                                        <div className='flex flex-row gap-2 items-center mb-3'>
-                                            <object type="image/svg+xml" data={loadingAnimation.src} className="h-6 w-6">
-                                                svg-animation
-                                            </object>
-                                            <h1 className='dark:text-white font-semibold'>Answer</h1>
-                                        </div>
-
+                                        {renderAnswerHeader()} {/* Remove the isAnswerLoading parameter */}
                                         <ReactMarkdown className="text-wrap text-sm pr-4 dark:text-white leading-7">
                                             {message.content}
                                         </ReactMarkdown>
