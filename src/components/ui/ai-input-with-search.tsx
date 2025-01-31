@@ -12,20 +12,22 @@ interface AIInputWithSearchProps {
   placeholder?: string;
   minHeight?: number;
   maxHeight?: number;
-  onSubmit?: (value: string, withSearch: boolean) => void;
-  onFileSelect?: (file: File) => void;
+  onSubmit: (value: string, withSearch: boolean) => void;
+  onFileSelect: (file: any) => void;
   className?: string;
+  disabled?: boolean; // Add this prop
 }
 
-export function AIInputWithSearch({
+export const AIInputWithSearch: React.FC<AIInputWithSearchProps> = ({
   id = "ai-input-with-search",
   placeholder = "Query your documents...",
   minHeight = 48,
   maxHeight = 120,
   onSubmit,
   onFileSelect,
-  className
-}: AIInputWithSearchProps) {
+  className,
+  disabled = false // Default to false
+}) => {
   const [value, setValue] = useState("");
   const { textareaRef, adjustHeight } = useAutoResizeTextarea({
     minHeight,
@@ -60,7 +62,9 @@ export function AIInputWithSearch({
               id={id}
               value={value}
               placeholder={placeholder}
-              className="w-full rounded-xl rounded-b-none px-4 py-3 bg-black/5 dark:bg-white/5 border-none dark:text-white placeholder:text-black/70 dark:placeholder:text-white/70 resize-none focus-visible:ring-0 leading-[1.6] outline-none select-none"
+              className={`w-full rounded-xl rounded-b-none px-4 py-3 bg-black/5 dark:bg-white/5 border-none dark:text-white placeholder:text-black/70 dark:placeholder:text-white/70 resize-none focus-visible:ring-0 leading-[1.6] outline-none select-none ${
+                disabled ? 'opacity-50 cursor-not-allowed' : ''
+              }`}
               ref={textareaRef}
               onKeyDown={(e) => {
                 if (e.key === "Enter" && !e.shiftKey) {
@@ -72,6 +76,7 @@ export function AIInputWithSearch({
                 setValue(e.target.value);
                 adjustHeight();
               }}
+              disabled={disabled}
             />
           </div>
 
@@ -152,8 +157,10 @@ export function AIInputWithSearch({
                   "rounded-lg p-2 transition-colors",
                   value
                     ? "bg-sky-500/15 text-sky-500"
-                    : "bg-black/5 dark:bg-white/5 text-black/40 dark:text-white/40 hover:text-black dark:hover:text-white"
+                    : "bg-black/5 dark:bg-white/5 text-black/40 dark:text-white/40 hover:text-black dark:hover:text-white",
+                  disabled ? 'opacity-50 cursor-not-allowed' : ''
                 )}
+                disabled={disabled}
               >
                 <Send className="w-4 h-4" />
               </button>
@@ -163,4 +170,4 @@ export function AIInputWithSearch({
       </div>
     </div>
   );
-}
+};

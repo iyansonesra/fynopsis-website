@@ -318,16 +318,16 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
 
     const queryAllDocuments = async (searchTerm: string, withReasoning: boolean) => {
         try {
-            setMessages([]);
-            setSearchResult(null);
-            setInThoughts(true);
-            setInAnswer(false);
-            setInSource(false);
-            setGeneratingSources(false);
-            setIsGeneratingComplete(false);
-            setCurrentThreadId('');
-            setStepsTaken([]);
-            setThoughts('');
+            // setMessages([]);
+            // setSearchResult(null);
+            // setInThoughts(true);
+            // setInAnswer(false);
+            // setInSource(false);
+            // setGeneratingSources(false);
+            // setIsGeneratingComplete(false);
+            // setCurrentThreadId('');
+            // setStepsTaken([]);
+            // setThoughts('');
 
             setIsLoading(true);
             setMessages(prev => [...prev, { type: 'question', content: searchTerm }]);
@@ -946,7 +946,7 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
 
                             setIsLoading(true);
                             const query = value.trim();
-                            setMessages(prev => [...prev, { type: 'question', content: value }]);
+                            // setMessages(prev => [...prev, { type: 'question', content: value }]);
                             queryAllDocuments(value, withSearch);
                         }}
                         onFileSelect={(file) => {
