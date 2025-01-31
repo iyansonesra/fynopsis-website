@@ -91,10 +91,12 @@ export function DataTable({ onFileSelect, setTableData }: {
         fetchObjects(bucketUuid);
     }, [bucketUuid]);
 
-    React.useEffect(() => {
+    useEffect(() => {
+        console.log('DataTable - Transforming tree data...');
         if (tree) {
             transformTreeToTableData(tree, currentPath)
                 .then(transformedData => {
+                    console.log('DataTable - Transformed data:', transformedData);
                     setTableData(transformedData);
                 });
         }
@@ -105,6 +107,7 @@ export function DataTable({ onFileSelect, setTableData }: {
     }, []);
 
     async function transformTreeToTableData(tree: TreeNode, currentPath: string[]): Promise<Payment[]> {
+        console.log('DataTable - Starting tree transformation:', { tree, currentPath });
         // Get the current node based on the path
         await navigateToPath(currentPath);
 

@@ -47,6 +47,22 @@ interface TableFile {
     summary?: string;
 }
 
+// Add the interface for file selection
+interface FileSelectProps {
+    id: string;
+    name: string;
+    s3Url: string;
+    type?: string;
+    size?: string;
+    status?: "success";
+    date?: string;
+    uploadedBy?: string;
+    s3Key?: string;
+    uploadProcess?: string;
+    summary?: string;
+    tags?: string[];
+}
+
 export default function Files({ setSelectedTab }: { setSelectedTab: React.Dispatch<React.SetStateAction<string>> }) {
     const [showFolderTree, setShowFolderTree] = useState(true);
     const [folderViewWidth, setFolderViewWidth] = useState('54%');
@@ -66,7 +82,10 @@ export default function Files({ setSelectedTab }: { setSelectedTab: React.Dispat
         initializeDefaultTab(handleFileSelect);
     }, []);
 
-
+    // Add debug log for table data updates
+    useEffect(() => {
+        console.log('Files component - Table data updated:', tableData);
+    }, [tableData]);
 
     useEffect(() => {
         if (!showFolderTree && !showDetailsView) {
@@ -93,7 +112,8 @@ export default function Files({ setSelectedTab }: { setSelectedTab: React.Dispat
         });
     };
     
-    function handleFileSelect(file: { id: string; name: string; s3Url: string; }) {
+    function handleFileSelect(file: FileSelectProps) {  // Update type here
+        console.log('Files component - File selected:', file);
         setSelectedFile(file);
         setShowDetailsView(true);
         
@@ -134,6 +154,10 @@ export default function Files({ setSelectedTab }: { setSelectedTab: React.Dispat
                         activeTabId={activeTabId}
                         setActiveTabId={setActiveTabId}
                         setTabs={setCurrentTabs}
+                    />
+                    <DataTable 
+                        onFileSelect={handleFileSelect} 
+                        setTableData={setTableData}  // Pass setTableData to DataTable
                     />
                 </ResizablePanel>
                 <ResizableHandle withHandle className='dark:bg-slate-900'/>

@@ -24,6 +24,7 @@ const PDFContainer = styled.div`
 
 interface PDFViewerProps {
   documentUrl: string;
+  containerId?: string;
   maxRetries?: number;
   checkInterval?: number;
 }
@@ -54,6 +55,7 @@ const getViewerUrl = (documentUrl: string): string => {
 
 const PDFViewer: React.FC<PDFViewerProps> = ({ 
   documentUrl, 
+  containerId,
   maxRetries = 5,
   checkInterval = 2000 
 }) => {

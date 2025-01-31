@@ -17,7 +17,7 @@ import { Credentials } from '@aws-sdk/types';
 import { TbH1 } from 'react-icons/tb';
 import logo from './../app/assets/fynopsis_noBG.png'
 import '../components/temp.css';
-import loadingAnimation from './../app/assets/fyn_loading.svg'
+import loadingAnimation from './../app/assets/fynopsis_animated.svg'
 import { Separator } from './ui/separator';
 import { usePathname } from 'next/navigation';
 import {
@@ -28,6 +28,7 @@ import {
 } from "@/components/ui/accordion";
 import { TextShimmer } from './ui/text-shimmer';
 import { AIInputWithSearch } from './ui/ai-input-with-search';
+import { useS3Store } from './fileService';
 
 // import { w3cwebsocket as W3CWebSocket } from "websocket";
 // import { Signer } from '@aws-amplify/core';
@@ -57,8 +58,24 @@ interface DetailsSectionProps {
     showDetailsView: boolean;
     setShowDetailsView: (show: boolean) => void;
     selectedFile: any;
-    onFileSelect: (file: { id: string; name: string; s3Url: string; }) => void;
+    onFileSelect: (file: FileSelectProps) => void;  // Changed type
     tableData: TableFile[];  // Add this prop
+}
+
+// Add new interface for onFileSelect properties
+interface FileSelectProps {
+    id: string;
+    name: string;
+    s3Url: string;
+    type?: string;
+    size?: string;
+    status?: "success";
+    date?: string;
+    uploadedBy?: string;
+    s3Key?: string;
+    uploadProcess?: string;
+    summary?: string;
+    tags?: string[];
 }
 
 const getIdToken = async () => {
@@ -93,6 +110,11 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
     selectedFile,
     onFileSelect,
     tableData }) => {
+    // Add debug logging for props
+    useEffect(() => {
+        console.log('DetailSection - Received table data:', tableData);
+    }, [tableData]);
+
     const [isLoading, setIsLoading] = useState(false);
     const [searchResults, setSearchResults] = useState('');
     const [error, setError] = useState<string | null>(null);
@@ -103,18 +125,18 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
     const [currentThreadId, setCurrentThreadId] = useState<string>('');
     const [isAnswerLoading, setIsAnswerLoading] = useState(false);
 
+    // Add selector for S3Store
+    const s3Objects = useS3Store(state => state.objects);
 
     const handleSourceCardClick = async (sourceUrl: string) => {
+        console.log('DetailSection - Source clicked:', sourceUrl);
         const bucketUuid = window.location.pathname.split('/').pop() || '';
         try {
-            // First check if the file exists in tableData
-            const fileName = sourceUrl.split('/').pop() || '';
-            const fileInTable = tableData.find(file => {
-                // Check both by name and s3Key to ensure we find the right file
-                return file.name === fileName || file.s3Key === sourceUrl;
-            });
+            // First check if file exists in s3Objects
+            const s3Object = s3Objects.find(obj => obj.key === sourceUrl);
+            console.log('DetailSection - Found S3 object:', s3Object);
 
-            // Get the signed URL regardless of whether we found the file
+            // Get the signed URL
             const downloadResponse = await get({
                 apiName: 'S3_API',
                 path: `/s3/${bucketUuid}/download-url`,
@@ -128,16 +150,27 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
             const responseText = await body.text();
             const { signedUrl } = JSON.parse(responseText);
 
-            if (fileInTable) {
-                // If file exists in table, use all its metadata
+            if (s3Object) {
+                // If file exists in s3Objects, use its metadata
+                const metadata = s3Object.metadata;
                 onFileSelect({
-                    ...fileInTable,
-                    s3Url: signedUrl
+                    id: metadata.Metadata?.id || sourceUrl.split('/').pop() || '',
+                    name: metadata.Metadata?.originalname || sourceUrl.split('/').pop() || '',
+                    s3Url: signedUrl,
+                    type: sourceUrl.split('.').pop()?.toUpperCase() || 'Unknown',
+                    size: formatFileSize(metadata.ContentLength || 0),
+                    status: "success",
+                    date: metadata.LastModified || '',
+                    uploadedBy: metadata.Metadata?.uploadbyname || 'Unknown',
+                    s3Key: sourceUrl,
+                    uploadProcess: metadata.Metadata?.pre_upload || 'COMPLETED',
+                    summary: metadata.Metadata?.document_summary || ''
                 });
             } else {
-                // Fallback to basic file info if not found in table
+                // Fallback to basic file info if not found
+                const fileName = sourceUrl.split('/').pop() || '';
                 const fileObject = {
-                    id: sourceUrl.split('/').pop() || '',
+                    id: fileName,
                     name: fileName,
                     s3Url: signedUrl,
                     type: fileName.split('.').pop()?.toUpperCase() || 'Unknown',
@@ -153,11 +186,18 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
                 onFileSelect(fileObject);
             }
         } catch (error) {
-            console.error('Error handling source card click:', error);
+            console.error('DetailSection - Error handling source click:', error);
         }
     };
 
-
+    // Helper function to format file size
+    const formatFileSize = (bytes: number): string => {
+        if (bytes === 0) return '0 B';
+        const units = ['B', 'KB', 'MB', 'GB', 'TB'];
+        const k = 1024;
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + units[i];
+    };
 
     const addOn = getUserPrefix();
     const S3_BUCKET_NAME = `vdr-documents/${addOn}`;
@@ -466,7 +506,7 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
             setIsLoading(true);
             const query = inputValue.trim();
             
-            queryAllDocuments(query);
+            // queryAllDocuments(query);
             // //   handleSearch(query);
             setInputValue('');
         }
@@ -715,13 +755,13 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
                     {Object.entries(sources).map(([key, value], index) => (
                         <Card
                             key={index}
-                            className="p-2 inline-block cursor-pointer hover:bg-gray-50 transition-colors dark:bg-darkbg border"
+                            className="p-2 inline-block cursor-pointer hover:bg-gray-50 transition-colors dark:bg-darkbg border select-none"
                             onClick={() => handleSourceCardClick(key)}
                         >
                             <CardContent className="p-2">
                                 <div className="flex items-center gap-2">
                                     <FileText className="h-4 w-4 text-white" />
-                                    <span className="text-sm text-blue-500 dark:text-white">
+                                    <span className="text-sm text-blue-500 dark:text-white select-none">
                                         {key.split('/').pop()}
                                     </span>
                                 </div>
@@ -732,7 +772,6 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
             </div>
         );
     };
-
 
     const adjustHeight = () => {
         const textarea = textareaRef.current as HTMLTextAreaElement;
@@ -868,21 +907,15 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
                                         )}
                                         {isGeneratingComplete && message.sources && Object.keys(message.sources).length > 0 && (
                                             <div>
-                                                <h1>HIIIIIIIIIIIIIIIIII</h1>
                                                 <SourcesList sources={message.sources} />
-
                                             </div>
                                         )}
 
 
                                     </div>
-                                    <div className="w-full flex items-center justify-center mt-4 ">
+                                    <div className="w-full flex items-center justify-center mt-4 "></div>
                                         <Separator className="bg-slate-800 w-full" orientation='horizontal' />
-
-
                                     </div>
-
-                                </div>
                             )
                             }
 
@@ -954,7 +987,6 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
                             <p><strong>Detailed Summary:</strong> {selectedFile.summary?.slice(1, -1)}</p>
                             {/* Add more details as needed */}
                         </div>
-
                     </>
 
 
