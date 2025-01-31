@@ -39,11 +39,26 @@ interface SearchResponse {
     thread_id: string;
 }
 
+interface TableFile {
+    id: string;
+    name: string;
+    type: string;
+    size: string;
+    date: string;
+    uploadedBy: string;
+    s3Key: string;
+    s3Url: string;
+    uploadProcess: string;
+    status: "success";
+    summary?: string;
+}
+
 interface DetailsSectionProps {
     showDetailsView: boolean;
     setShowDetailsView: (show: boolean) => void;
     selectedFile: any;
     onFileSelect: (file: { id: string; name: string; s3Url: string; }) => void;
+    tableData: TableFile[];  // Add this prop
 }
 
 const getIdToken = async () => {
@@ -76,7 +91,8 @@ const getUserPrefix = async () => {
 const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
     setShowDetailsView,
     selectedFile,
-    onFileSelect }) => {
+    onFileSelect,
+    tableData }) => {
     const [isLoading, setIsLoading] = useState(false);
     const [searchResults, setSearchResults] = useState('');
     const [error, setError] = useState<string | null>(null);
@@ -91,13 +107,20 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
     const handleSourceCardClick = async (sourceUrl: string) => {
         const bucketUuid = window.location.pathname.split('/').pop() || '';
         try {
-            const s3Key = sourceUrl;
+            // First check if the file exists in tableData
+            const fileName = sourceUrl.split('/').pop() || '';
+            const fileInTable = tableData.find(file => {
+                // Check both by name and s3Key to ensure we find the right file
+                return file.name === fileName || file.s3Key === sourceUrl;
+            });
+
+            // Get the signed URL regardless of whether we found the file
             const downloadResponse = await get({
                 apiName: 'S3_API',
                 path: `/s3/${bucketUuid}/download-url`,
                 options: {
                     withCredentials: true,
-                    queryParams: { path: s3Key }
+                    queryParams: { path: sourceUrl }
                 }
             });
 
@@ -105,19 +128,30 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
             const responseText = await body.text();
             const { signedUrl } = JSON.parse(responseText);
 
-            const fileObject = {
-                id: sourceUrl.split('/').pop() || '',
-                name: sourceUrl.split('/').pop() || '',
-                s3Url: signedUrl,
-                type: sourceUrl.split('.').pop()?.toUpperCase() || 'Unknown',
-                size: 0,
-                status: "success" as const,
-                date: '',
-                uploadedBy: 'Unknown',
-                s3Key: s3Key
-            };
+            if (fileInTable) {
+                // If file exists in table, use all its metadata
+                onFileSelect({
+                    ...fileInTable,
+                    s3Url: signedUrl
+                });
+            } else {
+                // Fallback to basic file info if not found in table
+                const fileObject = {
+                    id: sourceUrl.split('/').pop() || '',
+                    name: fileName,
+                    s3Url: signedUrl,
+                    type: fileName.split('.').pop()?.toUpperCase() || 'Unknown',
+                    size: '0',
+                    status: "success" as const,
+                    date: '',
+                    uploadedBy: 'Unknown',
+                    s3Key: sourceUrl,
+                    uploadProcess: 'COMPLETED',
+                    tags: []
+                };
 
-            onFileSelect(fileObject);
+                onFileSelect(fileObject);
+            }
         } catch (error) {
             console.error('Error handling source card click:', error);
         }
@@ -241,7 +275,7 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
 
 
 
-    const queryAllDocuments = async (searchTerm: string) => {
+    const queryAllDocuments = async (searchTerm: string, withReasoning: boolean) => {
         try {
             setMessages([]);
             setSearchResult(null);
@@ -298,7 +332,8 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
                             data: {
                                 thread_id: currentThreadId,
                                 collection_name: bucketUuid,
-                                query: searchTerm
+                                query: searchTerm,
+                                use_reasoning: withReasoning
                             }
                         }));
                     }
@@ -307,7 +342,8 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
                             action: 'query',
                             data: {
                                 collection_name: bucketUuid,
-                                query: searchTerm
+                                query: searchTerm,
+                                use_reasoning: withReasoning
                             }
                         }));
                     }
@@ -877,7 +913,7 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
                             setIsLoading(true);
                             const query = value.trim();
                             setMessages(prev => [...prev, { type: 'question', content: value }]);
-                            queryAllDocuments(value);
+                            queryAllDocuments(value, withSearch);
                         }}
                         onFileSelect={(file) => {
                             console.log('Selected file:', file);
@@ -915,7 +951,7 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
                             <p><strong>Size:</strong> {selectedFile.size}</p>
                             <p><strong>Uploaded By:</strong> {selectedFile.uploadedBy}</p>
                             <p><strong>Date:</strong> {new Date(selectedFile.date).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
-                            <p><strong>Detailed Summary:</strong> {selectedFile.summary?.replace(/^"|"$/, '')}</p>
+                            <p><strong>Detailed Summary:</strong> {selectedFile.summary?.slice(1, -1)}</p>
                             {/* Add more details as needed */}
                         </div>
 

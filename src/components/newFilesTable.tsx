@@ -42,7 +42,7 @@ import { usePathname, useSearchParams } from 'next/navigation';
 import { get } from "aws-amplify/api";
 import { useS3Store, TreeNode } from "./fileService";
 import Breadcrumb from "./Breadcrumb";
-
+import { useEffect } from "react";
 const data: Payment[] = []
 
 interface Payment {
@@ -64,9 +64,12 @@ interface DataTableDemoProps {
     onFileSelect: (file: Payment) => void;
 }
 
-export function DataTable({ onFileSelect }: DataTableDemoProps) {
+export function DataTable({ onFileSelect, setTableData }: { 
+    onFileSelect: (file: Payment) => void;
+    setTableData: (data: Payment[]) => void;
+}) {
     const [sorting, setSorting] = React.useState<SortingState>([])
-    const [tableData, setTableData] = React.useState<Payment[]>(data);
+    const [tableData] = React.useState<Payment[]>(data);
     const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([])
     const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({})
     const [rowSelection, setRowSelection] = React.useState({})
@@ -453,10 +456,10 @@ export function DataTable({ onFileSelect }: DataTableDemoProps) {
         setSearchQuery(value);
     };
 
-
-
-
-
+    // Update the parent's tableData whenever local table data changes
+    useEffect(() => {
+        setTableData(tableData);
+    }, [tableData, setTableData]);
 
     return (
         <div className="select-none w-full dark:bg-darkbg py-4 h-full">

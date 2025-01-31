@@ -33,6 +33,20 @@ interface Tab {
     content: React.ReactNode;
 }
 
+interface TableFile {
+    id: string;
+    name: string;
+    type: string;
+    size: string;
+    date: string;
+    uploadedBy: string;
+    s3Key: string;
+    s3Url: string;
+    uploadProcess: string;
+    status: "success";
+    summary?: string;
+}
+
 export default function Files({ setSelectedTab }: { setSelectedTab: React.Dispatch<React.SetStateAction<string>> }) {
     const [showFolderTree, setShowFolderTree] = useState(true);
     const [folderViewWidth, setFolderViewWidth] = useState('54%');
@@ -46,6 +60,7 @@ export default function Files({ setSelectedTab }: { setSelectedTab: React.Dispat
         setActiveTabId,
         initializeDefaultTab 
     } = useTabStore();
+    const [tableData, setTableData] = useState<TableFile[]>([]);
 
     useEffect(() => {
         initializeDefaultTab(handleFileSelect);
@@ -127,7 +142,8 @@ export default function Files({ setSelectedTab }: { setSelectedTab: React.Dispat
                         showDetailsView={showDetailsView}
                         setShowDetailsView={setShowDetailsView}
                         selectedFile={selectedFile}
-                        onFileSelect={handleFileSelect}  // Add this line
+                        onFileSelect={handleFileSelect}
+                        tableData={tableData} // Add this prop
                     />
                 </ResizablePanel>
             </ResizablePanelGroup>
