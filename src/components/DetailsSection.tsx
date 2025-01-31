@@ -18,6 +18,7 @@ import { TbH1 } from 'react-icons/tb';
 import logo from './../app/assets/fynopsis_noBG.png'
 import '../components/temp.css';
 import loadingAnimation from './../app/assets/fynopsis_animated.svg'
+import staticImage from './../app/assets/fynopsis_static.svg'
 import { Separator } from './ui/separator';
 import { usePathname } from 'next/navigation';
 import {
@@ -802,7 +803,7 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
         <div className='flex flex-row gap-2 items-center mb-3'>
             <object 
                 type="image/svg+xml" 
-                data={loadingAnimation.src} 
+                data={isAnswerLoading ? loadingAnimation.src : staticImage.src} 
                 className="h-6 w-6"
             >
                 svg-animation
@@ -888,7 +889,7 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
                                     )}
 
                                     <div className="mr-auto mb-6 rounded-lg">
-                                        {renderAnswerHeader()} {/* Remove the isAnswerLoading parameter */}
+                                        {renderAnswerHeader()}
                                         <ReactMarkdown className="text-wrap text-sm pr-4 dark:text-white leading-7">
                                             {message.content}
                                         </ReactMarkdown>
