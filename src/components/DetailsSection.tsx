@@ -242,6 +242,18 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
 
     const queryAllDocuments = async (searchTerm: string) => {
         try {
+            setMessages([]);
+            setSearchResult(null);
+            setInThoughts(true);
+            setInAnswer(false);
+            setInSource(false);
+            setGeneratingSources(false);
+            setIsGeneratingComplete(false);
+            setCurrentThreadId('');
+            setStepsTaken([]);
+            setThoughts('');
+
+            setMessages(prev => [...prev, { type: 'question', content: searchTerm }]);
             setIsLoading(true);
             setSearchResult({
                 response: '',
@@ -277,9 +289,11 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
                 ws.onopen = () => {
                     console.log('WebSocket connected successfully');
                     // Send query once connected
+                    
+
                     if (currentThreadId) {
                         ws.send(JSON.stringify({
-                            action: 'continue',
+                            action: 'query',
                             data: {
                                 thread_id: currentThreadId,
                                 collection_name: bucketUuid,
@@ -402,7 +416,7 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
     }
 
     interface Message {
-        type: 'question' | 'answer';
+        type: 'question' | 'answer' | 'error';
         content: string;
         sources?: Record<string, any>;
         steps?: string[];  // Add steps to the message interface
@@ -414,7 +428,7 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
         if (e.key === 'Enter') {
             setIsLoading(true);
             const query = inputValue.trim();
-            setMessages(prev => [...prev, { type: 'question', content: query }]);
+            
             queryAllDocuments(query);
             // //   handleSearch(query);
             setInputValue('');
@@ -442,13 +456,6 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
         if (searchResult && searchResult.response) {
             let response = searchResult.response;
 
-            // Helper function to check if a tag is complete
-            const isTagComplete = (text: string, startTag: string, endTag: string) => {
-                const startIndex = text.indexOf(startTag);
-                const endIndex = text.indexOf(endTag);
-                return startIndex !== -1 && endIndex !== -1 && endIndex > startIndex;
-            };
-
             // Helper function to extract content between tags
             const extractContent = (text: string, startTag: string, endTag: string) => {
                 const startIndex = text.indexOf(startTag);
@@ -464,10 +471,91 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
                     };
                 }
                 
+                // Make sure we include the end tag in the removal
                 const content = text.substring(startIndex + startTag.length, endIndex).trim();
                 const remaining = text.substring(endIndex + endTag.length).trim();
                 return { content, remaining, isComplete: true };
             };
+
+            // Process error section first since it takes precedence
+            const errorResult = extractContent(response, '<error>', '</error>');
+            if (errorResult) {
+                setMessages(prev => {
+                    const newMessages = [...prev];
+                    const lastMessage = newMessages.length > 0 ? newMessages[newMessages.length - 1] : null;
+                    
+                    if (lastMessage?.type === 'error' && !errorResult.isComplete) {
+                        // Update existing error message
+                        lastMessage.content = errorResult.content;
+                    } else if (errorResult.isComplete) {
+                        // Only add new error message if we have complete content
+                        // and last message wasn't an error
+                        if (!lastMessage || lastMessage.type !== 'error') {
+                            newMessages.push({
+                                type: 'error',
+                                content: errorResult.content
+                            });
+                        } else {
+                            // Update existing error with complete content
+                            lastMessage.content = errorResult.content;
+                        }
+                    }
+                    return newMessages;
+                });
+
+                if (errorResult.isComplete) {
+                    // Only update response if we have a complete error tag
+                    response = errorResult.remaining;
+                }
+                
+                // If we have an error (complete or not), stop processing
+                setIsLoading(false);
+                return;
+            }
+
+            // Process sources section first since it's JSON
+            // const sourcesResult = extractContent(response, '<sources>', '</sources>');
+            // if (sourcesResult) {
+            //     if (sourcesResult.isComplete) {
+            //         try {
+            //             // Try to parse the accumulated JSON string
+            //             const sourcesJson = JSON.parse(sourcesResult.content);
+            //             const extractedUrls: string[] = [];
+                        
+            //             // Process each key-value pair in the JSON
+            //             Object.entries(sourcesJson).forEach(([key, value]) => {
+            //                 if (key.includes(bucketUuid)) {
+            //                     extractedUrls.push(key);
+            //                 }
+            //             });
+
+            //             if (extractedUrls.length > 0) {
+            //                 setMessages(prev => {
+            //                     const newMessages = [...prev];
+            //                     if (newMessages.length > 0) {
+            //                         const lastMessage = newMessages[newMessages.length - 1];
+            //                         if (lastMessage.type === 'answer') {
+            //                             const sourcesObject: Record<string, any> = {};
+            //                             extractedUrls.forEach(url => {
+            //                                 sourcesObject[url] = sourcesJson[url] || {};
+            //                             });
+            //                             lastMessage.sources = sourcesObject;
+            //                         }
+            //                     }
+            //                     return newMessages;
+            //                 });
+            //             }
+            //             setGeneratingSources(false);
+            //             response = sourcesResult.remaining;
+            //         } catch (error) {
+            //             // If JSON parsing fails, it means we're still receiving the JSON string
+            //             console.log("Incomplete JSON in sources:", sourcesResult.content);
+            //         }
+            //     } else {
+            //         // Still receiving sources content
+            //         setGeneratingSources(true);
+            //     }
+            // }
 
             // Process thinking section
             const thinkResult = extractContent(response, '<think>', '</think>');
@@ -517,28 +605,48 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
 
             // Process sources section
             const sourcesResult = extractContent(response, '<sources>', '</sources>');
-            if (sourcesResult && sourcesResult.isComplete) {
-                const matches = sourcesResult.content.match(/"([^"]*)"/g);
-                if (matches) {
-                    const extractedUrls = matches
-                        .map(match => match.replace(/"/g, ''))
-                        .filter(url => url.includes(bucketUuid));
+            if (sourcesResult) {
+                if (sourcesResult.isComplete) {
+                    try {
+                        // Try to parse the accumulated JSON string
+                        const sourcesContent = sourcesResult.content.replace(/\n/g, '');
+                        const sourcesJson = JSON.parse(sourcesContent);
+                        const extractedUrls: string[] = [];
 
-                    setMessages(prev => {
-                        const newMessages = [...prev];
-                        if (newMessages.length > 0) {
-                            const lastMessage = newMessages[newMessages.length - 1];
-                            if (lastMessage.type === 'answer') {
-                                const sourcesObject: Record<string, any> = {};
-                                extractedUrls.forEach(url => {
-                                    sourcesObject[url] = {};
-                                });
-                                lastMessage.sources = sourcesObject;
+                        // Process each key-value pair in the JSON
+                        Object.entries(sourcesJson).forEach(([key, value]) => {
+                            if (key.includes(bucketUuid)) {
+                                extractedUrls.push(key);
                             }
+                        });
+
+                        if (extractedUrls.length > 0) {
+                            setMessages(prev => {
+                                const newMessages = [...prev];
+                                if (newMessages.length > 0) {
+                                    const lastMessage = newMessages[newMessages.length - 1];
+                                    if (lastMessage.type === 'answer') {
+                                        const sourcesObject: Record<string, any> = {};
+                                        extractedUrls.forEach(url => {
+                                            sourcesObject[url] = sourcesJson[url] || {};
+                                        });
+                                        lastMessage.sources = sourcesObject;
+                                    }
+                                }
+                                return newMessages;
+                            });
                         }
-                        return newMessages;
-                    });
-                    setGeneratingSources(false);
+                        setGeneratingSources(false);
+                        setIsGeneratingComplete(true);
+                        response = sourcesResult.remaining;
+                    } catch (error) {
+                        // If JSON parsing fails, it means we're still receiving the JSON string
+                        console.log("Incomplete JSON in sources:", sourcesResult.content);
+                        setGeneratingSources(true);
+                    }
+                } else {
+                    // Still receiving sources content
+                    setGeneratingSources(true);
                 }
             }
 
@@ -643,6 +751,18 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
                             {message.type === 'question' ? (
                                 <div className="flex items-end  dark:text-white  mt-4">
                                     <p className="text-2xl font-medium dark:text-white pr-4 rounded-lg">{message.content}</p>
+                                </div>
+                            ) : message.type === 'error' ? (
+                                <div className="w-full">
+                                    <div className="mr-auto mb-6 rounded-lg bg-red-50 dark:bg-red-900/10 p-4">
+                                        <div className='flex flex-row gap-2 items-center mb-3'>
+                                            <BadgeInfo className="h-5 w-5 text-red-500" />
+                                            <h1 className='text-red-500 font-semibold'>Error</h1>
+                                        </div>
+                                        <ReactMarkdown className="text-wrap text-sm pr-4 text-red-600 dark:text-red-400 leading-7">
+                                            {message.content}
+                                        </ReactMarkdown>
+                                    </div>
                                 </div>
                             ) : (
                                 <div className="w-full">
