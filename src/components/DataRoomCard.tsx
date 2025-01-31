@@ -1,8 +1,9 @@
 import React from 'react';
-import { Clock, MoreVertical, Trash2, LogOut } from 'lucide-react';
+import { Clock, MoreVertical, Trash2, LogOut, Edit2 } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
 import { del, post } from 'aws-amplify/api';
 
 interface DataRoomCardProps {
@@ -17,6 +18,8 @@ interface DataRoomCardProps {
 const DataRoomCard: React.FC<DataRoomCardProps> = ({ id, title, lastOpened, onClick, permissionLevel, sharedBy }) => {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = React.useState(false);
   const [isLeaveDialogOpen, setIsLeaveDialogOpen] = React.useState(false);
+  const [isRenameDialogOpen, setIsRenameDialogOpen] = React.useState(false);
+  const [newName, setNewName] = React.useState(title);
 
   const handleDelete = async () => {
     console.log('Deleting dataroom:', id);
@@ -53,6 +56,25 @@ const DataRoomCard: React.FC<DataRoomCardProps> = ({ id, title, lastOpened, onCl
     }
   };
 
+  const handleRename = async () => {
+    try {
+      const restOperation = post({
+        apiName: 'S3_API',
+        path: `/share-folder/${id}/rename`,
+        options: {
+          body: { newName },
+          headers: { 'Content-Type': 'application/json' },
+          withCredentials: true,
+        },
+      });
+      await restOperation.response;
+      setIsRenameDialogOpen(false);
+      window.location.reload(); // Refresh to show the new name
+    } catch (error) {
+      console.error('Error renaming dataroom:', error);
+    }
+  };
+
   return (
     <>
       <div className="bg-white dark:bg-gray-800 rounded-xl shadow-md overflow-hidden cursor-pointer hover:shadow-lg transition-shadow duration-300 w-full max-w-sm relative group ">
@@ -70,6 +92,14 @@ const DataRoomCard: React.FC<DataRoomCardProps> = ({ id, title, lastOpened, onCl
             </PopoverTrigger>
             <PopoverContent className="w-40" align="end">
               <div className="flex flex-col space-y-1">
+                <Button 
+                  variant="ghost" 
+                  onClick={() => setIsRenameDialogOpen(true)} 
+                  className="justify-start text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700/50"
+                >
+                  <Edit2 className="mr-2 h-4 w-4" />
+                  Rename
+                </Button>
                 <Button 
                   variant="ghost" 
                   onClick={() => setIsDeleteDialogOpen(true)} 
@@ -121,6 +151,26 @@ const DataRoomCard: React.FC<DataRoomCardProps> = ({ id, title, lastOpened, onCl
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsLeaveDialogOpen(false)}>Cancel</Button>
             <Button variant="default" onClick={handleLeave}>Leave</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isRenameDialogOpen} onOpenChange={setIsRenameDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Rename Dataroom</DialogTitle>
+          </DialogHeader>
+          <div className="py-4">
+            <Input
+              value={newName}
+              onChange={(e) => setNewName(e.target.value)}
+              placeholder="Enter new name"
+              className="w-full"
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsRenameDialogOpen(false)}>Cancel</Button>
+            <Button variant="default" onClick={handleRename}>Rename</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
