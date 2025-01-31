@@ -17,7 +17,7 @@ import CircleBurstAnimation from '@/components/animation/CircleAnimation';
 import FlowingLine from '@/components/animation/Squiggle';
 import AnimatedGradientBackground from '@/components/ui/animated-gradient-background';
 import { Separator } from '@/components/ui/separator';
-
+import { post } from 'aws-amplify/api';
 
 interface Tab {
     icon: LucideIcon;
@@ -34,6 +34,10 @@ const FrontPage: React.FC = () => {
     const [activeTab, setActiveTab] = useState<number | null>(null);
     const [indicatorStyle, setIndicatorStyle] = useState<IndicatorStyle>({} as IndicatorStyle);
     const tabRefs = useRef<(HTMLDivElement | null)[]>([]);
+    const [email, setEmail] = useState('');
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    const [submitError, setSubmitError] = useState('');
+    const [submitSuccess, setSubmitSuccess] = useState(false);
 
     const tabs: Tab[] = [
         { icon: Library, label: 'Library' },
@@ -41,6 +45,66 @@ const FrontPage: React.FC = () => {
         { icon: TrendingUp, label: 'Trending' }
     ];
 
+    const handleDemoRequest = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!email) return;
+
+        setIsSubmitting(true);
+        setSubmitError('');
+        setSubmitSuccess(false);
+
+        try {
+            const restOperation = post({
+                apiName: 'S3_API',
+                path: '/waitlist',
+                options: {
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: {
+                        email: email
+                    }
+                }
+            });
+
+            await restOperation.response;
+            setSubmitSuccess(true);
+            setEmail('');
+        } catch (error) {
+            console.error('Error submitting demo request:', error);
+            setSubmitError('Failed to submit request. Please try again.');
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
+    const EmailInputSection = () => (
+        <div className="flex flex-col lg:flex-row justify-center items-center lg:gap-0 gap-4 text-center w-full">
+            <HoverBorderGradient
+                containerClassName="rounded-full"
+                as="form"
+                onSubmit={handleDemoRequest}
+                className="text-black dark:text-white flex items-center"
+            >
+                <input 
+                    type="email" 
+                    placeholder="Enter your email" 
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className="w-72 md:w-80 lg:w-96 py-2 px-4 outline-none rounded-full bg-transparent border-white border-opacity-50 border text-white placeholder-white placeholder-opacity-50 z-20" 
+                />
+                <button 
+                    type="submit"
+                    disabled={isSubmitting}
+                    className={`bg-gradient-to-r from-[#1e6aa3] via-[#3148b3] to-[#003580] w-48 lg:w-48 text-white rounded-full py-3 px-6 ml-2 hover:opacity-90 transition-all ${isSubmitting ? 'opacity-50 cursor-not-allowed' : ''}`}
+                >
+                    {isSubmitting ? 'Submitting...' : 'Request a Demo'}
+                </button>
+            </HoverBorderGradient>
+            {submitError && <p className="text-red-500 mt-2">{submitError}</p>}
+            {submitSuccess && <p className="text-green-500 mt-2">Thank you for your interest! We'll be in touch soon.</p>}
+        </div>
+    );
 
     useEffect(() => {
         if (activeTab !== null && tabRefs.current[activeTab]) {
@@ -126,15 +190,7 @@ const FrontPage: React.FC = () => {
                                 Search and organize thousands of documents in seconds, so you can focus on what matters.
                             </h1>
                             <div className="flex flex-col lg:flex-row justify-center items-center lg:gap-0 gap-4 text-center w-full mt-4">
-                                <HoverBorderGradient
-                                    containerClassName="rounded-full"
-                                    as="button"
-                                    className=" text-black dark:text-white flex items-center"
-                                >
-                                    <input type="text" placeholder="Enter your email" className="w-72 md:w-80 lg:w-96 py-2 px-4 outline-none rounded-full bg-transparent border-white border-opacity-50 border text-white placeholder-white placeholder-opacity-50 z-20" />
-
-                                </HoverBorderGradient>
-                                <button className="bg-gradient-to-r from-[#1e6aa3] via-[#3148b3] to-[#003580] w-48 lg:w-48 text-white rounded-full py-3 px-6 ml-2 hover:opacity-90 transition-all">Request a Demo</button>
+                                <EmailInputSection />
                             </div>
                         </div>
 
@@ -254,15 +310,7 @@ const FrontPage: React.FC = () => {
                     </FadeInSlideUp>
 
                     <div className="flex flex-col lg:flex-row justify-center items-center lg:gap-0 gap-4 text-center w-full mt-4">
-                        <HoverBorderGradient
-                            containerClassName="rounded-full"
-                            as="button"
-                            className=" text-black dark:text-white flex items-center"
-                        >
-                            <input type="text" placeholder="Enter your email" className="w-72 md:w-80 lg:w-96 py-2 px-4 outline-none rounded-full bg-transparent border-white border-opacity-50 border text-white placeholder-white placeholder-opacity-50 z-20" />
-
-                        </HoverBorderGradient>
-                        <button className="bg-gradient-to-r from-[#1e6aa3] via-[#3148b3] to-[#003580] w-48 lg:w-48 text-white rounded-full py-3 px-6 ml-2 hover:opacity-90 transition-all">Request a Demo</button>
+                        <EmailInputSection />
                     </div>
                 </div>
 
