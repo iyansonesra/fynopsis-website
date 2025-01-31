@@ -696,7 +696,7 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
                     overflow: 'hidden',
                     textOverflow: 'ellipsis'
                 }}>
-                    <TagDisplay tags={item.tags} />
+                    {item.isFolder ? '' : <TagDisplay tags={item.tags} />}
                 </td>
                 <td style={{
                     width: columnWidths.actions,

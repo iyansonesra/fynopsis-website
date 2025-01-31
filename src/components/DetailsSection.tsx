@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { ArrowLeft, ArrowUp, BadgeInfo, FileText, Footprints, Search } from 'lucide-react';
+import { ArrowLeft, ArrowUp, BadgeInfo, FileText, Footprints, Plus, PlusCircle, Search } from 'lucide-react';
 import { Input, Skeleton } from '@mui/material';
 import { Button } from './ui/button';
 import { post, get } from 'aws-amplify/api';
@@ -637,6 +637,23 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
 
         return (
             <div className="flex flex-col h-full overflow-none dark:bg-darkbg w-full">
+                <div className="absolute top-0 right-0 p-4 z-50">
+                    <PlusCircle 
+                        className="h-5 w-5 text-gray-500 dark:text-gray-400 cursor-pointer hover:text-gray-700 dark:hover:text-gray-300" 
+                        onClick={() => {
+                            setMessages([]);
+                            setSearchResult(null);
+                            setInThoughts(true);
+                            setInAnswer(false);
+                            setInSource(false);
+                            setGeneratingSources(false);
+                            setIsGeneratingComplete(false);
+                            setCurrentThreadId('');
+                            setStepsTaken([]);
+                            setThoughts('');
+                        }}
+                    />
+                </div>
                 <ScrollArea
                     className="flex-1 overflow-none w-full px-4 [mask-image:linear-gradient(to_bottom,white_calc(100%-64px),transparent)]"
                 >
