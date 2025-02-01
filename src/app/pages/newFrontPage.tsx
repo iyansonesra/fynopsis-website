@@ -35,9 +35,12 @@ const FrontPage: React.FC = () => {
     const [indicatorStyle, setIndicatorStyle] = useState<IndicatorStyle>({} as IndicatorStyle);
     const tabRefs = useRef<(HTMLDivElement | null)[]>([]);
     const [email, setEmail] = useState('');
+    const [emailBottom, setEmailBottom] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [submitError, setSubmitError] = useState('');
+    const [submitErrorBottom, setSubmitErrorBottom] = useState('');
     const [submitSuccess, setSubmitSuccess] = useState(false);
+    const [submitSuccessBottom, setSubmitSuccessBottom] = useState(false);
 
     const tabs: Tab[] = [
         { icon: Library, label: 'Library' },
@@ -45,13 +48,31 @@ const FrontPage: React.FC = () => {
         { icon: TrendingUp, label: 'Trending' }
     ];
 
-    const handleDemoRequest = async (e: React.FormEvent) => {
+    const handleDemoRequest = async (e: React.FormEvent, emailNumber: number) => {
         e.preventDefault();
-        if (!email) return;
+        const emailToCheck = emailNumber === 1 ? email : emailBottom;
+        console.log('emailToCheck:', emailToCheck);
+        if (!emailToCheck) return;
+
+        console.log('Email to check:', emailToCheck);
+
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(emailToCheck)) {
+            if (emailNumber === 1) {
+                setSubmitError('Please enter a valid email address');
+                setTimeout(() => setSubmitError(''), 2000);
+            } else {
+                setSubmitErrorBottom('Please enter a valid email address');
+                setTimeout(() => setSubmitErrorBottom(''), 2000);
+            }
+            return;
+        }
 
         setIsSubmitting(true);
         setSubmitError('');
+        setSubmitErrorBottom('');
         setSubmitSuccess(false);
+        setSubmitSuccessBottom(false);
 
         try {
             const restOperation = post({
@@ -62,17 +83,30 @@ const FrontPage: React.FC = () => {
                         'Content-Type': 'application/json'
                     },
                     body: {
-                        email: email
+                        email: emailToCheck
                     }
                 }
             });
 
             await restOperation.response;
-            setSubmitSuccess(true);
-            setEmail('');
+            if (emailNumber === 1) {
+                setSubmitSuccess(true);
+                setEmail('');
+                setTimeout(() => setSubmitSuccess(false), 2000);
+            } else {
+                setSubmitSuccessBottom(true);
+                setEmailBottom('');
+                setTimeout(() => setSubmitSuccessBottom(false), 2000);
+            }
         } catch (error) {
             console.error('Error submitting demo request:', error);
-            setSubmitError('Failed to submit request. Please try again.');
+            if (emailNumber === 1) {
+                setSubmitError('Failed to submit request. Please try again.');
+                setTimeout(() => setSubmitError(''), 2000);
+            } else {
+                setSubmitErrorBottom('Failed to submit request. Please try again.');
+                setTimeout(() => setSubmitErrorBottom(''), 2000);
+            }
         } finally {
             setIsSubmitting(false);
         }
@@ -162,38 +196,48 @@ const FrontPage: React.FC = () => {
                             <h1 className="lext-lg md:text-lg lg:text-xl text-center max-w-[70%]  font-thin text-white">
                                 Search and organize thousands of documents in seconds, so you can focus on what matters.
                             </h1>
-                            <div className="flex flex-col lg:flex-row justify-center items-center lg:gap-0 gap-4 text-center w-full mt-4">
-                                <div className="flex flex-col md:flex-row justify-center items-center lg:gap-0 md:gap-2 sm:gap-2 gap-3 text-center w-full">
-                                    <HoverBorderGradient
-                                        containerClassName="rounded-full"
-                                        as="form"
-                                        onSubmit={handleDemoRequest}
-                                        className="text-black dark:text-white flex items-center flex-col lg:flex-row "
-                                    >
-                                        <input
-                                            type="email"
-                                            placeholder="Enter your email"
-                                            value={email}
-                                            onChange={(e) => setEmail(e.target.value)}
-                                            className="w-72 md:w-80 lg:w-96 py-2 px-4 outline-none rounded-full bg-transparent border-white border-opacity-50 border text-white placeholder-white placeholder-opacity-50 z-20"
-                                        />
-                                    </HoverBorderGradient>
-                                    <button
-                                        type="submit"
-                                        disabled={isSubmitting}
-                                        className={`bg-gradient-to-r from-[#1e6aa3] via-[#3148b3] to-[#003580] w-48 lg:w-48 text-white rounded-full py-3 px-6 ml-2 hover:opacity-90 transition-all ${isSubmitting ? 'opacity-50 cursor-not-allowed' : ''}`}
-                                    >
-                                        {isSubmitting ? 'Submitting...' : 'Request a Demo'}
-                                    </button>
+                            <div className=" relative flex flex-col ">
+                                <div className="flex flex-col lg:flex-row justify-center items-center lg:gap-0 gap-4 text-center w-full mt-4">
+                                    <div className="flex flex-col md:flex-row justify-center items-center lg:gap-0 md:gap-2 sm:gap-2 gap-3 text-center w-full">
+                                        <HoverBorderGradient
+                                            containerClassName="rounded-full"
+                                            as="form"
+                                            onSubmit={(e) => handleDemoRequest(e, 1)}
+                                            className="text-black dark:text-white flex items-center flex-col lg:flex-row "
+                                        >
+                                            <input
+                                                type="email"
+                                                placeholder="Enter your email"
+                                                value={email}
+                                                onChange={(e) => setEmail(e.target.value)}
+                                                className="w-72 md:w-80 lg:w-96 py-2 px-4 outline-none rounded-full bg-transparent border-white border-opacity-50 border text-white placeholder-white placeholder-opacity-50 z-20"
+                                            />
+                                        </HoverBorderGradient>
+                                        <button
+                                            type="submit"
+                                            disabled={isSubmitting}
+                                            onClick={(e) => handleDemoRequest(e, 1)}
+                                            className={`bg-gradient-to-r from-[#1e6aa3] via-[#3148b3] to-[#003580] w-48 lg:w-48 text-white rounded-full py-3 px-6 ml-2 hover:opacity-90 transition-all ${isSubmitting ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                        >
+                                            {isSubmitting ? 'Submitting...' : 'Request a Demo'}
+                                        </button>
 
-                                    {submitError && <p className="text-red-500 mt-2">{submitError}</p>}
-                                    {submitSuccess && <p className="text-green-500 mt-2">Thank you for your interest! We&apos;ll be in touch soon.</p>}
+
+                                    </div>
                                 </div>
+                                <div className="flex flex-col h-8 items-center justify-center w-full sm:mt-4 md:mt-2 xl:mt-1 inline-block">
+                                    {submitError && <p className="text-red-500 mt-2 max-w-[60%] text-center ">{submitError}</p>}
+                                    {submitSuccess && <p className="text-green-500 mt-2 max-w-[60%] text-center ">Thank you for your interest! We&apos;ll be in touch soon.</p>}
+
+
+                                </div>
+
                             </div>
+
                         </div>
 
 
-                        <FadeInSlideUp className="mt-16 relative max-w-[80%]    mx-auto">
+                        <FadeInSlideUp className="mt-12 relative max-w-[80%]    mx-auto">
                             <NeonGradientCard className="items-center justify-center text-center">
                                 <img
                                     src={darkDemo.src}
@@ -307,34 +351,43 @@ const FrontPage: React.FC = () => {
                         <h1 className="font-montserrat text-2xl font-thin text-gray-200">Get early access today</h1>
                     </FadeInSlideUp>
 
-                    <div className="flex flex-col lg:flex-row justify-center items-center lg:gap-0 gap-4 text-center w-full mt-4">
-                    <div className="flex flex-col md:flex-row justify-center items-center lg:gap-0 md:gap-2 sm:gap-2 gap-3 text-center w-full">
-                                    <HoverBorderGradient
-                                        containerClassName="rounded-full"
-                                        as="form"
-                                        onSubmit={handleDemoRequest}
-                                        className="text-black dark:text-white flex items-center flex-col lg:flex-row "
-                                    >
-                                        <input
-                                            type="email"
-                                            placeholder="Enter your email"
-                                            value={email}
-                                            onChange={(e) => setEmail(e.target.value)}
-                                            className="w-72 md:w-80 lg:w-96 py-2 px-4 outline-none rounded-full bg-transparent border-white border-opacity-50 border text-white placeholder-white placeholder-opacity-50 z-20"
-                                        />
-                                    </HoverBorderGradient>
-                                    <button
-                                        type="submit"
-                                        disabled={isSubmitting}
-                                        className={`bg-gradient-to-r from-[#1e6aa3] via-[#3148b3] to-[#003580] w-48 lg:w-48 text-white rounded-full py-3 px-6 ml-2 hover:opacity-90 transition-all ${isSubmitting ? 'opacity-50 cursor-not-allowed' : ''}`}
-                                    >
-                                        {isSubmitting ? 'Submitting...' : 'Request a Demo'}
-                                    </button>
+                    <div className="flex flex-col pb-8">
+                        <div className="flex flex-col lg:flex-row justify-center items-center lg:gap-0 gap-4 text-center w-full mt-4">
+                            <div className="flex flex-col md:flex-row justify-center items-center lg:gap-0 md:gap-2 sm:gap-2 gap-3 text-center w-full">
+                                <HoverBorderGradient
+                                    containerClassName="rounded-full"
+                                    as="form"
+                                    onSubmit={(e) => handleDemoRequest(e, 2)}
+                                    className="text-black dark:text-white flex items-center flex-col lg:flex-row "
+                                >
+                                    <input
+                                        type="email"
+                                        placeholder="Enter your email"
+                                        value={emailBottom}
+                                        onChange={(e) => setEmailBottom(e.target.value)}
+                                        className="w-72 md:w-80 lg:w-96 py-2 px-4 outline-none rounded-full bg-transparent border-white border-opacity-50 border text-white placeholder-white placeholder-opacity-50 z-20"
+                                    />
+                                </HoverBorderGradient>
+                                <button
+                                    type="submit"
+                                    disabled={isSubmitting}
+                                    onClick={(e) => handleDemoRequest(e, 2)}
+                                    className={`bg-gradient-to-r from-[#1e6aa3] via-[#3148b3] to-[#003580] w-48 lg:w-48 text-white rounded-full py-3 px-6 ml-2 hover:opacity-90 transition-all ${isSubmitting ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                >
+                                    {isSubmitting ? 'Submitting...' : 'Request a Demo'}
+                                </button>
 
-                                    {submitError && <p className="text-red-500 mt-2">{submitError}</p>}
-                                    {submitSuccess && <p className="text-green-500 mt-2">Thank you for your interest! We&apos;ll be in touch soon.</p>}
-                                </div>
+                            </div>
+                        </div>
+
+                        <div className="w-full flex flex-col items-center justify-center h-8">
+                            {submitErrorBottom && <p className="text-red-500 mt-2 max-w-[60%] text-center">{submitErrorBottom}</p>}
+                            {submitSuccessBottom && <p className="text-green-500 mt-2 max-w-[60%] text-center">Thank you for your interest! We&apos;ll be in touch soon.</p>}
+
+                        </div>
                     </div>
+
+
                 </div>
 
                 <div className="w-full flex justify-center items-center flex-col">
