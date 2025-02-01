@@ -166,13 +166,13 @@ const CircleBurstAnimation = () => {
             </h2>
             
             <div className="flex flex-nowrap gap-2 overflow-x-auto pb-2">
-              <span className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-xs 2xl:text-base md:text-sm whitespace-nowrap">
+              <span className="px-2 md:px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-xs 2xl:text-base md:text-sm whitespace-nowrap">
           Finance
               </span>
-              <span className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-xs  2xl:text-base md:text-sm whitespace-nowrap">
+              <span className="px-2 md:px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-xs  2xl:text-base md:text-sm whitespace-nowrap">
           Annual Report
               </span>
-              <span className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-xs  2xl:text-base  md:text-sm whitespace-nowrap">
+              <span className="hidden md:block px-2 md:px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-xs  2xl:text-base  md:text-sm whitespace-nowrap">
           2024
               </span>
             </div>
