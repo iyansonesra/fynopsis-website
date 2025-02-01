@@ -102,7 +102,7 @@ const FrontPage: React.FC = () => {
                 </button>
             </HoverBorderGradient>
             {submitError && <p className="text-red-500 mt-2">{submitError}</p>}
-            {submitSuccess && <p className="text-green-500 mt-2">Thank you for your interest! We'll be in touch soon.</p>}
+            {submitSuccess && <p className="text-green-500 mt-2">Thank you for your interest! We&apos;ll be in touch soon.</p>}
         </div>
     );
 
@@ -302,7 +302,7 @@ const FrontPage: React.FC = () => {
                 <div className="relative flex justify-center flex-col items-center w-full mt-8 pb-48">
 
                     <FadeInSlideUp className='flex justify-center items-center flex-col'>
-                        <h1 className="text-5xl font-semibold w-[60%] text-center mb-2 font-cormorant text-gray-200">The future of document storage is here. Don't miss out.</h1>
+                        <h1 className="text-5xl font-semibold w-[60%] text-center mb-2 font-cormorant text-gray-200">The future of document storage is here. Don&apos;t miss out.</h1>
 
                     </FadeInSlideUp>
                     <FadeInSlideUp className="flex justify-center items-center flex-col">

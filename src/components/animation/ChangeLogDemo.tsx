@@ -4,9 +4,9 @@ import { Card } from '@/components/ui/card';
 import { TextShimmer } from '../ui/text-shimmer';
 
 // Custom hook for intersection observer
-const useInView = (options = {}) => {
+const useInView = (options = {}): [React.RefObject<HTMLDivElement>, boolean] => {
   const [isInView, setIsInView] = useState(false);
-  const ref = useRef(null);
+  const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const observer = new IntersectionObserver(([entry]) => {

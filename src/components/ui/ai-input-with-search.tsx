@@ -6,6 +6,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { useAutoResizeTextarea } from "@/hooks/use-auto-resize-textarea";
+import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
 
 interface AIInputWithSearchProps {
   id?: string;
@@ -33,7 +34,7 @@ export const AIInputWithSearch: React.FC<AIInputWithSearchProps> = ({
     minHeight,
     maxHeight,
   });
-  const [showSearch, setShowSearch] = useState(true);
+  const [showSearch, setShowSearch] = useState(false);
 
   const handleSubmit = () => {
     if (value.trim()) {
@@ -82,14 +83,21 @@ export const AIInputWithSearch: React.FC<AIInputWithSearchProps> = ({
 
           <div className="h-12 bg-black/5 dark:bg-white/5 rounded-b-xl">
             <div className="absolute left-3 bottom-3 flex items-center gap-2">
-              <label className="cursor-pointer rounded-lg p-2 bg-black/5 dark:bg-white/5">
-                <input 
-                  type="file" 
-                  className="hidden" 
-                  onChange={handleFileChange}
-                />
-                <Paperclip className="w-4 h-4 text-black/40 dark:text-white/40 hover:text-black dark:hover:text-white transition-colors" />
-              </label>
+            <HoverCard>
+              <HoverCardTrigger>
+                  <div className="cursor-not-allowed rounded-lg p-2 bg-black/5 dark:bg-white/5">
+                      <Paperclip className="w-4 h-4 text-black/20 dark:text-white/20" />
+                  </div>
+              </HoverCardTrigger>
+              <HoverCardContent 
+                  className="p-1.5 w-fit bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-lg text-center" 
+                  side="top"
+                  align="center"
+                  sideOffset={5}
+              >
+                  <p className="text-sm text-gray-800 dark:text-gray-200">Coming soon...</p>
+              </HoverCardContent>
+          </HoverCard>
               <button
                 type="button"
                 onClick={() => setShowSearch(!showSearch)}
