@@ -308,7 +308,7 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
                         // Gray out the item
                         setTableData(prevData => prevData.map(item =>
                             item.id === selectedItemId
-                                ? { ...item, uploadProcess: 'PENDING' }
+                                ? { ...item, uploadProcess: 'GRAY' }
                                 : item
                         ));
 
@@ -487,7 +487,7 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
             setTableData(prev =>
                 prev.map(row =>
                     row.id === item.id
-                        ? { ...row, uploadProcess: 'PENDING' }
+                        ? { ...row, uploadProcess: 'GRAY' }
                         : row
                 )
             );
@@ -520,7 +520,7 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
                         // willChange: 'transform',
                         backgroundColor: isSelected ? 'rgba(59, 130, 246, 0.1)' : 'transparent',
                         cursor: isDragging ? 'grabbing' : 'default',
-                        opacity: item.uploadProcess === 'PENDING' ? 0.5 : 1,
+                        opacity: item.uploadProcess === 'GRAY' ? 0.5 : 1,
                     }}
                     {...attributes}
                     {...listeners}
@@ -628,7 +628,7 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
                     // willChange: 'transform',
                     backgroundColor: isSelected ? 'rgba(59, 130, 246, 0.1)' : 'transparent',
                     cursor: isDragging ? 'grabbing' : 'default',
-                    opacity: item.uploadProcess === 'PENDING' ? 0.5 : 1,
+                    opacity: item.uploadProcess === 'GRAY' ? 0.5 : 1,
                     overflow: 'visible'
                 }}
                 {...attributes}
@@ -931,6 +931,7 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
                     date: new Date().toISOString(),
                     uploadedBy: `${(userInfo?.payload?.given_name as string) || ''} ${(userInfo?.payload?.family_name as string) || ''} `.trim(),
                     s3Key: temps3Key,
+                    uploadProcess: 'PENDING',
                 };
 
                 // Add the file to the current node's children
@@ -964,7 +965,7 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
                         uploadbyname: `${(userInfo?.payload?.family_name as string) || ''} ${(userInfo?.payload?.given_name as string) || ''}`.trim(),
                         Metadata: {
                             id: newFile.id,
-                            pre_upload: 'COMPLETED',
+                            pre_upload: 'PENDING',
                             tags: [],
                         },
                     },
@@ -1071,7 +1072,7 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
             // Set items to pending state
             setTableData(prevData => prevData.map(item =>
                 (item.id === activeItem.id || item.id === overItem.id)
-                    ? { ...item, uploadProcess: 'PENDING' }
+                    ? { ...item, uploadProcess: 'GRAY' }
                     : item
             ));
 
