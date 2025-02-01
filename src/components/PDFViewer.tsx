@@ -2,8 +2,8 @@ import React, { useEffect, useRef, useState } from 'react';
 import styled from 'styled-components';
 
 const PDFContainer = styled.div`
-  width: 100%;
-  height: 94vh;
+  // width: 100%;
+  // height: 94vh;
   position: relative;
   
   iframe {
@@ -135,7 +135,7 @@ const PDFViewer: React.FC<PDFViewerProps> = ({
   
 
   return (
-    <PDFContainer>
+    <PDFContainer className='flex flex-grow bg-green-100 h-full w-inherit'>
       {(isLoading && isOfficeFile) && <div className="loader">Loading document...</div>}
       <iframe
         ref={iframeRef}

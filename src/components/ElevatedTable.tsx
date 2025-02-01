@@ -767,7 +767,7 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
                                     </div>
                                 </HoverCardTrigger>
                                 <HoverCardContent 
-                                    className="w-auto p-2 text-center" 
+                                    className="w-auto p-2 text-center dark:bg-slate-800 dark:text-white dark:border-none" 
                                     side="bottom" 
                                     align="center" 
                                     sideOffset={5}
