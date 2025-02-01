@@ -744,25 +744,32 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
                         } */}
 
                         {!item.isFolder ? (
-                            <HoverCard>
-                                <HoverCardTrigger>
-                                    {item.uploadProcess === "PENDING" ? (
-                                        <Circle className="max-h-2 max-w-2 text-yellow-600" fill="currentColor" />
-                                    ) : item.uploadProcess === "BATCHED" ? (
-                                        <Circle className="max-h-2 max-w-2 text-green-600" fill="currentColor" />
-                                    ) : item.uploadProcess === "FAILED" ? (
-                                        <Circle className="max-h-2 max-w-2 text-red-600" fill="currentColor" />
-                                    ) : item.uploadProcess === "COMPLETED" ? (
-                                        <Circle className="max-h-2 max-w-2 text-green-600" fill="currentColor" />
-                                    ) : item.uploadProcess === "FAILED_SIZE" ? (
-                                        <Circle className="max-h-2 max-w-2 text-red-600" fill="currentColor" />
-                                    ) : item.uploadProcess === "FAILED_TYPE" ? (
-                                        <Circle className="max-h-2 max-w-2 text-red-600" fill="currentColor" />
-                                    ) : item.uploadProcess === "PROCESSING" ? (
-                                        <Circle className="max-h-2 max-w-2 text-yellow-600" fill="currentColor" />
-                                    ) : null}
+                            <HoverCard openDelay={100} closeDelay={0}>
+                                <HoverCardTrigger asChild>
+                                    <div className="p-1.5 cursor-default"> 
+                                        {item.uploadProcess === "PENDING" ? (
+                                            <Circle className="max-h-2 max-w-2 text-yellow-600" fill="currentColor" />
+                                        ) : item.uploadProcess === "BATCHED" ? (
+                                            <Circle className="max-h-2 max-w-2 text-yellow-600" fill="currentColor" />
+                                        ) : item.uploadProcess === "FAILED" ? (
+                                            <Circle className="max-h-2 max-w-2 text-red-600" fill="currentColor" />
+                                        ) : item.uploadProcess === "COMPLETE" ? (
+                                            <Circle className="max-h-2 max-w-2 text-green-600" fill="currentColor" />
+                                        ) : item.uploadProcess === "FAILED_SIZE" ? (
+                                            <Circle className="max-h-2 max-w-2 text-red-600" fill="currentColor" />
+                                        ) : item.uploadProcess === "FAILED_TYPE" ? (
+                                            <Circle className="max-h-2 max-w-2 text-red-600" fill="currentColor" />
+                                        ) : item.uploadProcess === "PROCESSING" ? (
+                                            <Circle className="max-h-2 max-w-2 text-yellow-600" fill="currentColor" />
+                                        ) : null}
+                                    </div>
                                 </HoverCardTrigger>
-                                <HoverCardContent className="w-auto p-2">
+                                <HoverCardContent 
+                                    className="w-auto p-2 text-center" 
+                                    side="bottom" 
+                                    align="center" 
+                                    sideOffset={5}
+                                >
                                     <p className="text-xs">{item.uploadProcess.charAt(0).toUpperCase() + item.uploadProcess.slice(1).toLowerCase()}</p>
                                 </HoverCardContent>
                             </HoverCard>
@@ -895,7 +902,7 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
                 s3Key: node.s3Key || name,
                 s3Url: metadata.url || '',
                 isFolder: isFolder,
-                uploadProcess: metadata.Metadata?.pre_upload || 'COMPLETED',
+                uploadProcess: metadata?.pre_upload || 'FAILED',
                 tags: parsedTags || [],
                 summary: metadata.document_summary || '',
             });
