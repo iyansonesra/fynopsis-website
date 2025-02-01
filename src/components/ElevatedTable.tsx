@@ -19,7 +19,7 @@ import { CSS } from '@dnd-kit/utilities';
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { useS3Store, TreeNode } from "./fileService";
 import { usePathname } from 'next/navigation';
-import { ChevronRight, FileIcon, FolderIcon, Plus, RefreshCcw, Upload } from 'lucide-react';
+import { ChevronRight, Circle, FileIcon, FolderIcon, Plus, RefreshCcw, Upload } from 'lucide-react';
 import { Input } from './ui/input';
 import DragDropOverlay from './DragDrop';
 import { v4 as uuidv4 } from 'uuid';
@@ -30,6 +30,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Folder, File } from 'lucide-react';
 import { TagDisplay } from './TagsHover';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
+import { HoverCard, HoverCardContent, HoverCardTrigger } from './ui/hover-card';
 
 
 
@@ -116,8 +117,6 @@ const DragPreview = React.memo<{ item: Payment }>(({ item }) => {
     );
 });
 
-DragPreview.displayName = 'DragPreview';
-
 
 interface FileSystemProps {
     onFileSelect: (file: Payment) => void;
@@ -156,8 +155,9 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
 
 
 
-    const [columnWidths, setColumnWidths] = useState<{ [key in 'name' | 'owner' | 'lastModified' | 'fileSize' | 'tags' | 'actions']: string }>({
-        name: '35%',
+    const [columnWidths, setColumnWidths] = useState<{ [key in 'name' | 'owner' | 'lastModified' | 'fileSize' | 'tags' | 'actions' | 'status']: string }>({
+        status: '3%',
+        name: '32%',
         owner: '15%',
         lastModified: '15%',
         fileSize: '10%',
@@ -308,14 +308,14 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
                         // Gray out the item
                         setTableData(prevData => prevData.map(item =>
                             item.id === selectedItemId
-                                ? { ...item, uploadProcess: 'PENDING' }
+                                ? { ...item, uploadProcess: 'GRAY' }
                                 : item
                         ));
 
                         // console.log('Cut:', selectedItem.s3Key);
                     }
                 } else if (e.key === 'v' && cutFileKey) {
-                
+
                     let fullPath = cutFileKey.split('/');
                     // console.log('full path:', fullPath);
                     fullPath = fullPath.slice(1);
@@ -324,7 +324,7 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
                     // console.log('source key:', sourceKey);
                     if (cutPayment?.isFolder) fullPath.pop();
                     let fileName = fullPath.pop() || '';
-                    
+
 
                     if (cutPayment?.isFolder) fileName += '/';
 
@@ -376,7 +376,7 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
                         console.log('filename is:', fileName);
                         if (oldNode) {
                             oldNode.s3Key = newS3key;
-                            if(cutPayment?.isFolder) 
+                            if (cutPayment?.isFolder)
                                 currentNode.children[fileName.slice(0, fileName.length - 1)] = oldNode;
                             else
                                 currentNode.children[fileName.slice(0, fileName.length)] = oldNode;
@@ -432,6 +432,7 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
 
         const handleClick = (e: React.MouseEvent) => {
             e.stopPropagation();
+            console.log("uploadprocess:", item.uploadProcess);
             onSelect(item.id);
             // console.log("selected items s3Key:", item.s3Key);
         };
@@ -450,6 +451,34 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
             id: item.id,
             disabled: false,
         });
+
+        const handleDownload = async () => {
+            if (!item.isFolder && item.s3Key) {
+            try {
+                const downloadResponse = await get({
+                apiName: 'S3_API',
+                path: `/s3/${bucketUuid}/download-url`,
+                options: {
+                    withCredentials: true,
+                    queryParams: { path: item.s3Key }
+                }
+                });
+                const { body } = await downloadResponse.response;
+                const responseText = await body.text();
+                const { signedUrl } = JSON.parse(responseText);
+
+                // Create temporary link and trigger download
+                const link = document.createElement('a');
+                link.href = signedUrl;
+                link.download = item.name; // Set filename
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            } catch (error) {
+                console.error('Error getting presigned URL:', error);
+            }
+            }
+        }
 
         const handleDoubleClick = async () => {
             if (!item.isFolder && item.s3Key) {
@@ -486,7 +515,7 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
             setTableData(prev =>
                 prev.map(row =>
                     row.id === item.id
-                        ? { ...row, uploadProcess: 'PENDING' }
+                        ? { ...row, uploadProcess: 'GRAY' }
                         : row
                 )
             );
@@ -508,7 +537,6 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
                 console.error('Error deleting item:', error);
             }
         };
-        
 
         if (loading) {
             return (
@@ -520,7 +548,7 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
                         // willChange: 'transform',
                         backgroundColor: isSelected ? 'rgba(59, 130, 246, 0.1)' : 'transparent',
                         cursor: isDragging ? 'grabbing' : 'default',
-                        opacity: item.uploadProcess === 'PENDING' ? 0.5 : 1,
+                        opacity: item.uploadProcess === 'GRAY' ? 0.5 : 1,
                     }}
                     {...attributes}
                     {...listeners}
@@ -628,7 +656,7 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
                     // willChange: 'transform',
                     backgroundColor: isSelected ? 'rgba(59, 130, 246, 0.1)' : 'transparent',
                     cursor: isDragging ? 'grabbing' : 'default',
-                    opacity: item.uploadProcess === 'PENDING' ? 0.5 : 1,
+                    opacity: item.uploadProcess === 'GRAY' ? 0.5 : 1,
                     overflow: 'visible'
                 }}
                 {...attributes}
@@ -639,7 +667,7 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
                 onClick={handleClick}
 
             >
-                {/* <div><TagDisplay tags={['hi', 'lol', 'wowowow']} /></div> */}
+
                 <td style={{
                     width: columnWidths.name,
                     padding: '8px 16px',
@@ -655,7 +683,7 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
                     }}>
                         <div style={{
                             flexShrink: 0, // Prevent icon from shrinking
-                        }}>
+                        }} className="flex flex-row">
                             {item.isFolder ?
                                 <FolderIcon className="mr-2 h-4 w-4 dark:text-white" /> :
                                 <FileIcon className="mr-2 h-4 w-4 dark:text-white" />
@@ -702,17 +730,70 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
                     {item.isFolder ? '' : <TagDisplay tags={item.tags} />}
                 </td>
                 <td style={{
+                    width: columnWidths.status,
+                    padding: '8px 0px',
+                    whiteSpace: 'nowrap',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    maxWidth: columnWidths.status
+                }}>
+                    <div className="flex items-center justify-center h-full w-full ">
+                        {/* {(!item.isFolder) ? {item.uploadProcess === "PENDING" ? 
+                         <Circle className="max-h-3 max-w-3 text-green-500" />}
+                            <Circle className="max-h-3 max-w-3 text-green-500" /> : 
+                        } */}
+
+                        {!item.isFolder ? (
+                            <HoverCard openDelay={100} closeDelay={0}>
+                                <HoverCardTrigger asChild>
+                                    <div className="p-1.5 cursor-default"> 
+                                        {item.uploadProcess === "PENDING" ? (
+                                            <Circle className="max-h-2 max-w-2 text-yellow-600" fill="currentColor" />
+                                        ) : item.uploadProcess === "BATCHED" ? (
+                                            <Circle className="max-h-2 max-w-2 text-yellow-600" fill="currentColor" />
+                                        ) : item.uploadProcess === "FAILED" ? (
+                                            <Circle className="max-h-2 max-w-2 text-red-600" fill="currentColor" />
+                                        ) : item.uploadProcess === "COMPLETE" ? (
+                                            <Circle className="max-h-2 max-w-2 text-green-600" fill="currentColor" />
+                                        ) : item.uploadProcess === "FAILED_SIZE" ? (
+                                            <Circle className="max-h-2 max-w-2 text-red-600" fill="currentColor" />
+                                        ) : item.uploadProcess === "FAILED_TYPE" ? (
+                                            <Circle className="max-h-2 max-w-2 text-red-600" fill="currentColor" />
+                                        ) : item.uploadProcess === "PROCESSING" ? (
+                                            <Circle className="max-h-2 max-w-2 text-yellow-600" fill="currentColor" />
+                                        ) : null}
+                                    </div>
+                                </HoverCardTrigger>
+                                <HoverCardContent 
+                                    className="w-auto p-2 text-center" 
+                                    side="bottom" 
+                                    align="center" 
+                                    sideOffset={5}
+                                >
+                                    <p className="text-xs">{item.uploadProcess.charAt(0).toUpperCase() + item.uploadProcess.slice(1).toLowerCase()}</p>
+                                </HoverCardContent>
+                            </HoverCard>
+                        ) : null}
+                    </div>
+                </td>
+                <td style={{
                     width: columnWidths.actions,
                     padding: '8px 16px',
                     whiteSpace: 'nowrap',
                     overflow: 'hidden',
                     textOverflow: 'ellipsis'
-                }}>
+                }} className = "select-none outline-none">
                     <DropdownMenu>
                         <DropdownMenuTrigger>
                             <button>⋮</button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent>
+                        <DropdownMenuItem
+                                onClick={handleDownload}
+                                className="text-black"
+                            >
+                                Download
+                            </DropdownMenuItem>
                             <DropdownMenuItem
                                 onClick={handleDelete}
                                 className="text-red-600 focus:text-red-600"
@@ -727,8 +808,6 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
 
         );
     });
-    SortableItem.displayName = 'SortableItem';
-
 
     const uploadToS3 = async (file: File) => {
         const fileId = file.name.split('.')[0];
@@ -823,7 +902,7 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
                 s3Key: node.s3Key || name,
                 s3Url: metadata.url || '',
                 isFolder: isFolder,
-                uploadProcess: metadata.Metadata?.pre_upload || 'COMPLETED',
+                uploadProcess: metadata?.pre_upload || 'FAILED',
                 tags: parsedTags || [],
                 summary: metadata.document_summary || '',
             });
@@ -893,6 +972,7 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
                     date: new Date().toISOString(),
                     uploadedBy: `${(userInfo?.payload?.given_name as string) || ''} ${(userInfo?.payload?.family_name as string) || ''} `.trim(),
                     s3Key: temps3Key,
+                    uploadProcess: 'PENDING',
                 };
 
                 // Add the file to the current node's children
@@ -910,7 +990,7 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
                 }
 
 
-                
+
                 // console.log("temps3Key", temps3Key);
 
                 // console.log("s3key of file in tree", temps3Key);
@@ -926,7 +1006,7 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
                         uploadbyname: `${(userInfo?.payload?.family_name as string) || ''} ${(userInfo?.payload?.given_name as string) || ''}`.trim(),
                         Metadata: {
                             id: newFile.id,
-                            pre_upload: 'COMPLETED',
+                            pre_upload: 'PENDING',
                             tags: [],
                         },
                     },
@@ -1033,7 +1113,7 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
             // Set items to pending state
             setTableData(prevData => prevData.map(item =>
                 (item.id === activeItem.id || item.id === overItem.id)
-                    ? { ...item, uploadProcess: 'PENDING' }
+                    ? { ...item, uploadProcess: 'GRAY' }
                     : item
             ));
 
@@ -1432,6 +1512,10 @@ th {
                                         <ResizableHeader column="tags" width={columnWidths.tags}
                                         >
                                             Tags
+                                        </ResizableHeader>
+                                        <ResizableHeader column="" width={columnWidths.status}
+                                        >
+                                            {''}
                                         </ResizableHeader>
                                         <ResizableHeader column="actions" width={columnWidths.actions}
                                         >
