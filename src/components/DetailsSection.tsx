@@ -125,6 +125,7 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
     const [sourceUrls, setSourceUrls] = useState<string[]>([]);
     const [currentThreadId, setCurrentThreadId] = useState<string>('');
     const [isAnswerLoading, setIsAnswerLoading] = useState(false);
+    const [isWebSocketActive, setIsWebSocketActive] = useState(false);
 
     // Add selector for S3Store
     const s3Objects = useS3Store(state => state.objects);
@@ -318,17 +319,12 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
 
     const queryAllDocuments = async (searchTerm: string, withReasoning: boolean) => {
         try {
-            // setMessages([]);
-            // setSearchResult(null);
-            // setInThoughts(true);
-            // setInAnswer(false);
-            // setInSource(false);
-            // setGeneratingSources(false);
-            // setIsGeneratingComplete(false);
-            // setCurrentThreadId('');
-            // setStepsTaken([]);
-            // setThoughts('');
+            // Don't allow new queries while WebSocket is active
+            // if (isWebSocketActive) {
+            //     return;
+            // }
 
+            setIsWebSocketActive(true);
             setIsLoading(true);
             setMessages(prev => [...prev, { type: 'question', content: searchTerm }]);
             setSearchResult({
@@ -395,7 +391,11 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
                     try {
                         const data = JSON.parse(event.data);
                         if (data.type === 'content') {
-                            console.log("RETURNING!!\n");
+                            // Check if this is the last message
+                            if (data.content.includes('</sources>')) {
+                                setIsWebSocketActive(false);
+                                setIsLoading(false);
+                            }
                             if (data.thread_id) {
                                 setCurrentThreadId(data.thread_id);
                             }
@@ -407,10 +407,14 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
                         }
                     } catch (error) {
                         console.error('Error processing message:', error);
+                        setIsWebSocketActive(false);
+                        setIsLoading(false);
                     }
                 };
 
                 ws.onerror = (error) => {
+                    setIsWebSocketActive(false);
+                    setIsLoading(false);
                     console.log('WebSocket Error:', error);
                     console.error('WebSocket Error Details:', {
                         error,
@@ -422,6 +426,8 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
 
 
                 ws.onclose = (event) => {
+                    setIsWebSocketActive(false);
+                    setIsLoading(false);
                     console.log('WebSocket closed:', {
                         code: event.code,
                         reason: event.reason,
@@ -431,11 +437,20 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
             });
 
         } catch (err) {
+            setIsWebSocketActive(false);
             console.error('Error querying collection:', err);
             setError('Failed to fetch search results. Please try again.');
             setIsLoading(false);
         }
     };
+
+    useEffect(() => {
+        // Reset WebSocket state if component unmounts during active query
+        return () => {
+            setIsWebSocketActive(false);
+            setIsLoading(false);
+        };
+    }, []);
 
     const fadeInAnimation = `
     @keyframes fadeIn {
@@ -590,6 +605,7 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
                 // If we have an error (complete or not), stop processing
                 setIsAnswerLoading(false);  // Stop loading on error
                 setIsLoading(false);
+                setIsWebSocketActive(false);
                 return;
             }
 
@@ -812,6 +828,22 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
         </div>
     );
 
+    const handleClearChat = () => {
+        setMessages([]);
+        setSearchResult(null);
+        setInThoughts(true);
+        setInAnswer(false);
+        setInSource(false);
+        setGeneratingSources(false);
+        setIsGeneratingComplete(false);
+        setCurrentThreadId('');
+        setStepsTaken([]);
+        setThoughts('');
+        setIsWebSocketActive(false);
+        setIsLoading(false);
+        setIsAnswerLoading(false);
+    };
+
     const renderAdvancedSearch = () => {
 
         return (
@@ -819,18 +851,7 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
                 <div className="absolute top-0 right-0 p-4 z-50">
                     <PlusCircle 
                         className="h-5 w-5 text-gray-500 dark:text-gray-400 cursor-pointer hover:text-gray-700 dark:hover:text-gray-300" 
-                        onClick={() => {
-                            setMessages([]);
-                            setSearchResult(null);
-                            setInThoughts(true);
-                            setInAnswer(false);
-                            setInSource(false);
-                            setGeneratingSources(false);
-                            setIsGeneratingComplete(false);
-                            setCurrentThreadId('');
-                            setStepsTaken([]);
-                            setThoughts('');
-                        }}
+                        onClick={handleClearChat}
                     />
                 </div>
                 <ScrollArea
@@ -940,18 +961,11 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
 
                 <div className="px-4 bg-transparent">
                     <AIInputWithSearch
-                        onSubmit={(value, withSearch) => {
-                            console.log('Message:', value);
-                            console.log('Search enabled:', withSearch);
-
-                            setIsLoading(true);
-                            const query = value.trim();
-                            // setMessages(prev => [...prev, { type: 'question', content: value }]);
-                            queryAllDocuments(value, withSearch);
-                        }}
+                        onSubmit={queryAllDocuments}
                         onFileSelect={(file) => {
                             console.log('Selected file:', file);
                         }}
+                        disabled={isLoading}
                     />
 
                 </div>

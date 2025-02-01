@@ -397,11 +397,10 @@ export default function GeneralDashboard() {
                                 <Plus className="mr-2 h-4 w-4" /> Add Dataroom
                             </Button>
                         </div>
-                        <div className="flex flex-wrap gap-4 ">
+                        <div className="flex flex-wrap gap-4">
                             {dataRooms.map((room) => (
-                                <div className="w-[400px]">
+                                <div key={room.id} className="w-[400px]">
                                     <DataRoomCard
-                                        key={room.id}
                                         id={room.id || ''}
                                         title={room.title}
                                         lastOpened={room.lastOpened}

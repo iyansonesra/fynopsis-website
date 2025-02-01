@@ -34,7 +34,7 @@ export const AIInputWithSearch: React.FC<AIInputWithSearchProps> = ({
     minHeight,
     maxHeight,
   });
-  const [showSearch, setShowSearch] = useState(true);
+  const [showSearch, setShowSearch] = useState(false);
 
   const handleSubmit = () => {
     if (value.trim()) {
