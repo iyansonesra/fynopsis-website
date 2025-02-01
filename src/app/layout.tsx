@@ -1,10 +1,9 @@
 import type { Metadata } from "next";
 import { Montserrat, Inter, Poppins, Cormorant, Open_Sans } from "next/font/google";
 import "./globals.css";
-import { Amplify } from "aws-amplify";
-import { Authenticator as AmplifyAuthenticator } from "@aws-amplify/ui-react";
 import ClientComponent from "./clientLayout";
-import { ThemeProvider, createTheme } from '@mui/material/styles';
+import { CSPostHogProvider } from './providers'
+
 
 const montserrat = Montserrat({
   subsets: ["latin"],
@@ -59,9 +58,11 @@ export default function RootLayout({
   return (
     <html lang="en">
         <body className={`${montserrat.variable} ${poppins.variable} ${inter.variable} ${cormorant.variable} ${inter.variable}  ${open_sans.variable} font-sans`}>
-          <ClientComponent>
-            {children}
-          </ClientComponent>
+          <CSPostHogProvider>
+            <ClientComponent>
+              {children}
+            </ClientComponent>
+          </CSPostHogProvider>
         </body>
     </html>
   );
