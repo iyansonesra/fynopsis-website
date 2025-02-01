@@ -84,7 +84,7 @@ const FrontPage: React.FC = () => {
                 containerClassName="rounded-full"
                 as="form"
                 onSubmit={handleDemoRequest}
-                className="text-black dark:text-white flex items-center"
+                className="text-black dark:text-white flex items-center flex-col lg:flex-row "
             >
                 <input 
                     type="email" 

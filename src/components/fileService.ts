@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import * as AmplifyAPI from "aws-amplify/api";
 import { post } from 'aws-amplify/api';
 import { usePathname } from 'next/navigation';
-   
+
 
 
 
@@ -29,6 +29,7 @@ interface S3State {
   isLoading: boolean;
   searchQuery: string;
   filteredObjects: S3Object[];
+  searchableFiles: S3Object[];
   fetchObjects: (bucketUuid: string) => Promise<void>;
   setSearchQuery: (query: string) => void;
   navigateToPath: (path: string[]) => void;
@@ -71,6 +72,26 @@ const createTreeStructure = (objects: S3Object[]): TreeNode => {
           size: (isLastPart && isFile) ? obj.metadata.ContentLength : 0,
           LastModified: obj.metadata.LastModified
         };
+
+        // if(currentLevel.children[part].type === 'file') {
+        //     console.log("children in", currentLevel.children[part].metadata.pre_upload);
+        //     if(currentLevel.children[part].metadata.pre_upload === "COMPLETED") {
+        //       // 
+        //     set((state) => ({
+        //       searchableFiles: [
+        //       ...state.searchableFiles,
+        //       {
+        //         key: currentLevel.children[part].s3Key || '',
+        //         metadata: {
+        //         ...currentLevel.children[part].metadata,
+        //         originalname: currentLevel.children[part].name
+        //         }
+        //       }
+        //       ]
+        //     }));
+
+        //     }
+        // }
       }
       currentLevel = currentLevel.children[part];
       currKey += "/";
@@ -90,6 +111,7 @@ export const useS3Store = create<S3State>()(((set, get) => ({
   isLoading: false,
   searchQuery: '',
   filteredObjects: [],
+  searchableFiles: [],
   fetchObjects: async (bucketUuid: string) => {
 
     set({ isLoading: true });
@@ -102,6 +124,35 @@ export const useS3Store = create<S3State>()(((set, get) => ({
       const { body } = await restOperation.response;
       const responseText = await body.text();
       const response = JSON.parse(responseText);
+
+
+      response.headObjects.forEach((obj: any) => {
+        if(obj.metadata && obj.metadata.Metadata.pre_upload) {
+          if(obj.metadata.Metadata.pre_upload === "COMPLETE") {
+            set((state) => ({
+                    searchableFiles: [
+                      ...state.searchableFiles,
+                      {
+                        key: obj.key,
+                        metadata: {
+                          ...obj.metadata.Metadata,
+                          originalname: obj.key.split('/').pop()
+                        }
+                      }
+                    ]
+                }));
+            
+          }
+        }
+   
+
+      });
+
+      console.log("SEARCHABLE FILES:");
+      get().searchableFiles.forEach((file) => {
+        console.log("File:", file.key, "Metadata:", file.metadata);
+        console.log("Original Name:", file.metadata.originalname);
+      });
 
       if (response.headObjects) {
         const objects = response.headObjects;
@@ -161,7 +212,7 @@ export const useS3Store = create<S3State>()(((set, get) => ({
       s3Upload = '';
     }
     let passIn = `${s3Upload}${folderName}/`;
- 
+
     // console.log("s3key stored in tree:", folderPath);
 
     // Add folder to tree immediately with pending status
@@ -188,7 +239,7 @@ export const useS3Store = create<S3State>()(((set, get) => ({
 
     set({ currentNode: tempo });
 
-    
+
     // console.log("folder path for s3:", passIn);
     try {
       console.log('folderPath:', passIn);
@@ -338,8 +389,8 @@ function getCurrentPathString(node: TreeNode): string {
     current = current.parent as TreeNode;
   }
   // Remove the first path part and join the rest with forward slashes
- const output = pathParts.slice(1).join('/') + '/';
- return output;
+  const output = pathParts.slice(1).join('/') + '/';
+  return output;
 }
 
 function getS3Key(node: TreeNode): string {
@@ -350,8 +401,8 @@ function getS3Key(node: TreeNode): string {
     current = current.parent as TreeNode;
   }
   // Remove the first path part and join the rest with forward slashes
- const output = pathParts.slice(1).join('/') + '/';
- return output;
+  const output = pathParts.slice(1).join('/') + '/';
+  return output;
 }
 
 
