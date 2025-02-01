@@ -19,7 +19,7 @@ import { CSS } from '@dnd-kit/utilities';
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { useS3Store, TreeNode } from "./fileService";
 import { usePathname } from 'next/navigation';
-import { ChevronRight, FileIcon, FolderIcon, Plus, RefreshCcw, Upload } from 'lucide-react';
+import { ChevronRight, Circle, FileIcon, FolderIcon, Plus, RefreshCcw, Upload } from 'lucide-react';
 import { Input } from './ui/input';
 import DragDropOverlay from './DragDrop';
 import { v4 as uuidv4 } from 'uuid';
@@ -30,6 +30,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Folder, File } from 'lucide-react';
 import { TagDisplay } from './TagsHover';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
+import { HoverCard, HoverCardContent, HoverCardTrigger } from './ui/hover-card';
 
 
 
@@ -154,8 +155,9 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
 
 
 
-    const [columnWidths, setColumnWidths] = useState<{ [key in 'name' | 'owner' | 'lastModified' | 'fileSize' | 'tags' | 'actions']: string }>({
-        name: '35%',
+    const [columnWidths, setColumnWidths] = useState<{ [key in 'name' | 'owner' | 'lastModified' | 'fileSize' | 'tags' | 'actions' | 'status']: string }>({
+        status: '3%',
+        name: '32%',
         owner: '15%',
         lastModified: '15%',
         fileSize: '10%',
@@ -313,7 +315,7 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
                         // console.log('Cut:', selectedItem.s3Key);
                     }
                 } else if (e.key === 'v' && cutFileKey) {
-                
+
                     let fullPath = cutFileKey.split('/');
                     // console.log('full path:', fullPath);
                     fullPath = fullPath.slice(1);
@@ -322,7 +324,7 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
                     // console.log('source key:', sourceKey);
                     if (cutPayment?.isFolder) fullPath.pop();
                     let fileName = fullPath.pop() || '';
-                    
+
 
                     if (cutPayment?.isFolder) fileName += '/';
 
@@ -374,7 +376,7 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
                         console.log('filename is:', fileName);
                         if (oldNode) {
                             oldNode.s3Key = newS3key;
-                            if(cutPayment?.isFolder) 
+                            if (cutPayment?.isFolder)
                                 currentNode.children[fileName.slice(0, fileName.length - 1)] = oldNode;
                             else
                                 currentNode.children[fileName.slice(0, fileName.length)] = oldNode;
@@ -430,6 +432,7 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
 
         const handleClick = (e: React.MouseEvent) => {
             e.stopPropagation();
+            console.log("uploadprocess:", item.uploadProcess);
             onSelect(item.id);
             // console.log("selected items s3Key:", item.s3Key);
         };
@@ -636,7 +639,7 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
                 onClick={handleClick}
 
             >
-                {/* <div><TagDisplay tags={['hi', 'lol', 'wowowow']} /></div> */}
+
                 <td style={{
                     width: columnWidths.name,
                     padding: '8px 16px',
@@ -652,7 +655,7 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
                     }}>
                         <div style={{
                             flexShrink: 0, // Prevent icon from shrinking
-                        }}>
+                        }} className="flex flex-row">
                             {item.isFolder ?
                                 <FolderIcon className="mr-2 h-4 w-4 dark:text-white" /> :
                                 <FileIcon className="mr-2 h-4 w-4 dark:text-white" />
@@ -697,6 +700,46 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
                     textOverflow: 'ellipsis'
                 }}>
                     {item.isFolder ? '' : <TagDisplay tags={item.tags} />}
+                </td>
+                <td style={{
+                    width: columnWidths.status,
+                    padding: '8px 0px',
+                    whiteSpace: 'nowrap',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    maxWidth: columnWidths.status
+                }}>
+                    <div className="flex items-center justify-center h-full w-full ">
+                        {/* {(!item.isFolder) ? {item.uploadProcess === "PENDING" ? 
+                         <Circle className="max-h-3 max-w-3 text-green-500" />}
+                            <Circle className="max-h-3 max-w-3 text-green-500" /> : 
+                        } */}
+
+                        {!item.isFolder ? (
+                            <HoverCard>
+                                <HoverCardTrigger>
+                                    {item.uploadProcess === "PENDING" ? (
+                                        <Circle className="max-h-2 max-w-2 text-yellow-600" fill="currentColor" />
+                                    ) : item.uploadProcess === "BATCHED" ? (
+                                        <Circle className="max-h-2 max-w-2 text-green-600" fill="currentColor" />
+                                    ) : item.uploadProcess === "FAILED" ? (
+                                        <Circle className="max-h-2 max-w-2 text-red-600" fill="currentColor" />
+                                    ) : item.uploadProcess === "COMPLETED" ? (
+                                        <Circle className="max-h-2 max-w-2 text-green-600" fill="currentColor" />
+                                    ) : item.uploadProcess === "FAILED_SIZE" ? (
+                                        <Circle className="max-h-2 max-w-2 text-red-600" fill="currentColor" />
+                                    ) : item.uploadProcess === "FAILED_TYPE" ? (
+                                        <Circle className="max-h-2 max-w-2 text-red-600" fill="currentColor" />
+                                    ) : item.uploadProcess === "PROCESSING" ? (
+                                        <Circle className="max-h-2 max-w-2 text-yellow-600" fill="currentColor" />
+                                    ) : null}
+                                </HoverCardTrigger>
+                                <HoverCardContent className="w-auto p-2">
+                                    <p className="text-xs">{item.uploadProcess.charAt(0).toUpperCase() + item.uploadProcess.slice(1).toLowerCase()}</p>
+                                </HoverCardContent>
+                            </HoverCard>
+                        ) : null}
+                    </div>
                 </td>
                 <td style={{
                     width: columnWidths.actions,
@@ -905,7 +948,7 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
                 }
 
 
-                
+
                 // console.log("temps3Key", temps3Key);
 
                 // console.log("s3key of file in tree", temps3Key);
@@ -1427,6 +1470,10 @@ th {
                                         <ResizableHeader column="tags" width={columnWidths.tags}
                                         >
                                             Tags
+                                        </ResizableHeader>
+                                        <ResizableHeader column="" width={columnWidths.status}
+                                        >
+                                            {''}
                                         </ResizableHeader>
                                         <ResizableHeader column="actions" width={columnWidths.actions}
                                         >
