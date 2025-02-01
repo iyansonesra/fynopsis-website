@@ -452,6 +452,34 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
             disabled: false,
         });
 
+        const handleDownload = async () => {
+            if (!item.isFolder && item.s3Key) {
+            try {
+                const downloadResponse = await get({
+                apiName: 'S3_API',
+                path: `/s3/${bucketUuid}/download-url`,
+                options: {
+                    withCredentials: true,
+                    queryParams: { path: item.s3Key }
+                }
+                });
+                const { body } = await downloadResponse.response;
+                const responseText = await body.text();
+                const { signedUrl } = JSON.parse(responseText);
+
+                // Create temporary link and trigger download
+                const link = document.createElement('a');
+                link.href = signedUrl;
+                link.download = item.name; // Set filename
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            } catch (error) {
+                console.error('Error getting presigned URL:', error);
+            }
+            }
+        }
+
         const handleDoubleClick = async () => {
             if (!item.isFolder && item.s3Key) {
                 try {
@@ -747,12 +775,18 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
                     whiteSpace: 'nowrap',
                     overflow: 'hidden',
                     textOverflow: 'ellipsis'
-                }}>
+                }} className = "select-none outline-none">
                     <DropdownMenu>
                         <DropdownMenuTrigger>
                             <button>⋮</button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent>
+                        <DropdownMenuItem
+                                onClick={handleDownload}
+                                className="text-black"
+                            >
+                                Download
+                            </DropdownMenuItem>
                             <DropdownMenuItem
                                 onClick={handleDelete}
                                 className="text-red-600 focus:text-red-600"
