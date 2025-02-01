@@ -79,28 +79,29 @@ const FrontPage: React.FC = () => {
     };
 
     const EmailInputSection = () => (
-        <div className="flex flex-col lg:flex-row justify-center items-center lg:gap-0 gap-4 text-center w-full">
+        <div className="flex flex-col md:flex-row justify-center items-center lg:gap-0 md:gap-2 sm:gap-2 gap-3 text-center w-full">
             <HoverBorderGradient
                 containerClassName="rounded-full"
                 as="form"
                 onSubmit={handleDemoRequest}
                 className="text-black dark:text-white flex items-center flex-col lg:flex-row "
             >
-                <input 
-                    type="email" 
-                    placeholder="Enter your email" 
+                <input
+                    type="email"
+                    placeholder="Enter your email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    className="w-72 md:w-80 lg:w-96 py-2 px-4 outline-none rounded-full bg-transparent border-white border-opacity-50 border text-white placeholder-white placeholder-opacity-50 z-20" 
+                    className="w-72 md:w-80 lg:w-96 py-2 px-4 outline-none rounded-full bg-transparent border-white border-opacity-50 border text-white placeholder-white placeholder-opacity-50 z-20"
                 />
-                <button 
-                    type="submit"
-                    disabled={isSubmitting}
-                    className={`bg-gradient-to-r from-[#1e6aa3] via-[#3148b3] to-[#003580] w-48 lg:w-48 text-white rounded-full py-3 px-6 ml-2 hover:opacity-90 transition-all ${isSubmitting ? 'opacity-50 cursor-not-allowed' : ''}`}
-                >
-                    {isSubmitting ? 'Submitting...' : 'Request a Demo'}
-                </button>
             </HoverBorderGradient>
+            <button
+                type="submit"
+                disabled={isSubmitting}
+                className={`bg-gradient-to-r from-[#1e6aa3] via-[#3148b3] to-[#003580] w-48 lg:w-48 text-white rounded-full py-3 px-6 ml-2 hover:opacity-90 transition-all ${isSubmitting ? 'opacity-50 cursor-not-allowed' : ''}`}
+            >
+                {isSubmitting ? 'Submitting...' : 'Request a Demo'}
+            </button>
+
             {submitError && <p className="text-red-500 mt-2">{submitError}</p>}
             {submitSuccess && <p className="text-green-500 mt-2">Thank you for your interest! We&apos;ll be in touch soon.</p>}
         </div>
@@ -219,10 +220,10 @@ const FrontPage: React.FC = () => {
 
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 w-full">
                                 <FadeInSlideUp className="md:col-span-2">
-                                    <div className="relative rounded-lg shadow-md h-64  relative overflow-hidden flex flex-col">
+                                    <div className="relative rounded-lg shadow-md h-64 md:pb-0 pb-6 justify-end md:justify-start relative overflow-hidden flex flex-col">
                                         <div className="absolute inset-0 [mask-image:radial-gradient(100px,transparent_20%,green)]" />
 
-                                        <h1 className="text-6xl 2xl:text-7xl text-left font-semibold font-cormorant text-white">
+                                        <h1 className="text-5xl md:text-6xl 2xl:text-7xl text-left font-semibold font-cormorant text-white">
                                             Do more with more of your{' '}
                                             <span className="bg-gradient-to-r from-[#38B6FF] to-[#004AAD] bg-clip-text text-transparent">
                                                 Files.
@@ -256,14 +257,14 @@ const FrontPage: React.FC = () => {
                     </div>
 
                 </div>
-                <div className='w-full min-h-screen flex flex-col gap-4 mt-16 items-center justify-center'>
+                <div className='w-full md:min-h-screen flex flex-col gap-4 mt-16 items-center justify-center'>
                     <div className="flex md:flex-row flex-col w-[80%] ">
                         <div className="flex flex-1 md:max-w-[50%]">
                             <div className="flex-1 flex-col max-w-[100%] flex justify-center items-center ">
-                                <h1 className="md:text-left text-center text-5xl 2xl:text-6xl font-semibold mb-2 text-white font-cormorant">Stay in the Loop with  <span className="bg-gradient-to-r from-[#38B6FF] to-[#004AAD] bg-clip-text text-transparent">
+                                <h1 className="md:text-left text-center text-4xl md:text-5xl 2xl:text-6xl font-semibold mb-2 text-white font-cormorant">Stay in the Loop with  <span className="bg-gradient-to-r from-[#38B6FF] to-[#004AAD] bg-clip-text text-transparent">
                                     Smart
                                 </span> Document Digests</h1>
-                                <h1 className="md:text-left text-center text-xl 2xl:text-2xl font-montserrat text-slate-300 font-thin">Get instant, AI-powered summaries of document changes and updates across your data room, ensuring you never miss critical modifications.</h1>
+                                <h1 className="md:text-left text-center text-lg md:text-xl 2xl:text-2xl font-montserrat text-slate-300 font-thin">Get instant, AI-powered summaries of document changes and updates across your data room, ensuring you never miss critical modifications.</h1>
                             </div>
 
                         </div>
@@ -279,16 +280,16 @@ const FrontPage: React.FC = () => {
 
                 <div className='w-full min-h-screen flex flex-col gap-4 mt-16 items-center justify-center'>
                     <div className="flex md:flex-row flex-col-reverse w-[80%] ">
-                        <div className="md:mt-0 mt-8 flex flex-1 md:max-w-[50%]">
+                        <div className="mt-4 md:mt-12 flex flex-1 md:max-w-[50%]">
                             <CircleBurstAnimation />
                         </div>
 
-                        <div className="flex flex-1 md:max-w-[50%]">
+                        <div className="flex flex-1 max-w-[100%] md:max-w-[50%] mb-6 md:mb-0">
                             <div className="flex-1 max-w-[100%]">
-                                <h1 className="md:text-right text-center text-5xl 2xl:text-6xl font-semibold font-cormorant mb-2 text-white">Smart Document Tagging &  <span className="bg-gradient-to-r from-[#38B6FF] to-[#004AAD] bg-clip-text text-transparent">
+                                <h1 className="md:text-right text-center text-4xl md:text-5xl 2xl:text-6xl font-semibold font-cormorant mb-2 text-white">Smart Document Tagging &  <span className="bg-gradient-to-r from-[#38B6FF] to-[#004AAD] bg-clip-text text-transparent">
                                     Instant
                                 </span> Summaries</h1>
-                                <h1 className="md:text-right text-center text-xl 2xl:text-2xl font-montserrat font-thin text-slate-300">Every document is automatically categorized and condensed, turning complex files into clear, searchable insights in seconds</h1>
+                                <h1 className="md:text-right text-center text-lg md:text-xl 2xl:text-2xl font-montserrat font-thin text-slate-300">Every document is automatically categorized and condensed, turning complex files into clear, searchable insights in seconds</h1>
 
                             </div>
                         </div>
@@ -299,10 +300,10 @@ const FrontPage: React.FC = () => {
 
                 </div>
 
-                <div className="relative flex justify-center flex-col items-center w-full mt-8 pb-48">
+                <div className="relative flex justify-center flex-col items-center w-full mt-16 pb-16 md:pb-36">
 
                     <FadeInSlideUp className='flex justify-center items-center flex-col'>
-                        <h1 className="text-5xl font-semibold w-[60%] text-center mb-2 font-cormorant text-gray-200">The future of document storage is here. Don&apos;t miss out.</h1>
+                        <h1 className="text-4xl md:text-5xl font-semibold md:w-[70%] w-[80%] text-center mb-2 font-cormorant text-gray-200">The future of document storage is here. Don&apos;t miss out.</h1>
 
                     </FadeInSlideUp>
                     <FadeInSlideUp className="flex justify-center items-center flex-col">
