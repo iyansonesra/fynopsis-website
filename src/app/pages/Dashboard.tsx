@@ -13,7 +13,7 @@ import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area";
 import logo from '../assets/fynopsis_noBG.png'
 import { useState, useEffect, Key } from "react"
-import StockSearch from "./StockSearch";
+// import StockSearch from "./StockSearch";
 import Settings from "./Settings";
 import { useAuthenticator } from '@aws-amplify/ui-react';
 import { Sun, Moon } from "lucide-react";

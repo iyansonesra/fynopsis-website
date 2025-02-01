@@ -69,7 +69,7 @@ const PDFViewer: React.FC<PDFViewerProps> = ({
 
 
   useEffect(() => {
-    let checkTimer: NodeJS.Timer;
+    let checkTimer: NodeJS.Timeout;
     let mounted = true;
 
     const checkIframeContent = () => {

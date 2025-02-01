@@ -404,9 +404,13 @@ export function DataTable({ onFileSelect, setTableData }: {
                                     if (payment.s3Key) {
                                         try {
                                             await deleteS3Object(payment.s3Key, bucketUuid);
-                                            setTableData(prev =>
-                                                prev.filter(item => item.s3Key !== payment.s3Key)
+                                            interface TableDataUpdater {
+                                                (prev: Payment[]): Payment[];
+                                            }
+                                            const updatedData = tableData.filter((item: Payment): boolean => 
+                                                item.s3Key !== payment.s3Key
                                             );
+                                            setTableData(updatedData);
                                         } catch (error) {
                                             console.error('Error deleting file:', error);
                                         }
