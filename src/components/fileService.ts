@@ -2,6 +2,8 @@ import { create } from 'zustand';
 import * as AmplifyAPI from "aws-amplify/api";
 import { post } from 'aws-amplify/api';
 import { usePathname } from 'next/navigation';
+   
+
 
 
 export interface TreeNode {
@@ -35,6 +37,7 @@ interface S3State {
   deleteItem: (folderName: string, bucketUuid: string, isFolder: boolean) => Promise<void>;
   changeCurrentNode: (child: string) => void;
   goBack: () => void;
+  clearTree: () => void;
 }
 
 const createTreeStructure = (objects: S3Object[]): TreeNode => {
@@ -151,8 +154,15 @@ export const useS3Store = create<S3State>()(((set, get) => ({
   },
   createFolder: async (folderName: string, bucketUuid: string) => {
     const state = get();
-    const currentPath = getCurrentPathString(state.currentNode);
+    const currentPath = getS3Key(state.currentNode);
     const folderPath = `${currentPath}${folderName}/`;
+    let s3Upload = getCurrentPathString(state.currentNode);
+    if (s3Upload === '/') {
+      s3Upload = '';
+    }
+    let passIn = `${s3Upload}${folderName}/`;
+ 
+    // console.log("s3key stored in tree:", folderPath);
 
     // Add folder to tree immediately with pending status
     const newFolder: TreeNode = {
@@ -160,7 +170,8 @@ export const useS3Store = create<S3State>()(((set, get) => ({
       type: 'folder',
       metadata: { isPending: true },
       children: {},
-      parent: state.currentNode
+      parent: state.currentNode,
+      s3Key: folderPath
     };
 
     // Update current node with new folder
@@ -178,16 +189,16 @@ export const useS3Store = create<S3State>()(((set, get) => ({
     set({ currentNode: tempo });
 
     
-
+    // console.log("folder path for s3:", passIn);
     try {
-      console.log('folderPath:', folderPath);
+      console.log('folderPath:', passIn);
       const response = await post({
         apiName: 'S3_API',
         path: `/s3/${bucketUuid}/create-folder`,
         options: {
           withCredentials: true,
           body: {
-            folderPath: folderPath
+            folderPath: passIn
           }
         }
       });
@@ -304,7 +315,18 @@ export const useS3Store = create<S3State>()(((set, get) => ({
     if (state.currentNode.parent) {
       set({ currentNode: state.currentNode.parent });
     }
+  },
+  clearTree: () => {
+    set({
+      objects: [],
+      tree: { name: 'root', type: 'folder', metadata: {}, children: {} },
+      currentNode: { name: 'root', type: 'folder', metadata: {}, children: {} },
+      isLoading: false,
+      searchQuery: '',
+      filteredObjects: []
+    });
   }
+
 })));
 
 
@@ -319,5 +341,20 @@ function getCurrentPathString(node: TreeNode): string {
  const output = pathParts.slice(1).join('/') + '/';
  return output;
 }
+
+function getS3Key(node: TreeNode): string {
+  const pathParts: string[] = [];
+  let current = node;
+  while (current) {
+    pathParts.unshift(current.name);
+    current = current.parent as TreeNode;
+  }
+  // Remove the first path part and join the rest with forward slashes
+ const output = pathParts.slice(1).join('/') + '/';
+ return output;
+}
+
+
+
 
 

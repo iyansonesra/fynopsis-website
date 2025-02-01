@@ -27,11 +27,40 @@ import { DataTable } from './newFilesTable';
 import {FileSystem} from './ElevatedTable';
 import { useTabStore } from './tabStore';
 
-
 interface Tab {
     id: string;
     title: string;
     content: React.ReactNode;
+}
+
+interface TableFile {
+    id: string;
+    name: string;
+    type: string;
+    size: string;
+    date: string;
+    uploadedBy: string;
+    s3Key: string;
+    s3Url: string;
+    uploadProcess: string;
+    status: "success";
+    summary?: string;
+}
+
+// Add the interface for file selection
+interface FileSelectProps {
+    id: string;
+    name: string;
+    s3Url: string;
+    type?: string;
+    size?: string;
+    status?: "success";
+    date?: string;
+    uploadedBy?: string;
+    s3Key?: string;
+    uploadProcess?: string;
+    summary?: string;
+    tags?: string[];
 }
 
 export default function Files({ setSelectedTab }: { setSelectedTab: React.Dispatch<React.SetStateAction<string>> }) {
@@ -47,12 +76,16 @@ export default function Files({ setSelectedTab }: { setSelectedTab: React.Dispat
         setActiveTabId,
         initializeDefaultTab 
     } = useTabStore();
+    const [tableData, setTableData] = useState<TableFile[]>([]);
 
     useEffect(() => {
         initializeDefaultTab(handleFileSelect);
     }, []);
 
-
+    // Add debug log for table data updates
+    useEffect(() => {
+        console.log('Files component - Table data updated:', tableData);
+    }, [tableData]);
 
     useEffect(() => {
         if (!showFolderTree && !showDetailsView) {
@@ -79,7 +112,8 @@ export default function Files({ setSelectedTab }: { setSelectedTab: React.Dispat
         });
     };
     
-    function handleFileSelect(file: { id: string; name: string; s3Url: string; }) {
+    function handleFileSelect(file: FileSelectProps) {  // Update type here
+        console.log('Files component - File selected:', file);
         setSelectedFile(file);
         setShowDetailsView(true);
         
@@ -121,6 +155,10 @@ export default function Files({ setSelectedTab }: { setSelectedTab: React.Dispat
                         setActiveTabId={setActiveTabId}
                         setTabs={setCurrentTabs}
                     />
+                    <DataTable 
+                        onFileSelect={handleFileSelect} 
+                        setTableData={setTableData}  // Pass setTableData to DataTable
+                    />
                 </ResizablePanel>
                 <ResizableHandle withHandle className='dark:bg-slate-900'/>
                 <ResizablePanel defaultSize={25} minSize={20} collapsible={true} collapsedSize={0}>
@@ -128,7 +166,8 @@ export default function Files({ setSelectedTab }: { setSelectedTab: React.Dispat
                         showDetailsView={showDetailsView}
                         setShowDetailsView={setShowDetailsView}
                         selectedFile={selectedFile}
-                        onFileSelect={handleFileSelect}  // Add this line
+                        onFileSelect={handleFileSelect}
+                        tableData={tableData} // Add this prop
                     />
                 </ResizablePanel>
             </ResizablePanelGroup>

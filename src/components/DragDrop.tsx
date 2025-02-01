@@ -4,6 +4,7 @@ import { Upload as UploadIcon, X } from 'lucide-react';
 import { post } from 'aws-amplify/api';
 import { usePathname } from 'next/navigation';
 import { useS3Store, TreeNode } from "./fileService";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 interface DragDropOverlayProps {
   onClose: () => void;
@@ -62,11 +63,11 @@ const DragDropOverlay: React.FC<DragDropOverlayProps> = ({
     try {
       const fullPath = getCurrentPathString(useS3Store.getState().currentNode);
       let filePathOut = `${fullPath}${file.name}`;
-      if(fullPath === '/') {
+      if (fullPath === '/') {
         filePathOut = filePathOut.slice(1);
       }
 
-      
+
 
       console.log('filePathOut:', filePathOut);
 
@@ -250,57 +251,65 @@ const DragDropOverlay: React.FC<DragDropOverlayProps> = ({
             </p>
           </div>
         ) : (
-          <div className="mt-4">
-            <h3 className="text-lg font-semibold mb-2 dark:text-gray-200">Uploading Files:</h3>
-            <ul className="space-y-4">
-              {Object.entries(fileUploads).map(([fileName, upload]) => (
-                <li key={fileName} className="space-y-2">
-                  <div className="flex justify-between text-sm text-gray-600">
-                    <span>{fileName}</span>
-                    <span className="flex items-center">
-                      {upload.status === 'completed' ? (
-                        <span className="text-green-600">Ready to Upload</span>
-                      ) : (
-                        <span className="text-red-600">
-                          {upload.status === 'file too large' && 'File exceeds 100MB limit'}
-                          {upload.status === 'invalid filename' && 'Invalid filename - use only letters, numbers, spaces, dots, underscores, or hyphens'}
-                          {upload.status === 'invalid file type' && 'Only PDF and Excel files are allowed'}
-                          {upload.status === 'error' && 'Error'}
+            <div className="w-full h-full flex flex-col justify-between">
+              <div >
+                <h3 className="text-lg font-semibold mb-2 dark:text-gray-200">Uploading Files:</h3>
+                <ScrollArea className="h-[20rem] w-full rounded-md">
+                  <div className="p-4">
+                    <ul className="space-y-4">
+                  {Object.entries(fileUploads).map(([fileName, upload]) => (
+                    <li key={fileName} className="space-y-2">
+                      <div className="flex justify-between text-sm text-gray-600">
+                        <span>{fileName}</span>
+                        <span className="flex items-center">
+                          {upload.status === 'completed' ? (
+                            <span className="text-green-600">Ready to Upload</span>
+                          ) : (
+                            <span className="text-red-600">
+                              {upload.status === 'file too large' && 'File exceeds 100MB limit'}
+                              {upload.status === 'invalid filename' && 'Invalid filename - use only letters, numbers, spaces, dots, underscores, or hyphens'}
+                              {upload.status === 'invalid file type' && 'Only PDF and Excel files are allowed'}
+                              {upload.status === 'error' && 'Error'}
+                            </span>
+                          )}
                         </span>
-                      )}
-                    </span>
+                      </div>
+                      <div className="w-full bg-gray-200 rounded-full h-2">
+                        <div
+                          className={`h-2 rounded-full transition-all duration-300 ${upload.status === 'error'
+                            ? 'bg-red-500'
+                            : upload.status === 'completed'
+                              ? 'bg-green-500'
+                              : 'bg-blue-500'
+                            }`}
+                          style={{ width: `${Math.max(0, upload.progress)}%` }}
+                        ></div>
+                      </div>
+                    </li>
+                  ))}
+                    </ul>
                   </div>
-                  <div className="w-full bg-gray-200 rounded-full h-2">
-                    <div
-                      className={`h-2 rounded-full transition-all duration-300 ${upload.status === 'error'
-                          ? 'bg-red-500'
-                          : upload.status === 'completed'
-                            ? 'bg-green-500'
-                            : 'bg-blue-500'
-                        }`}
-                      style={{ width: `${Math.max(0, upload.progress)}%` }}
-                    ></div>
-                  </div>
-                </li>
-              ))}
-            </ul>
-            <div className="mt-6 flex justify-end space-x-4">
-              <button
-                onClick={onClose}
-                className="px-4 py-2 text-gray-600 hover:text-gray-800"
-                disabled={isConfirming}
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleConfirmUpload}
-                className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 disabled:bg-gray-400 disabled:cursor-not-allowed"
-                disabled={!areAllUploadsComplete || isConfirming || hasErrors}
-              >
-                {isConfirming ? 'Confirming...' : 'Confirm Uploads'}
-              </button>
+                </ScrollArea>
+              </div>
+
+              <div className="mt-6 flex justify-end space-x-4">
+                <button
+                  onClick={onClose}
+                  className="px-4 py-2 text-gray-600 hover:text-gray-800"
+                  disabled={isConfirming}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleConfirmUpload}
+                  className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 disabled:bg-gray-400 disabled:cursor-not-allowed"
+                  disabled={!areAllUploadsComplete || isConfirming || hasErrors}
+                >
+                  {isConfirming ? 'Confirming...' : 'Confirm Uploads'}
+                </button>
+              </div>
             </div>
-          </div>
+
         )}
       </div>
     </div>
@@ -315,8 +324,8 @@ function getCurrentPathString(node: TreeNode): string {
     current = current.parent as TreeNode;
   }
   // Remove the first path part and join the rest with forward slashes
- const output = pathParts.slice(1).join('/') + '/';
- return output;
+  const output = pathParts.slice(1).join('/') + '/';
+  return output;
 }
 
 export default DragDropOverlay;

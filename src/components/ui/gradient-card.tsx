@@ -5,6 +5,7 @@ interface GradientBoxProps {
     height?: string;
     hasGradient?: boolean;
     title?: string;
+    subtitle?: string;
     icon?: ReactElement;
 }
 
@@ -13,7 +14,8 @@ const GradientBox: React.FC<GradientBoxProps> = ({
     height = 'h-[16.5rem]',
     hasGradient = false,
     title = 'Title',
-    icon
+    icon,
+    subtitle
 }) => {
     if (hasGradient) {
         return (
@@ -42,8 +44,8 @@ const GradientBox: React.FC<GradientBoxProps> = ({
 
                 <div className="text-white font-montserrat absolute top-1/2">
                     <h1 className="text-xl font-semibold bg-gradient-to-b from-neutral-950 to-white to-50% bg-clip-text text-transparent">{title}</h1>
-                    <h1 className="text-base font-thin text-white opacity-60 mt-2">Leverage AI powered insights And Predictions To Make Well-Informed Decisions</h1>
-                </div>
+                    <h1 className="text-base md:text-sm lg:text-base font-thin text-white opacity-60 mt-2">{subtitle}</h1>
+                    </div>
                 <div className="absolute -bottom-1/2 -right-1/2 w-[100%] h-[100%] bg-blue-500 rounded-lg blur-3xl opacity-25"></div>
             </div>
         );
@@ -75,7 +77,7 @@ const GradientBox: React.FC<GradientBoxProps> = ({
 
             <div className="text-white font-montserrat absolute top-1/2">
                 <h1 className="text-xl font-semibold bg-gradient-to-b from-neutral-950 to-white to-50% bg-clip-text text-transparent">{title}</h1>
-                <h1 className="text-base font-thin text-white opacity-60 mt-2">Leverage AI powered insights And Predictions To Make Well-Informed Decisions</h1>
+                <h1 className="text-base md:text-sm lg:text-base font-thin text-white opacity-60 mt-2">{subtitle}</h1>
             </div>
         </div>
     );

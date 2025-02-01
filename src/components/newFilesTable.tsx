@@ -42,7 +42,7 @@ import { usePathname, useSearchParams } from 'next/navigation';
 import { get } from "aws-amplify/api";
 import { useS3Store, TreeNode } from "./fileService";
 import Breadcrumb from "./Breadcrumb";
-
+import { useEffect } from "react";
 const data: Payment[] = []
 
 interface Payment {
@@ -64,9 +64,12 @@ interface DataTableDemoProps {
     onFileSelect: (file: Payment) => void;
 }
 
-export function DataTable({ onFileSelect }: DataTableDemoProps) {
+export function DataTable({ onFileSelect, setTableData }: { 
+    onFileSelect: (file: Payment) => void;
+    setTableData: (data: Payment[]) => void;
+}) {
     const [sorting, setSorting] = React.useState<SortingState>([])
-    const [tableData, setTableData] = React.useState<Payment[]>(data);
+    const [tableData] = React.useState<Payment[]>(data);
     const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([])
     const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({})
     const [rowSelection, setRowSelection] = React.useState({})
@@ -88,10 +91,12 @@ export function DataTable({ onFileSelect }: DataTableDemoProps) {
         fetchObjects(bucketUuid);
     }, [bucketUuid]);
 
-    React.useEffect(() => {
+    useEffect(() => {
+        console.log('DataTable - Transforming tree data...');
         if (tree) {
             transformTreeToTableData(tree, currentPath)
                 .then(transformedData => {
+                    console.log('DataTable - Transformed data:', transformedData);
                     setTableData(transformedData);
                 });
         }
@@ -102,6 +107,7 @@ export function DataTable({ onFileSelect }: DataTableDemoProps) {
     }, []);
 
     async function transformTreeToTableData(tree: TreeNode, currentPath: string[]): Promise<Payment[]> {
+        console.log('DataTable - Starting tree transformation:', { tree, currentPath });
         // Get the current node based on the path
         await navigateToPath(currentPath);
 
@@ -398,9 +404,13 @@ export function DataTable({ onFileSelect }: DataTableDemoProps) {
                                     if (payment.s3Key) {
                                         try {
                                             await deleteS3Object(payment.s3Key, bucketUuid);
-                                            setTableData(prev =>
-                                                prev.filter(item => item.s3Key !== payment.s3Key)
+                                            interface TableDataUpdater {
+                                                (prev: Payment[]): Payment[];
+                                            }
+                                            const updatedData = tableData.filter((item: Payment): boolean => 
+                                                item.s3Key !== payment.s3Key
                                             );
+                                            setTableData(updatedData);
                                         } catch (error) {
                                             console.error('Error deleting file:', error);
                                         }
@@ -453,10 +463,10 @@ export function DataTable({ onFileSelect }: DataTableDemoProps) {
         setSearchQuery(value);
     };
 
-
-
-
-
+    // Update the parent's tableData whenever local table data changes
+    useEffect(() => {
+        setTableData(tableData);
+    }, [tableData, setTableData]);
 
     return (
         <div className="select-none w-full dark:bg-darkbg py-4 h-full">

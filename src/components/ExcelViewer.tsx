@@ -62,9 +62,9 @@ const SpreadsheetApp: React.FC<SpreadsheetProps> = ({ data }) => {
                 allowOpen={false}
                 allowSave={false}
                 cellEdit={onCellEdit}
-                beforePaste={beforePaste}
+                // beforePaste={beforePaste}
                 allowEditing={false}
-                isReadOnly={true}
+                // isReadOnly={true}
                 enableClipboard={false}
                 enableKeyboardNavigation={false}
                 showRibbon={false}

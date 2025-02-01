@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { LoaderCircle } from 'lucide-react';
 import { Card } from '@/components/ui/card';
+import { TextShimmer } from '../ui/text-shimmer';
 
 // Custom hook for intersection observer
-const useInView = (options = {}) => {
+const useInView = (options = {}): [React.RefObject<HTMLDivElement>, boolean] => {
   const [isInView, setIsInView] = useState(false);
-  const ref = useRef(null);
+  const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const observer = new IntersectionObserver(([entry]) => {
@@ -87,21 +88,20 @@ const ChangeLogDemo = () => {
   }, [isInView]); // Dependency on isInView
 
   return (
-    <div ref={ref} className="relative w-full max-w-lg mx-auto p-4 h-96 flex justify-center items-center font-montserrat">
+    <div ref={ref} className="relative max-w-lg 2xl:max-w-xl  mx-auto p-4 h-96 flex justify-center items-center font-montserrat">
       <div className="space-y-3">
         {changeLogs.map((log, index) => (
           <div
             key={index}
-            className={`transform transition-all duration-500 ${
-              isCollapsed 
-                ? 'opacity-0 -translate-y-16' 
+            className={`transform transition-all duration-500 ${isCollapsed
+                ? 'opacity-0 -translate-y-16'
                 : 'opacity-100 translate-y-0'
-            }`}
+              }`}
             style={{
               transitionDelay: `${index * 100}ms`
             }}
           >
-            <Card className="p-3 bg-white shadow-sm">
+            <Card className="p-3 2xl:p-6 bg-neutral-900 border-none text-white shadow-sm">
               <p className="text-sm">
                 <span className="font-semibold">{log.user}</span> {log.action}
                 <span className="text-gray-500 ml-2">{log.time}</span>
@@ -114,25 +114,32 @@ const ChangeLogDemo = () => {
       {showLoader && (
         <div className="absolute top-1/2 left-1/2 transform transition-transform -translate-x-1/2 -translate-y-1/2 text-center transition-all duration-700">
           <LoaderCircle className="animate-spin mx-auto mb-2" />
-          <p className="text-sm font-medium">Generating update summary</p>
-        </div>
+          {/* <p className="text-sm font-medium text-">Generating update summary</p> */}
+          <TextShimmer
+            key="generating-sources"
+            className='text-sm'
+            duration={1}
+          >
+            Generating Update Summary...
+          </TextShimmer>        
+          </div>
       )}
 
-      <div 
-        className={`absolute left-0 right-0 px-4 transition-all duration-700 ease-out ${
-          showSummary 
-            ? 'opacity-100 top-1/2 -translate-y-1/2' 
-            : 'opacity-0 top-full translate-y-0'
-        }`}
+      <div
+        className={`absolute left-0 right-0 px-4 transition-all duration-700 ease-out ${showSummary
+        ? 'opacity-100 top-1/2 -translate-y-1/2'
+        : 'opacity-0 top-full translate-y-0'
+          }`}
       >
-        <Card className="p-4 bg-white shadow-lg transform transition-transform">
-          <h3 className="font-semibold mb-2">Recent Changes Summary</h3>
-          <p className="text-sm text-gray-700">
-            In the last 15 minutes, there have been 4 document updates: 
-            modifications to financial projections and company overview documents, 
-            a new version of the legal agreement, and an updated term sheet. 
-            Key changes focus on Q4 financial data and revised legal terms.
+        <Card className="p-4 bg-neutral-950 shadow-lg transform transition-transform border-none relative overflow-hidden">
+          <h3 className="font-semibold mb-2 text-white relative z-10 2xl:text-xl">Recent Changes Summary</h3>
+          <p className="text-sm 2xl:text-lg text-gray-500 relative z-10">
+        In the last 15 minutes, there have been 4 document updates:
+        modifications to financial projections and company overview documents,
+        a new version of the legal agreement, and an updated term sheet.
+        Key changes focus on Q4 financial data and revised legal terms.
           </p>
+          <div className="absolute -bottom-1/2 -right-1/2 w-[100%] h-[100%] bg-blue-500 rounded-lg blur-3xl opacity-25"></div>
         </Card>
       </div>
     </div>

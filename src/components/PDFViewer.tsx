@@ -1,85 +1,149 @@
-import React, { useRef, useEffect } from 'react';
-import {
-  PdfViewerComponent, Toolbar, Magnification, Navigation,
-  LinkAnnotation, BookmarkView, ThumbnailView, Print,
-  TextSelection, TextSearch, Annotation, FormFields,
-  FormDesigner, Inject
-} from '@syncfusion/ej2-react-pdfviewer';
+import React, { useEffect, useRef, useState } from 'react';
 import styled from 'styled-components';
 
-
-const ViewerContainer = styled.div`
+const PDFContainer = styled.div`
   width: 100%;
-  height: 100%;
-
-  .e-pv-viewer-container::-webkit-scrollbar {
-    width: 10px;
+  height: 94vh;
+  position: relative;
+  
+  iframe {
+    border: none;
+    width: 100%;
+    height: 100%;
   }
 
-  .e-pv-viewer-container::-webkit-scrollbar-track {
-    background: #f1f1f1;
-    border-radius: 10px;
-  }
-
-  .e-pv-viewer-container::-webkit-scrollbar-thumb {
-    background: #888;
-    border-radius: 10px;
-  }
-
-  .e-pv-viewer-container::-webkit-scrollbar-thumb:hover {
-    background: #555;
+  .loader {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 1.2rem;
+    color: #666;
   }
 `;
 
 interface PDFViewerProps {
   documentUrl: string;
-  height?: string;
-  containerId: string;
+  containerId?: string;
+  maxRetries?: number;
+  checkInterval?: number;
 }
 
-const PDFViewer: React.FC<PDFViewerProps> = ({
-  documentUrl,
-  height = '640px',
-  containerId
+const getFileType = (url: string): string => {
+  const baseUrl = url.split('?')[0];
+  return baseUrl.split('.').pop()?.toLowerCase() || '';
+};
+
+const getViewerUrl = (documentUrl: string): string => {
+  const fileType = getFileType(documentUrl);
+  const encodedUrl = encodeURIComponent(documentUrl);
+  
+  switch(fileType) {
+    case 'xlsx':
+    case 'xls':
+    case 'csv':
+      return `https://view.officeapps.live.com/op/embed.aspx?src=${encodedUrl}`;
+    case 'doc':
+    case 'docx':
+    case 'ppt':
+    case 'pptx':
+    case 'pdf':
+    default:
+      return `https://docs.google.com/viewer?url=${encodedUrl}&embedded=true`;
+  }
+};
+
+const PDFViewer: React.FC<PDFViewerProps> = ({ 
+  documentUrl, 
+  containerId,
+  maxRetries = 5,
+  checkInterval = 2000 
 }) => {
-  const viewerRef = useRef<PdfViewerComponent>(null);
+  const iframeRef = useRef<HTMLIFrameElement>(null);
+  const [retryCount, setRetryCount] = useState(0);
+  const [isLoading, setIsLoading] = useState(true);
+  
+  const fileType = getFileType(documentUrl);
+  const viewerUrl = getViewerUrl(documentUrl);
+  const isOfficeFile = ['xlsx', 'xls', 'csv'].includes(fileType);
+
 
   useEffect(() => {
-    return () => {
-      // Cleanup on unmount
-      if (viewerRef.current) {
-        viewerRef.current.destroy();
+    let checkTimer: NodeJS.Timeout;
+    let mounted = true;
+
+    const checkIframeContent = () => {
+      if (!mounted || !iframeRef.current) return;
+
+      // For Office files, we only need to check if iframe is loaded
+      if (isOfficeFile) {
+        setIsLoading(false);
+        clearInterval(checkTimer);
+        return;
+      }
+
+      try {
+        const iframeDoc = iframeRef.current.contentDocument || 
+                         iframeRef.current.contentWindow?.document;
+        
+        if (!iframeDoc || iframeDoc.body.children.length === 0) {
+          if (retryCount < maxRetries) {
+            console.log('Reloading document...');
+            setRetryCount(prev => prev + 1);
+            iframeRef.current.src = viewerUrl;
+          } else {
+            setIsLoading(false);
+            clearInterval(checkTimer);
+          }
+        } else {
+          setIsLoading(false);
+          clearInterval(checkTimer);
+        }
+      } catch (error) {
+        console.log('Checking iframe content failed:', error);
       }
     };
-  }, []);
+
+    checkTimer = setInterval(checkIframeContent, checkInterval);
+
+    return () => {
+      mounted = false;
+      clearInterval(checkTimer);
+    };
+  }, [viewerUrl, retryCount, maxRetries, checkInterval, isOfficeFile]);
+
+  const handleLoad = () => {
+    // For Office files, clear loading state immediately on load
+    if (isOfficeFile) {
+      setIsLoading(false);
+      return;
+    }
+
+    if (iframeRef.current) {
+      try {
+        const iframeDoc = iframeRef.current.contentDocument || 
+                         iframeRef.current.contentWindow?.document;
+        if (iframeDoc && iframeDoc.body.children.length > 0) {
+          setIsLoading(false);
+        }
+      } catch (error) {
+        console.log('Load handler failed:', error);
+      }
+    }
+  };
+
+  
 
   return (
-    <ViewerContainer>
-      <PdfViewerComponent
-        ref={viewerRef}
-        documentPath={documentUrl}
-        serviceUrl="https://services.syncfusion.com/react/production/api/pdfviewer"
-        enableDownload={true}
-        enablePrint={true}
-        height={'100%'}
-        width={'100%'}
-      >
-        <Inject services={[
-          Toolbar,
-          Magnification,
-          Navigation,
-          Annotation,
-          LinkAnnotation,
-          BookmarkView,
-          ThumbnailView,
-          Print,
-          TextSelection,
-          TextSearch,
-          FormFields,
-          FormDesigner
-        ]} />
-      </PdfViewerComponent>
-    </ViewerContainer>
+    <PDFContainer>
+      {(isLoading && isOfficeFile) && <div className="loader">Loading document...</div>}
+      <iframe
+        ref={iframeRef}
+        src={viewerUrl}
+        onLoad={handleLoad}
+        title="Document Viewer"
+      />
+    </PDFContainer>
   );
 };
 

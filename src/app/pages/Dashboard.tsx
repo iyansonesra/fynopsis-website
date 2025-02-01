@@ -13,7 +13,7 @@ import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area";
 import logo from '../assets/fynopsis_noBG.png'
 import { useState, useEffect, Key } from "react"
-import StockSearch from "./StockSearch";
+// import StockSearch from "./StockSearch";
 import Settings from "./Settings";
 import { useAuthenticator } from '@aws-amplify/ui-react';
 import { Sun, Moon } from "lucide-react";
@@ -166,6 +166,8 @@ export default function GeneralDashboard() {
             const { body } = await restOperation.response;
             const responseText = await body.text();
             const response = JSON.parse(responseText);
+
+            console.log('Response:', response);
 
 
             // Update data rooms from the response
@@ -395,22 +397,25 @@ export default function GeneralDashboard() {
                                 <Plus className="mr-2 h-4 w-4" /> Add Dataroom
                             </Button>
                         </div>
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        <div className="flex flex-wrap gap-4">
                             {dataRooms.map((room) => (
-                                <DataRoomCard
-                                    key={room.id}
-                                    id={room.id || ''}
-                                    title={room.title}
-                                    lastOpened={room.lastOpened}
-                                    permissionLevel={room.permissionLevel}
-                                    sharedBy={room.sharedBy || ''}
-                                    onClick={() => handleDataRoomClick(room.id)}
-                                />
+                                <div key={room.id} className="w-[400px]">
+                                    <DataRoomCard
+                                        id={room.id || ''}
+                                        title={room.title}
+                                        lastOpened={room.lastOpened}
+                                        permissionLevel={room.permissionLevel}
+                                        sharedBy={room.sharedBy || ''}
+                                        onClick={() => handleDataRoomClick(room.id)}
+                                    />
+                                </div>
                             ))}
                         </div>
 
+
+
                         <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-                            <DialogContent className="dark:bg-darkbg dark:text-white border-none"> 
+                            <DialogContent className="dark:bg-darkbg dark:text-white border-none">
                                 <DialogHeader>
                                     <DialogTitle>Create New Dataroom</DialogTitle>
                                 </DialogHeader>
@@ -437,10 +442,10 @@ export default function GeneralDashboard() {
                             invitedDatarooms.map((room) => (
                                 <div
                                     key={room.bucketId}
-                                    className="bg-white  dark:bg-gray-800 rounded-lg shadow p-4 mb-3 border border-gray-100"
+                                    className="bg-white  dark:bg-gray-800 rounded-lg shadow p-4 mb-3 border border-gray-100 dark:border-none"
                                 >
-                                    <h3 className="font-medium text-sm">{room.bucketName}</h3>
-                                    <p className="text-xs text-gray-500 mt-1 dark:text-white">
+                                    <h3 className="font-medium text-sm dark:text-white">{room.bucketName}</h3>
+                                    <p className="text-xs text-gray-500 mt-1 dark:text-slate-300">
                                         Shared by: {room.sharedBy}
                                     </p>
                                     <div className="flex gap-2 mt-3">

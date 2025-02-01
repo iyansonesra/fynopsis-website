@@ -1,4 +1,4 @@
-import { Library, Users, TrendingUp, LucideIcon, ChevronRight, Lock } from 'lucide-react';
+import { Library, Users, TrendingUp, LucideIcon, ChevronRight, Lock, PersonStanding, ArrowRight, Linkedin } from 'lucide-react';
 import React, { useRef, useEffect, useState } from 'react';
 import logo from "../assets/fynopsis_noBG.png"
 import FadeInSlideUp from './../../components/animation/FadeInSlideUp';
@@ -12,7 +12,12 @@ import { NeonGradientCard } from '@/components/ui/neon-gradient-card';
 import GradientBox from '@/components/ui/gradient-card';
 import { Database, ChevronsUp } from 'lucide-react';
 import { TimelineDemo } from '@/components/ui/timeline-demo';
-
+import ChangeLogDemo from '@/components/animation/ChangeLogDemo';
+import CircleBurstAnimation from '@/components/animation/CircleAnimation';
+import FlowingLine from '@/components/animation/Squiggle';
+import AnimatedGradientBackground from '@/components/ui/animated-gradient-background';
+import { Separator } from '@/components/ui/separator';
+import { post } from 'aws-amplify/api';
 
 interface Tab {
     icon: LucideIcon;
@@ -29,6 +34,10 @@ const FrontPage: React.FC = () => {
     const [activeTab, setActiveTab] = useState<number | null>(null);
     const [indicatorStyle, setIndicatorStyle] = useState<IndicatorStyle>({} as IndicatorStyle);
     const tabRefs = useRef<(HTMLDivElement | null)[]>([]);
+    const [email, setEmail] = useState('');
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    const [submitError, setSubmitError] = useState('');
+    const [submitSuccess, setSubmitSuccess] = useState(false);
 
     const tabs: Tab[] = [
         { icon: Library, label: 'Library' },
@@ -36,6 +45,66 @@ const FrontPage: React.FC = () => {
         { icon: TrendingUp, label: 'Trending' }
     ];
 
+    const handleDemoRequest = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!email) return;
+
+        setIsSubmitting(true);
+        setSubmitError('');
+        setSubmitSuccess(false);
+
+        try {
+            const restOperation = post({
+                apiName: 'S3_API',
+                path: '/waitlist',
+                options: {
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: {
+                        email: email
+                    }
+                }
+            });
+
+            await restOperation.response;
+            setSubmitSuccess(true);
+            setEmail('');
+        } catch (error) {
+            console.error('Error submitting demo request:', error);
+            setSubmitError('Failed to submit request. Please try again.');
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
+    const EmailInputSection = () => (
+        <div className="flex flex-col lg:flex-row justify-center items-center lg:gap-0 gap-4 text-center w-full">
+            <HoverBorderGradient
+                containerClassName="rounded-full"
+                as="form"
+                onSubmit={handleDemoRequest}
+                className="text-black dark:text-white flex items-center"
+            >
+                <input 
+                    type="email" 
+                    placeholder="Enter your email" 
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className="w-72 md:w-80 lg:w-96 py-2 px-4 outline-none rounded-full bg-transparent border-white border-opacity-50 border text-white placeholder-white placeholder-opacity-50 z-20" 
+                />
+                <button 
+                    type="submit"
+                    disabled={isSubmitting}
+                    className={`bg-gradient-to-r from-[#1e6aa3] via-[#3148b3] to-[#003580] w-48 lg:w-48 text-white rounded-full py-3 px-6 ml-2 hover:opacity-90 transition-all ${isSubmitting ? 'opacity-50 cursor-not-allowed' : ''}`}
+                >
+                    {isSubmitting ? 'Submitting...' : 'Request a Demo'}
+                </button>
+            </HoverBorderGradient>
+            {submitError && <p className="text-red-500 mt-2">{submitError}</p>}
+            {submitSuccess && <p className="text-green-500 mt-2">Thank you for your interest! We&apos;ll be in touch soon.</p>}
+        </div>
+    );
 
     useEffect(() => {
         if (activeTab !== null && tabRefs.current[activeTab]) {
@@ -51,12 +120,15 @@ const FrontPage: React.FC = () => {
 
 
     return (
-        <div className="relative min-h-screen w-full">
+        <div className="relative min-h-screen w-full overflow-hidden">
             <div className="absolute inset-0">
                 <div className="w-full h-full bg-black" />
             </div>
 
             <div className="relative z-10 w-full">
+                <FlowingLine amplitude={1000} className=' absolute top-[40%] w-full rotate-180' />
+                <FlowingLine amplitude={700} className=' absolute top-[66%] md:top-[64%] w-full rotate-140' />
+
                 <AnimatedGridPattern
                     numSquares={30}
                     maxOpacity={0.1}
@@ -87,12 +159,12 @@ const FrontPage: React.FC = () => {
                             >
                                 Log in
                             </button>
-                            <button
+                            {/* <button
                                 className="px-4 py-2 text-sm font-medium text-white bg-black rounded-lg hover:bg-gray-800 transition-colors"
-                                onClick={() => router.push('/signup')}
+                                onClick={() => router.push('/signin')}
                             >
                                 Sign up
-                            </button>
+                            </button> */}
                         </div>
                     </div>
                 </div>
@@ -118,15 +190,7 @@ const FrontPage: React.FC = () => {
                                 Search and organize thousands of documents in seconds, so you can focus on what matters.
                             </h1>
                             <div className="flex flex-col lg:flex-row justify-center items-center lg:gap-0 gap-4 text-center w-full mt-4">
-                                <HoverBorderGradient
-                                    containerClassName="rounded-full"
-                                    as="button"
-                                    className=" text-black dark:text-white flex items-center"
-                                >
-                                    <input type="text" placeholder="Enter your email" className="w-72 md:w-80 lg:w-96 py-2 px-4 outline-none rounded-full bg-transparent border-white border-opacity-50 border text-white placeholder-white placeholder-opacity-50 z-20" />
-
-                                </HoverBorderGradient>
-                                <button className="bg-gradient-to-r from-[#1e6aa3] via-[#3148b3] to-[#003580] w-48 lg:w-48 text-white rounded-full py-3 px-6 ml-2 hover:opacity-90 transition-all">Request a Demo</button>
+                                <EmailInputSection />
                             </div>
                         </div>
 
@@ -146,74 +210,44 @@ const FrontPage: React.FC = () => {
                     </div>
 
                     <div className="mt-12 flex flex-col items-center justify-center w-full  gap-4 z-40">
-                    
+
                         <div
                             className={
-                                "mt-8 flex  w-[80%] flex-col gap-4 lg:flex-row  z-40"
+                                "mt-8 xl:mt-16 2xl:mt-24 flex  w-[80%] flex-col gap-4 lg:flex-row  z-40"
                             }
                         >
 
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 w-full">
-                                <FadeInSlideUp>
-                                    <div className="relative rounded-lg shadow-md h-64  bg-transparent relative overflow-hidden flex flex-col">
+                                <FadeInSlideUp className="md:col-span-2">
+                                    <div className="relative rounded-lg shadow-md h-64  relative overflow-hidden flex flex-col">
                                         <div className="absolute inset-0 [mask-image:radial-gradient(100px,transparent_20%,green)]" />
 
-                                        <h1 className="text-6xl text-left font-semibold font-cormorant text-white">
+                                        <h1 className="text-6xl 2xl:text-7xl text-left font-semibold font-cormorant text-white">
                                             Do more with more of your{' '}
                                             <span className="bg-gradient-to-r from-[#38B6FF] to-[#004AAD] bg-clip-text text-transparent">
-                                                Data.
+                                                Files.
                                             </span>
                                         </h1>
                                     </div>
                                 </FadeInSlideUp>
                                 <FadeInSlideUp>
-                                    <div className=" lg:flex hidden p-4 rounded-lg shadow-md h-64  bg-transparent relative overflow-hidden">
-                                    </div>
-                                </FadeInSlideUp>
-                                <FadeInSlideUp>
-                                    <GradientBox hasGradient={true} title='Easy Data Decisions' icon={<Database />} />
+                                    <GradientBox hasGradient={true} title='Easy Data Decisions' subtitle="Leverage AI Powered Insights and Analysis To Make Well-Informed Decisions" icon={<Database />} />
 
                                 </FadeInSlideUp>
 
                                 <FadeInSlideUp>
-                                    <GradientBox hasGradient={false} title='Boost Speed & Efficiency' icon={<ChevronsUp />} />
+                                    <GradientBox hasGradient={false} title='Boost Efficiency' subtitle='Turn 3-Month Deal Times Into 3 Weeks With Optimized Dataroom Workflows' icon={<ChevronsUp />} />
                                 </FadeInSlideUp>
 
                                 <FadeInSlideUp>
-                                    <GradientBox hasGradient={true} title='Effortless Personalization' />
-
-                                </FadeInSlideUp>
-
-                                <FadeInSlideUp>
-                                    <GradientBox hasGradient={false} title='Secure & Reliable' icon={<Lock/>}/>
+                                    <GradientBox hasGradient={true} subtitle="Do Away With Document Clutter. Sort Dataroom File Structure Any Way You Like" title='Effortless Personalization' icon={<PersonStanding />} />
 
                                 </FadeInSlideUp>
 
                                 <FadeInSlideUp>
-                                    <div className="lg:flex hidden border border-white border-opacity-20 p-4 rounded-lg shadow-md h-64 bg-transparent relative overflow-hidden">
-                                    </div>
-                                </FadeInSlideUp>
-
-                                <FadeInSlideUp>
-                                    <GradientBox hasGradient={false} title='Future Proof' />
+                                    <GradientBox hasGradient={false} title='Secure & Reliable' subtitle="Safely Send Thousands of Documents with SOC 2 Compliant Storage" icon={<Lock />} />
 
                                 </FadeInSlideUp>
-
-                                <FadeInSlideUp>
-                                    <div className="lg:flex hidden border border-white border-opacity-20 p-4 rounded-lg shadow-md h-64 bg-transparent relative overflow-hidden">
-                                    </div>
-                                </FadeInSlideUp>
-
-
-
-
-
-
-
-
-
-
-
                             </div>
                         </div>
 
@@ -222,11 +256,91 @@ const FrontPage: React.FC = () => {
                     </div>
 
                 </div>
-                <div className='w-full min-h-screen flex flex-col gap-4 '>
-                    <TimelineDemo />
+                <div className='w-full min-h-screen flex flex-col gap-4 mt-16 items-center justify-center'>
+                    <div className="flex md:flex-row flex-col w-[80%] ">
+                        <div className="flex flex-1 md:max-w-[50%]">
+                            <div className="flex-1 flex-col max-w-[100%] flex justify-center items-center ">
+                                <h1 className="md:text-left text-center text-5xl 2xl:text-6xl font-semibold mb-2 text-white font-cormorant">Stay in the Loop with  <span className="bg-gradient-to-r from-[#38B6FF] to-[#004AAD] bg-clip-text text-transparent">
+                                    Smart
+                                </span> Document Digests</h1>
+                                <h1 className="md:text-left text-center text-xl 2xl:text-2xl font-montserrat text-slate-300 font-thin">Get instant, AI-powered summaries of document changes and updates across your data room, ensuring you never miss critical modifications.</h1>
+                            </div>
+
+                        </div>
+                        <div className="flex flex-1 md:max-w-[50%]">
+                            <ChangeLogDemo />
+                        </div>
+
+
+                    </div>
 
 
                 </div>
+
+                <div className='w-full min-h-screen flex flex-col gap-4 mt-16 items-center justify-center'>
+                    <div className="flex md:flex-row flex-col-reverse w-[80%] ">
+                        <div className="md:mt-0 mt-8 flex flex-1 md:max-w-[50%]">
+                            <CircleBurstAnimation />
+                        </div>
+
+                        <div className="flex flex-1 md:max-w-[50%]">
+                            <div className="flex-1 max-w-[100%]">
+                                <h1 className="md:text-right text-center text-5xl 2xl:text-6xl font-semibold font-cormorant mb-2 text-white">Smart Document Tagging &  <span className="bg-gradient-to-r from-[#38B6FF] to-[#004AAD] bg-clip-text text-transparent">
+                                    Instant
+                                </span> Summaries</h1>
+                                <h1 className="md:text-right text-center text-xl 2xl:text-2xl font-montserrat font-thin text-slate-300">Every document is automatically categorized and condensed, turning complex files into clear, searchable insights in seconds</h1>
+
+                            </div>
+                        </div>
+
+
+                    </div>
+
+
+                </div>
+
+                <div className="relative flex justify-center flex-col items-center w-full mt-8 pb-48">
+
+                    <FadeInSlideUp className='flex justify-center items-center flex-col'>
+                        <h1 className="text-5xl font-semibold w-[60%] text-center mb-2 font-cormorant text-gray-200">The future of document storage is here. Don&apos;t miss out.</h1>
+
+                    </FadeInSlideUp>
+                    <FadeInSlideUp className="flex justify-center items-center flex-col">
+                        <h1 className="font-montserrat text-2xl font-thin text-gray-200">Get early access today</h1>
+                    </FadeInSlideUp>
+
+                    <div className="flex flex-col lg:flex-row justify-center items-center lg:gap-0 gap-4 text-center w-full mt-4">
+                        <EmailInputSection />
+                    </div>
+                </div>
+
+                <div className="w-full flex justify-center items-center flex-col">
+                    <div className="flex flex-row py-6 gap-[48rem]">
+                        <div className="flex flex-row items-center">
+                            <img src={logo.src} alt="logo" className="md:h-6 md:w-auto w-[10%] h-auto" />
+                            <h1 className="font-semibold text-xl sm:text-2xl md:text-lg font-montserrat text-gray-200">Fynopsis</h1>
+                        </div>
+
+                        <div className="flex flex-row items-center gap-4">
+                            <a href="https://www.linkedin.com/company/fynopsis-ai">
+                                <Linkedin className="w-6 h-6 text-white" />
+                            </a>
+                        </div>
+                    </div>
+
+
+                    <Separator className="bg-gray-700 w-[95%] text-gray-200" />
+                    <div className="flex flex-row items-center justify-center gap-6 py-4 px-4 text-gray-500 " >
+
+                        <h1>© 2025 Fynopsis All rights reserved.</h1>
+                        <h1>Privacy Policy</h1>
+                        <h1>Terms of Service</h1>
+                    </div>
+
+
+                </div>
+
+
 
             </div>
         </div>

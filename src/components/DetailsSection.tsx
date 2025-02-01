@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { ArrowLeft, ArrowUp, BadgeInfo, FileText, Search } from 'lucide-react';
+import { ArrowLeft, ArrowUp, BadgeInfo, FileText, Footprints, Plus, PlusCircle, Search } from 'lucide-react';
 import { Input, Skeleton } from '@mui/material';
 import { Button } from './ui/button';
 import { post, get } from 'aws-amplify/api';
@@ -17,8 +17,19 @@ import { Credentials } from '@aws-sdk/types';
 import { TbH1 } from 'react-icons/tb';
 import logo from './../app/assets/fynopsis_noBG.png'
 import '../components/temp.css';
-import loadingAnimation from './../app/assets/fyn_loading.svg'
+import loadingAnimation from './../app/assets/fynopsis_animated.svg'
+import staticImage from './../app/assets/fynopsis_static.svg'
 import { Separator } from './ui/separator';
+import { usePathname } from 'next/navigation';
+import {
+    Accordion,
+    AccordionContent,
+    AccordionItem,
+    AccordionTrigger,
+} from "@/components/ui/accordion";
+import { TextShimmer } from './ui/text-shimmer';
+import { AIInputWithSearch } from './ui/ai-input-with-search';
+import { useS3Store } from './fileService';
 
 // import { w3cwebsocket as W3CWebSocket } from "websocket";
 // import { Signer } from '@aws-amplify/core';
@@ -30,11 +41,42 @@ interface SearchResponse {
     thread_id: string;
 }
 
+interface TableFile {
+    id: string;
+    name: string;
+    type: string;
+    size: string;
+    date: string;
+    uploadedBy: string;
+    s3Key: string;
+    s3Url: string;
+    uploadProcess: string;
+    status: "success";
+    summary?: string;
+}
+
 interface DetailsSectionProps {
     showDetailsView: boolean;
     setShowDetailsView: (show: boolean) => void;
     selectedFile: any;
-    onFileSelect: (file: { id: string; name: string; s3Url: string; }) => void;
+    onFileSelect: (file: FileSelectProps) => void;  // Changed type
+    tableData: TableFile[];  // Add this prop
+}
+
+// Add new interface for onFileSelect properties
+interface FileSelectProps {
+    id: string;
+    name: string;
+    s3Url: string;
+    type?: string;
+    size?: string;
+    status?: "success";
+    date?: string;
+    uploadedBy?: string;
+    s3Key?: string;
+    uploadProcess?: string;
+    summary?: string;
+    tags?: string[];
 }
 
 const getIdToken = async () => {
@@ -67,7 +109,13 @@ const getUserPrefix = async () => {
 const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
     setShowDetailsView,
     selectedFile,
-    onFileSelect }) => {
+    onFileSelect,
+    tableData }) => {
+    // Add debug logging for props
+    useEffect(() => {
+        console.log('DetailSection - Received table data:', tableData);
+    }, [tableData]);
+
     const [isLoading, setIsLoading] = useState(false);
     const [searchResults, setSearchResults] = useState('');
     const [error, setError] = useState<string | null>(null);
@@ -75,17 +123,28 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
     const [loadingSource, setLoadingSource] = useState<string | null>(null);
     const [messageBuffer, setMessageBuffer] = useState('');
     const [sourceUrls, setSourceUrls] = useState<string[]>([]);
+    const [currentThreadId, setCurrentThreadId] = useState<string>('');
+    const [isAnswerLoading, setIsAnswerLoading] = useState(false);
+    const [isWebSocketActive, setIsWebSocketActive] = useState(false);
+
+    // Add selector for S3Store
+    const s3Objects = useS3Store(state => state.objects);
 
     const handleSourceCardClick = async (sourceUrl: string) => {
+        console.log('DetailSection - Source clicked:', sourceUrl);
         const bucketUuid = window.location.pathname.split('/').pop() || '';
         try {
-            const s3Key = sourceUrl;
+            // First check if file exists in s3Objects
+            const s3Object = s3Objects.find(obj => obj.key === sourceUrl);
+            console.log('DetailSection - Found S3 object:', s3Object);
+
+            // Get the signed URL
             const downloadResponse = await get({
                 apiName: 'S3_API',
                 path: `/s3/${bucketUuid}/download-url`,
                 options: {
                     withCredentials: true,
-                    queryParams: { path: s3Key }
+                    queryParams: { path: sourceUrl }
                 }
             });
 
@@ -93,25 +152,54 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
             const responseText = await body.text();
             const { signedUrl } = JSON.parse(responseText);
 
-            const fileObject = {
-                id: sourceUrl.split('/').pop() || '',
-                name: sourceUrl.split('/').pop() || '',
-                s3Url: signedUrl,
-                type: sourceUrl.split('.').pop()?.toUpperCase() || 'Unknown',
-                size: 0,
-                status: "success" as const,
-                date: '',
-                uploadedBy: 'Unknown',
-                s3Key: s3Key
-            };
+            if (s3Object) {
+                // If file exists in s3Objects, use its metadata
+                const metadata = s3Object.metadata;
+                onFileSelect({
+                    id: metadata.Metadata?.id || sourceUrl.split('/').pop() || '',
+                    name: metadata.Metadata?.originalname || sourceUrl.split('/').pop() || '',
+                    s3Url: signedUrl,
+                    type: sourceUrl.split('.').pop()?.toUpperCase() || 'Unknown',
+                    size: formatFileSize(metadata.ContentLength || 0),
+                    status: "success",
+                    date: metadata.LastModified || '',
+                    uploadedBy: metadata.Metadata?.uploadbyname || 'Unknown',
+                    s3Key: sourceUrl,
+                    uploadProcess: metadata.Metadata?.pre_upload || 'COMPLETED',
+                    summary: metadata.Metadata?.document_summary || ''
+                });
+            } else {
+                // Fallback to basic file info if not found
+                const fileName = sourceUrl.split('/').pop() || '';
+                const fileObject = {
+                    id: fileName,
+                    name: fileName,
+                    s3Url: signedUrl,
+                    type: fileName.split('.').pop()?.toUpperCase() || 'Unknown',
+                    size: '0',
+                    status: "success" as const,
+                    date: '',
+                    uploadedBy: 'Unknown',
+                    s3Key: sourceUrl,
+                    uploadProcess: 'COMPLETED',
+                    tags: []
+                };
 
-            onFileSelect(fileObject);
+                onFileSelect(fileObject);
+            }
         } catch (error) {
-            console.error('Error handling source card click:', error);
+            console.error('DetailSection - Error handling source click:', error);
         }
     };
 
-
+    // Helper function to format file size
+    const formatFileSize = (bytes: number): string => {
+        if (bytes === 0) return '0 B';
+        const units = ['B', 'KB', 'MB', 'GB', 'TB'];
+        const k = 1024;
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + units[i];
+    };
 
     const addOn = getUserPrefix();
     const S3_BUCKET_NAME = `vdr-documents/${addOn}`;
@@ -229,9 +317,16 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
 
 
 
-    const queryAllDocuments = async (searchTerm: string) => {
+    const queryAllDocuments = async (searchTerm: string, withReasoning: boolean) => {
         try {
+            // Don't allow new queries while WebSocket is active
+            // if (isWebSocketActive) {
+            //     return;
+            // }
+
+            setIsWebSocketActive(true);
             setIsLoading(true);
+            setMessages(prev => [...prev, { type: 'question', content: searchTerm }]);
             setSearchResult({
                 response: '',
                 sources: {},
@@ -239,7 +334,7 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
             });
 
             const bucketUuid = window.location.pathname.split('/').pop() || '';
-            const websocketHost = `${process.env.SEARCH_API_CODE}.execute-api.us-east-1.amazonaws.com`;
+            const websocketHost = 'gh1md77cx1.execute-api.us-east-1.amazonaws.com';
 
             const idToken = await getIdToken();
             if (!idToken) {
@@ -266,31 +361,44 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
                 ws.onopen = () => {
                     console.log('WebSocket connected successfully');
                     // Send query once connected
-                    ws.send(JSON.stringify({
-                        action: 'query',
-                        data: {
-                            collection_name: bucketUuid,
-                            query: searchTerm
-                        }
-                    }));
+                    
+
+                    if (currentThreadId) {
+                        ws.send(JSON.stringify({
+                            action: 'query',
+                            data: {
+                                thread_id: currentThreadId,
+                                collection_name: bucketUuid,
+                                query: searchTerm,
+                                use_reasoning: withReasoning
+                            }
+                        }));
+                    }
+                    else {
+                        ws.send(JSON.stringify({
+                            action: 'query',
+                            data: {
+                                collection_name: bucketUuid,
+                                query: searchTerm,
+                                use_reasoning: withReasoning
+                            }
+                        }));
+                    }
                 };
 
                 ws.onmessage = (event) => {
+                    // console.log('WebSocket message:', event.data);
                     try {
                         const data = JSON.parse(event.data);
                         if (data.type === 'content') {
-                            setIsLoading(false);
-                            const words = data.content.split(/(\s+)/);
-                            
-                            setCurrentBatch(prevBatch => {
-                                const newBatch = [...prevBatch, ...words];
-                                if (newBatch.length >= 8) {
-                                    setContentBatches(prev => [...prev, newBatch.join('')]);
-                                    return [];
-                                }
-                                return newBatch;
-                            });
-                            
+                            // Check if this is the last message
+                            if (data.content.includes('</sources>')) {
+                                setIsWebSocketActive(false);
+                                setIsLoading(false);
+                            }
+                            if (data.thread_id) {
+                                setCurrentThreadId(data.thread_id);
+                            }
                             setSearchResult(prevResult => ({
                                 response: (prevResult?.response || '') + data.content,
                                 sources: data.sources || {},
@@ -299,10 +407,14 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
                         }
                     } catch (error) {
                         console.error('Error processing message:', error);
+                        setIsWebSocketActive(false);
+                        setIsLoading(false);
                     }
                 };
 
                 ws.onerror = (error) => {
+                    setIsWebSocketActive(false);
+                    setIsLoading(false);
                     console.log('WebSocket Error:', error);
                     console.error('WebSocket Error Details:', {
                         error,
@@ -314,6 +426,8 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
 
 
                 ws.onclose = (event) => {
+                    setIsWebSocketActive(false);
+                    setIsLoading(false);
                     console.log('WebSocket closed:', {
                         code: event.code,
                         reason: event.reason,
@@ -323,11 +437,20 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
             });
 
         } catch (err) {
+            setIsWebSocketActive(false);
             console.error('Error querying collection:', err);
             setError('Failed to fetch search results. Please try again.');
             setIsLoading(false);
         }
     };
+
+    useEffect(() => {
+        // Reset WebSocket state if component unmounts during active query
+        return () => {
+            setIsWebSocketActive(false);
+            setIsLoading(false);
+        };
+    }, []);
 
     const fadeInAnimation = `
     @keyframes fadeIn {
@@ -340,6 +463,15 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
         opacity: 0;
     }
 `;
+
+    const items = [
+        {
+            id: "1",
+            title: "What makes Origin UI different?",
+            content:
+                "Origin UI focuses on developer experience and performance. Built with TypeScript, it offers excellent type safety, follows accessibility standards, and provides comprehensive documentation with regular updates.",
+        },
+    ];
 
     const querySingleDocument = async (fileKey: string | number | boolean, searchTerm: any) => {
         // const userPrefix = await getUserPrefix();
@@ -376,52 +508,287 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
         textarea.style.height = `${textarea.scrollHeight}px`;
     }
 
-    const [messages, setMessages] = useState<Array<{
-        type: 'question' | 'answer',
-        content: string,
-        sources?: Record<string, any>
-    }>>([]);
+    interface Message {
+        type: 'question' | 'answer' | 'error';
+        content: string;
+        sources?: Record<string, any>;
+        steps?: string[];  // Add steps to the message interface
+    }
+
+    const [messages, setMessages] = useState<Message[]>([]);
 
     const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
         if (e.key === 'Enter') {
             setIsLoading(true);
             const query = inputValue.trim();
-            setMessages(prev => [...prev, { type: 'question', content: query }]);
-            queryAllDocuments(query);
+            
+            // queryAllDocuments(query);
             // //   handleSearch(query);
             setInputValue('');
         }
     };
 
-    const [contentBatches, setContentBatches] = useState<string[]>([]);
-    const [currentBatch, setCurrentBatch] = useState<string[]>([]);
 
-    // Modify the useEffect for searchResult
+    const [inThoughts, setInThoughts] = useState(true);
+    const [inAnswer, setInAnswer] = useState(false);
+    const [inSource, setInSource] = useState(false);
+    const [generatingSources, setGeneratingSources] = useState(false);
+    const [isGeneratingComplete, setIsGeneratingComplete] = useState(false);
+
+    const [stepsTaken, setStepsTaken] = useState<string[]>([]);
+
+    const [thoughts, setThoughts] = useState('');
+
+    const pathname = usePathname();
+
+    const bucketUuid = pathname.split('/').pop() || '';
+
+
+
     useEffect(() => {
         if (searchResult && searchResult.response) {
-            const cleanedContent = searchResult.response.replace(/{.*}/s, '').trim();
-            setDisplayedContent(cleanedContent); // Set the full content immediately
-            setMessages(prev => {
-                const newMessages = [...prev];
-                if (newMessages.length > 0 && newMessages[newMessages.length - 1].type === 'answer') {
-                    newMessages[newMessages.length - 1] = {
-                        type: 'answer',
-                        content: cleanedContent,
-                        sources: searchResult.sources
+            setIsAnswerLoading(true);  // Start loading when processing begins
+            let response = searchResult.response;
+
+            // Helper function to extract content between tags
+            const extractContent = (text: string, startTag: string, endTag: string) => {
+                const startIndex = text.indexOf(startTag);
+                const endIndex = text.indexOf(endTag);
+                if (startIndex === -1) return null;
+                
+                // If we have start tag but no end tag, return all content after start tag
+                if (endIndex === -1) {
+                    return {
+                        content: text.substring(startIndex + startTag.length),
+                        remaining: '',
+                        isComplete: false
                     };
-                } else {
-                    newMessages.push({
-                        type: 'answer',
-                        content: cleanedContent,
-                        sources: searchResult.sources
-                    });
                 }
-                return newMessages;
-            });
+                
+                // Make sure we include the end tag in the removal
+                const content = text.substring(startIndex + startTag.length, endIndex).trim();
+                const remaining = text.substring(endIndex + endTag.length).trim();
+                return { content, remaining, isComplete: true };
+            };
+
+            // Process error section first since it takes precedence
+            const errorResult = extractContent(response, '<error>', '</error>');
+            if (errorResult) {
+                setMessages(prev => {
+                    const newMessages = [...prev];
+                    const lastMessage = newMessages.length > 0 ? newMessages[newMessages.length - 1] : null;
+                    
+                    if (lastMessage?.type === 'error' && !errorResult.isComplete) {
+                        // Update existing error message
+                        lastMessage.content = errorResult.content;
+                    } else if (errorResult.isComplete) {
+                        // Only add new error message if we have complete content
+                        // and last message wasn't an error
+                        if (!lastMessage || lastMessage.type !== 'error') {
+                            newMessages.push({
+                                type: 'error',
+                                content: errorResult.content
+                            });
+                        } else {
+                            // Update existing error with complete content
+                            lastMessage.content = errorResult.content;
+                        }
+                    }
+                    return newMessages;
+                });
+
+                if (errorResult.isComplete) {
+                    // Only update response if we have a complete error tag
+                    response = errorResult.remaining;
+                }
+                
+                // If we have an error (complete or not), stop processing
+                setIsAnswerLoading(false);  // Stop loading on error
+                setIsLoading(false);
+                setIsWebSocketActive(false);
+                return;
+            }
+
+            // Process sources section first since it's JSON
+            // const sourcesResult = extractContent(response, '<sources>', '</sources>');
+            // if (sourcesResult) {
+            //     if (sourcesResult.isComplete) {
+            //         try {
+            //             // Try to parse the accumulated JSON string
+            //             const sourcesJson = JSON.parse(sourcesResult.content);
+            //             const extractedUrls: string[] = [];
+                        
+            //             // Process each key-value pair in the JSON
+            //             Object.entries(sourcesJson).forEach(([key, value]) => {
+            //                 if (key.includes(bucketUuid)) {
+            //                     extractedUrls.push(key);
+            //                 }
+            //             });
+
+            //             if (extractedUrls.length > 0) {
+            //                 setMessages(prev => {
+            //                     const newMessages = [...prev];
+            //                     if (newMessages.length > 0) {
+            //                         const lastMessage = newMessages[newMessages.length - 1];
+            //                         if (lastMessage.type === 'answer') {
+            //                             const sourcesObject: Record<string, any> = {};
+            //                             extractedUrls.forEach(url => {
+            //                                 sourcesObject[url] = sourcesJson[url] || {};
+            //                             });
+            //                             lastMessage.sources = sourcesObject;
+            //                         }
+            //                     }
+            //                     return newMessages;
+            //                 });
+            //             }
+            //             setGeneratingSources(false);
+            //             response = sourcesResult.remaining;
+            //         } catch (error) {
+            //             // If JSON parsing fails, it means we're still receiving the JSON string
+            //             console.log("Incomplete JSON in sources:", sourcesResult.content);
+            //         }
+            //     } else {
+            //         // Still receiving sources content
+            //         setGeneratingSources(true);
+            //     }
+            // }
+
+            // Process thinking section
+            const thinkResult = extractContent(response, '<think>', '</think>');
+            if (thinkResult) {
+                if (thinkResult.isComplete) {
+                    const thoughtLines = thinkResult.content
+                        .split('\n')
+                        .map(line => line.trim())
+                        .filter(line => line.length > 0)
+                        .map(line => line.replace(/^\d+\.\s*/, ''));
+
+                    setThoughts(thinkResult.content);
+                    setStepsTaken(thoughtLines);
+                    response = thinkResult.remaining;
+                } else {
+                    // Still receiving thinking content
+                    setThoughts(thinkResult.content);
+                }
+            }
+
+            // Process answer section
+            const answerResult = extractContent(response, '<answer>', '</answer>');
+            if (answerResult) {
+                setMessages(prev => {
+                    const newMessages = [...prev];
+                    const lastMessage = newMessages.length > 0 ? newMessages[newMessages.length - 1] : null;
+                    
+                    const messageContent = {
+                        type: 'answer' as const,
+                        content: answerResult.content,
+                        sources: searchResult.sources,
+                        steps: thinkResult?.isComplete ? stepsTaken : undefined
+                    };
+
+                    if (lastMessage?.type === 'answer') {
+                        newMessages[newMessages.length - 1] = messageContent;
+                    } else {
+                        newMessages.push(messageContent);
+                    }
+                    return newMessages;
+                });
+
+                if (answerResult.isComplete) {
+                    setIsAnswerLoading(false);  // Stop loading when answer is complete
+                    response = answerResult.remaining;
+                }
+            }
+
+            // Process sources section
+            const sourcesResult = extractContent(response, '<sources>', '</sources>');
+            if (sourcesResult) {
+                if (sourcesResult.isComplete) {
+                    try {
+                        // Try to parse the accumulated JSON string
+                        const sourcesContent = sourcesResult.content.replace(/\n/g, '');
+                        const sourcesJson = JSON.parse(sourcesContent);
+                        const extractedUrls: string[] = [];
+
+                        // Process each key-value pair in the JSON
+                        Object.entries(sourcesJson).forEach(([key, value]) => {
+                            if (key.includes(bucketUuid)) {
+                                extractedUrls.push(key);
+                            }
+                        });
+
+                        if (extractedUrls.length > 0) {
+                            setMessages(prev => {
+                                const newMessages = [...prev];
+                                if (newMessages.length > 0) {
+                                    const lastMessage = newMessages[newMessages.length - 1];
+                                    if (lastMessage.type === 'answer') {
+                                        const sourcesObject: Record<string, any> = {};
+                                        extractedUrls.forEach(url => {
+                                            sourcesObject[url] = sourcesJson[url] || {};
+                                        });
+                                        lastMessage.sources = sourcesObject;
+                                    }
+                                }
+                                return newMessages;
+                            });
+                        }
+                        setGeneratingSources(false);
+                        setIsGeneratingComplete(true);
+                        response = sourcesResult.remaining;
+                    } catch (error) {
+                        // If JSON parsing fails, it means we're still receiving the JSON string
+                        console.log("Incomplete JSON in sources:", sourcesResult.content);
+                        setGeneratingSources(true);
+                    }
+                } else {
+                    // Still receiving sources content
+                    setGeneratingSources(true);
+                }
+            }
+
+            // Handle streaming content that's not within any tags
+            if (!thinkResult && !answerResult && !sourcesResult && response.trim()) {
+                setMessages(prev => {
+                    const newMessages = [...prev];
+                    if (newMessages.length > 0 && newMessages[newMessages.length - 1].type === 'answer') {
+                        newMessages[newMessages.length - 1].content += response.trim();
+                    }
+                    return newMessages;
+                });
+            }
+
+            setIsLoading(false);
         }
-    }, [searchResult]);
+    }, [searchResult, bucketUuid]);
 
     const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+    const SourcesList: React.FC<{ sources: Record<string, any> }> = ({ sources }) => {
+        return (
+            <div className="mt-4">
+                <h3 className="text-sm font-semibold mb-2 dark:text-white">Sources</h3>
+                <div className="flex flex-wrap gap-2">
+                    {Object.entries(sources).map(([key, value], index) => (
+                        <Card
+                            key={index}
+                            className="p-2 inline-block cursor-pointer hover:bg-gray-50 transition-colors dark:bg-darkbg border select-none"
+                            onClick={() => handleSourceCardClick(key)}
+                        >
+                            <CardContent className="p-2">
+                                <div className="flex items-center gap-2">
+                                    <FileText className="h-4 w-4 text-white" />
+                                    <span className="text-sm text-blue-500 dark:text-white select-none">
+                                        {key.split('/').pop()}
+                                    </span>
+                                </div>
+                            </CardContent>
+                        </Card>
+                    ))}
+                </div>
+            </div>
+        );
+    };
 
     const adjustHeight = () => {
         const textarea = textareaRef.current as HTMLTextAreaElement;
@@ -434,55 +801,6 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
     useEffect(() => {
         adjustHeight();
     }, [inputValue]);
-
-    // const TextArea = ({ placeholder, value, onChange }) => {
-    //     const textareaRef = useRef(null);
-
-    //     useEffect(() => {
-    //         if (textareaRef.current) {
-    //             textareaRef.current.style.height = 'auto';
-    //             textareaRef.current.style.height = `${textareaRef.current.scrollHeight}px`;
-    //         }
-    //     }, [value]);
-
-    //     return (
-    //         <textarea
-    //             ref={textareaRef}
-    //             className="w-full min-h-[48px] pl-4 pr-12 py-3 rounded-xl text-sm 
-    //                    border dark:border-slate-600 dark:bg-darkbg dark:text-white 
-    //                    outline-none resize-none overflow-hidden"
-    //             placeholder={placeholder}
-    //             value={value}
-    //             onChange={onChange}
-    //             rows={1}
-    //         />
-    //     );
-    // };
-
-    const [displayedContent, setDisplayedContent] = useState<string>('');
-    const [isNewContentFading, setIsNewContentFading] = useState(false);
-
-    const fadeInStyles = `
-.fade-in {
-    opacity: 0;
-    animation: fadeIn 0.5s ease-in forwards;
-}
-
-@keyframes fadeIn {
-    from { opacity: 0; }
-    to { opacity: 1; }
-}
-`;
-
-    const splitIntoBatches = (text: string, batchSize: number = 15): string[] => {
-        const words = text.split(' ');
-        const batches = [];
-        for (let i = 0; i < words.length; i += batchSize) {
-            batches.push(words.slice(i, i + batchSize).join(' '));
-        }
-        return batches;
-    }
-
 
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const scrollToBottom = () => {
@@ -497,66 +815,135 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
         scrollToBottom();
     }, [messages, searchResult]);
 
+    const renderAnswerHeader = () => (
+        <div className='flex flex-row gap-2 items-center mb-3'>
+            <object 
+                type="image/svg+xml" 
+                data={isAnswerLoading ? loadingAnimation.src : staticImage.src} 
+                className="h-6 w-6"
+            >
+                svg-animation
+            </object>
+            <h1 className='dark:text-white font-semibold'>Answer</h1>
+        </div>
+    );
 
+    const handleClearChat = () => {
+        setMessages([]);
+        setSearchResult(null);
+        setInThoughts(true);
+        setInAnswer(false);
+        setInSource(false);
+        setGeneratingSources(false);
+        setIsGeneratingComplete(false);
+        setCurrentThreadId('');
+        setStepsTaken([]);
+        setThoughts('');
+        setIsWebSocketActive(false);
+        setIsLoading(false);
+        setIsAnswerLoading(false);
+    };
 
     const renderAdvancedSearch = () => {
 
         return (
             <div className="flex flex-col h-full overflow-none dark:bg-darkbg w-full">
+                <div className="absolute top-0 right-0 p-4 z-50">
+                    <PlusCircle 
+                        className="h-5 w-5 text-gray-500 dark:text-gray-400 cursor-pointer hover:text-gray-700 dark:hover:text-gray-300" 
+                        onClick={handleClearChat}
+                    />
+                </div>
                 <ScrollArea
-
-                    className="flex-1 overflow-none w-full px-4"
-
+                    className="flex-1 overflow-none w-full px-4 [mask-image:linear-gradient(to_bottom,white_calc(100%-64px),transparent)]"
                 >
 
                     {messages.map((message, index) => (
                         <div key={index} className="flex flex-col gap-4 mb-4 pl-2" >
                             {message.type === 'question' ? (
                                 <div className="flex items-end  dark:text-white  mt-4">
-                                    <p className="text-2xl font-medium text-white pr-4 rounded-lg">{message.content}</p>
+                                    <p className="text-2xl font-medium dark:text-white pr-4 rounded-lg">{message.content}</p>
+                                </div>
+                            ) : message.type === 'error' ? (
+                                <div className="w-full">
+                                    <div className="mr-auto mb-6 rounded-lg bg-red-50 dark:bg-red-900/10 p-4">
+                                        <div className='flex flex-row gap-2 items-center mb-3'>
+                                            <BadgeInfo className="h-5 w-5 text-red-500" />
+                                            <h1 className='text-red-500 font-semibold'>Error</h1>
+                                        </div>
+                                        <ReactMarkdown className="text-wrap text-sm pr-4 text-red-600 dark:text-red-400 leading-7">
+                                            {message.content}
+                                        </ReactMarkdown>
+                                    </div>
                                 </div>
                             ) : (
-                                <div>
-                                    <div className="mr-auto mb-4 rounded-lg">
-                                        <div className='flex flex-row gap-2 items-center mb-3'>
-                                            <object type="image/svg+xml" data={loadingAnimation.src} className="h-6 w-6">
-                                                svg-animation
-                                            </object>
-                                            <h1 className='dark:text-white font-semibold'>Answer</h1>
+                                <div className="w-full">
+                                    {message.steps && message.steps.length > 0 && (
+                                        <div className="w-full pr-4">
+                                            <Accordion type="single" collapsible className="w-full -space-y-px mb-6">
+                                                <AccordionItem
+                                                    value="steps"
+                                                    className="border bg-background px-4 py-1 rounded-lg dark:bg-darkbg dark:border-slate-800"
+                                                >
+                                                    <AccordionTrigger className="py-1 text-[15px] leading-6 hover:no-underline dark:text-slate-400 flex items-center justify-center ">
+                                                        <div className="flex flex-row gap-2 items-center w-full justify-between pr-2">
+                                                            <div className="flex flex-row gap-2 items-center">
+                                                                <Footprints className="h-4 w-4 text-gray-500" />
+                                                                <h1>Search Steps</h1>
+                                                            </div>
+                                                            <h1 className="text-sm font-light">{message.steps.length} steps</h1>
+                                                        </div>
+                                                    </AccordionTrigger>
+                                                    <AccordionContent className="pb-2 pt-2 text-muted-foreground">
+                                                        {message.steps.map((step, stepIndex) => (
+                                                            <div key={stepIndex} className="flex flex-row gap-2 items-center mb-2">
+                                                                <span className="text-xs text-gray-500">{stepIndex + 1}.</span>
+                                                                <span className="text-xs text-gray-700 dark:text-gray-300 font-normal">
+                                                                    {step}
+                                                                </span>
+                                                            </div>
+                                                        ))}
+                                                    </AccordionContent>
+                                                </AccordionItem>
+                                            </Accordion>
                                         </div>
+                                    )}
 
-                                        <ReactMarkdown className="text-wrap text-sm pr-4 dark:text-white">
+                                    <div className="mr-auto mb-6 rounded-lg">
+                                        {renderAnswerHeader()}
+                                        <ReactMarkdown className="text-wrap text-sm pr-4 dark:text-white leading-7">
                                             {message.content}
                                         </ReactMarkdown>
                                     </div>
                                     <div>
-                                        {sourceUrls.length > 0 && (
-                                            <Card
-                                                className="mt-2 p-2 inline-block cursor-pointer hover:bg-gray-50 transition-colors dark:bg-darkbg border"
-                                                onClick={() => handleSourceCardClick(sourceUrls[sourceUrls.length - 1])}
-                                            >
-                                                <CardContent className="p-2">
-                                                    <div className="flex items-center gap-2">
-                                                        <FileText className="h-4 w-4 text-white" />
-                                                        <span className="text-sm text-blue-500 dark:text-white">
-                                                            {sourceUrls[sourceUrls.length - 1].split('/').pop()}
-                                                        </span>
-                                                    </div>
-                                                </CardContent>
-                                            </Card>
+                                        {!isGeneratingComplete && generatingSources && (
+                                            <div className='flex flex-row gap-2 items-center mb-3'>
+                                                <TextShimmer
+                                                    key="generating-sources"
+                                                    className='text-sm'
+                                                    duration={1}
+                                                >
+                                                    Generating sources...
+                                                </TextShimmer>
+                                            </div>
                                         )}
+                                        {isGeneratingComplete && message.sources && Object.keys(message.sources).length > 0 && (
+                                            <div>
+                                                <SourcesList sources={message.sources} />
+                                            </div>
+                                        )}
+
+
                                     </div>
-                                    <div className="w-full flex items-center justify-center ">
+                                    <div className="w-full flex items-center justify-center mt-4 "></div>
                                         <Separator className="bg-slate-800 w-full" orientation='horizontal' />
-
-
                                     </div>
+                            )
+                            }
 
-                                </div>
-
-                            )}
                         </div>
                     ))}
+
 
                     {isLoading && (
                         <div className='flex flex-row gap-2 items-center mb-3'>
@@ -565,12 +952,6 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
                             </object>
                             <h1 className='dark:text-white font-semibold'>Answer</h1>
                         </div>
-                        // <div className="flex flex-row">
-                        //     <object type="image/svg+xml" data={loadingAnimation.src} className="h-8 w-8">
-                        //         svg-animation
-                        //     </object>
-                        //     <h1 className='dark:text-white'>Answer</h1>
-                        // </div>
                     )}
 
 
@@ -578,29 +959,15 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
 
                 </ScrollArea>
 
-                <div className="p-4">
-                    <div className="relative max-w-3xl mx-auto">
-                        <textarea
-                            className="w-full sm:min-h-[48px] min-h-[64px] pl-4 pr-12 py-3 rounded-xl text-sm border 
-                     dark:border-slate-600 border-slate-200 dark:bg-darkbg dark:text-white outline-none 
-                     select-none resize-none overflow-hidden"
-                            placeholder="Query your documents..."
-                            value={inputValue}
-                            onChange={handleInputChange}
-                            onKeyDown={handleKeyDown}
-                            rows={2}
-                        />
-                        <div className="absolute right-2 bottom-4 flex items-center gap-2 
-                      bg-blue-500 rounded-xl">
-                            <button
-                                className="p-2 hover:bg-gray-100 rounded-lg"
-                                onClick={() => queryAllDocuments(userSearch.trim())}
-                                disabled={isLoading}
-                            >
-                                <ArrowUp className="h-4 w-4 text-white" />
-                            </button>
-                        </div>
-                    </div>
+                <div className="px-4 bg-transparent">
+                    <AIInputWithSearch
+                        onSubmit={queryAllDocuments}
+                        onFileSelect={(file) => {
+                            console.log('Selected file:', file);
+                        }}
+                        disabled={isLoading}
+                    />
+
                 </div>
 
 
@@ -632,10 +999,9 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
                             <p><strong>Size:</strong> {selectedFile.size}</p>
                             <p><strong>Uploaded By:</strong> {selectedFile.uploadedBy}</p>
                             <p><strong>Date:</strong> {new Date(selectedFile.date).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
-                            <p><strong>Detailed Summary:</strong> {selectedFile.summary?.replace(/^"|"$/, '')}</p>
+                            <p><strong>Detailed Summary:</strong> {selectedFile.summary?.slice(1, -1)}</p>
                             {/* Add more details as needed */}
                         </div>
-
                     </>
 
 

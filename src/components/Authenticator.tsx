@@ -6,7 +6,7 @@ import {
 } from "@aws-amplify/ui-react";
 import "@aws-amplify/ui-react/styles.css";
 import { Amplify } from "aws-amplify";
-import { signInWithRedirect } from "aws-amplify/auth"
+import { signInWithRedirect } from "aws-amplify/auth";
 import { BackgroundBeams } from "./ui/background-beams";
 
 export const Authenticator: React.FC<PropsWithChildren> = ({ children }) => {
@@ -48,8 +48,6 @@ export const Authenticator: React.FC<PropsWithChildren> = ({ children }) => {
           },
           router: {
             borderWidth: { value: "0" },
-            //  borderRadius: { value: "{radi.large}" }, // Added border radius for the container
-
           },
           state: {
             inactive: {
@@ -68,17 +66,17 @@ export const Authenticator: React.FC<PropsWithChildren> = ({ children }) => {
         tabs: {
           item: {
             borderColor: { value: "{colors.brand.primary.100}" },
-            color: { value: "black" }, // Changed to black for non-active tabs
+            color: { value: "black" },
             _active: {
               backgroundColor: { value: "darkblue" },
               color: { value: "white" },
               borderColor: { value: "{colors.brand.secondary.40}" },
             },
             _hover: {
-              color: { value: "darkblue" }, // Changed to darkblue for hover state
+              color: { value: "darkblue" },
             },
             _focus: {
-              color: { value: "darkblue" }, // Changed to darkblue for focus state
+              color: { value: "darkblue" },
             },
           },
         },
@@ -89,11 +87,10 @@ export const Authenticator: React.FC<PropsWithChildren> = ({ children }) => {
   return (
     <div className="relative min-h-screen overflow-hidden bg:dark-bg">
       <BackgroundBeams />
-      <AmplifyThemeProvider theme={theme} >
+      <AmplifyThemeProvider theme={theme}>
         <AmplifyAuthenticator
           variation="modal"
           signUpAttributes={["given_name", "family_name"]}
-          socialProviders={['google']}
           formFields={{
             signIn: {
               username: {
@@ -113,7 +110,7 @@ export const Authenticator: React.FC<PropsWithChildren> = ({ children }) => {
               username: {
                 label: "Email",
                 placeholder: "Enter your email",
-              }
+              },
             },
           }}
         >
@@ -121,6 +118,5 @@ export const Authenticator: React.FC<PropsWithChildren> = ({ children }) => {
         </AmplifyAuthenticator>
       </AmplifyThemeProvider>
     </div>
-
   );
 };

@@ -25,7 +25,6 @@ export default function SignInDetails() {
 
     return (
         <div className = "bg-darkbg">
-            <h1>HIIIIIIIIIIIIIIIIIII</h1>
             <Authenticator>
                 <div className="grid h-screen place-items-center">
                     <CircularProgress value={0.5} />
