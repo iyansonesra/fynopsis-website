@@ -90,29 +90,31 @@ export const Authenticator: React.FC<PropsWithChildren> = ({ children }) => {
       <AmplifyThemeProvider theme={theme}>
         <AmplifyAuthenticator
           variation="modal"
-          signUpAttributes={["given_name", "family_name"]}
-          formFields={{
-            signIn: {
-              username: {
-                label: "Email",
-                placeholder: "Enter your email",
-              },
-            },
-            signUp: {
-              given_name: {
-                label: "First name",
-                placeholder: "Enter your first name",
-              },
-              family_name: {
-                label: "Last name",
-                placeholder: "Enter your last name",
-              },
-              username: {
-                label: "Email",
-                placeholder: "Enter your email",
-              },
-            },
-          }}
+          initialState="signIn" // Force initial state to signIn
+          hideSignUp={true} // Hide the sign up option
+          // signUpAttributes={["given_name", "family_name"]}
+          // formFields={{
+          //   signIn: {
+          //     username: {
+          //       label: "Email",
+          //       placeholder: "Enter your email",
+          //     },
+          //   },
+          //   signUp: {
+          //     given_name: {
+          //       label: "First name",
+          //       placeholder: "Enter your first name",
+          //     },
+          //     family_name: {
+          //       label: "Last name",
+          //       placeholder: "Enter your last name",
+          //     },
+          //     username: {
+          //       label: "Email",
+          //       placeholder: "Enter your email",
+          //     },
+          //   },
+          // }}
         >
           {children}
         </AmplifyAuthenticator>
