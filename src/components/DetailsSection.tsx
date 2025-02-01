@@ -521,14 +521,9 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
     const [isGeneratingComplete, setIsGeneratingComplete] = useState(false);
 
     const [stepsTaken, setStepsTaken] = useState<string[]>([]);
-
     const [thoughts, setThoughts] = useState('');
-
     const pathname = usePathname();
-
     const bucketUuid = pathname.split('/').pop() || '';
-
-
 
     useEffect(() => {
         if (searchResult && searchResult.response) {
