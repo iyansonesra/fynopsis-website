@@ -117,6 +117,8 @@ const DragPreview = React.memo<{ item: Payment }>(({ item }) => {
     );
 });
 
+DragPreview.displayName = 'DragPreview';
+
 
 interface FileSystemProps {
     onFileSelect: (file: Payment) => void;
@@ -808,6 +810,7 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
 
         );
     });
+    SortableItem.displayName = 'SortableItem';
 
     const uploadToS3 = async (file: File) => {
         const fileId = file.name.split('.')[0];
