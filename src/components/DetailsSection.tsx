@@ -334,7 +334,7 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
             });
 
             const bucketUuid = window.location.pathname.split('/').pop() || '';
-            const websocketHost = 'gh1md77cx1.execute-api.us-east-1.amazonaws.com';
+            const websocketHost = `${process.env.NEXT_PUBLIC_SEARCH_API_CODE}.execute-api.us-east-1.amazonaws.com`;
 
             const idToken = await getIdToken();
             if (!idToken) {
@@ -976,7 +976,11 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
     }
 
 
-
+    const decodeUnicodeEscapes = (str: string) => {
+        return str.replace(/\\u([a-fA-F0-9]{4})/g, (match, code) => {
+            return String.fromCharCode(parseInt(code, 16));
+        });
+    };    
 
     const renderFileDetails = () => (
         <>
@@ -999,7 +1003,7 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
                             <p><strong>Size:</strong> {selectedFile.size}</p>
                             <p><strong>Uploaded By:</strong> {selectedFile.uploadedBy}</p>
                             <p><strong>Date:</strong> {new Date(selectedFile.date).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
-                            <p><strong>Detailed Summary:</strong> {selectedFile.summary?.slice(1, -1)}</p>
+                            <p><strong>Detailed Summary:</strong> {decodeUnicodeEscapes(selectedFile.summary?.slice(1, -1)) || 'No summary available'}</p>
                             {/* Add more details as needed */}
                         </div>
                     </>
