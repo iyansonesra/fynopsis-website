@@ -1379,21 +1379,50 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
     // Add handlers for different file operations
     const handleFileUploaded = (data: FileUpdateMessage['data']) => {
         // Only update if the file was uploaded to the current folder
-        const currentPath = getCurrentPathString(useS3Store.getState().currentNode);
-        if (data.filePath.startsWith(currentPath)) {
-            // Refresh the file listing
-            handleRefresh();
-        }
+        // const currentPath = getCurrentPathString(useS3Store.getState().currentNode);
+        // if (data.filePath.startsWith(currentPath)) {
+        //     // Refresh the file listing
+        //     handleRefresh();
+        // }
     };
 
     const handleFileDeleted = (data: FileUpdateMessage['data']) => {
         // Remove the file from the table if it exists
-        setTableData(prev => prev.filter(item => item.s3Key !== data.filePath));
+        // setTableData(prev => prev.filter(item => item.s3Key !== data.filePath));
     };
 
     const handleFileMoved = (data: FileUpdateMessage['data']) => {
-        // Refresh the file listing as the structure might have changed
-        handleRefresh();
+        // Get current node path
+        // const currentPath = getCurrentPathString(useS3Store.getState().currentNode);
+        
+        // // If file was moved from current folder
+        // if (data.filePath.startsWith(currentPath)) {
+        //     // Remove file from current view
+        //     setTableData(prev => prev.filter(item => item.s3Key !== data.filePath));
+        // }
+        
+        // If file was moved to current folder
+        // if (data.newPath.startsWith(currentPath)) {
+        //     // Add file to current view
+        //     const fileName = data.newPath.split('/').pop() || '';
+        //     const newFile: Payment = {
+        //         id: crypto.randomUUID(),
+        //         name: fileName,
+        //         type: fileName.split('.').pop()?.toUpperCase() || 'Unknown',
+        //         status: "success",
+        //         size: '', // Will be updated when metadata is available
+        //         date: new Date().toISOString(),
+        //         uploadedBy: data.metadata?.uploadedBy || '',
+        //         s3Key: data.newPath,
+        //         s3Url: '',
+        //         isFolder: false,
+        //         uploadProcess: 'COMPLETE',
+        //         tags: data.metadata?.tags || [],
+        //         summary: data.metadata?.summary || ''
+        //     };
+            
+        //     setTableData(prev => sortTableData([...prev, newFile]));
+        // }
     };
 
     const handleFileUpdated = (data: FileUpdateMessage['data']) => {
