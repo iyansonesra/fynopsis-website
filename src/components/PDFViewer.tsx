@@ -135,7 +135,7 @@ const PDFViewer: React.FC<PDFViewerProps> = ({
   
 
   return (
-    <PDFContainer className='flex flex-grow bg-green-100 h-full w-inherit'>
+    <PDFContainer className='flex flex-grow  h-full w-inherit'>
       {(isLoading && isOfficeFile) && <div className="loader">Loading document...</div>}
       <iframe
         ref={iframeRef}

@@ -1,12 +1,15 @@
 "use client";
 
-import { BrainCircuit, Globe, Paperclip, Send, Sparkle, Sparkles } from "lucide-react";
+import { BrainCircuit, Globe, Paperclip, Plus, Send, Sparkle, Sparkles } from "lucide-react";
 import { useState } from "react";
 import { Textarea } from "@/components/ui/textarea";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { useAutoResizeTextarea } from "@/hooks/use-auto-resize-textarea";
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import FileSelector from "../FileSearchInput";
+
 
 interface AIInputWithSearchProps {
   id?: string;
@@ -83,21 +86,22 @@ export const AIInputWithSearch: React.FC<AIInputWithSearchProps> = ({
 
           <div className="h-12 bg-black/5 dark:bg-white/5 rounded-b-xl">
             <div className="absolute left-3 bottom-3 flex items-center gap-2">
-            <HoverCard>
-              <HoverCardTrigger>
-                  <div className="cursor-not-allowed rounded-lg p-2 bg-black/5 dark:bg-white/5">
-                      <Paperclip className="w-4 h-4 text-black/20 dark:text-white/20" />
-                  </div>
-              </HoverCardTrigger>
-              <HoverCardContent 
-                  className="p-1.5 w-fit bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-lg text-center" 
-                  side="top"
-                  align="center"
-                  sideOffset={5}
+
+            <Popover>
+              <PopoverTrigger>
+                <div className="cursor-pointer rounded-lg p-2 bg-black/5 dark:bg-white/5">
+                  <Plus className="w-4 h-4 text-black/20 dark:text-white/20" />
+                </div>
+              </PopoverTrigger>
+              <PopoverContent 
+                className="p-0 w-fit bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-lg text-center"
+                side="top"
+                align="center"
+                sideOffset={5}
               >
-                  <p className="text-sm text-gray-800 dark:text-gray-200">Coming soon...</p>
-              </HoverCardContent>
-          </HoverCard>
+                <FileSelector width={""} height={""}/>
+              </PopoverContent>
+            </Popover>
               <button
                 type="button"
                 onClick={() => setShowSearch(!showSearch)}

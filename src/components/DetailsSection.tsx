@@ -998,7 +998,7 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
                             <p><strong>Size:</strong> {selectedFile.size}</p>
                             <p><strong>Uploaded By:</strong> {selectedFile.uploadedBy}</p>
                             <p><strong>Date:</strong> {new Date(selectedFile.date).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
-                            <p><strong>Detailed Summary:</strong> {decodeUnicodeEscapes(selectedFile.summary?.slice(1, -1)) || 'No summary available'}</p>
+                            <p><strong>Detailed Summary:</strong> {selectedFile.summary ? decodeUnicodeEscapes(selectedFile.summary?.slice(1, -1)) : 'No summary available'}</p>
                             {/* Add more details as needed */}
                         </div>
                     </>
