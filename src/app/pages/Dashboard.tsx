@@ -100,6 +100,7 @@ export default function GeneralDashboard() {
     const [selectedDataroom, setSelectedDataroom] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [isInvitesLoading, setIsInvitesLoading] = useState(true);
+    const [isCreating, setIsCreating] = useState(false);
 
     const tabs: Tab[] = [
         { icon: Library, label: 'Library' },
@@ -120,15 +121,15 @@ export default function GeneralDashboard() {
     };
 
     const handleAddDataroom = async () => {
+        if (isCreating) return;
         if (dataRooms.length >= 8) {
-            // You can show an error message or handle the limit however you prefer
             alert("You have reached the maximum limit of 8 datarooms");
             return;
         }
 
         const newDataroomNameExist = newDataroomName.trim();
         if (newDataroomNameExist) {
-
+            setIsCreating(true);
             try {
                 const restOperation = post({
                     apiName: 'S3_API',
@@ -166,6 +167,8 @@ export default function GeneralDashboard() {
                 setNewDataroomName('');
             } catch (error) {
                 console.error('Error creating data room:', error);
+            } finally {
+                setIsCreating(false);
             }
         }
     };
@@ -443,6 +446,9 @@ export default function GeneralDashboard() {
                                             permissionLevel={room.permissionLevel}
                                             sharedBy={room.sharedBy || ''}
                                             onClick={() => handleDataRoomClick(room.id)}
+                                            onDelete={() => {
+                                                setDataRooms(dataRooms.filter(r => r.id !== room.id));
+                                            }}
                                         />
                                     </div>
                                 ))
@@ -461,10 +467,34 @@ export default function GeneralDashboard() {
                                     onChange={(e) => setNewDataroomName(e.target.value)}
                                     placeholder="Enter dataroom name"
                                     className="outline-none select-none dark:bg-darkbg dark:text-white"
+                                    disabled={isCreating}
                                 />
                                 <DialogFooter>
-                                    <Button variant="outline" onClick={() => setIsAddDialogOpen(false)} className="dark:bg-darkbg dark:border dark:hover:text-slate-400">Cancel</Button>
-                                    <Button onClick={handleAddDataroom} className="dark:hover:text-slate-400">Create</Button>
+                                    <Button 
+                                        variant="outline" 
+                                        onClick={() => setIsAddDialogOpen(false)} 
+                                        className="dark:bg-darkbg dark:border dark:hover:text-slate-400"
+                                        disabled={isCreating}
+                                    >
+                                        Cancel
+                                    </Button>
+                                    <Button 
+                                        onClick={handleAddDataroom} 
+                                        className="dark:hover:text-slate-400"
+                                        disabled={isCreating}
+                                    >
+                                        {isCreating ? (
+                                            <span className="flex items-center">
+                                                <svg className="animate-spin -ml-1 mr-2 h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                                </svg>
+                                                Creating...
+                                            </span>
+                                        ) : (
+                                            'Create'
+                                        )}
+                                    </Button>
                                 </DialogFooter>
                             </DialogContent>
                         </Dialog>

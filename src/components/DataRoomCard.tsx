@@ -13,15 +13,19 @@ interface DataRoomCardProps {
   onClick: () => void;
   permissionLevel: string;
   sharedBy: string;
+  onDelete?: () => void;
 }
 
-const DataRoomCard: React.FC<DataRoomCardProps> = ({ id, title, lastOpened, onClick, permissionLevel, sharedBy }) => {
+const DataRoomCard: React.FC<DataRoomCardProps> = ({ id, title, lastOpened, onClick, permissionLevel, sharedBy, onDelete }) => {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = React.useState(false);
   const [isLeaveDialogOpen, setIsLeaveDialogOpen] = React.useState(false);
   const [isRenameDialogOpen, setIsRenameDialogOpen] = React.useState(false);
   const [newName, setNewName] = React.useState(title);
+  const [isDeleting, setIsDeleting] = React.useState(false);
 
   const handleDelete = async () => {
+    if (isDeleting) return;
+    setIsDeleting(true);
     console.log('Deleting dataroom:', id);
     try {
       const restOperation = del({
@@ -34,8 +38,11 @@ const DataRoomCard: React.FC<DataRoomCardProps> = ({ id, title, lastOpened, onCl
       });
       await restOperation.response;
       setIsDeleteDialogOpen(false);
+      onDelete?.(); // Call onDelete callback after successful deletion
     } catch (error) {
       console.error('Error deleting dataroom:', error);
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -136,8 +143,22 @@ const DataRoomCard: React.FC<DataRoomCardProps> = ({ id, title, lastOpened, onCl
           </DialogHeader>
           <p>Are you sure you want to delete this dataroom? This action cannot be undone.</p>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIsDeleteDialogOpen(false)}>Cancel</Button>
-            <Button variant="destructive" onClick={handleDelete}>Delete</Button>
+            <Button variant="outline" onClick={() => setIsDeleteDialogOpen(false)} disabled={isDeleting}>
+              Cancel
+            </Button>
+            <Button variant="destructive" onClick={handleDelete} disabled={isDeleting}>
+              {isDeleting ? (
+                <span className="flex items-center">
+                  <svg className="animate-spin -ml-1 mr-2 h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  Deleting...
+                </span>
+              ) : (
+                'Delete'
+              )}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
