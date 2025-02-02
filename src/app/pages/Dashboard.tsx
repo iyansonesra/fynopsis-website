@@ -63,6 +63,29 @@ type InvitedRoom = {
     sharedAt: string;
 };
 
+const SkeletonCard = () => (
+    <div className="w-[400px] h-[160px] bg-gray-200 dark:bg-gray-800 rounded-lg animate-pulse">
+        <div className="p-4 space-y-3">
+            <div className="h-6 bg-gray-300 dark:bg-gray-700 rounded w-3/4"></div>
+            <div className="h-4 bg-gray-300 dark:bg-gray-700 rounded w-1/2"></div>
+            <div className="h-4 bg-gray-300 dark:bg-gray-700 rounded w-1/4"></div>
+        </div>
+    </div>
+);
+
+const SkeletonInvite = () => (
+    <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 mb-3 animate-pulse">
+        <div className="space-y-2">
+            <div className="h-4 bg-gray-300 dark:bg-gray-700 rounded w-3/4"></div>
+            <div className="h-3 bg-gray-300 dark:bg-gray-700 rounded w-1/2"></div>
+            <div className="flex gap-2 mt-3">
+                <div className="h-6 w-6 bg-gray-300 dark:bg-gray-700 rounded-full"></div>
+                <div className="h-6 w-6 bg-gray-300 dark:bg-gray-700 rounded-full"></div>
+            </div>
+        </div>
+    </div>
+);
+
 export default function GeneralDashboard() {
     const [selectedTab, setSelectedTab] = useState("library");
     const { user, signOut } = useAuthenticator((context) => [context.user]);
@@ -75,6 +98,8 @@ export default function GeneralDashboard() {
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
     const [isLeaveDialogOpen, setIsLeaveDialogOpen] = useState(false);
     const [selectedDataroom, setSelectedDataroom] = useState<string | null>(null);
+    const [isLoading, setIsLoading] = useState(true);
+    const [isInvitesLoading, setIsInvitesLoading] = useState(true);
 
     const tabs: Tab[] = [
         { icon: Library, label: 'Library' },
@@ -146,6 +171,7 @@ export default function GeneralDashboard() {
     };
 
     const handleFetchDataRooms = async () => {
+        setIsLoading(true);
         try {
             const { credentials } = await fetchAuthSession();
             if (!credentials) {
@@ -199,6 +225,9 @@ export default function GeneralDashboard() {
 
         } catch (error) {
             console.error('Error fetching data rooms:', error);
+        } finally {
+            setIsLoading(false);
+            setIsInvitesLoading(false);
         }
     };
 
@@ -398,18 +427,26 @@ export default function GeneralDashboard() {
                             </Button>
                         </div>
                         <div className="flex flex-wrap gap-4">
-                            {dataRooms.map((room) => (
-                                <div key={room.id} className="w-[400px]">
-                                    <DataRoomCard
-                                        id={room.id || ''}
-                                        title={room.title}
-                                        lastOpened={room.lastOpened}
-                                        permissionLevel={room.permissionLevel}
-                                        sharedBy={room.sharedBy || ''}
-                                        onClick={() => handleDataRoomClick(room.id)}
-                                    />
-                                </div>
-                            ))}
+                            {isLoading ? (
+                                <>
+                                    <SkeletonCard />
+                                    <SkeletonCard />
+                                    <SkeletonCard />
+                                </>
+                            ) : (
+                                dataRooms.map((room) => (
+                                    <div key={room.id} className="w-[400px]">
+                                        <DataRoomCard
+                                            id={room.id || ''}
+                                            title={room.title}
+                                            lastOpened={room.lastOpened}
+                                            permissionLevel={room.permissionLevel}
+                                            sharedBy={room.sharedBy || ''}
+                                            onClick={() => handleDataRoomClick(room.id)}
+                                        />
+                                    </div>
+                                ))
+                            )}
                         </div>
 
 
@@ -438,7 +475,12 @@ export default function GeneralDashboard() {
                     </div>
                     <div className="w-64 p-4 overflow-y-auto">
                         <h2 className="font-semibold text-lg mb-4 dark:text-white">Pending Invites</h2>
-                        {invitedDatarooms.length > 0 ? (
+                        {isInvitesLoading ? (
+                            <>
+                                <SkeletonInvite />
+                                <SkeletonInvite />
+                            </>
+                        ) : invitedDatarooms.length > 0 ? (
                             invitedDatarooms.map((room) => (
                                 <div
                                     key={room.bucketId}
