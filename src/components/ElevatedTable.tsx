@@ -31,6 +31,7 @@ import { Folder, File } from 'lucide-react';
 import { TagDisplay } from './TagsHover';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { HoverCard, HoverCardContent, HoverCardTrigger } from './ui/hover-card';
+import { wsManager, FileUpdateMessage } from '@/lib/websocketManager';
 
 
 
@@ -350,8 +351,8 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
                     // console.log('source key;', sourceKey, 'dest key', destinationKey);
                     // console.log('filename:', fileName);
 
-                    console.log("original s3 key", sourceKey);
-                    console.log("destination s3 key", destinationKey);
+                    // console.log("original s3 key", sourceKey);
+                    // console.log("destination s3 key", destinationKey);
 
 
 
@@ -375,7 +376,7 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
 
                         // if(cutPayment?.isFolder) newS3key += '/';
                         // console.log('new s3 key:', newS3key);
-                        console.log('filename is:', fileName);
+                        // console.log('filename is:', fileName);
                         if (oldNode) {
                             oldNode.s3Key = newS3key;
                             if (cutPayment?.isFolder)
@@ -434,7 +435,7 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
 
         const handleClick = (e: React.MouseEvent) => {
             e.stopPropagation();
-            console.log("uploadprocess:", item.uploadProcess);
+            // console.log("uploadprocess:", item.uploadProcess);
             onSelect(item.id);
             // console.log("selected items s3Key:", item.s3Key);
         };
@@ -1110,8 +1111,8 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
             // console.log('activeItem:', activeItem);
             // console.log('overItem:', overItem);
 
-            console.log("original s3:", sourceKey);
-            console.log("new s3 location:", destinationKey);
+            // console.log("original s3:", sourceKey);
+            // console.log("new s3 location:", destinationKey);
 
             // Set items to pending state
             setTableData(prevData => prevData.map(item =>
@@ -1338,8 +1339,71 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
         return matches;
     };
 
+    // Add WebSocket connection management
+    React.useEffect(() => {
+        // Connect to WebSocket when component mounts
+        wsManager.connect(bucketUuid);
 
+        // Add message handler
+        const handleFileUpdate = (message: FileUpdateMessage) => {
+            console.log('WebSocket update received:', message);
+            switch (message.type) {
+                case 'FILE_UPLOADED':
+                    console.log('File uploaded:', message.data);
+                    handleFileUploaded(message.data);
+                    break;
+                case 'FILE_DELETED':
+                    console.log('File deleted:', message.data);
+                    handleFileDeleted(message.data);
+                    break;
+                case 'FILE_MOVED':
+                    console.log('File moved:', message.data);
+                    handleFileMoved(message.data);
+                    break;
+                case 'FILE_UPDATED':
+                    console.log('File updated:', message.data);
+                    handleFileUpdated(message.data);
+                    break;
+            }
+        };
 
+        wsManager.addMessageHandler(handleFileUpdate);
+
+        // Cleanup on unmount
+        return () => {
+            wsManager.removeMessageHandler(handleFileUpdate);
+            wsManager.disconnect();
+        };
+    }, [bucketUuid]);
+
+    // Add handlers for different file operations
+    const handleFileUploaded = (data: FileUpdateMessage['data']) => {
+        // Only update if the file was uploaded to the current folder
+        const currentPath = getCurrentPathString(useS3Store.getState().currentNode);
+        if (data.filePath.startsWith(currentPath)) {
+            // Refresh the file listing
+            handleRefresh();
+        }
+    };
+
+    const handleFileDeleted = (data: FileUpdateMessage['data']) => {
+        // Remove the file from the table if it exists
+        setTableData(prev => prev.filter(item => item.s3Key !== data.filePath));
+    };
+
+    const handleFileMoved = (data: FileUpdateMessage['data']) => {
+        // Refresh the file listing as the structure might have changed
+        handleRefresh();
+    };
+
+    const handleFileUpdated = (data: FileUpdateMessage['data']) => {
+        // Update the file's metadata in the table
+        setTableData(prev => prev.map(item => 
+            item.s3Key === data.filePath
+                ? { ...item, ...data.metadata }
+                : item
+        ));
+    };
 
     return (
         <div className="select-none w-full dark:bg-darkbg pt-4 h-full flex flex-col outline-none" onClick={handleBackgroundClick}>

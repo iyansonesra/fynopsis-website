@@ -32,13 +32,14 @@ class WebSocketManager {
       this.ws = new WebSocket(wsUrl);
 
       this.ws.onopen = () => {
-        console.log('WebSocket connected');
+        console.log('WebSocket connected to dataroom:', dataroomId);
         this.reconnectAttempts = 0;
       };
 
       this.ws.onmessage = (event) => {
         try {
           const message = JSON.parse(event.data) as FileUpdateMessage;
+          console.log('WebSocket message received:', message);
           this.messageHandlers.forEach(handler => handler(message));
         } catch (error) {
           console.error('Error parsing WebSocket message:', error);
@@ -46,7 +47,7 @@ class WebSocketManager {
       };
 
       this.ws.onclose = () => {
-        console.log('WebSocket disconnected');
+        console.log('WebSocket disconnected from dataroom:', dataroomId);
         this.attemptReconnect(dataroomId);
       };
 

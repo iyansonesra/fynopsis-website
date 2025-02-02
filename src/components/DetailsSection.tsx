@@ -95,7 +95,7 @@ const getUserPrefix = async () => {
         if (!identityId) {
             throw new Error('No identity ID available');
         }
-        console.log("The identity id:", identityId);
+        // console.log("The identity id:", identityId);
         return `${identityId}/`;
     } catch (error) {
         console.error('Error getting user prefix:', error);
@@ -113,7 +113,7 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
     tableData }) => {
     // Add debug logging for props
     useEffect(() => {
-        console.log('DetailSection - Received table data:', tableData);
+        // console.log('DetailSection - Received table data:', tableData);
     }, [tableData]);
 
     const [isLoading, setIsLoading] = useState(false);
@@ -131,12 +131,12 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
     const s3Objects = useS3Store(state => state.objects);
 
     const handleSourceCardClick = async (sourceUrl: string) => {
-        console.log('DetailSection - Source clicked:', sourceUrl);
+        // console.log('DetailSection - Source clicked:', sourceUrl);
         const bucketUuid = window.location.pathname.split('/').pop() || '';
         try {
             // First check if file exists in s3Objects
             const s3Object = s3Objects.find(obj => obj.key === sourceUrl);
-            console.log('DetailSection - Found S3 object:', s3Object);
+            // console.log('DetailSection - Found S3 object:', s3Object);
 
             // Get the signed URL
             const downloadResponse = await get({
@@ -234,11 +234,11 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
     const getPresignedUrl = async (s3Key: string) => {
         try {
 
-            console.log("Waiting on s3 client");
+            // console.log("Waiting on s3 client");
 
             const s3Client = await getS3Client();
 
-            console.log("Got the s3 client");
+            // console.log("Got the s3 client");
             const command = new GetObjectCommand({
                 Bucket: S3_BUCKET_NAME,
                 Key: s3Key
@@ -246,7 +246,7 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
 
             return await getSignedUrl(s3Client, command, { expiresIn: 3600 });
         } catch (error) {
-            console.error('Error generating signed URL:', error);
+            // console.error('Error generating signed URL:', error);
             throw error;
         }
     };
@@ -256,14 +256,14 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
         try {
             setLoadingSource(sourceKey);
             const url = await getPresignedUrl(sourceKey);
-            console.log('Presigned URL from details:', url);
+            // console.log('Presigned URL from details:', url);
             onFileSelect({
                 id: `file-${sourceKey}`,
                 name: sourceName,
                 s3Url: url,
             });
         } catch (error) {
-            console.error('Error getting presigned URL:', error);
+            // console.error('Error getting presigned URL:', error);
             setError('Failed to open source document. Please try again.');
         } finally {
             setLoadingSource(null);
@@ -347,11 +347,11 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
             const websocketUrl = `wss://${websocketHost}/prod?${params.toString()}`;
 
             // Debug URL
-            console.log('WebSocket URL components:', {
-                host: websocketHost,
-                params: Object.fromEntries(params.entries()),
-                fullUrl: websocketUrl
-            });
+            // console.log('WebSocket URL components:', {
+            //     host: websocketHost,
+            //     params: Object.fromEntries(params.entries()),
+            //     fullUrl: websocketUrl
+            // });
 
             const ws = new WebSocket(websocketUrl);
 
@@ -359,7 +359,7 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
 
             return new Promise((resolve, reject) => {
                 ws.onopen = () => {
-                    console.log('WebSocket connected successfully');
+                    // console.log('WebSocket connected successfully');
                     // Send query once connected
                     
 
@@ -415,7 +415,7 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
                 ws.onerror = (error) => {
                     setIsWebSocketActive(false);
                     setIsLoading(false);
-                    console.log('WebSocket Error:', error);
+                    // console.log('WebSocket Error:', error);
                     console.error('WebSocket Error Details:', {
                         error,
                         url: websocketUrl.substring(0, 100) + '...',
@@ -428,11 +428,11 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
                 ws.onclose = (event) => {
                     setIsWebSocketActive(false);
                     setIsLoading(false);
-                    console.log('WebSocket closed:', {
-                        code: event.code,
-                        reason: event.reason,
-                        wasClean: event.wasClean
-                    });
+                    // console.log('WebSocket closed:', {
+                    //     code: event.code,
+                    //     reason: event.reason,
+                    //     wasClean: event.wasClean
+                    // });
                 };
             });
 
@@ -490,7 +490,7 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
             }
         });
 
-        console.log(restOperation);
+        // console.log(restOperation);
     };
 
     const [inputValue, setInputValue] = useState('');
@@ -733,7 +733,7 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
                         response = sourcesResult.remaining;
                     } catch (error) {
                         // If JSON parsing fails, it means we're still receiving the JSON string
-                        console.log("Incomplete JSON in sources:", sourcesResult.content);
+                        // console.log("Incomplete JSON in sources:", sourcesResult.content);
                         setGeneratingSources(true);
                     }
                 } else {
@@ -958,7 +958,7 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
                     <AIInputWithSearch
                         onSubmit={queryAllDocuments}
                         onFileSelect={(file) => {
-                            console.log('Selected file:', file);
+                            // console.log('Selected file:', file);
                         }}
                         disabled={isLoading}
                     />

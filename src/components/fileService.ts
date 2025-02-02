@@ -51,7 +51,7 @@ const createTreeStructure = (objects: S3Object[]): TreeNode => {
 
   for (const obj of objects) {
     const parts = obj.key.split('/').filter(part => part !== '');
-    console.log('obj:', obj);
+    // console.log('obj:', obj);
 
     let currentLevel = tree;
     let currKey = "";
@@ -148,10 +148,10 @@ export const useS3Store = create<S3State>()(((set, get) => ({
 
       });
 
-      console.log("SEARCHABLE FILES:");
+      // console.log("SEARCHABLE FILES:");
       get().searchableFiles.forEach((file) => {
-        console.log("File:", file.key, "Metadata:", file.metadata);
-        console.log("Original Name:", file.metadata.originalname);
+        // console.log("File:", file.key, "Metadata:", file.metadata);
+        // console.log("Original Name:", file.metadata.originalname);
       });
 
       if (response.headObjects) {
@@ -167,9 +167,10 @@ export const useS3Store = create<S3State>()(((set, get) => ({
     } catch (error) {
       console.error('Error fetching S3 objects:', error);
     } finally {
-      console.log('finally');
+      // console.log('finally');
       set({ isLoading: false });
-      console.log('isLoading:', get().isLoading);
+      get().isLoading
+      // console.log('isLoading:', );
     }
   },
   navigateToPath: (path: string[]) => {
@@ -242,7 +243,7 @@ export const useS3Store = create<S3State>()(((set, get) => ({
 
     // console.log("folder path for s3:", passIn);
     try {
-      console.log('folderPath:', passIn);
+      // console.log('folderPath:', passIn);
       const response = await post({
         apiName: 'S3_API',
         path: `/s3/${bucketUuid}/create-folder`,
@@ -297,8 +298,8 @@ export const useS3Store = create<S3State>()(((set, get) => ({
     const folderPath = `${currentPath}${folderName}/`;
     const filePath = `${currentPath}${folderName}`;
 
-    console.log('folderPath:', folderPath.slice(1));
-    console.log('filePath:', filePath.slice(1));
+    // console.log('folderPath:', folderPath.slice(1));
+    // console.log('filePath:', filePath.slice(1));
 
     // Mark folder as pending deletion in the tree
     const updatedNode = {
@@ -314,7 +315,7 @@ export const useS3Store = create<S3State>()(((set, get) => ({
 
     set({ currentNode: updatedNode });
 
-    console.log('isFolder:', isFolder);
+    // console.log('isFolder:', isFolder);
 
     try {
       // Make API call to delete folder
@@ -335,7 +336,7 @@ export const useS3Store = create<S3State>()(((set, get) => ({
       // Remove folder from tree after successful deletion
       const { [folderName]: removed, ...remainingChildren } = state.currentNode.children;
       delete state.currentNode.children[folderName];
-      console.log('Folder deleted successfully:', result);
+      // console.log('Folder deleted successfully:', result);
 
     } catch (error) {
       console.error('Error deleting folder:', error);
