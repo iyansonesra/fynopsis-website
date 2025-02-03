@@ -4,7 +4,7 @@
 import logo from '../assets/fynopsis_noBG.png'
 import { useState, useEffect } from "react"
 import { useAuthenticator } from '@aws-amplify/ui-react';
-import { Clipboard, LucideIcon } from "lucide-react";
+import { Clipboard, LucideIcon, Activity } from "lucide-react";
 import { fetchUserAttributes, FetchUserAttributesOutput } from 'aws-amplify/auth';
 import { CircularProgress } from "@mui/material";
 import React, { useRef } from 'react';
@@ -23,6 +23,7 @@ import DarkModeToggle from '@/components/DarkModeToggle';
 import { FileSystem } from '@/components/ElevatedTable';
 import { Separator } from '@radix-ui/react-separator';
 import { TagDisplay } from '@/components/TagsHover';
+import { AuditLogViewer } from '@/components/AuditLogViewer';
 
 type IndicatorStyle = {
   top: string;
@@ -49,14 +50,13 @@ export default function Home() {
       const bucketUuid = pathname.split('/').pop() || '';
       const params = useParams();
       const [hasPermission, setHasPermission] = useState<boolean>(true);
-      const dataroomId = params.id;
+      const dataroomId = Array.isArray(params.id) ? params.id[0] : params.id;
 
   
       const tabs: Tab[] = [
           { icon: Library, label: 'Library' },
-
           { icon: Users, label: 'Users' },
-        
+          { icon: Activity, label: 'Activity' }, // Add new tab
       ];
   
       function signIn(): void {
@@ -77,7 +77,7 @@ export default function Home() {
       }
   
       useEffect(() => {
-          console.log("checking for tab color!");
+          // console.log("checking for tab color!");
           if (activeTab !== null && tabRefs.current[activeTab]) {
               const tabElement = tabRefs.current[activeTab];
               if (tabElement) {
@@ -131,10 +131,10 @@ export default function Home() {
       // await restOperation.response; // Wait for response to confirm permissions
 
       const { body } = await restOperation.response;
-      console.log('Body:', body);
+      // console.log('Body:', body);
       const responseText = await body.text();
       const response = JSON.parse(responseText);
-      console.log('Users response:', response);
+      // console.log('Users response:', response);
       setHasPermission(true);
     } catch (error) {
       setHasPermission(false);
@@ -173,7 +173,7 @@ export default function Home() {
         const { body } = await restOperation.response;
         const responseText = await body.text();
         const response = JSON.parse(responseText);
-        console.log('Share response:', response);
+        // console.log('Share response:', response);
 
         setIsShareDialogOpen(false);
         setUserEmail('');
@@ -209,6 +209,8 @@ export default function Home() {
         return <ExcelViewer />;
       case "users":
         return <UserManagement dataroomId={''} />;
+      case "activity":
+        return <AuditLogViewer bucketId={dataroomId} />;
       default:
         return <Files setSelectedTab={setSelectedTab} />;
     }

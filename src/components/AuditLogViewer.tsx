@@ -1,0 +1,236 @@
+import React, { useState, useEffect } from 'react';
+import { get } from 'aws-amplify/api';
+import { Input } from './ui/input';
+import { Button } from './ui/button';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
+import { ScrollArea } from './ui/scroll-area';
+import { Calendar } from '@/components/ui/calendar';
+import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
+import { format } from 'date-fns';
+import { Calendar as CalendarIcon, Download } from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { Skeleton } from "./ui/skeleton"; // Add this import
+
+interface AuditEvent {
+    eventId: string;
+    bucketId: string;
+    timestamp: string;
+    action: string;
+    userId: string;
+    userEmail: string;
+    userName: string;
+    details: {
+        targetPath?: string;
+        targetUser?: string;
+        oldValue?: string;
+        newValue?: string;
+        metadata?: Record<string, any>;
+    };
+}
+
+interface AuditLogViewerProps {
+    bucketId: string;
+}
+
+interface AuditLogResponse {
+    events: AuditEvent[];
+    nextToken: string | null;
+}
+
+export const AuditLogViewer: React.FC<AuditLogViewerProps> = ({ bucketId }) => {
+    const [events, setEvents] = useState<AuditEvent[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [searchTerm, setSearchTerm] = useState('');
+    const [filterType, setFilterType] = useState<'all' | 'user' | 'action'>('all');
+    const [startDate, setStartDate] = useState<Date>();
+    const [endDate, setEndDate] = useState<Date>();
+    const [nextToken, setNextToken] = useState<string | null>(null);
+
+    const fetchAuditLogs = async (reset = false) => {
+        try {
+            const params: Record<string, string> = {
+                ...(startDate && { startDate: startDate.toISOString() }),
+                ...(endDate && { endDate: endDate.toISOString() }),
+                ...(searchTerm && filterType === 'user' && { userId: searchTerm }),
+                ...(searchTerm && filterType === 'action' && { action: searchTerm }),
+                ...(nextToken && !reset && { nextToken })
+            };
+
+            const queryString = new URLSearchParams(params).toString();
+            const response = await get({
+                apiName: 'S3_API',
+                path: `/audit/${bucketId}/logs${queryString ? `?${queryString}` : ''}`,
+                options: { withCredentials: true }
+            }).response;
+
+            const data = (await response.body.json() as unknown) as AuditLogResponse;
+            
+            if (reset) {
+                setEvents(data?.events || []);
+            } else {
+                setEvents(prev => [...prev, ...(data?.events || [])]);
+            }
+            setNextToken(data.nextToken);
+        } catch (error) {
+            console.error('Error fetching audit logs:', error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        fetchAuditLogs(true);
+    }, [bucketId, startDate, endDate, filterType, searchTerm]);
+
+    const handleExport = async () => {
+        try {
+            const response = await get({
+                apiName: 'S3_API',
+                path: `/audit/${bucketId}/export`,
+                options: { withCredentials: true }
+            }).response;
+            
+            const blob = await response.body.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `audit-log-${bucketId}-${format(new Date(), 'yyyy-MM-dd')}.csv`;
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+        } catch (error) {
+            console.error('Error exporting audit logs:', error);
+        }
+    };
+
+    const renderSkeletons = () => (
+        Array(3).fill(0).map((_, idx) => (
+            <div key={idx} className="p-4 bg-white dark:bg-gray-800 rounded-lg shadow space-y-3">
+                <div className="flex justify-between items-start">
+                    <div className="space-y-2">
+                        <Skeleton className="h-4 w-24" />
+                        <Skeleton className="h-3 w-32" />
+                    </div>
+                    <div className="text-right space-y-2">
+                        <Skeleton className="h-4 w-32" />
+                        <Skeleton className="h-3 w-24" />
+                    </div>
+                </div>
+                <div className="mt-2 space-y-2">
+                    <Skeleton className="h-3 w-full" />
+                    <Skeleton className="h-3 w-3/4" />
+                </div>
+            </div>
+        ))
+    );
+
+    return (
+        <div className="flex flex-col h-full p-4 gap-4">
+            <div className="flex items-center justify-between gap-4">
+                <div className="flex-1">
+                    <Input
+                        placeholder="Search..."
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        className="w-full"
+                    />
+                </div>
+                <Select value={filterType} onValueChange={(value: any) => setFilterType(value)}>
+                    <SelectTrigger className="w-[150px]">
+                        <SelectValue placeholder="Filter by..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="all">All</SelectItem>
+                        <SelectItem value="user">By User</SelectItem>
+                        <SelectItem value="action">By Action</SelectItem>
+                    </SelectContent>
+                </Select>
+                <div className="flex gap-2">
+                    <Popover>
+                        <PopoverTrigger asChild>
+                            <Button variant="outline" className="w-[150px]">
+                                <CalendarIcon className="mr-2 h-4 w-4" />
+                                {startDate ? format(startDate, 'PPP') : 'Start Date'}
+                            </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0">
+                            <Calendar
+                                mode="single"
+                                selected={startDate}
+                                onSelect={setStartDate}
+                            />
+                        </PopoverContent>
+                    </Popover>
+                    <Popover>
+                        <PopoverTrigger asChild>
+                            <Button variant="outline" className="w-[150px]">
+                                <CalendarIcon className="mr-2 h-4 w-4" />
+                                {endDate ? format(endDate, 'PPP') : 'End Date'}
+                            </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0">
+                            <Calendar
+                                mode="single"
+                                selected={endDate}
+                                onSelect={setEndDate}
+                            />
+                        </PopoverContent>
+                    </Popover>
+                    <Button onClick={handleExport}>
+                        <Download className="mr-2 h-4 w-4" />
+                        Export
+                    </Button>
+                </div>
+            </div>
+
+            <ScrollArea className="flex-1">
+                <div className="space-y-2">
+                    {loading ? (
+                        renderSkeletons()
+                    ) : (
+                        events.map((event) => (
+                            <div
+                                key={event.eventId}
+                                className="p-4 bg-white dark:bg-gray-800 rounded-lg shadow"
+                            >
+                                <div className="flex justify-between items-start">
+                                    <div>
+                                        <h3 className="font-medium">{event.action}</h3>
+                                        <p className="text-sm text-gray-500">
+                                            {format(new Date(event.timestamp), 'PPp')}
+                                        </p>
+                                    </div>
+                                    <div className="text-right">
+                                        <p className="text-sm font-medium">{event.userName}</p>
+                                        <p className="text-sm text-gray-500">{event.userEmail}</p>
+                                    </div>
+                                </div>
+                                {event.details && (
+                                    <div className="mt-2 text-sm text-gray-600">
+                                        {event.details.targetPath && (
+                                            <p>Path: {event.details.targetPath}</p>
+                                        )}
+                                        {event.details.targetUser && (
+                                            <p>Target User: {event.details.targetUser}</p>
+                                        )}
+                                        {event.details.oldValue && event.details.newValue && (
+                                            <p>Changed from {event.details.oldValue} to {event.details.newValue}</p>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
+                        ))
+                    )}
+                    {nextToken && !loading && (
+                        <Button 
+                            onClick={() => fetchAuditLogs()} 
+                            className="w-full mt-4"
+                        >
+                            Load More
+                        </Button>
+                    )}
+                </div>
+            </ScrollArea>
+        </div>
+    );
+};
