@@ -317,12 +317,16 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
 
 
 
-    const queryAllDocuments = async (searchTerm: string, withReasoning: boolean) => {
+    const queryAllDocuments = async (searchTerm: string, withReasoning: boolean, selectedFiles: any[]) => {
+        console.log("selected files!!!!!", selectedFiles);
+        console.log("BRLRLLELWFLLEFLW");
         try {
             // Don't allow new queries while WebSocket is active
             // if (isWebSocketActive) {
             //     return;
             // }
+
+
 
             setIsWebSocketActive(true);
             setIsLoading(true);
@@ -359,9 +363,11 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
 
             return new Promise((resolve, reject) => {
                 ws.onopen = () => {
-                    // console.log('WebSocket connected successfully');
+                    console.log('WebSocket connected successfully');
                     // Send query once connected
-                    
+
+
+
 
                     if (currentThreadId) {
                         ws.send(JSON.stringify({
@@ -370,7 +376,8 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
                                 thread_id: currentThreadId,
                                 collection_name: bucketUuid,
                                 query: searchTerm,
-                                use_reasoning: withReasoning
+                                use_reasoning: withReasoning,
+                                file_keys: selectedFiles
                             }
                         }));
                     }
@@ -380,7 +387,8 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
                             data: {
                                 collection_name: bucketUuid,
                                 query: searchTerm,
-                                use_reasoning: withReasoning
+                                use_reasoning: withReasoning,
+                                file_keys: selectedFiles
                             }
                         }));
                     }
@@ -438,6 +446,8 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
 
         } catch (err) {
             setIsWebSocketActive(false);
+            console.log("selected files!!!!!", selectedFiles);
+            console.log("BRLRLLELWFLLEFLW");
             console.error('Error querying collection:', err);
             setError('Failed to fetch search results. Please try again.');
             setIsLoading(false);
@@ -521,7 +531,7 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
         if (e.key === 'Enter') {
             setIsLoading(true);
             const query = inputValue.trim();
-            
+
             // queryAllDocuments(query);
             // //   handleSearch(query);
             setInputValue('');
@@ -550,7 +560,7 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
                 const startIndex = text.indexOf(startTag);
                 const endIndex = text.indexOf(endTag);
                 if (startIndex === -1) return null;
-                
+
                 // If we have start tag but no end tag, return all content after start tag
                 if (endIndex === -1) {
                     return {
@@ -559,7 +569,7 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
                         isComplete: false
                     };
                 }
-                
+
                 // Make sure we include the end tag in the removal
                 const content = text.substring(startIndex + startTag.length, endIndex).trim();
                 const remaining = text.substring(endIndex + endTag.length).trim();
@@ -572,7 +582,7 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
                 setMessages(prev => {
                     const newMessages = [...prev];
                     const lastMessage = newMessages.length > 0 ? newMessages[newMessages.length - 1] : null;
-                    
+
                     if (lastMessage?.type === 'error' && !errorResult.isComplete) {
                         // Update existing error message
                         lastMessage.content = errorResult.content;
@@ -596,7 +606,7 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
                     // Only update response if we have a complete error tag
                     response = errorResult.remaining;
                 }
-                
+
                 // If we have an error (complete or not), stop processing
                 setIsAnswerLoading(false);  // Stop loading on error
                 setIsLoading(false);
@@ -612,7 +622,7 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
             //             // Try to parse the accumulated JSON string
             //             const sourcesJson = JSON.parse(sourcesResult.content);
             //             const extractedUrls: string[] = [];
-                        
+
             //             // Process each key-value pair in the JSON
             //             Object.entries(sourcesJson).forEach(([key, value]) => {
             //                 if (key.includes(bucketUuid)) {
@@ -673,7 +683,7 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
                 setMessages(prev => {
                     const newMessages = [...prev];
                     const lastMessage = newMessages.length > 0 ? newMessages[newMessages.length - 1] : null;
-                    
+
                     const messageContent = {
                         type: 'answer' as const,
                         content: answerResult.content,
@@ -772,7 +782,7 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
                         >
                             <CardContent className="p-2">
                                 <div className="flex items-center gap-2">
-                                    <FileText className="h-4 w-4 text-white" />
+                                    <FileText className="h-4 w-4 text-slate-600 dark:text-white" />
                                     <span className="text-sm text-blue-500 dark:text-white select-none">
                                         {key.split('/').pop()}
                                     </span>
@@ -812,9 +822,9 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
 
     const renderAnswerHeader = () => (
         <div className='flex flex-row gap-2 items-center mb-3'>
-            <object 
-                type="image/svg+xml" 
-                data={isAnswerLoading ? loadingAnimation.src : staticImage.src} 
+            <object
+                type="image/svg+xml"
+                data={isAnswerLoading ? loadingAnimation.src : staticImage.src}
                 className="h-6 w-6"
             >
                 svg-animation
@@ -844,8 +854,8 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
         return (
             <div className="flex flex-col h-full overflow-none dark:bg-darkbg w-full">
                 <div className="absolute top-0 right-0 p-4 z-50">
-                    <PlusCircle 
-                        className="h-5 w-5 text-gray-500 dark:text-gray-400 cursor-pointer hover:text-gray-700 dark:hover:text-gray-300" 
+                    <PlusCircle
+                        className="h-5 w-5 text-gray-500 dark:text-gray-400 cursor-pointer hover:text-gray-700 dark:hover:text-gray-300"
                         onClick={handleClearChat}
                     />
                 </div>
@@ -872,7 +882,7 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
                                     </div>
                                 </div>
                             ) : (
-                                <div className="w-full">
+                                <div className={`w-full ${index === messages.length - 1 ? 'mb-8' : ''}`}>
                                     {message.steps && message.steps.length > 0 && (
                                         <div className="w-full pr-4">
                                             <Accordion type="single" collapsible className="w-full -space-y-px mb-6">
@@ -931,8 +941,8 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
 
                                     </div>
                                     <div className="w-full flex items-center justify-center mt-4 "></div>
-                                        <Separator className="bg-slate-800 w-full" orientation='horizontal' />
-                                    </div>
+                                    <Separator className="bg-slate-200 dark:bg-slate-800 w-full" orientation='horizontal' />
+                                </div>
                             )
                             }
 
@@ -975,7 +985,7 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
         return str.replace(/\\u([a-fA-F0-9]{4})/g, (match, code) => {
             return String.fromCharCode(parseInt(code, 16));
         });
-    };    
+    };
 
     const renderFileDetails = () => (
         <>

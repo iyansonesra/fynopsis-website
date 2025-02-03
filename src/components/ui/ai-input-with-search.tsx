@@ -9,6 +9,7 @@ import { useAutoResizeTextarea } from "@/hooks/use-auto-resize-textarea";
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import FileSelector from "../FileSearchInput";
+import { ScrollArea, ScrollBar } from "./scroll-area";
 
 
 interface AIInputWithSearchProps {
@@ -16,7 +17,7 @@ interface AIInputWithSearchProps {
   placeholder?: string;
   minHeight?: number;
   maxHeight?: number;
-  onSubmit: (value: string, withSearch: boolean) => void;
+  onSubmit: (value: string, withSearch: boolean, selectedFiles: any[]) => void;
   onFileSelect: (file: any) => void;
   className?: string;
   disabled?: boolean; // Add this prop
@@ -38,25 +39,84 @@ export const AIInputWithSearch: React.FC<AIInputWithSearchProps> = ({
     maxHeight,
   });
   const [showSearch, setShowSearch] = useState(false);
+  const [isPopoverOpen, setIsPopoverOpen] = useState(false);
+  const [selectedFiles, setSelectedFiles] = useState<any[]>([]);
+
 
   const handleSubmit = () => {
+    console.log("hiii!");
     if (value.trim()) {
-      onSubmit?.(value, showSearch);
+      // Extract just the keys from selectedFiles
+      const fileKeys = selectedFiles.map(file => file.key);
+      console.log("selecteFiles", selectedFiles);
+      onSubmit?.(value, showSearch, fileKeys);
       setValue("");
+      setSelectedFiles([]);
       adjustHeight(true);
     }
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      onFileSelect?.(file);
-    }
-  };
+
 
   return (
-    <div className={cn("w-full pb-4", className)}>
-      <div className="relative w-full mx-auto outline-none select-none">
+    <div className={cn("max-w-[100%] pb-4", className)}>
+
+
+      <div style={{ position: 'relative', zIndex: 1 }}>
+        <AnimatePresence>
+          {selectedFiles.length > 0 && (
+            <motion.div
+              className="absolute bottom-full w-full flex justify-center mb-[1px]"
+              initial={{ opacity: 1, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 20 }}
+              transition={{ duration: 0.2 }}
+              style={{
+                position: 'absolute',
+              }}
+            >
+              <div className="w-[97%] h-12 bg-slate-100 dark:bg-slate-800 rounded-t-xl flex items-center px-4">
+                <div className="w-full relative">
+                  <ScrollArea className="w-full flex items-center">
+                    <div className="flex p-0 h-full items-center flex-row gap-2">
+                      {selectedFiles.map((file, index) => (
+                        <div 
+                          key={index} 
+                          className="flex items-center justify-center gap-2 bg-slate-200 dark:bg-white/5 px-3 py-1 rounded-lg  hover:opacity-80 group relative"
+                        >
+                          <Paperclip className="w-4 h-4 text-black/50 dark:text-white/50" />
+                          <span className="text-sm text-black/70 dark:text-white/70 whitespace-nowrap">
+                          {file.metadata.originalname.length > 15
+                            ? file.metadata.originalname.slice(0, 15) + '...'
+                            : file.metadata.originalname}
+                          </span>
+                          <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedFiles(files => files.filter((_, i) => i !== index));
+                          }}
+                          className="ml-1 text-black/50 dark:text-white/50 hover:text-black dark:hover:text-white"
+                          >
+                          ×
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                    <ScrollBar orientation="horizontal" className="hidden bg-slate-200 dark:bg-slate-800" />
+                  </ScrollArea>
+                  <div className="absolute right-0 top-0 h-full w-16 bg-gradient-to-r rounded-tr-md from-transparent to-slate-100 dark:to-slate-800 pointer-events-none" />
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+
+      </div>
+
+
+      <div className="relative max-w-[100%] mx-auto outline-none select-none z-20">
+
         <div className="relative flex flex-col">
           <div
             className="overflow-y-auto"
@@ -66,9 +126,8 @@ export const AIInputWithSearch: React.FC<AIInputWithSearchProps> = ({
               id={id}
               value={value}
               placeholder={placeholder}
-              className={`w-full rounded-xl rounded-b-none px-4 py-3 bg-black/5 dark:bg-white/5 border-none dark:text-white placeholder:text-black/70 dark:placeholder:text-white/70 resize-none focus-visible:ring-0 leading-[1.6] outline-none select-none ${
-                disabled ? 'opacity-50 cursor-not-allowed' : ''
-              }`}
+              className={`w-full rounded-xl rounded-b-none px-4 py-3 bg-black/5 dark:bg-white/5 border-none dark:text-white placeholder:text-black/70 dark:placeholder:text-white/70 resize-none focus-visible:ring-0 leading-[1.6] z-50 outline-none select-none ${disabled ? 'opacity-50 cursor-not-allowed' : ''
+                }`}
               ref={textareaRef}
               onKeyDown={(e) => {
                 if (e.key === "Enter" && !e.shiftKey) {
@@ -87,21 +146,35 @@ export const AIInputWithSearch: React.FC<AIInputWithSearchProps> = ({
           <div className="h-12 bg-black/5 dark:bg-white/5 rounded-b-xl">
             <div className="absolute left-3 bottom-3 flex items-center gap-2">
 
-            <Popover>
-              <PopoverTrigger>
-                <div className="cursor-pointer rounded-lg p-2 bg-black/5 dark:bg-white/5">
-                  <Plus className="w-4 h-4 text-black/20 dark:text-white/20" />
-                </div>
-              </PopoverTrigger>
-              <PopoverContent 
-                className="p-0 w-fit bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-lg text-center"
-                side="top"
-                align="center"
-                sideOffset={5}
-              >
-                <FileSelector width={""} height={""}/>
-              </PopoverContent>
-            </Popover>
+              <Popover open={isPopoverOpen} onOpenChange={setIsPopoverOpen}>
+                <PopoverTrigger>
+                  <div className="cursor-pointer rounded-lg p-2 bg-black/5 dark:bg-white/5">
+                    <Plus className="w-4 h-4 text-black/20 dark:text-white/20" />
+                  </div>
+                </PopoverTrigger>
+                <PopoverContent
+                  className="p-0 w-fit bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-lg text-center"
+                  side="top"
+                  align="center"
+                  sideOffset={5}
+                >
+                  <FileSelector
+                    width={""}
+                    height={""}
+                    onFileSelect={(file) => {
+                      // Update the local list of files
+                      setSelectedFiles((prev) => [...prev, file]);
+                      // Call the parent callback so the AI input hears about the file
+                      onFileSelect?.(file);
+                      console.log("file selected", file);
+                      // Close the popover after selecting a file
+                      setIsPopoverOpen(false);
+                    }}
+                  />
+                </PopoverContent>
+              </Popover>
+
+
               <button
                 type="button"
                 onClick={() => setShowSearch(!showSearch)}

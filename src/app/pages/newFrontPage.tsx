@@ -133,8 +133,8 @@ const FrontPage: React.FC = () => {
             </div>
 
             <div className="relative z-10 w-full">
-                <FlowingLine amplitude={1000} className=' absolute top-[40%] w-full rotate-180' />
-                <FlowingLine amplitude={700} className=' absolute top-[66%] md:top-[64%] w-full rotate-140' />
+                <FlowingLine amplitude={1000} className=' absolute top-[37%] w-full rotate-180' />
+                <FlowingLine amplitude={700} className=' absolute top-[62%] md:top-[60%] w-full rotate-140' />
 
                 <AnimatedGridPattern
                     numSquares={30}

@@ -129,19 +129,25 @@ export const useS3Store = create<S3State>()(((set, get) => ({
       response.headObjects.forEach((obj: any) => {
         if(obj.metadata && obj.metadata.Metadata.pre_upload) {
           if(obj.metadata.Metadata.pre_upload === "COMPLETE") {
-            set((state) => ({
-                    searchableFiles: [
-                      ...state.searchableFiles,
-                      {
-                        key: obj.key,
-                        metadata: {
-                          ...obj.metadata.Metadata,
-                          originalname: obj.key.split('/').pop()
-                        }
-                      }
-                    ]
-                }));
-            
+        set((state) => {
+          // Check if file already exists in searchableFiles
+          const exists = state.searchableFiles.some(file => file.key === obj.key);
+          if (!exists) {
+            return {
+          searchableFiles: [
+            ...state.searchableFiles,
+            {
+              key: obj.key,
+              metadata: {
+            ...obj.metadata.Metadata,
+            originalname: obj.key.split('/').pop()
+              }
+            }
+          ]
+            };
+          }
+          return state;
+        });
           }
         }
    

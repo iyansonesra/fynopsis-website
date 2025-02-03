@@ -1384,11 +1384,13 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
         //     // Refresh the file listing
         //     handleRefresh();
         // }
+        console.log(data);
     };
 
     const handleFileDeleted = (data: FileUpdateMessage['data']) => {
         // Remove the file from the table if it exists
         // setTableData(prev => prev.filter(item => item.s3Key !== data.filePath));
+        console.log(data);
     };
 
     const handleFileMoved = (data: FileUpdateMessage['data']) => {
@@ -1423,6 +1425,7 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
             
         //     setTableData(prev => sortTableData([...prev, newFile]));
         // }
+        console.log(data);
     };
 
     const handleFileUpdated = (data: FileUpdateMessage['data']) => {
