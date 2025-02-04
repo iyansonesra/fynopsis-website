@@ -1342,6 +1342,7 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
     // Add WebSocket connection management
     React.useEffect(() => {
         // Connect to WebSocket when component mounts
+        console.log('Connecting to Weboscket');
         wsManager.connect(bucketUuid);
 
         // Add message handler

@@ -19,6 +19,7 @@ class WebSocketManager {
 
   async connect(dataroomId: string) {
     try {
+      console.log('inside connect');
       const session = await fetchAuthSession();
       const idToken = session.tokens?.idToken?.toString();
       
@@ -30,6 +31,8 @@ class WebSocketManager {
       const wsUrl = `wss://${process.env.NEXT_PUBLIC_FILE_TRACKING_API_CODE}.execute-api.${process.env.NEXT_PUBLIC_REGION}.amazonaws.com/prod?idToken=${idToken}&dataroomId=${dataroomId}`;
       
       this.ws = new WebSocket(wsUrl);
+
+      console.log("currently still trying to c");
 
       this.ws.onopen = () => {
         console.log('WebSocket connected to dataroom:', dataroomId);

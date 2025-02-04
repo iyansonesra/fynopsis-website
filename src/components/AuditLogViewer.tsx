@@ -47,6 +47,8 @@ export const AuditLogViewer: React.FC<AuditLogViewerProps> = ({ bucketId }) => {
     const [nextToken, setNextToken] = useState<string | null>(null);
 
     const fetchAuditLogs = async (reset = false) => {
+        console.log("yoooooooooooo");
+
         try {
             const params: Record<string, string> = {
                 ...(startDate && { startDate: startDate.toISOString() }),
@@ -62,6 +64,8 @@ export const AuditLogViewer: React.FC<AuditLogViewerProps> = ({ bucketId }) => {
                 path: `/audit/${bucketId}/logs${queryString ? `?${queryString}` : ''}`,
                 options: { withCredentials: true }
             }).response;
+
+            console.log("response", response);
 
             const data = (await response.body.json() as unknown) as AuditLogResponse;
             
@@ -79,8 +83,13 @@ export const AuditLogViewer: React.FC<AuditLogViewerProps> = ({ bucketId }) => {
     };
 
     useEffect(() => {
+        console.log("[DEBUG] AuditLogViewer - about to fetch", new Date().toISOString());        
         fetchAuditLogs(true);
     }, [bucketId, startDate, endDate, filterType, searchTerm]);
+
+    useEffect(() => {
+        console.log("[DEBUG] AuditLogViewer - events updated", events);
+    })
 
     const handleExport = async () => {
         try {
@@ -125,18 +134,18 @@ export const AuditLogViewer: React.FC<AuditLogViewerProps> = ({ bucketId }) => {
     );
 
     return (
-        <div className="flex flex-col h-full p-4 gap-4">
-            <div className="flex items-center justify-between gap-4">
+        <div className="flex flex-col h-full p-4 gap-4 w-full">
+            <div className="flex items-center justify-between gap-4 pr-8">
                 <div className="flex-1">
                     <Input
                         placeholder="Search..."
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
-                        className="w-full"
+                        className="w-full dark:bg-transparent dark:border dark:border-gray-700 outline-none select-none dark:text-white"
                     />
-                </div>
+                </div>i
                 <Select value={filterType} onValueChange={(value: any) => setFilterType(value)}>
-                    <SelectTrigger className="w-[150px]">
+                    <SelectTrigger className="w-[150px] dark:bg-transparent dark:border dark:border-gray-700 dark:text-white">
                         <SelectValue placeholder="Filter by..." />
                     </SelectTrigger>
                     <SelectContent>
@@ -148,12 +157,12 @@ export const AuditLogViewer: React.FC<AuditLogViewerProps> = ({ bucketId }) => {
                 <div className="flex gap-2">
                     <Popover>
                         <PopoverTrigger asChild>
-                            <Button variant="outline" className="w-[150px]">
+                            <Button variant="outline" className="w-[150px] dark:bg-transparent dark:border dark:border-gray-700 dark:text-white">
                                 <CalendarIcon className="mr-2 h-4 w-4" />
                                 {startDate ? format(startDate, 'PPP') : 'Start Date'}
                             </Button>
                         </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0">
+                        <PopoverContent className="w-auto p-0 flex flex-col">
                             <Calendar
                                 mode="single"
                                 selected={startDate}
@@ -163,7 +172,7 @@ export const AuditLogViewer: React.FC<AuditLogViewerProps> = ({ bucketId }) => {
                     </Popover>
                     <Popover>
                         <PopoverTrigger asChild>
-                            <Button variant="outline" className="w-[150px]">
+                            <Button variant="outline" className="w-[150px] dark:bg-transparent dark:border dark:border-gray-700 dark:text-white">
                                 <CalendarIcon className="mr-2 h-4 w-4" />
                                 {endDate ? format(endDate, 'PPP') : 'End Date'}
                             </Button>
@@ -183,7 +192,7 @@ export const AuditLogViewer: React.FC<AuditLogViewerProps> = ({ bucketId }) => {
                 </div>
             </div>
 
-            <ScrollArea className="flex-1">
+            <ScrollArea className="flex-1 pr-8">
                 <div className="space-y-2">
                     {loading ? (
                         renderSkeletons()
@@ -195,14 +204,14 @@ export const AuditLogViewer: React.FC<AuditLogViewerProps> = ({ bucketId }) => {
                             >
                                 <div className="flex justify-between items-start">
                                     <div>
-                                        <h3 className="font-medium">{event.action}</h3>
+                                        <h3 className="font-medium dark:text-gray-100">{event.action}</h3>
                                         <p className="text-sm text-gray-500">
                                             {format(new Date(event.timestamp), 'PPp')}
                                         </p>
                                     </div>
                                     <div className="text-right">
-                                        <p className="text-sm font-medium">{event.userName}</p>
-                                        <p className="text-sm text-gray-500">{event.userEmail}</p>
+                                        <p className="text-sm font-medium dark:text-gray-100">{event.userName}</p>
+                                        <p className="text-sm text-gray-500 dark:text-gray-500">{event.userEmail}</p>
                                     </div>
                                 </div>
                                 {event.details && (
