@@ -31,7 +31,11 @@ interface ApplyOrganizationResponse {
     results: {
       successful: boolean;
     };
-  }
+}
+
+interface CancelOrganizationResponse {
+    message: string;
+}
 
 type SchemaStatus = 'NO_SCHEMA' | 'IN_PROGRESS' | 'COMPLETED' | 'FAILED';
 
@@ -226,6 +230,8 @@ export const FileOrganizerDialog: React.FC<FileOrganizerDialogProps> = ({ bucket
   const [schemaId, setSchemaId] = useState<string>();
   const [isPolling, setIsPolling] = useState(false);
   const [organizationResults, setOrganizationResults] = useState<OrganizationResults | null>(null);
+  const [isCancelling, setIsCancelling] = useState(false);
+  const [isApplying, setIsApplying] = useState(false);
 
   // Function to check schema status
   const checkSchemaStatus = async () => {
@@ -287,6 +293,7 @@ export const FileOrganizerDialog: React.FC<FileOrganizerDialogProps> = ({ bucket
         console.log('Current schema:', data);
         if (data.schema) {
           setSchema(data.schema);
+          setSchemaId(data.schemaId);
           setSchemaStatus('COMPLETED');
           // Also set organization results if they exist
           if (data.results) {
@@ -312,8 +319,8 @@ export const FileOrganizerDialog: React.FC<FileOrganizerDialogProps> = ({ bucket
         options: {
           body: {
             schema,
-            should_rename: shouldRename,
-            should_reorder: shouldReorder,
+            should_rename: true,
+            should_reorder: true,
           }
         }
       }).response;
@@ -323,6 +330,8 @@ export const FileOrganizerDialog: React.FC<FileOrganizerDialogProps> = ({ bucket
       if (!data || !data.schemaId) {
         throw new Error('Failed to start organization preview');
       }
+
+      console.log('Preview data:', data);
       if (data && data.schemaId) {
         setSchemaId(data.schemaId);
         setSchemaStatus('IN_PROGRESS');
@@ -342,81 +351,105 @@ export const FileOrganizerDialog: React.FC<FileOrganizerDialogProps> = ({ bucket
   };
 
   const handleApplyChanges = async () => {
+    setIsApplying(true);
     try {
-      if (!schemaId || !organizationResults) {
-        throw new Error('Missing schema ID or organization results');
-      }
-
-      const response = await post({
-        apiName: 'S3_API',
-        path: `/s3/${bucketId}/apply-organization`,
-        options: {
-          body: JSON.stringify({
-            schemaId,
-            changes: organizationResults
-          })
+        if (!schemaId || !organizationResults) {
+            throw new Error('Missing schema ID or organization results');
         }
-      }).response;
-      
-      const data = (await response.body.json() as unknown) as ApplyOrganizationResponse;
-      
-      if (data && data.results?.successful) {
-        toast({
-          title: "Organization Applied",
-          description: "Files have been reorganized successfully",
+
+        const response = await post({
+            apiName: 'S3_API',
+            path: `/s3/${bucketId}/apply-organization`,
+            options: {
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    schemaId,
+                    changes: {
+                        file_assignments: organizationResults.file_assignments,
+                        new_names: organizationResults.new_names,
+                        reasoning: organizationResults.reasoning
+                    }
+                })
+            }
         });
-        
-        // Pass the changes back to parent component
-        onOrganize(Object.entries(organizationResults.file_assignments || {})
-          .map(([originalPath, newPath]) => ({
-            originalPath,
-            newPath: newPath as string
-          }))
-        );
-      }
+
+        const apiResponse = await response.response;
+        const data = await apiResponse.body.json() as { results: { successful: boolean } };
+
+        if (data.results?.successful) {
+            toast({
+                title: "Organization Applied",
+                description: "Files have been reorganized successfully",
+            });
+            
+            onOrganize(Object.entries(organizationResults.file_assignments || {})
+                .map(([originalPath, newPath]) => ({
+                    originalPath,
+                    newPath: newPath as string
+                }))
+            );
+        }
     } catch (error) {
-      console.error('Error applying organization:', error);
-      toast({
-        title: "Error",
-        description: "Failed to apply organization changes",
-        variant: "destructive",
-      });
+        console.error('Error applying organization:', error);
+        toast({
+            title: "Error",
+            description: "Failed to apply organization changes",
+            variant: "destructive",
+        });
+    } finally {
+        setIsApplying(false);
     }
-  };
+};
 
   const handleCancel = async () => {
+    setIsCancelling(true);
     try {
-      if (!schemaId) {
-        setSchemaStatus('NO_SCHEMA');
-        setOrganizationResults(null);
-        return;
-      }
-
-      await post({
-        apiName: 'S3_API',
-        path: `/s3/${bucketId}/cancel-organization`,
-        options: {
-          body: JSON.stringify({ schemaId })
+        console.log('trying to cancel organization');
+        if (!schemaId) {
+            console.log('no schema id');
+            setSchemaStatus('NO_SCHEMA');
+            setOrganizationResults(null);
+            return;
         }
-      });
 
-      setSchemaStatus('NO_SCHEMA');
-      setOrganizationResults(null);
-      setSchemaId(undefined);
-      
-      toast({
-        title: "Organization Cancelled",
-        description: "The organization process has been cancelled",
-      });
+        const response = await post({
+            apiName: 'S3_API',
+            path: `/s3/${bucketId}/cancel-organization`,
+            options: {
+                body: {
+                    schemaId: schemaId
+                }
+              }
+            }).response;
+
+        const data = (await response.body.json() as unknown) as CancelOrganizationResponse;
+        // Wait for the response and check if it was successful
+        if (data && data.message === 'Schema cancelled successfully') {
+            // Only update states after successful cancellation
+            setSchemaStatus('NO_SCHEMA');
+            setOrganizationResults(null);
+            setSchemaId(undefined);
+            
+            toast({
+                title: "Organization Cancelled",
+                description: "The organization process has been cancelled",
+            });
+        } else {
+            throw new Error('Failed to cancel organization');
+        }
     } catch (error) {
-      console.error('Error cancelling organization:', error);
-      toast({
-        title: "Error",
-        description: "Failed to cancel organization",
-        variant: "destructive",
-      });
+        console.error('Error cancelling organization:', error);
+        toast({
+            title: "Error",
+            description: "Failed to cancel organization",
+            variant: "destructive",
+        });
+    } finally {
+        setIsCancelling(false);
     }
-  };
+};
 
   const renderContent = () => {
     if (schemaStatus === 'IN_PROGRESS') {
@@ -549,14 +582,29 @@ export const FileOrganizerDialog: React.FC<FileOrganizerDialogProps> = ({ bucket
             <Button 
               variant="outline" 
               onClick={handleCancel}
+              disabled={isCancelling || isApplying}
             >
-              Cancel
+              {isCancelling ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Cancelling...
+                </>
+              ) : (
+                'Cancel'
+              )}
             </Button>
             <Button 
               onClick={handleApplyChanges}
-              disabled={!organizationResults}
+              disabled={!organizationResults || isApplying || isCancelling}
             >
-              Apply Changes
+              {isApplying ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Applying Changes...
+                </>
+              ) : (
+                'Apply Changes'
+              )}
             </Button>
           </div>
         </div>
