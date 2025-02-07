@@ -380,14 +380,14 @@ export const FileOrganizerDialog: React.FC<FileOrganizerDialogProps> = ({ bucket
                 headers: {
                     'Content-Type': 'application/json'
                 },
-                body: JSON.stringify({
+                body: {
                     schemaId,
                     changes: {
                         file_assignments,
                         new_names: organizationResults.new_names,
                         reasoning: organizationResults.reasoning
                     }
-                })
+                }
             }
         });
 
