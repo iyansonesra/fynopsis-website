@@ -7,7 +7,7 @@ import { ScrollArea } from './ui/scroll-area';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
 import { format } from 'date-fns';
-import { Calendar as CalendarIcon, Download } from 'lucide-react';
+import { ArrowRight, Calendar as CalendarIcon, Download, FileIcon, FolderIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Skeleton } from "./ui/skeleton"; // Add this import
 
@@ -20,8 +20,8 @@ interface AuditEvent {
     userEmail: string;
     userName: string;
     details: {
-        targetPath?: string;
-        targetUser?: string;
+        sourceFile?: string;
+        targetFile?: string;
         oldValue?: string;
         newValue?: string;
         metadata?: Record<string, any>;
@@ -68,7 +68,7 @@ export const AuditLogViewer: React.FC<AuditLogViewerProps> = ({ bucketId }) => {
             console.log("response", response);
 
             const data = (await response.body.json() as unknown) as AuditLogResponse;
-            
+
             if (reset) {
                 setEvents(data?.events || []);
             } else {
@@ -83,13 +83,18 @@ export const AuditLogViewer: React.FC<AuditLogViewerProps> = ({ bucketId }) => {
     };
 
     useEffect(() => {
-        console.log("[DEBUG] AuditLogViewer - about to fetch", new Date().toISOString());        
+        console.log("why no work\n");
+        console.log("[DEBUG] AuditLogViewer - about to fetch", new Date().toISOString());
         fetchAuditLogs(true);
     }, [bucketId, startDate, endDate, filterType, searchTerm]);
 
     useEffect(() => {
+        console.log("why no work\n");
+
         console.log("[DEBUG] AuditLogViewer - events updated", events);
     })
+
+
 
     const handleExport = async () => {
         try {
@@ -98,7 +103,7 @@ export const AuditLogViewer: React.FC<AuditLogViewerProps> = ({ bucketId }) => {
                 path: `/audit/${bucketId}/export`,
                 options: { withCredentials: true }
             }).response;
-            
+
             const blob = await response.body.blob();
             const url = window.URL.createObjectURL(blob);
             const a = document.createElement('a');
@@ -133,6 +138,48 @@ export const AuditLogViewer: React.FC<AuditLogViewerProps> = ({ bucketId }) => {
         ))
     );
 
+    const formatAction = (event: AuditEvent) => {
+        const actions: Record<string, string> = {
+            'FILE_UPLOAD': 'Uploaded file',
+            'FILE_DOWNLOAD': 'Downloaded file',
+            'FILE_DELETE': 'Deleted file',
+            'FILE_MOVE': 'Moved file',
+            'USER_INVITE': 'Invited user',
+            'USER_REMOVE': 'Removed user',
+            'PERMISSION_CHANGE': 'Changed permissions',
+            'FOLDER_CREATE': 'Created folder',
+            'FOLDER_DELETE': 'Deleted folder'
+        };
+
+        if (event.action === "FILE_MOVE") {
+            const isFolder = event.details.targetFile?.endsWith("/");
+
+            const partsOG = event.details.sourceFile?.split("/");
+
+            console.log("curr source", event.details.sourceFile);
+            console.log("partsog", partsOG);
+            let nameOfObject = "";
+            if (partsOG) {
+                if (partsOG?.length == 1) {
+                    nameOfObject = partsOG[0];
+                } else {
+                    if (isFolder) {
+                        nameOfObject = partsOG[partsOG.length - 2];
+                    } else
+                        nameOfObject = partsOG[partsOG.length - 1];
+                }
+            }
+
+
+
+            return nameOfObject;
+
+            console.log("current event", event);
+        }
+
+        return actions[event.action] || event.action;
+    };
+
     return (
         <div className="flex flex-col h-full p-4 gap-4 w-full">
             <div className="flex items-center justify-between gap-4 pr-8">
@@ -143,7 +190,7 @@ export const AuditLogViewer: React.FC<AuditLogViewerProps> = ({ bucketId }) => {
                         onChange={(e) => setSearchTerm(e.target.value)}
                         className="w-full dark:bg-transparent dark:border dark:border-gray-700 outline-none select-none dark:text-white"
                     />
-                </div>i
+                </div>
                 <Select value={filterType} onValueChange={(value: any) => setFilterType(value)}>
                     <SelectTrigger className="w-[150px] dark:bg-transparent dark:border dark:border-gray-700 dark:text-white">
                         <SelectValue placeholder="Filter by..." />
@@ -203,18 +250,42 @@ export const AuditLogViewer: React.FC<AuditLogViewerProps> = ({ bucketId }) => {
                                 className="p-4 bg-white dark:bg-gray-800 rounded-lg shadow"
                             >
                                 <div className="flex justify-between items-start">
-                                    <div>
-                                        <h3 className="font-medium dark:text-gray-100">{event.action}</h3>
+                                    <div className="flex flex-col gap-2">
+                                        <h3 className="font-medium dark:text-gray-100">
+                                            {event.action === "FILE_MOVE" ?
+                                                <div className="flex flex-row items-center justify-center gap-2">
+                                                    <h1>{`Moved ${' '}`}</h1>
+                                                    <div className="px-2 py-1 bg-gray-200 rounded-lg dark:bg-gray-700 dark:text-gray-100 flex flex-row gap-2 items-center">
+                                                        {event.details.sourceFile?.endsWith('/') ? <FolderIcon className="w-3 h-3" /> : <FileIcon className="w-3 h-3" />}
+                                                        <h1 className="text-sm">{` ${formatAction(event)}`}</h1>
+                                                    </div>
+
+                                                </div>
+                                                : event.details.targetFile}
+                                        </h3>
+
                                         <p className="text-sm text-gray-500">
                                             {format(new Date(event.timestamp), 'PPp')}
                                         </p>
+
+                                        {/* {event.action === "FILE_MOVE" ? (
+                                            <div className="flex flex-row items-center gap-2">
+                                                <ArrowRight className="w-4 h-4" />
+                                                <div className="px-2 py-1 bg-gray-200 rounded-lg dark:bg-gray-700 dark:text-gray-100 flex flex-row gap-2 items-center">
+                                                    {event.details.targetFile?.endsWith('/') ? <FolderIcon className="w-3 h-3" /> : <FileIcon className="w-3 h-3" />}
+                                                    <h1 className="text-sm">{` ${event.details.targetFile}`}</h1>
+                                                </div>
+                                            </div>
+                                        ) : null} */}
+
                                     </div>
+
                                     <div className="text-right">
                                         <p className="text-sm font-medium dark:text-gray-100">{event.userName}</p>
                                         <p className="text-sm text-gray-500 dark:text-gray-500">{event.userEmail}</p>
                                     </div>
                                 </div>
-                                {event.details && (
+                                {/* {event.details && (
                                     <div className="mt-2 text-sm text-gray-600">
                                         {event.details.targetPath && (
                                             <p>Path: {event.details.targetPath}</p>
@@ -226,13 +297,13 @@ export const AuditLogViewer: React.FC<AuditLogViewerProps> = ({ bucketId }) => {
                                             <p>Changed from {event.details.oldValue} to {event.details.newValue}</p>
                                         )}
                                     </div>
-                                )}
+                                )} */}
                             </div>
                         ))
                     )}
                     {nextToken && !loading && (
-                        <Button 
-                            onClick={() => fetchAuditLogs()} 
+                        <Button
+                            onClick={() => fetchAuditLogs()}
                             className="w-full mt-4"
                         >
                             Load More

@@ -4,9 +4,11 @@ export type FileUpdateMessage = {
   type: 'FILE_UPLOADED' | 'FILE_DELETED' | 'FILE_MOVED' | 'FILE_UPDATED';
   data: {
     filePath: string;
+    newPath: string;
     uploadedBy?: string;
     timestamp: string;
     metadata?: any;
+    userEmail: string;
   };
 };
 
