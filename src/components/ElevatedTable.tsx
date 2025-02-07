@@ -32,8 +32,7 @@ import { TagDisplay } from './TagsHover';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { HoverCard, HoverCardContent, HoverCardTrigger } from './ui/hover-card';
 import { wsManager, FileUpdateMessage } from '@/lib/websocketManager';
-
-
+import { FileOrganizerDialog, FileChange } from './FileOrganizerDialog';
 
 interface Payment {
     id: string;
@@ -1530,6 +1529,12 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
         ));
     };
 
+    const handleOrganize = (changes: FileChange[]) => {
+        // Handle the organization changes here
+        // This might involve refreshing the view or updating the tree
+        handleRefresh();
+    };
+
     return (
         <div className="select-none w-full dark:bg-darkbg pt-4 h-full flex flex-col outline-none" onClick={handleBackgroundClick}>
             <style jsx>{`
@@ -1622,7 +1627,10 @@ th {
 
                         <Plus size={16} />
                     </button>
-
+                    <FileOrganizerDialog 
+                        bucketId={bucketUuid}
+                        onOrganize={handleOrganize}
+                    />
                     <button
                         onClick={handleRefresh}
                         className="flex items-center justify-center p-2 text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-white transition-colors"

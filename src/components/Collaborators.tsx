@@ -36,6 +36,31 @@ interface UserManagementProps {
 
 type Role = 'READ' | 'WRITE' | 'ADMIN' | 'OWNER';
 
+// Add this component at the top (or where appropriate)
+const SkeletonCard: React.FC = () => {
+  return (
+    <div className="flex items-center justify-between p-6 border-b dark:border-gray-700">
+      <div className="flex items-center space-x-4">
+        {/* Avatar skeleton */}
+        <div className="rounded-full bg-gray-200 dark:bg-gray-700 h-10 w-10 animate-pulse" />
+        
+        {/* Text content skeleton */}
+        <div className="space-y-2">
+          <div className="h-5 w-40 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
+          <div className="h-4 w-32 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
+          <div className="h-3 w-24 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
+        </div>
+      </div>
+
+      {/* Right side actions skeleton */}
+      <div className="flex items-center space-x-3">
+        <div className="h-8 w-[140px] bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
+        <div className="h-8 w-8 bg-gray-200 dark:bg-gray-700 rounded-full animate-pulse" />
+      </div>
+    </div>
+  );
+};
+
 const UserManagement: React.FC<UserManagementProps> = () => {
   const [users, setUsers] = useState<User[]>([]);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
@@ -377,7 +402,37 @@ const UserManagement: React.FC<UserManagementProps> = () => {
   }, [bucketUuid]);
 
   if (isLoading) {
-    return <div className="p-4">Loading users...</div>;
+    return (
+      <div className="mx-auto px-4 py-6 flex flex-col w-full dark:bg-darkbg">
+        <div className="flex justify-between items-center mb-6">
+          {/* Header skeleton */}
+          <div className="h-8 w-48 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
+          <div className="h-10 w-32 bg-gray-200 dark:bg-gray-700 rounded-md animate-pulse" />
+        </div>
+        
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden">
+          {/* Current user skeleton with blue tint */}
+          <div className="bg-blue-50/50 dark:bg-slate-800 p-6 border-b dark:border-gray-700">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-4">
+                <div className="rounded-full bg-blue-200/50 dark:bg-blue-900/30 h-10 w-10 animate-pulse" />
+                <div className="space-y-2">
+                  <div className="h-5 w-40 bg-blue-200/50 dark:bg-blue-900/30 rounded animate-pulse" />
+                  <div className="h-4 w-32 bg-blue-200/50 dark:bg-blue-900/30 rounded animate-pulse" />
+                  <div className="h-3 w-24 bg-blue-200/50 dark:bg-blue-900/30 rounded animate-pulse" />
+                </div>
+              </div>
+              <div className="h-8 w-[140px] bg-blue-200/50 dark:bg-blue-900/30 rounded animate-pulse" />
+            </div>
+          </div>
+          
+          {/* Other users skeletons */}
+          <SkeletonCard />
+          <SkeletonCard />
+          <SkeletonCard />
+        </div>
+      </div>
+    );
   }
 
   if (error) {
@@ -398,7 +453,39 @@ const UserManagement: React.FC<UserManagementProps> = () => {
           </Button>
         </div>
         <div className="bg-white rounded-lg shadow-md overflow-hidden">
-          {users.length === 0 ? (
+          {isLoading ? (
+              // Render a few skeleton cards while loading
+              <div className="mx-auto px-4 py-6 flex flex-col w-full dark:bg-darkbg">
+                <div className="flex justify-between items-center mb-6">
+                  {/* Header skeleton */}
+                  <div className="h-8 w-48 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
+                  <div className="h-10 w-32 bg-gray-200 dark:bg-gray-700 rounded-md animate-pulse" />
+                </div>
+                
+                <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden">
+                  {/* Current user skeleton with blue tint */}
+                  <div className="bg-blue-50/50 dark:bg-slate-800 p-6 border-b dark:border-gray-700">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-4">
+                        <div className="rounded-full bg-blue-200/50 dark:bg-blue-900/30 h-10 w-10 animate-pulse" />
+                        <div className="space-y-2">
+                          <div className="h-5 w-40 bg-blue-200/50 dark:bg-blue-900/30 rounded animate-pulse" />
+                          <div className="h-4 w-32 bg-blue-200/50 dark:bg-blue-900/30 rounded animate-pulse" />
+                          <div className="h-3 w-24 bg-blue-200/50 dark:bg-blue-900/30 rounded animate-pulse" />
+                        </div>
+                      </div>
+                      <div className="h-8 w-[140px] bg-blue-200/50 dark:bg-blue-900/30 rounded animate-pulse" />
+                    </div>
+                  </div>
+                  
+                  {/* Other users skeletons */}
+                  <SkeletonCard />
+                  <SkeletonCard />
+                  <SkeletonCard />
+                </div>
+              </div>
+            ) :
+          users.length === 0 ? (
             <div className="p-6 text-center text-gray-500">No users found</div>
           ) : (
             <div className="divide-y divide-gray-200 dark:divide-gray-700">
