@@ -133,6 +133,7 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
     const clearTree = useS3Store(state => state.clearTree);
     const setSearchQuery = useS3Store(state => state.setSearchQuery);
     const changeCurrentNode = useS3Store(state => state.changeCurrentNode);
+    const moveItem = useS3Store(state => state.moveItem);
     const navigateToPath = useS3Store(state => state.navigateToPath);
     const goBack = useS3Store(state => state.goBack);
     const [isLoading, setIsLoading] = React.useState(true);
@@ -153,10 +154,8 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
     const [cutNode, setCutNode] = useState<TreeNode | null>(null);
     const [cutPayment, setCutPayment] = useState<Payment | null>(null);
     const dropZoneRef = useRef<HTMLTableSectionElement>(null);
+    const emailRef = useRef<string | null>(null);
     const [searchScope, setSearchScope] = useState('current');
-
-
-
 
     const [columnWidths, setColumnWidths] = useState<{ [key in 'name' | 'owner' | 'lastModified' | 'fileSize' | 'tags' | 'actions' | 'status']: string }>({
         status: '3%',
@@ -457,29 +456,29 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
 
         const handleDownload = async () => {
             if (!item.isFolder && item.s3Key) {
-            try {
-                const downloadResponse = await get({
-                apiName: 'S3_API',
-                path: `/s3/${bucketUuid}/download-url`,
-                options: {
-                    withCredentials: true,
-                    queryParams: { path: item.s3Key }
-                }
-                });
-                const { body } = await downloadResponse.response;
-                const responseText = await body.text();
-                const { signedUrl } = JSON.parse(responseText);
+                try {
+                    const downloadResponse = await get({
+                        apiName: 'S3_API',
+                        path: `/s3/${bucketUuid}/download-url`,
+                        options: {
+                            withCredentials: true,
+                            queryParams: { path: item.s3Key }
+                        }
+                    });
+                    const { body } = await downloadResponse.response;
+                    const responseText = await body.text();
+                    const { signedUrl } = JSON.parse(responseText);
 
-                // Create temporary link and trigger download
-                const link = document.createElement('a');
-                link.href = signedUrl;
-                link.download = item.name; // Set filename
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
-            } catch (error) {
-                console.error('Error getting presigned URL:', error);
-            }
+                    // Create temporary link and trigger download
+                    const link = document.createElement('a');
+                    link.href = signedUrl;
+                    link.download = item.name; // Set filename
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                } catch (error) {
+                    console.error('Error getting presigned URL:', error);
+                }
             }
         }
 
@@ -749,7 +748,7 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
                         {!item.isFolder ? (
                             <HoverCard openDelay={100} closeDelay={0}>
                                 <HoverCardTrigger asChild>
-                                    <div className="p-1.5 cursor-default"> 
+                                    <div className="p-1.5 cursor-default">
                                         {item.uploadProcess === "PENDING" ? (
                                             <Circle className="max-h-2 max-w-2 text-yellow-600" fill="currentColor" />
                                         ) : item.uploadProcess === "BATCHED" ? (
@@ -767,10 +766,10 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
                                         ) : null}
                                     </div>
                                 </HoverCardTrigger>
-                                <HoverCardContent 
-                                    className="w-auto p-2 text-center dark:bg-slate-800 dark:text-white dark:border-none" 
-                                    side="bottom" 
-                                    align="center" 
+                                <HoverCardContent
+                                    className="w-auto p-2 text-center dark:bg-slate-800 dark:text-white dark:border-none"
+                                    side="bottom"
+                                    align="center"
                                     sideOffset={5}
                                 >
                                     <p className="text-xs">{item.uploadProcess.charAt(0).toUpperCase() + item.uploadProcess.slice(1).toLowerCase()}</p>
@@ -785,13 +784,13 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
                     whiteSpace: 'nowrap',
                     overflow: 'hidden',
                     textOverflow: 'ellipsis'
-                }} className = "select-none outline-none">
+                }} className="select-none outline-none">
                     <DropdownMenu>
                         <DropdownMenuTrigger>
                             <button>⋮</button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent>
-                        <DropdownMenuItem
+                            <DropdownMenuItem
                                 onClick={handleDownload}
                                 className="text-black"
                             >
@@ -827,8 +826,20 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
             const userInfo = await getCurrentUser();
             const session = await fetchAuthSession();
 
+            console.log("userinfo:", userInfo);
+            console.log("signin details:", userInfo.signInDetails);
+            // console.log("login id:", userInfo.signInDetails.loginId);
+
+            console.log("SET EMAIL TO:", userInfo.signInDetails?.loginId || '');
+            const email = userInfo.signInDetails?.loginId || '';
+            // setUserEmail(email);
+            emailRef.current = email;
+
+
+
+
             const idToken = session.tokens?.idToken;
-            // console.log('idToken:', idToken);
+            console.log('idToken:', idToken);
             setUserInfo(idToken);
 
             return userInfo.username;
@@ -838,16 +849,11 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
         }
     };
 
+
+
     React.useEffect(() => {
         getUserInfo().then(username => setCurrentUser(username));
     }, []);
-
-
-    // const handleSearch = (event: React.ChangeEvent<HTMLInputElement>) => {
-    //     const value = event.target.value;
-    //     setSearchValue(value);
-    //     setSearchQuery(value);
-    // };
 
     const handleUploadClick = () => {
         setShowUploadOverlay(true);
@@ -1359,6 +1365,92 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
                     break;
                 case 'FILE_MOVED':
                     console.log('File moved:', message.data);
+                    console.log("user email:", emailRef.current);
+                    console.log("changers email:", message.data.userEmail);
+                    const input = emailRef.current || '';
+                    moveItem(message.data.filePath, message.data.newPath, bucketUuid, input, message.data.userEmail).then(returnedNode => {
+                        let splitfilePath = message.data.filePath.split('/').filter(part => part !== '');
+                        splitfilePath.pop();
+
+                        let splitDestPath = message.data.newPath.split('/').filter(part => part !== '');
+                        splitDestPath.pop();
+
+                        let destFolder = splitDestPath.join('/');
+                        if(destFolder !== '') destFolder += '/';
+                        let sourceFolder = splitfilePath.join('/');
+                        if(sourceFolder !== '') sourceFolder += '/';
+
+                        console.log("source folder:", bucketUuid + '/' + sourceFolder);
+                        console.log("destination folder:", bucketUuid + '/' + destFolder);
+                        console.log("current node   :", useS3Store.getState().currentNode.s3Key);
+                        
+                        if((bucketUuid + '/' + sourceFolder) === useS3Store.getState().currentNode.s3Key) { 
+                            if(emailRef.current != message.data.userEmail) {
+                                console.log("SOURCED - DELETED")
+                                setTableData(prevData => prevData.filter(item => item.s3Key !== bucketUuid + '/' + message.data.filePath));
+                            }
+                        } else if((bucketUuid + '/' + destFolder) === useS3Store.getState().currentNode.s3Key) {
+                            if(emailRef.current != message.data.userEmail) {
+                                console.log("DESTED - ADDED");
+                                const splitting = message.data.newPath.split('/').filter(part => part !== '');
+                                const newFolderName = splitting.pop() || '';
+                                console.log("found metadata", returnedNode);
+
+
+                                const newItem: Payment = {
+                                    id: uuidv4(),
+                                    type: returnedNode.s3Key?.endsWith('/') ? 'folder' : 'file',
+                                    name: newFolderName,
+                                    status: "success",
+                                    size: '',
+                                    date: new Date().toISOString(),
+                                    uploadedBy: "",
+                                    s3Key: returnedNode.s3Key || '',
+                                    s3Url: '',
+                                    isFolder: returnedNode.s3Key?.endsWith('/'),
+                                    uploadProcess: 'COMPLETED',
+                                    tags: [],
+                                    summary: '',
+                                };
+
+                                setTableData(prevData => sortTableData([...prevData,  newItem]));
+
+                            }
+                        }
+                    });
+
+                    // let splitfilePath = message.data.filePath.split('/').filter(part => part !== '');
+                    // splitfilePath.pop();
+
+                    // let splitDestPath = message.data.newPath.split('/').filter(part => part !== '');
+                    // splitDestPath.pop();
+
+                    // let destFolder = splitDestPath.join('/');
+                    // if(destFolder !== '') destFolder += '/';
+                    // let sourceFolder = splitfilePath.join('/');
+                    // if(sourceFolder !== '') sourceFolder += '/';
+
+
+                    // console.log("source folder:", bucketUuid + '/' + sourceFolder);
+                    // console.log("destination folder:", bucketUuid + '/' + destFolder);
+                    // console.log("current node   :", useS3Store.getState().currentNode.s3Key);
+
+                    
+                    
+                    // if((bucketUuid + '/' + sourceFolder) === useS3Store.getState().currentNode.s3Key) { 
+                    //     if(emailRef.current != message.data.userEmail) {
+                    //         console.log("SOURCED - DELETED")
+                    //         setTableData(prevData => prevData.filter(item => item.s3Key !== bucketUuid + '/' + message.data.filePath));
+                    //     }
+                    // } else if((bucketUuid + '/' + destFolder) === useS3Store.getState().currentNode.s3Key) {
+                    //     if(emailRef.current != message.data.userEmail) {
+                    //         console.log("DESTED - ADDED")
+                    //     }
+                    // }
+                    // console.log("returned node:", returnedNode);
+                    // console.log("current node:", useS3Store.getState().currentNode);
+
+
                     handleFileMoved(message.data);
                     break;
                 case 'FILE_UPDATED':
@@ -1385,25 +1477,25 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
         //     // Refresh the file listing
         //     handleRefresh();
         // }
-        console.log(data);
+        // console.log(data);
     };
 
     const handleFileDeleted = (data: FileUpdateMessage['data']) => {
         // Remove the file from the table if it exists
         // setTableData(prev => prev.filter(item => item.s3Key !== data.filePath));
-        console.log(data);
+        // console.log(data);
     };
 
     const handleFileMoved = (data: FileUpdateMessage['data']) => {
         // Get current node path
         // const currentPath = getCurrentPathString(useS3Store.getState().currentNode);
-        
+
         // // If file was moved from current folder
         // if (data.filePath.startsWith(currentPath)) {
         //     // Remove file from current view
         //     setTableData(prev => prev.filter(item => item.s3Key !== data.filePath));
         // }
-        
+
         // If file was moved to current folder
         // if (data.newPath.startsWith(currentPath)) {
         //     // Add file to current view
@@ -1423,15 +1515,15 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
         //         tags: data.metadata?.tags || [],
         //         summary: data.metadata?.summary || ''
         //     };
-            
+
         //     setTableData(prev => sortTableData([...prev, newFile]));
         // }
-        console.log(data);
+        // console.log(data);
     };
 
     const handleFileUpdated = (data: FileUpdateMessage['data']) => {
         // Update the file's metadata in the table
-        setTableData(prev => prev.map(item => 
+        setTableData(prev => prev.map(item =>
             item.s3Key === data.filePath
                 ? { ...item, ...data.metadata }
                 : item
