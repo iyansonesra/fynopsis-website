@@ -357,6 +357,22 @@ export const FileOrganizerDialog: React.FC<FileOrganizerDialogProps> = ({ bucket
             throw new Error('Missing schema ID or organization results');
         }
 
+        // Create file assignments with new names
+        const file_assignments: Record<string, string> = {};
+        Object.entries(organizationResults.file_assignments).forEach(([sourceKey, destPath]) => {
+            const sourceFileName = sourceKey.split('/').pop() || '';
+            const newFileName = organizationResults.new_names[sourceKey] || sourceFileName;
+            const destFolder = destPath as string;
+            
+            // Ensure destFolder ends with '/' if it's not empty
+            const formattedDestFolder = destFolder && !destFolder.endsWith('/') ? destFolder + '/' : destFolder;
+            
+            // Combine destination path with new filename
+            file_assignments[sourceKey] = formattedDestFolder + newFileName;
+        });
+
+        console.log(file_assignments);
+
         const response = await post({
             apiName: 'S3_API',
             path: `/s3/${bucketId}/apply-organization`,
@@ -367,7 +383,7 @@ export const FileOrganizerDialog: React.FC<FileOrganizerDialogProps> = ({ bucket
                 body: JSON.stringify({
                     schemaId,
                     changes: {
-                        file_assignments: organizationResults.file_assignments,
+                        file_assignments,
                         new_names: organizationResults.new_names,
                         reasoning: organizationResults.reasoning
                     }
