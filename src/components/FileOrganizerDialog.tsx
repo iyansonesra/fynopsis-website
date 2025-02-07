@@ -426,7 +426,7 @@ export const FileOrganizerDialog: React.FC<FileOrganizerDialogProps> = ({ bucket
 
         const data = (await response.body.json() as unknown) as CancelOrganizationResponse;
         // Wait for the response and check if it was successful
-        if (data && data.message === 'Schema cancelled successfully') {
+        if (data && data.message === 'Organization cancelled successfully') {
             // Only update states after successful cancellation
             setSchemaStatus('NO_SCHEMA');
             setOrganizationResults(null);
