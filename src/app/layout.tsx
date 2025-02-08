@@ -2,7 +2,10 @@ import type { Metadata } from "next";
 import { Montserrat, Inter, Poppins, Cormorant, Open_Sans } from "next/font/google";
 import "./globals.css";
 import ClientComponent from "./clientLayout";
-import { CSPostHogProvider } from './providers'
+import { CSPostHogProvider } from './providers';
+// Remove this import
+// import { DndProvider } from 'react-dnd';
+// import { HTML5Backend } from 'react-dnd-html5-backend';
 
 
 const montserrat = Montserrat({
@@ -57,13 +60,13 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-        <body className={`${montserrat.variable} ${poppins.variable} ${inter.variable} ${cormorant.variable} ${inter.variable}  ${open_sans.variable} font-sans`}>
-          <CSPostHogProvider>
-            <ClientComponent>
-              {children}
-            </ClientComponent>
-          </CSPostHogProvider>
-        </body>
+      <body className={`${montserrat.variable} ${poppins.variable} ${inter.variable} ${cormorant.variable} ${inter.variable}  ${open_sans.variable} font-sans`}>
+        <CSPostHogProvider>
+          <ClientComponent>
+            {children}
+          </ClientComponent>
+        </CSPostHogProvider>
+      </body>
     </html>
   );
 }
