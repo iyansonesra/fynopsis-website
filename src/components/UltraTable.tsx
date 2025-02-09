@@ -103,7 +103,7 @@ interface FileSystemProps {
 
 export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
   const [tableData, setTableData] = useState<FileNode[]>([]);
-  const pathname = usePathname();
+  const pathname = usePathname() || '';
   const pathArray = pathname.split('/');
   const bucketUuid = pathArray[2] || '';
   const emailRef = useRef<string | null>(null);
@@ -729,7 +729,7 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
       onSelect(item.id);
       // console.log("selected items s3Key:", item.s3Key);
     };
-    const pathname = usePathname();
+    const pathname = usePathname() || '';
     const bucketUuid = pathArray[2] || '';
 
 
