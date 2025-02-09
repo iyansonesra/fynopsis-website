@@ -20,6 +20,9 @@ import { FolderIcon, ChevronRightIcon, FileIcon, ArrowRight } from 'lucide-react
 interface FileOrganizerDialogProps {
   bucketId: string;
   onOrganize: (changes: FileChange[]) => void;
+  open: boolean;
+  onClose: () => void;
+
 }
 
 export interface FileChange {
@@ -28,13 +31,13 @@ export interface FileChange {
 }
 
 interface ApplyOrganizationResponse {
-    results: {
-      successful: boolean;
-    };
+  results: {
+    successful: boolean;
+  };
 }
 
 interface CancelOrganizationResponse {
-    message: string;
+  message: string;
 }
 
 type SchemaStatus = 'NO_SCHEMA' | 'IN_PROGRESS' | 'COMPLETED' | 'FAILED';
@@ -128,6 +131,7 @@ const TreeView: React.FC<TreeViewProps> = ({ schema, fileAssignments, newNames }
 interface FileMovementTreeProps {
   fileAssignments: Record<string, string>;
   newNames: Record<string, string>;
+
 }
 
 const FileMovementTree: React.FC<FileMovementTreeProps> = ({ fileAssignments, newNames }) => {
@@ -147,7 +151,7 @@ const FileMovementTree: React.FC<FileMovementTreeProps> = ({ fileAssignments, ne
       // Build folder structure
       parts.forEach((part, index) => {
         if (index === parts.length - 1) return; // Skip the last part (file name)
-        
+
         if (!currentNode.children[part]) {
           currentNode.children[part] = {
             id: Math.random().toString(36).substr(2, 9),
@@ -162,7 +166,7 @@ const FileMovementTree: React.FC<FileMovementTreeProps> = ({ fileAssignments, ne
       // Add file with its source info
       const fileName = source.split('/').pop() || '';
       const newName = newNames[source];
-      
+
       currentNode.children[fileName] = {
         id: Math.random().toString(36).substr(2, 9),
         name: fileName,
@@ -201,7 +205,7 @@ const FileMovementTree: React.FC<FileMovementTreeProps> = ({ fileAssignments, ne
             </div>
           )}
         </div>
-        {node.children && Object.values(node.children).map((child: any) => 
+        {node.children && Object.values(node.children).map((child: any) =>
           renderTreeNode(child, level + 1)
         )}
       </div>
@@ -219,7 +223,7 @@ const FileMovementTree: React.FC<FileMovementTreeProps> = ({ fileAssignments, ne
   );
 };
 
-export const FileOrganizerDialog: React.FC<FileOrganizerDialogProps> = ({ bucketId, onOrganize }) => {
+export const FileOrganizerDialog: React.FC<FileOrganizerDialogProps> = ({ bucketId, onOrganize, open, onClose }) => {
   const [schema, setSchema] = useState<string>('');
   const [shouldRename, setShouldRename] = useState(true);
   const [shouldReorder, setShouldReorder] = useState(true);
@@ -233,6 +237,7 @@ export const FileOrganizerDialog: React.FC<FileOrganizerDialogProps> = ({ bucket
   const [isCancelling, setIsCancelling] = useState(false);
   const [isApplying, setIsApplying] = useState(false);
 
+
   // Function to check schema status
   const checkSchemaStatus = async () => {
     try {
@@ -240,10 +245,10 @@ export const FileOrganizerDialog: React.FC<FileOrganizerDialogProps> = ({ bucket
         apiName: 'S3_API',
         path: `/s3/${bucketId}/schema-status`,
       }).response;
-      
+
       const data = (await response.body.json() as unknown) as SchemaResponse;
       setSchemaStatus(data.status);
-      
+
       if (data.status === 'FAILED') {
         setSchemaError(data.error);
         toast({
@@ -257,7 +262,7 @@ export const FileOrganizerDialog: React.FC<FileOrganizerDialogProps> = ({ bucket
         // setOrganizationResults(data.results || null);
         setIsPolling(false);
       }
-      
+
       return data;
     } catch (error) {
       console.error('Error checking schema status:', error);
@@ -288,7 +293,7 @@ export const FileOrganizerDialog: React.FC<FileOrganizerDialogProps> = ({ bucket
           apiName: 'S3_API',
           path: `/s3/${bucketId}/get-schema`,
         }).response;
-        
+
         const data = (await response.body.json() as unknown) as SchemaResponse;
         console.log('Current schema:', data);
         if (data.schema) {
@@ -324,9 +329,9 @@ export const FileOrganizerDialog: React.FC<FileOrganizerDialogProps> = ({ bucket
           }
         }
       }).response;
-      
+
       const data = (await response.body.json() as unknown) as SchemaResponse;
-    
+
       if (!data || !data.schemaId) {
         throw new Error('Failed to start organization preview');
       }
@@ -353,103 +358,103 @@ export const FileOrganizerDialog: React.FC<FileOrganizerDialogProps> = ({ bucket
   const handleApplyChanges = async () => {
     setIsApplying(true);
     try {
-        if (!schemaId || !organizationResults) {
-            throw new Error('Missing schema ID or organization results');
-        }
+      if (!schemaId || !organizationResults) {
+        throw new Error('Missing schema ID or organization results');
+      }
 
-        const response = await post({
-            apiName: 'S3_API',
-            path: `/s3/${bucketId}/apply-organization`,
-            options: {
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    schemaId,
-                    changes: {
-                        file_assignments: organizationResults.file_assignments,
-                        new_names: organizationResults.new_names,
-                        reasoning: organizationResults.reasoning
-                    }
-                })
+      const response = await post({
+        apiName: 'S3_API',
+        path: `/s3/${bucketId}/apply-organization`,
+        options: {
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            schemaId,
+            changes: {
+              file_assignments: organizationResults.file_assignments,
+              new_names: organizationResults.new_names,
+              reasoning: organizationResults.reasoning
             }
-        });
-
-        const apiResponse = await response.response;
-        const data = await apiResponse.body.json() as { results: { successful: boolean } };
-
-        if (data.results?.successful) {
-            toast({
-                title: "Organization Applied",
-                description: "Files have been reorganized successfully",
-            });
-            
-            onOrganize(Object.entries(organizationResults.file_assignments || {})
-                .map(([originalPath, newPath]) => ({
-                    originalPath,
-                    newPath: newPath as string
-                }))
-            );
+          })
         }
-    } catch (error) {
-        console.error('Error applying organization:', error);
+      });
+
+      const apiResponse = await response.response;
+      const data = await apiResponse.body.json() as { results: { successful: boolean } };
+
+      if (data.results?.successful) {
         toast({
-            title: "Error",
-            description: "Failed to apply organization changes",
-            variant: "destructive",
+          title: "Organization Applied",
+          description: "Files have been reorganized successfully",
         });
+
+        onOrganize(Object.entries(organizationResults.file_assignments || {})
+          .map(([originalPath, newPath]) => ({
+            originalPath,
+            newPath: newPath as string
+          }))
+        );
+      }
+    } catch (error) {
+      console.error('Error applying organization:', error);
+      toast({
+        title: "Error",
+        description: "Failed to apply organization changes",
+        variant: "destructive",
+      });
     } finally {
-        setIsApplying(false);
+      setIsApplying(false);
     }
-};
+  };
 
   const handleCancel = async () => {
     setIsCancelling(true);
     try {
-        console.log('trying to cancel organization');
-        if (!schemaId) {
-            console.log('no schema id');
-            setSchemaStatus('NO_SCHEMA');
-            setOrganizationResults(null);
-            return;
-        }
+      console.log('trying to cancel organization');
+      if (!schemaId) {
+        console.log('no schema id');
+        setSchemaStatus('NO_SCHEMA');
+        setOrganizationResults(null);
+        return;
+      }
 
-        const response = await post({
-            apiName: 'S3_API',
-            path: `/s3/${bucketId}/cancel-organization`,
-            options: {
-                body: {
-                    schemaId: schemaId
-                }
-              }
-            }).response;
-
-        const data = (await response.body.json() as unknown) as CancelOrganizationResponse;
-        // Wait for the response and check if it was successful
-        if (data && data.message === 'Organization cancelled successfully') {
-            // Only update states after successful cancellation
-            setSchemaStatus('NO_SCHEMA');
-            setOrganizationResults(null);
-            setSchemaId(undefined);
-            
-            toast({
-                title: "Organization Cancelled",
-                description: "The organization process has been cancelled",
-            });
-        } else {
-            throw new Error('Failed to cancel organization');
+      const response = await post({
+        apiName: 'S3_API',
+        path: `/s3/${bucketId}/cancel-organization`,
+        options: {
+          body: {
+            schemaId: schemaId
+          }
         }
-    } catch (error) {
-        console.error('Error cancelling organization:', error);
+      }).response;
+
+      const data = (await response.body.json() as unknown) as CancelOrganizationResponse;
+      // Wait for the response and check if it was successful
+      if (data && data.message === 'Organization cancelled successfully') {
+        // Only update states after successful cancellation
+        setSchemaStatus('NO_SCHEMA');
+        setOrganizationResults(null);
+        setSchemaId(undefined);
+
         toast({
-            title: "Error",
-            description: "Failed to cancel organization",
-            variant: "destructive",
+          title: "Organization Cancelled",
+          description: "The organization process has been cancelled",
         });
+      } else {
+        throw new Error('Failed to cancel organization');
+      }
+    } catch (error) {
+      console.error('Error cancelling organization:', error);
+      toast({
+        title: "Error",
+        description: "Failed to cancel organization",
+        variant: "destructive",
+      });
     } finally {
-        setIsCancelling(false);
+      setIsCancelling(false);
     }
-};
+  };
 
   const renderContent = () => {
     if (schemaStatus === 'IN_PROGRESS') {
@@ -478,16 +483,16 @@ export const FileOrganizerDialog: React.FC<FileOrganizerDialogProps> = ({ bucket
           </div>
           <div className="flex items-center space-x-4">
             <div className="flex items-center space-x-2">
-              <Checkbox 
-                id="rename" 
+              <Checkbox
+                id="rename"
                 checked={shouldRename}
                 onCheckedChange={(checked: boolean | 'indeterminate') => setShouldRename(checked as boolean)}
               />
               <Label htmlFor="rename">Rename Files</Label>
             </div>
             <div className="flex items-center space-x-2">
-              <Checkbox 
-                id="reorder" 
+              <Checkbox
+                id="reorder"
                 checked={shouldReorder}
                 onCheckedChange={(checked) => setShouldReorder(checked as boolean)}
               />
@@ -506,14 +511,14 @@ export const FileOrganizerDialog: React.FC<FileOrganizerDialogProps> = ({ bucket
             <AccordionItem value="schema">
               <AccordionTrigger>Folder Structure</AccordionTrigger>
               <AccordionContent>
-                <TreeView 
+                <TreeView
                   schema={schema}
                   fileAssignments={organizationResults?.file_assignments || {}}
                   newNames={organizationResults?.new_names || {}}
                 />
               </AccordionContent>
             </AccordionItem>
-            
+
             <AccordionItem value="moves">
               <AccordionTrigger>File Movements</AccordionTrigger>
               <AccordionContent>
@@ -570,7 +575,7 @@ export const FileOrganizerDialog: React.FC<FileOrganizerDialogProps> = ({ bucket
             <AccordionItem value="fileTree">
               <AccordionTrigger>File Movement Tree</AccordionTrigger>
               <AccordionContent>
-                <FileMovementTree 
+                <FileMovementTree
                   fileAssignments={organizationResults?.file_assignments || {}}
                   newNames={organizationResults?.new_names || {}}
                 />
@@ -579,8 +584,8 @@ export const FileOrganizerDialog: React.FC<FileOrganizerDialogProps> = ({ bucket
           </Accordion>
 
           <div className="flex justify-end gap-2">
-            <Button 
-              variant="outline" 
+            <Button
+              variant="outline"
               onClick={handleCancel}
               disabled={isCancelling || isApplying}
             >
@@ -593,7 +598,7 @@ export const FileOrganizerDialog: React.FC<FileOrganizerDialogProps> = ({ bucket
                 'Cancel'
               )}
             </Button>
-            <Button 
+            <Button
               onClick={handleApplyChanges}
               disabled={!organizationResults || isApplying || isCancelling}
             >
@@ -621,16 +626,16 @@ export const FileOrganizerDialog: React.FC<FileOrganizerDialogProps> = ({ bucket
         </div>
         <div className="flex items-center space-x-4">
           <div className="flex items-center space-x-2">
-            <Checkbox 
-              id="rename" 
+            <Checkbox
+              id="rename"
               checked={shouldRename}
               onCheckedChange={(checked: boolean | 'indeterminate') => setShouldRename(checked as boolean)}
             />
             <Label htmlFor="rename">Rename Files</Label>
           </div>
           <div className="flex items-center space-x-2">
-            <Checkbox 
-              id="reorder" 
+            <Checkbox
+              id="reorder"
               checked={shouldReorder}
               onCheckedChange={(checked) => setShouldReorder(checked as boolean)}
             />
@@ -652,10 +657,8 @@ export const FileOrganizerDialog: React.FC<FileOrganizerDialogProps> = ({ bucket
   };
 
   return (
-    <Dialog>
-      <DialogTrigger asChild>
-        <Button variant="outline">Organize Files</Button>
-      </DialogTrigger>
+
+    <Dialog open={open} onOpenChange={onClose}>
       <DialogContent className="max-w-4xl h-[80vh]">
         <DialogHeader>
           <DialogTitle>Organize Files</DialogTitle>
@@ -665,5 +668,6 @@ export const FileOrganizerDialog: React.FC<FileOrganizerDialogProps> = ({ bucket
         </div>
       </DialogContent>
     </Dialog>
+
   );
 };

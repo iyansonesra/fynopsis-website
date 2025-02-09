@@ -11,6 +11,7 @@ export interface TreeNode {
   type: 'file' | 'folder';
   metadata: any;
   s3Key?: string;
+  s3KeyArray?: string[];
   children: { [key: string]: TreeNode };
   parent?: TreeNode;
   size?: number;
@@ -56,9 +57,11 @@ const createTreeStructure = (objects: S3Object[]): TreeNode => {
 
     let currentLevel = tree;
     let currKey = "";
+    let currKeyArray = [];
     for (let i = 0; i < parts.length; i++) {
       const part = parts[i];
       currKey += part;
+      currKeyArray.push(part);
       const isLastPart = i === parts.length - 1;
       const isFile = !obj.key.endsWith('/') && isLastPart;
 
@@ -68,31 +71,12 @@ const createTreeStructure = (objects: S3Object[]): TreeNode => {
           type: isFile ? 'file' : 'folder',
           metadata: isLastPart ? obj.metadata.Metadata : {},
           s3Key: isFile ? currKey : currKey + '/',
+          s3KeyArray: currKey.split('/').filter(part => part !== ''),
           children: {},
           parent: currentLevel,
           size: (isLastPart && isFile) ? obj.metadata.ContentLength : 0,
           LastModified: obj.metadata.LastModified
         };
-
-        // if(currentLevel.children[part].type === 'file') {
-        //     console.log("children in", currentLevel.children[part].metadata.pre_upload);
-        //     if(currentLevel.children[part].metadata.pre_upload === "COMPLETED") {
-        //       // 
-        //     set((state) => ({
-        //       searchableFiles: [
-        //       ...state.searchableFiles,
-        //       {
-        //         key: currentLevel.children[part].s3Key || '',
-        //         metadata: {
-        //         ...currentLevel.children[part].metadata,
-        //         originalname: currentLevel.children[part].name
-        //         }
-        //       }
-        //       ]
-        //     }));
-
-        //     }
-        // }
       }
       currentLevel = currentLevel.children[part];
       currKey += "/";
@@ -116,69 +100,71 @@ export const useS3Store = create<S3State>()(((set, get) => ({
   fetchObjects: async (bucketUuid: string) => {
 
     set({ isLoading: true });
-    try {
-      const restOperation = AmplifyAPI.get({
-        apiName: 'S3_API',
-        path: `/s3/${bucketUuid}/head-objects-for-bucket`,
-        options: { withCredentials: true }
-      });
-      const { body } = await restOperation.response;
-      const responseText = await body.text();
-      const response = JSON.parse(responseText);
+    // try {
+    //   const restOperation = AmplifyAPI.get({
+    //     apiName: 'S3_API',
+    //     path: `/s3/${bucketUuid}/head-objects-for-bucket`,
+    //     options: { withCredentials: true }
+    //   });
+    //   const { body } = await restOperation.response;
+    //   const responseText = await body.text();
+    //   const response = JSON.parse(responseText);
 
 
-      response.headObjects.forEach((obj: any) => {
-        if (obj.metadata && obj.metadata.Metadata.pre_upload) {
-          if (obj.metadata.Metadata.pre_upload === "COMPLETE") {
-            set((state) => {
-              // Check if file already exists in searchableFiles
-              const exists = state.searchableFiles.some(file => file.key === obj.key);
-              if (!exists) {
-                return {
-                  searchableFiles: [
-                    ...state.searchableFiles,
-                    {
-                      key: obj.key,
-                      metadata: {
-                        ...obj.metadata.Metadata,
-                        originalname: obj.key.split('/').pop()
-                      }
-                    }
-                  ]
-                };
-              }
-              return state;
-            });
-          }
-        }
+    //   response.headObjects.forEach((obj: any) => {
+    //     if (obj.metadata && obj.metadata.Metadata.pre_upload) {
+    //       if (obj.metadata.Metadata.pre_upload === "COMPLETE") {
+    //         set((state) => {
+    //           // Check if file already exists in searchableFiles
+    //           const exists = state.searchableFiles.some(file => file.key === obj.key);
+    //           if (!exists) {
+    //             return {
+    //               searchableFiles: [
+    //                 ...state.searchableFiles,
+    //                 {
+    //                   key: obj.key,
+    //                   metadata: {
+    //                     ...obj.metadata.Metadata,
+    //                     originalname: obj.key.split('/').pop()
+    //                   }
+    //                 }
+    //               ]
+    //             };
+    //           }
+    //           return state;
+    //         });
+    //       }
+    //     }
 
 
-      });
+    //   });
 
-      // console.log("SEARCHABLE FILES:");
-      get().searchableFiles.forEach((file) => {
-        // console.log("File:", file.key, "Metadata:", file.metadata);
-        // console.log("Original Name:", file.metadata.originalname);
-      });
+    //   // console.log("SEARCHABLE FILES:");
+    //   get().searchableFiles.forEach((file) => {
+    //     // console.log("File:", file.key, "Metadata:", file.metadata);
+    //     // console.log("Original Name:", file.metadata.originalname);
+    //   });
 
-      if (response.headObjects) {
-        const objects = response.headObjects;
-        const tree = createTreeStructure(objects);
-        set({ currentNode: tree.children[bucketUuid] });
-        set({
-          objects,
-          tree,
-          filteredObjects: objects
-        });
-      }
-    } catch (error) {
-      console.error('Error fetching S3 objects:', error);
-    } finally {
-      // console.log('finally');
-      set({ isLoading: false });
-      get().isLoading
-      // console.log('isLoading:', );
-    }
+    //   if (response.headObjects) {
+    //     const objects = response.headObjects;
+    //     const tree = createTreeStructure(objects);
+    //     set({ currentNode: tree.children[bucketUuid] });
+    //     set({
+    //       objects,
+    //       tree,
+    //       filteredObjects: objects
+    //     });
+
+    //     console.log('treee currently', tree);
+    //   }
+    // } catch (error) {
+    //   console.error('Error fetching S3 objects:', error);
+    // } finally {
+    //   // console.log('finally');
+    //   set({ isLoading: false });
+    //   get().isLoading
+    //   // console.log('isLoading:', );
+    // }
   },
   navigateToPath: (path: string[]) => {
     return new Promise<void>((resolve) => {
@@ -213,9 +199,9 @@ export const useS3Store = create<S3State>()(((set, get) => ({
   },
   createFolder: async (folderName: string, bucketUuid: string) => {
     const state = get();
-    const currentPath = getS3Key(state.currentNode);
-    const folderPath = `${currentPath}${folderName}/`;
-    let s3Upload = getCurrentPathString(state.currentNode);
+    const currentPath = (state.currentNode.s3KeyArray ?? []).join('/') + '/';
+    const folderPath = `${bucketUuid}/${currentPath}${folderName}/`;
+    let s3Upload = currentPath;
     if (s3Upload === '/') {
       s3Upload = '';
     }
@@ -301,7 +287,7 @@ export const useS3Store = create<S3State>()(((set, get) => ({
   // },
   deleteItem: async (folderName: string, bucketUuid: string, isFolder: boolean) => {
     const state = get();
-    const currentPath = getCurrentPathString(state.currentNode);
+    const currentPath = (state.currentNode.s3KeyArray ?? []).join('/') + '/';
     const folderPath = `${currentPath}${folderName}/`;
     const filePath = `${currentPath}${folderName}`;
 
@@ -332,7 +318,7 @@ export const useS3Store = create<S3State>()(((set, get) => ({
         options: {
           withCredentials: true,
           queryParams: {
-            key: isFolder ? folderPath.slice(1) : filePath.slice(1)
+            key: isFolder ? folderPath : filePath
           }
         }
       });
@@ -385,7 +371,7 @@ export const useS3Store = create<S3State>()(((set, get) => ({
       filteredObjects: []
     });
   },
-  moveItem: async (sourceKey: string, destinationKey: string, bucketUuid: string, currEmail: string, changersEmail: string): Promise<TreeNode> => {
+  moveItem: async (sourceKey: string, destinationKey: string, bucketUuid: string, currEmail: string, changersEmail: string): Promise<TreeNode> => { // websocket case
     const sourceParts = sourceKey.split('/').filter(part => part !== '');
     const destParts = destinationKey.split('/').filter(part => part !== '');
 
@@ -396,6 +382,7 @@ export const useS3Store = create<S3State>()(((set, get) => ({
     while(sourceNode.name !== 'root') {
       sourceNode = sourceNode.parent as TreeNode;
     }
+
     sourceNode = sourceNode.children[bucketUuid];
     console.log("sourceNode:", sourceNode);
     for (let i = 0; i < sourceParts.length - 1; i++) {
@@ -468,29 +455,6 @@ export const useS3Store = create<S3State>()(((set, get) => ({
 })));
 
 
-function getCurrentPathString(node: TreeNode): string {
-  const pathParts: string[] = [];
-  let current = node;
-  while (current.name !== 'root') {
-    pathParts.unshift(current.name);
-    current = current.parent as TreeNode;
-  }
-  // Remove the first path part and join the rest with forward slashes
-  const output = pathParts.slice(1).join('/') + '/';
-  return output;
-}
-
-function getS3Key(node: TreeNode): string {
-  const pathParts: string[] = [];
-  let current = node;
-  while (current) {
-    pathParts.unshift(current.name);
-    current = current.parent as TreeNode;
-  }
-  // Remove the first path part and join the rest with forward slashes
-  const output = pathParts.slice(1).join('/') + '/';
-  return output;
-}
 
 
 

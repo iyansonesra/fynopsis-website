@@ -12,7 +12,7 @@ import { put } from 'aws-amplify/api';
 import { fetchAuthSession } from 'aws-amplify/auth';
 import { Button } from "@/components/ui/button";
 import { CircularProgress } from "@mui/material";
-import DataRoom from "../../pages/DataroomPage";
+import DataRoom from "../../../pages/DataroomPage";
 
 export default function Dashboard() {
   const { user } = useAuthenticator();

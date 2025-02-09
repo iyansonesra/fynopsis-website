@@ -117,7 +117,7 @@ export default function GeneralDashboard() {
 
 
     const handleDataRoomClick = (id: string | null | undefined) => {
-        router.push(`/dataroom/${id}`);
+        router.push(`/dataroom/${id}/home`);
     };
 
     const handleAddDataroom = async () => {

@@ -47,7 +47,8 @@ export default function Home() {
       const [userEmail, setUserEmail] = useState('');
       const [permissionLevel, setPermissionLevel] = useState('READ');
       const pathname = usePathname();
-      const bucketUuid = pathname.split('/').pop() || '';
+      const pathArray = pathname.split('/');
+      const bucketUuid = pathArray[2] || '';
       const params = useParams();
       const [hasPermission, setHasPermission] = useState<boolean>(true);
       const dataroomId = Array.isArray(params.id) ? params.id[0] : params.id;
@@ -120,6 +121,7 @@ export default function Home() {
   // }, []); // This will set the initial indicator style for Library tab
 
   const fetchPermissionLevel = async () => {
+    console.log("bucketuid", bucketUuid);
     try {
       const restOperation = get({
         apiName: 'S3_API',

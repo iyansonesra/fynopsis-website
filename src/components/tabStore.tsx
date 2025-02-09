@@ -1,7 +1,7 @@
 
 // tabStore.ts
 import { create } from 'zustand';
-import { FileSystem } from './ElevatedTable';
+import { FileSystem } from './UltraTable';
 
 interface Tab {
   id: string;
