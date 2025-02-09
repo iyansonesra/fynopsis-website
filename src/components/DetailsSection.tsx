@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { ArrowLeft, ArrowUp, BadgeInfo, FileText, Footprints, Plus, PlusCircle, Search } from 'lucide-react';
+import { ArrowLeft, ArrowUp, BadgeInfo, FileText, Footprints, Plus, PlusCircle, Search, MessageSquare } from 'lucide-react';
 import { Input, Skeleton } from '@mui/material';
 import { Button } from './ui/button';
 import { post, get } from 'aws-amplify/api';
@@ -30,6 +30,7 @@ import {
 import { TextShimmer } from './ui/text-shimmer';
 import { AIInputWithSearch } from './ui/ai-input-with-search';
 import { useS3Store } from './fileService';
+import { ChatHistoryPanel } from './ChatHistoryPanel';
 
 // import { w3cwebsocket as W3CWebSocket } from "websocket";
 // import { Signer } from '@aws-amplify/core';
@@ -126,6 +127,7 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
     const [currentThreadId, setCurrentThreadId] = useState<string>('');
     const [isAnswerLoading, setIsAnswerLoading] = useState(false);
     const [isWebSocketActive, setIsWebSocketActive] = useState(false);
+    const [showChatHistory, setShowChatHistory] = useState(false);
 
     // Add selector for S3Store
     const s3Objects = useS3Store(state => state.objects);
@@ -849,6 +851,30 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
         setIsAnswerLoading(false);
     };
 
+    const handleChatHistorySelect = (messages: any[]) => {
+        // Convert chat history messages to the format expected by the chat interface
+        const formattedMessages = messages.map(msg => ({
+            type: msg.role === 'user' ? 'question' as const : 'answer' as const,
+            content: msg.content,
+            timestamp: msg.timestamp
+        }));
+
+        setMessages(formattedMessages);
+        setShowChatHistory(false);
+    };
+
+    const renderChatHistoryButton = () => (
+        <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setShowChatHistory(true)}
+            className="absolute top-4 left-4 z-50"
+        >
+            <MessageSquare className="h-4 w-4 mr-2" />
+            Chat History
+        </Button>
+    );
+
     const renderAdvancedSearch = () => {
 
         return (
@@ -1023,7 +1049,18 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
     return (
         <ScrollArea className="h-full ">
             <div className="flex flex-col gap-2 overflow-auto h-screen">
-                {(showDetailsView && sourceUrls.length === 0) ? renderFileDetails() : renderAdvancedSearch()}
+                {showChatHistory ? (
+                    <ChatHistoryPanel
+                        bucketId={bucketUuid}
+                        onThreadSelect={handleChatHistorySelect}
+                        onBack={() => setShowChatHistory(false)}
+                    />
+                ) : (
+                    <>
+                        {renderChatHistoryButton()}
+                        {(showDetailsView && sourceUrls.length === 0) ? renderFileDetails() : renderAdvancedSearch()}
+                    </>
+                )}
             </div>
         </ScrollArea>
 
