@@ -1,14 +1,15 @@
 /* eslint-disable react/no-unescaped-entities */
 "use client";
 
-import logo from '../assets/fynopsis_noBG.png'
+import logo from './../app/assets/fynopsis_noBG.png'
 import { useState, useEffect } from "react"
 import { useAuthenticator } from '@aws-amplify/ui-react';
 import { Clipboard, LucideIcon, Activity } from "lucide-react";
 import { fetchUserAttributes, FetchUserAttributesOutput } from 'aws-amplify/auth';
 import { CircularProgress } from "@mui/material";
 import React, { useRef } from 'react';
-import { useParams, usePathname, useRouter } from 'next/navigation';
+import { useParams, usePathname } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { Library, Users, LogOut } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import Files from "@/components/Files";
@@ -24,6 +25,7 @@ import { FileSystem } from '@/components/ElevatedTable';
 import { Separator } from '@radix-ui/react-separator';
 import { TagDisplay } from '@/components/TagsHover';
 import { AuditLogViewer } from '@/components/AuditLogViewer';
+import Link from 'next/link';
 
 type IndicatorStyle = {
   top: string;
@@ -36,70 +38,73 @@ type Tab = {
 };
 
 export default function Home() {
-   const [selectedTab, setSelectedTab] = useState("library");
-      const { user, signOut } = useAuthenticator((context) => [context.user]);
-      const [userAttributes, setUserAttributes] = useState<FetchUserAttributesOutput | null>(null);
-      const router = useRouter();
-      const [activeTab, setActiveTab] = useState<number | null>(0);
-      const [indicatorStyle, setIndicatorStyle] = useState<IndicatorStyle>({} as IndicatorStyle);
-      const tabRefs = useRef<(HTMLDivElement | null)[]>([]);
-      const [isShareDialogOpen, setIsShareDialogOpen] = useState(false);
-      const [userEmail, setUserEmail] = useState('');
-      const [permissionLevel, setPermissionLevel] = useState('READ');
-      const pathname = usePathname();
-      const pathArray = pathname.split('/');
-      const bucketUuid = pathArray[2] || '';
-      const params = useParams();
-      const [hasPermission, setHasPermission] = useState<boolean>(true);
-      const dataroomId = Array.isArray(params.id) ? params.id[0] : params.id;
+  const [selectedTab, setSelectedTab] = useState("library");
+  const { user, signOut } = useAuthenticator((context) => [context.user]);
+  const [userAttributes, setUserAttributes] = useState<FetchUserAttributesOutput | null>(null);
+  const router = useRouter();
+  const [activeTab, setActiveTab] = useState<number | null>(0);
+  const [indicatorStyle, setIndicatorStyle] = useState<IndicatorStyle>({} as IndicatorStyle);
+  const tabRefs = useRef<(HTMLDivElement | null)[]>([]);
+  const [isShareDialogOpen, setIsShareDialogOpen] = useState(false);
+  const [userEmail, setUserEmail] = useState('');
+  const [permissionLevel, setPermissionLevel] = useState('READ');
+  const pathname = usePathname();
+  const pathArray = pathname.split('/');
+  const bucketUuid = pathArray[2] || '';
+  const params = useParams();
+  const [hasPermission, setHasPermission] = useState<boolean>(true);
+  const dataroomId = Array.isArray(params.id) ? params.id[0] : params.id;
 
-  
-      const tabs: Tab[] = [
-          { icon: Library, label: 'Library' },
-          { icon: Users, label: 'Users' },
-          { icon: Activity, label: 'Activity' }, // Add new tab
-      ];
-  
-      function signIn(): void {
-          router.push('/signin');
+
+  const tabs: Tab[] = [
+    { icon: Library, label: 'Library' },
+    { icon: Users, label: 'Users' },
+    { icon: Activity, label: 'Activity' }, // Add new tab
+  ];
+
+  function signIn(): void {
+    router.push('/signin');
+  }
+
+
+  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [newDataroomName, setNewDataroomName] = useState('');
+
+
+
+
+
+  function handleTabClick(index: number): void {
+    setActiveTab(index);
+    setSelectedTab(tabs[index].label.toLowerCase());
+  }
+
+  useEffect(() => {
+    // console.log("checking for tab color!");
+    if (activeTab !== null && tabRefs.current[activeTab]) {
+      const tabElement = tabRefs.current[activeTab];
+      if (tabElement) {
+        setIndicatorStyle({
+          top: `${tabElement.offsetTop}px`,
+          height: `${tabElement.offsetHeight}px`,
+        });
       }
-  
-  
-      const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
-      const [newDataroomName, setNewDataroomName] = useState('');
-  
-  
-  
-  
-    
-      function handleTabClick(index: number): void {
-          setActiveTab(index);
-          setSelectedTab(tabs[index].label.toLowerCase());
-      }
-  
-      useEffect(() => {
-          // console.log("checking for tab color!");
-          if (activeTab !== null && tabRefs.current[activeTab]) {
-              const tabElement = tabRefs.current[activeTab];
-              if (tabElement) {
-                  setIndicatorStyle({
-                      top: `${tabElement.offsetTop}px`,
-                      height: `${tabElement.offsetHeight}px`,
-                  });
-              }
-          }
-      }, [activeTab]);
-  
- 
-  
-      useEffect(() => {
-          if (user) {
-              handleFetchUserAttributes();
-          }
-      }, [user]);
+    }
+  }, [activeTab]);
 
 
- 
+
+
+
+
+  useEffect(() => {
+    if (user) {
+      handleFetchUserAttributes();
+    }
+  }, [user]);
+
+
+
   const [isDarkMode, setIsDarkMode] = useState(() => {
     if (typeof window !== 'undefined') {
       return localStorage.getItem('color-theme') === 'dark';
@@ -109,6 +114,7 @@ export default function Home() {
 
   useEffect(() => {
     fetchPermissionLevel();
+
   }, []);
 
   // useEffect(() => {
@@ -136,12 +142,17 @@ export default function Home() {
       // console.log('Body:', body);
       const responseText = await body.text();
       const response = JSON.parse(responseText);
-      // console.log('Users response:', response);
+      console.log('Users response:', response);
       setHasPermission(true);
     } catch (error) {
       setHasPermission(false);
     }
   };
+
+  const handleMickey = () => {
+    console.log('Mickey clicked');
+    // router?.replace('/ooga', undefined, { shallow: true });
+  }
 
   const toggleDarkMode = () => {
     setIsDarkMode(!isDarkMode);
@@ -198,6 +209,7 @@ export default function Home() {
   async function handleFetchUserAttributes() {
     try {
       const attributes = await fetchUserAttributes();
+      console.log('User attributes:', attributes);
       setUserAttributes(attributes);
     } catch (error) {
       console.log("error");
@@ -218,7 +230,7 @@ export default function Home() {
     }
   };
 
- 
+
   useEffect(() => {
     if (isDarkMode) {
       document.documentElement.classList.add('dark');
@@ -244,11 +256,11 @@ export default function Home() {
     );
   }
 
-  
+
 
   return (
-    userAttributes ?
-   <div className="relative h-screen w-full flex flex-row sans-serif">
+ 
+      <div className="relative h-screen w-full flex flex-row sans-serif">
         <div className="w-20 bg-slate-900 h-full flex flex-col items-center justify-between pt-4 pb-6">
           <div className="flex items-center flex-col">
             <img
@@ -256,7 +268,7 @@ export default function Home() {
               alt="logo"
               className="h-14 w-auto mb-8 cursor-pointer"
               onClick={() => router.push('/dashboard')}
-            />            
+            />
             <div className="relative flex flex-col items-center">
 
               {activeTab !== null && (
@@ -342,6 +354,7 @@ export default function Home() {
                   {isDarkMode ? <span className="text-black">Dark</span> : <span className="text-black">Light</span>}
                 </button>
 
+
               </PopoverContent>
 
             </Popover>
@@ -352,9 +365,6 @@ export default function Home() {
         <div className="flex-1 overflow-hidden flex h-full dark:bg-darkbg">
           {renderSelectedScreen()}
         </div>
-      </div> :
-<div className="grid h-screen place-items-center dark:bg-darkbg">
-    <CircularProgress value={0.5} />
-</div>
+      </div> 
   );
 }

@@ -6,11 +6,13 @@ import { usePathname } from 'next/navigation';
 import { useS3Store, TreeNode } from "./fileService";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
+import { TbChevronsDownLeft } from 'react-icons/tb';
 
 interface DragDropOverlayProps {
   onClose: () => void;
-  onFilesUploaded: (files: File[]) => void;
+  onFilesUploaded: (files: File[], fileHashes: FileHashMapping) => void;
   currentPath?: string[];  // Add current path prop
+  folderId?: string;
 }
 
 interface FileUpload {
@@ -23,6 +25,12 @@ interface FileUploads {
   [key: string]: FileUpload;
 }
 
+interface FileHashMapping {
+  [key: string]: string; // key = filename+size, value = fileHash
+}
+
+// Add this state in your component
+
 const ALLOWED_FILE_TYPES = {
   // Documents
   'application/pdf': '.pdf',
@@ -30,24 +38,24 @@ const ALLOWED_FILE_TYPES = {
   'application/msword': '.doc',
   'application/rtf': '.rtf',
   'application/vnd.oasis.opendocument.text': '.odt',
-  
+
   // Spreadsheets
   'application/vnd.ms-excel': '.xls',
   'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': '.xlsx',
   'application/vnd.ms-excel.sheet.macroEnabled.12': '.xlsm',
   'text/csv': '.csv',
   'application/vnd.oasis.opendocument.spreadsheet': '.ods',
-  
+
   // Presentations
   'application/vnd.ms-powerpoint': '.ppt',
   'application/vnd.openxmlformats-officedocument.presentationml.presentation': '.pptx',
   'application/vnd.oasis.opendocument.presentation': '.odp',
-  
+
   // Diagrams
   'application/vnd.visio': '.vsd',
   'application/vnd.ms-visio.drawing': '.vsdx',
   'application/vnd.oasis.opendocument.graphics': '.odg',
-  
+
   // Images
   'image/heic': '.heic',
   'image/png': '.png',
@@ -96,13 +104,16 @@ const MAX_FILE_SIZE = 100 * 1024 * 1024; // 100MB in bytes
 const DragDropOverlay: React.FC<DragDropOverlayProps> = ({
   onClose,
   onFilesUploaded,
-  currentPath = [] // Default to empty array for root folder
+  currentPath = [], // Default to empty array for root folder
+  folderId
 }) => {
+  const fileHashes: FileHashMapping = {}; 
   const [pendingFiles, setPendingFiles] = useState<File[]>([]);
   const [fileUploads, setFileUploads] = useState<FileUploads>({});
   const [isConfirming, setIsConfirming] = useState(false);
   const pathname = usePathname();
-  const bucketUuid = pathname.split('/').pop() || '';
+  const pathArray = pathname.split('/');
+  const bucketUuid = pathArray[2] || '';
 
   const getFullPath = (fileName: string) => {
     if (currentPath.length === 0) {
@@ -122,22 +133,36 @@ const DragDropOverlay: React.FC<DragDropOverlayProps> = ({
 
       console.log('filePathOut:', filePathOut);
 
+      console.log("file name in uploadFile:", file.name);
+      console.log("breh", file.type)
+      console.log("folder id in uploadFile:", folderId);
+
       // Get presigned URL from API with the full path
       const getUrlResponse = await post({
         apiName: 'S3_API',
         path: `/s3/${bucketUuid}/upload-url`,
         options: {
           withCredentials: true,
-          body: JSON.stringify({
-            filePath: filePathOut,
-            contentType: file.type
-          })
+          body: {
+            fileName: file.name,
+            folderId: folderId || null,
+            contentType: file.type,
+          }
         }
       });
 
       const { body } = await getUrlResponse.response;
       const responseText = await body.text();
-      const { signedUrl } = JSON.parse(responseText);
+      const { signedUrl, fileHash, fileName } = JSON.parse(responseText);
+
+      const fileKey = `${fileName}-${file.size}`;
+      console.log('fileKey:', fileKey);
+      console.log('fileHash:', fileHash);
+      fileHashes[fileKey] = fileHash;  // Store hash in local object
+
+
+      console.log("file hash table:", fileHashes);
+
 
       // Upload file using presigned URL
       const uploadResponse = await fetch(signedUrl, {
@@ -261,7 +286,7 @@ const DragDropOverlay: React.FC<DragDropOverlayProps> = ({
         .filter(upload => upload.status === 'completed')
         .map(upload => upload.file);
 
-      onFilesUploaded(uploadedFiles);
+      onFilesUploaded(uploadedFiles, fileHashes);
       onClose();
     } catch (error) {
       console.error('Failed to confirm uploads:', error);
@@ -338,10 +363,9 @@ const DragDropOverlay: React.FC<DragDropOverlayProps> = ({
       </div>
       <div className="w-full bg-gray-200 rounded-full h-2">
         <div
-          className={`h-2 rounded-full transition-all duration-300 ${
-            upload.status === 'error' ? 'bg-red-500' :
-            upload.status === 'completed' ? 'bg-green-500' : 'bg-blue-500'
-          }`}
+          className={`h-2 rounded-full transition-all duration-300 ${upload.status === 'error' ? 'bg-red-500' :
+              upload.status === 'completed' ? 'bg-green-500' : 'bg-blue-500'
+            }`}
           style={{ width: `${Math.max(0, upload.progress)}%` }}
         ></div>
       </div>
@@ -358,8 +382,8 @@ const DragDropOverlay: React.FC<DragDropOverlayProps> = ({
         </div>
         {Object.keys(fileUploads).length === 0 ? (
           // This is the key change - wrap everything in the dropzone
-          <div 
-            {...getRootProps()} 
+          <div
+            {...getRootProps()}
             className={`border-2 border-dashed rounded-lg p-8 text-center cursor-pointer 
               ${isDragActive ? 'border-blue-500 bg-blue-50' : 'border-gray-300'}`}
           >

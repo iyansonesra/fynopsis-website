@@ -52,15 +52,20 @@ interface FileSelectProps {
     id: string;
     name: string;
     s3Url: string;
-    type?: string;
-    size?: string;
-    status?: "success";
-    date?: string;
-    uploadedBy?: string;
-    s3Key?: string;
-    uploadProcess?: string;
-    summary?: string;
-    tags?: string[];
+    parentId: string;
+   
+    uploadedBy: string;
+    type: string;
+    size: string;
+    
+    isFolder: boolean;
+    createByEmail: string;
+    createByName: string;
+    lastModified: string;
+    tags: string[];
+    summary: string;
+    status: string;
+    
 }
 
 export default function Files({ setSelectedTab }: { setSelectedTab: React.Dispatch<React.SetStateAction<string>> }) {
@@ -155,10 +160,10 @@ export default function Files({ setSelectedTab }: { setSelectedTab: React.Dispat
                         setActiveTabId={setActiveTabId}
                         setTabs={setCurrentTabs}
                     />
-                    <DataTable 
+                    {/* <DataTable 
                         onFileSelect={handleFileSelect} 
                         setTableData={setTableData}  // Pass setTableData to DataTable
-                    />
+                    /> */}
                 </ResizablePanel>
                 <ResizableHandle withHandle className='dark:bg-slate-900'/>
                 <ResizablePanel defaultSize={25} minSize={20} collapsible={true} collapsedSize={0}>

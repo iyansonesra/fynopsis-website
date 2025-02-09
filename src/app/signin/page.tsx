@@ -2,7 +2,7 @@
 import { Authenticator } from "../../components/Authenticator";
 // import { Amplify } from "aws-amplify";
 import { Authenticator as AmplifyAuthenticator } from "@aws-amplify/ui-react";
-import Home from "../pages/DataroomPage";
+import Home from "../../pages/DataroomPage";
 import { useRouter } from 'next/router';
 import { useEffect } from 'react';
 import { Sign } from "crypto";

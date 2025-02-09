@@ -2,7 +2,7 @@
 import { Authenticator } from "../../components/Authenticator";
 import { Amplify } from "aws-amplify";
 import { Authenticator as AmplifyAuthenticator } from "@aws-amplify/ui-react";
-import Home from "../pages/DataroomPage";
+import Home from "../../pages/DataroomPage";
 import { useAuthenticator } from '@aws-amplify/ui-react';
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';

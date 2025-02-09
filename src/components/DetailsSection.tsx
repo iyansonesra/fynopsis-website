@@ -69,15 +69,19 @@ interface FileSelectProps {
     id: string;
     name: string;
     s3Url: string;
-    type?: string;
-    size?: string;
-    status?: "success";
-    date?: string;
-    uploadedBy?: string;
-    s3Key?: string;
-    uploadProcess?: string;
-    summary?: string;
-    tags?: string[];
+    parentId: string;
+   
+    uploadedBy: string;
+    type: string;
+    size: string;
+    
+    isFolder: boolean;
+    createByEmail: string;
+    createByName: string;
+    lastModified: string;
+    tags: string[];
+    summary: string;
+    status: string;
 }
 
 const getIdToken = async () => {
@@ -164,11 +168,14 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
                     type: sourceUrl.split('.').pop()?.toUpperCase() || 'Unknown',
                     size: formatFileSize(metadata.ContentLength || 0),
                     status: "success",
-                    date: metadata.LastModified || '',
+                    lastModified: metadata.LastModified || '',
                     uploadedBy: metadata.Metadata?.uploadbyname || 'Unknown',
-                    s3Key: sourceUrl,
-                    uploadProcess: metadata.Metadata?.pre_upload || 'COMPLETED',
-                    summary: metadata.Metadata?.document_summary || ''
+                    summary: metadata.Metadata?.document_summary || '',
+                    tags: metadata.Metadata?.tags || [],
+                    isFolder: false,
+                    createByEmail: metadata.Metadata?.createbyemail || '',
+                    createByName: metadata.Metadata?.createbyname || '',
+                    parentId: metadata.Metadata?.parentid || ''
                 });
             } else {
                 // Fallback to basic file info if not found
@@ -180,11 +187,14 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
                     type: fileName.split('.').pop()?.toUpperCase() || 'Unknown',
                     size: '0',
                     status: "success" as const,
-                    date: '',
+                    lastModified: '',
                     uploadedBy: 'Unknown',
-                    s3Key: sourceUrl,
-                    uploadProcess: 'COMPLETED',
-                    tags: []
+                    summary: '',
+                    tags: [],
+                    isFolder: false,
+                    createByEmail: '',
+                    createByName: '',
+                    parentId: ''
                 };
 
                 onFileSelect(fileObject);
@@ -263,6 +273,17 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
                 id: `file-${sourceKey}`,
                 name: sourceName,
                 s3Url: url,
+                parentId: '',
+                uploadedBy: '',
+                type: '',
+                size: '',
+                isFolder: false,
+                createByEmail: '',
+                createByName: '',
+                lastModified: '',
+                tags: [],
+                summary: '',
+                status: ''
             });
         } catch (error) {
             // console.error('Error getting presigned URL:', error);
