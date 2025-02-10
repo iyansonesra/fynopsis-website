@@ -39,6 +39,9 @@ import * as AmplifyAPI from "aws-amplify/api";
 import path from 'path';
 import { useParams, useRouter } from 'next/navigation';
 import { useFileStore } from './HotkeyService';
+import { ContextMenu, ContextMenuCheckboxItem, ContextMenuContent, ContextMenuItem, ContextMenuLabel, ContextMenuRadioGroup, ContextMenuRadioItem, ContextMenuSeparator, ContextMenuShortcut, ContextMenuSub, ContextMenuSubContent, ContextMenuSubTrigger, ContextMenuTrigger } from "@/components/ui/context-menu";
+import { Download, Pencil, Trash } from 'lucide-react';
+
 
 
 
@@ -131,56 +134,56 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
   const { cutFile, setCutFile } = useFileStore();
 
 
-   React.useEffect(() => {
-          const handleKeyboardShortcuts = async (e: KeyboardEvent) => {
-              if (e.ctrlKey || e.metaKey) {  // metaKey for Mac support
-                  if (e.key === 'x' && selectedItemId) {
-                      // Handle cut
-                      const selectedItem = tableData.find(item => item.id === selectedItemId);
-                      console.log("selected item:", selectedItem);
-                      if (selectedItem) {
-                         
-                        setCutFile(selectedItem);
-                      
-                          setTableData(prevData => prevData.map(item =>
-                              item.id === selectedItemId
-                                  ? { ...item, status: 'GRAY' }
-                                  : item
-                          ));
-  
-                          // console.log('Cut:', selectedItem.s3Key);
-                      }
-                  } else if (e.key === 'v' && cutFile) {
-                      console.log("CUT FILE ID:", cutFile);
-     
-  
-  
-                      try {
-                         await moveFile(cutFile.id, pathArray[3] === "home" ? "ROOT" : pathArray[3]);
+  React.useEffect(() => {
+    const handleKeyboardShortcuts = async (e: KeyboardEvent) => {
+      if (e.ctrlKey || e.metaKey) {  // metaKey for Mac support
+        if (e.key === 'x' && selectedItemId) {
+          // Handle cut
+          const selectedItem = tableData.find(item => item.id === selectedItemId);
+          console.log("selected item:", selectedItem);
+          if (selectedItem) {
 
-                          // Update the UI after successful move
-                          // Update the UI after successful move
-                          setTableData(prevData => sortTableData([...prevData, cutFile]));
+            setCutFile(selectedItem);
 
-  
-                          setCutFile(null);
-  
-                      } catch (error) {
-                          // Revert the grayed out state if there's an error
-                          setTableData(prevData => prevData.map(item =>
-                              item.id === cutFile.id
-                                  ? { ...item, uploadProcess: 'COMPLETED' }
-                                  : item
-                          ));
-                          console.error('Error moving file:', error);
-                      }
-                  }
-              }
-          };
-  
-          window.addEventListener('keydown', handleKeyboardShortcuts);
-          return () => window.removeEventListener('keydown', handleKeyboardShortcuts);
-      }, [selectedItemId, cutFileKey, currentPath, bucketUuid]);
+            setTableData(prevData => prevData.map(item =>
+              item.id === selectedItemId
+                ? { ...item, status: 'GRAY' }
+                : item
+            ));
+
+            // console.log('Cut:', selectedItem.s3Key);
+          }
+        } else if (e.key === 'v' && cutFile) {
+          console.log("CUT FILE ID:", cutFile);
+
+
+
+          try {
+            await moveFile(cutFile.id, pathArray[3] === "home" ? "ROOT" : pathArray[3]);
+
+            // Update the UI after successful move
+            // Update the UI after successful move
+            setTableData(prevData => sortTableData([...prevData, cutFile]));
+
+
+            setCutFile(null);
+
+          } catch (error) {
+            // Revert the grayed out state if there's an error
+            setTableData(prevData => prevData.map(item =>
+              item.id === cutFile.id
+                ? { ...item, uploadProcess: 'COMPLETED' }
+                : item
+            ));
+            console.error('Error moving file:', error);
+          }
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyboardShortcuts);
+    return () => window.removeEventListener('keydown', handleKeyboardShortcuts);
+  }, [selectedItemId, cutFileKey, currentPath, bucketUuid]);
 
 
   React.useEffect(() => {
@@ -379,12 +382,12 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
 
     React.useEffect(() => {
       generateCrumbs();
-    }, []); 
+    }, []);
 
     const handleNav = (id: string) => {
       const segments = pathname.split('/');
       segments.pop();  // Remove the last segment
-      segments.push(id === 'ROOT' ? 'home' : id ); // Add the new folder ID
+      segments.push(id === 'ROOT' ? 'home' : id); // Add the new folder ID
       router.push(segments.join('/'));
     }
 
@@ -404,9 +407,9 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
                 ? 'text-gray-600 dark:text-gray-200 font-semibold'
                 : 'text-gray-600  dark:text-gray-200 font-normal'
                 }`}
-                onClick={() => handleNav(node.id)}
+              onClick={() => handleNav(node.id)}
             >
-              {node.name === 'Root' ? 'Home' : node.name} 
+              {node.name === 'Root' ? 'Home' : node.name}
             </button>
             {index < pathNodes.length - 1 && (
               <ChevronRight className="h-4 w-4 text-gray-400 mx-[.55rem]" />
@@ -500,7 +503,7 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
 
       console.log('result:', result);
 
-      if(result && result.newName) {
+      if (result && result.newName) {
         setTableData(prevData => prevData.map(item =>
           item.id === id
             ? { ...item, name: result.newName }
@@ -509,9 +512,9 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
 
         setShowRenameModal(false);
         setNewRenameName('');
-        
+
       }
-     
+
     } catch (error) {
 
       console.error('Error creating folder:', error);
@@ -966,170 +969,192 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
 
 
     return (
-      <tr
-        ref={setNodeRef}
-        style={{
-          transform: CSS.Transform.toString(transform),
-          transition,
-          // willChange: 'transform',
-          backgroundColor: isSelected ? 'rgba(59, 130, 246, 0.1)' : 'transparent',
-          cursor: isDragging ? 'grabbing' : 'default',
-          opacity: item.status === 'GRAY' ? 0.5 : 1,
-          overflow: 'visible'
-        }}
-        {...attributes}
-        {...listeners}
-        data-is-folder={item.isFolder}
-        className="text-xs transition-all duration-200 hover:bg-blue-50 cursor-pointer dark:text-white border-b border-[#e0e0e0] dark:border-[#333] "
-        onDoubleClick={handleDoubleClick}
-        onClick={handleClick}
+      <ContextMenu>
+        <ContextMenuTrigger  asChild>
+          <tr
+            ref={setNodeRef}
+            style={{
+              transform: CSS.Transform.toString(transform),
+              transition,
+              // willChange: 'transform',
+              backgroundColor: isSelected ? 'rgba(59, 130, 246, 0.1)' : 'transparent',
+              cursor: isDragging ? 'grabbing' : 'default',
+              opacity: item.status === 'GRAY' ? 0.5 : 1,
+              overflow: 'visible',
+              width: '100%', // Add full width
+          display: 'table-row'
+            }}
+            {...attributes}
+            {...listeners}
+            data-is-folder={item.isFolder}
+            className="text-xs transition-all duration-200 hover:bg-blue-50 cursor-pointer dark:text-white border-b border-[#e0e0e0] dark:border-[#333] "
+            onDoubleClick={handleDoubleClick}
+            onClick={handleClick}
 
-      >
+          >
 
-        <td style={{
-          width: columnWidths.name,
-          padding: '8px 16px',
-          whiteSpace: 'nowrap',
-          overflow: 'hidden',
-          textOverflow: 'ellipsis',
-          maxWidth: columnWidths.name
-        }}>
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            minWidth: 0, // Allow flex items to shrink below their minimum content size
-          }}>
-            <div style={{
-              flexShrink: 0, // Prevent icon from shrinking
-            }} className="flex flex-row">
-              {item.isFolder ?
-                <FolderIcon className="mr-2 h-4 w-4 dark:text-white" /> :
-                <FileIcon className="mr-2 h-4 w-4 dark:text-white" />
-              }
-            </div>
-            <div style={{
-              minWidth: 0, // Allow text container to shrink
+            <td style={{
+              width: columnWidths.name,
+              padding: '8px 16px',
+              whiteSpace: 'nowrap',
               overflow: 'hidden',
               textOverflow: 'ellipsis',
-              whiteSpace: 'nowrap'
+              maxWidth: columnWidths.name
             }}>
-              {item.name}
-            </div>
-          </div>
-        </td>
-        <td style={{
-          width: columnWidths.owner,
-          padding: '8px 16px',
-          whiteSpace: 'nowrap',
-          overflow: 'hidden',
-          textOverflow: 'ellipsis'
-        }}>{item.uploadedBy}</td>
-        <td style={{
-          width: columnWidths.lastModified,
-          padding: '8px 16px',
-          whiteSpace: 'nowrap',
-          overflow: 'hidden',
-          textOverflow: 'ellipsis'
-        }}>{getReadableTimeDifference(item.lastModified)}</td>
-        <td style={{
-          width: columnWidths.fileSize,
-          padding: '8px 16px',
-          whiteSpace: 'nowrap',
-          overflow: 'hidden',
-          textOverflow: 'ellipsis'
-        }}>{item.size || '--'}</td>
-        <td style={{
-          width: columnWidths.tags,
-          padding: '8px 16px',
-          whiteSpace: 'nowrap',
-          overflow: 'hidden',
-          textOverflow: 'ellipsis'
-        }}>
-          {item.isFolder ? '' : <TagDisplay tags={item.tags} />}
-        </td>
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                minWidth: 0, // Allow flex items to shrink below their minimum content size
+              }}>
+                <div style={{
+                  flexShrink: 0, // Prevent icon from shrinking
+                }} className="flex flex-row">
+                  {item.isFolder ?
+                    <FolderIcon className="mr-2 h-4 w-4 dark:text-white" /> :
+                    <FileIcon className="mr-2 h-4 w-4 dark:text-white" />
+                  }
+                </div>
+                <div style={{
+                  minWidth: 0, // Allow text container to shrink
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap'
+                }}>
+                  {item.name}
+                </div>
+              </div>
+            </td>
+            <td style={{
+              width: columnWidths.owner,
+              padding: '8px 16px',
+              whiteSpace: 'nowrap',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis'
+            }}>{item.uploadedBy}</td>
+            <td style={{
+              width: columnWidths.lastModified,
+              padding: '8px 16px',
+              whiteSpace: 'nowrap',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis'
+            }}>{getReadableTimeDifference(item.lastModified)}</td>
+            <td style={{
+              width: columnWidths.fileSize,
+              padding: '8px 16px',
+              whiteSpace: 'nowrap',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis'
+            }}>{item.size || '--'}</td>
+            <td style={{
+              width: columnWidths.tags,
+              padding: '8px 16px',
+              whiteSpace: 'nowrap',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis'
+            }}>
+              {item.isFolder ? '' : <TagDisplay tags={item.tags} />}
+            </td>
 
-        <td style={{
-          width: columnWidths.status,
-          padding: '8px 0px',
-          whiteSpace: 'nowrap',
-          overflow: 'hidden',
-          textOverflow: 'ellipsis',
-          maxWidth: columnWidths.status
-        }}>
-          <div className="flex items-center justify-center h-full w-full ">
-            {/* {(!item.isFolder) ? {item.status === "PENDING" ? 
+            <td style={{
+              width: columnWidths.status,
+              padding: '8px 0px',
+              whiteSpace: 'nowrap',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              maxWidth: columnWidths.status
+            }}>
+              <div className="flex items-center justify-center h-full w-full ">
+                {/* {(!item.isFolder) ? {item.status === "PENDING" ? 
                                  <Circle className="max-h-3 max-w-3 text-green-500" />}
                                     <Circle className="max-h-3 max-w-3 text-green-500" /> : 
                                 } */}
 
-            {!item.isFolder ? (
-              <HoverCard openDelay={100} closeDelay={0}>
-                <HoverCardTrigger asChild>
-                  <div className="p-1.5 cursor-default">
-                    {item.status === "PENDING" ? (
-                      <Circle className="max-h-2 max-w-2 text-yellow-600" fill="currentColor" />
-                    ) : item.status === "BATCHED" ? (
-                      <Circle className="max-h-2 max-w-2 text-yellow-600" fill="currentColor" />
-                    ) : item.status === "FAILED" ? (
-                      <Circle className="max-h-2 max-w-2 text-red-600" fill="currentColor" />
-                    ) : item.status === "COMPLETE" ? (
-                      <Circle className="max-h-2 max-w-2 text-green-600" fill="currentColor" />
-                    ) : item.status === "FAILED_SIZE" ? (
-                      <Circle className="max-h-2 max-w-2 text-red-600" fill="currentColor" />
-                    ) : item.status === "FAILED_TYPE" ? (
-                      <Circle className="max-h-2 max-w-2 text-red-600" fill="currentColor" />
-                    ) : item.status === "PROCESSING" ? (
-                      <Circle className="max-h-2 max-w-2 text-yellow-600" fill="currentColor" />
-                    ) : null}
-                  </div>
-                </HoverCardTrigger>
-                <HoverCardContent
-                  className="w-auto p-2 text-center dark:bg-slate-800 dark:text-white dark:border-none"
-                  side="bottom"
-                  align="center"
-                  sideOffset={5}
-                >
-                  <p className="text-xs">{item.status.charAt(0).toUpperCase() + item.status.slice(1).toLowerCase()}</p>
-                </HoverCardContent>
-              </HoverCard>
-            ) : null}
-          </div>
-        </td>
-        <td style={{
-          width: columnWidths.actions,
-          padding: '8px 16px',
-          whiteSpace: 'nowrap',
-          overflow: 'hidden',
-          textOverflow: 'ellipsis'
-        }} className="select-none outline-none">
-          <DropdownMenu>
-            <DropdownMenuTrigger>
-              <button>⋮</button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent>
-              <DropdownMenuItem
-                onClick={handleDownload}
-                className="text-black"
-              >
-                Download
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={handleRename}
-                className="text-black "
-              >
-                Rename
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={handleDelete}
-                className="text-red-600 focus:text-red-600"
-              >
-                Delete
-              </DropdownMenuItem>
-            
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </td>
-      </tr>
+                {!item.isFolder ? (
+                  <HoverCard openDelay={100} closeDelay={0}>
+                    <HoverCardTrigger asChild>
+                      <div className="p-1.5 cursor-default">
+                        {item.status === "PENDING" ? (
+                          <Circle className="max-h-2 max-w-2 text-yellow-600" fill="currentColor" />
+                        ) : item.status === "BATCHED" ? (
+                          <Circle className="max-h-2 max-w-2 text-yellow-600" fill="currentColor" />
+                        ) : item.status === "FAILED" ? (
+                          <Circle className="max-h-2 max-w-2 text-red-600" fill="currentColor" />
+                        ) : item.status === "COMPLETE" ? (
+                          <Circle className="max-h-2 max-w-2 text-green-600" fill="currentColor" />
+                        ) : item.status === "FAILED_SIZE" ? (
+                          <Circle className="max-h-2 max-w-2 text-red-600" fill="currentColor" />
+                        ) : item.status === "FAILED_TYPE" ? (
+                          <Circle className="max-h-2 max-w-2 text-red-600" fill="currentColor" />
+                        ) : item.status === "PROCESSING" ? (
+                          <Circle className="max-h-2 max-w-2 text-yellow-600" fill="currentColor" />
+                        ) : null}
+                      </div>
+                    </HoverCardTrigger>
+                    <HoverCardContent
+                      className="w-auto p-2 text-center dark:bg-slate-800 dark:text-white dark:border-none"
+                      side="bottom"
+                      align="center"
+                      sideOffset={5}
+                    >
+                      <p className="text-xs">{item.status.charAt(0).toUpperCase() + item.status.slice(1).toLowerCase()}</p>
+                    </HoverCardContent>
+                  </HoverCard>
+                ) : null}
+              </div>
+            </td>
+            <td style={{
+              width: columnWidths.actions,
+              padding: '8px 16px',
+              whiteSpace: 'nowrap',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis'
+            }} className="select-none outline-none">
+              <DropdownMenu>
+                <DropdownMenuTrigger>
+                  <button>⋮</button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent>
+                  <DropdownMenuItem
+                    onClick={handleDownload}
+                    className="text-black"
+                  >
+                    Download
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={handleRename}
+                    className="text-black "
+                  >
+                    Rename
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={handleDelete}
+                    className="text-red-600 focus:text-red-600"
+                  >
+                    Delete
+                  </DropdownMenuItem>
+
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </td>
+          </tr>
+
+        </ContextMenuTrigger>
+        <ContextMenuContent>
+          <ContextMenuItem onClick={handleDownload}>
+            <Download className="mr-2 h-4 w-4" />
+            Download
+          </ContextMenuItem>
+          <ContextMenuItem onClick={handleRename}>
+            <Pencil className="mr-2 h-4 w-4" />
+            Rename
+          </ContextMenuItem>
+          <ContextMenuSeparator />
+          <ContextMenuItem onClick={handleDelete} className="text-red-600">
+            <Trash className="mr-2 h-4 w-4" />
+            Delete
+          </ContextMenuItem>
+        </ContextMenuContent>
+      </ContextMenu>
 
 
     );
@@ -1383,172 +1408,154 @@ th {
 
       </div>
 
-      <ScrollArea data-drop-zone className=" relative w-full h-full ">
-        <div
-          className="absolute bottom-4 right-4 z-50"
-          style={{
-            maxWidth: '90%',
-            pointerEvents: 'none'
-          }}
-        >
-          {/* <Snackbar
-                        open={snackbarOpen}
-                        onClose={handleSnackbarClose}
-                        message={
-                            <div className="flex items-center gap-2">
-                                <div className="flex items-center justify-center w-5 h-5 rounded-full border border-white">
-                                    <svg
-                                        width="12"
-                                        height="12"
-                                        viewBox="0 0 24 24"
-                                        fill="none"
-                                        stroke="currentColor"
-                                        strokeWidth="3"
-                                        strokeLinecap="round"
-                                        strokeLinejoin="round"
-                                    >
-                                        <polyline points="20 6 9 17 4 12" />
-                                    </svg>
-                                </div>
-                                <span>{snackbarMessage}</span>
-                            </div>
-                        }
-                        autoHideDuration={3000}
-                        ContentProps={{
-                            style: {
-                                backgroundColor: 'var(--background)',
-                                color: 'var(--foreground)',
-                            },
-                            className: 'dark:bg-slate-800 dark:text-white bg-white text-black text-xs'
-                        }}
-                        style={{
-                            position: 'relative',
-                            transform: 'none',
-                            bottom: 0,
-                            left: 0
-                        }}
-                    /> */}
-        </div><div className="flex flex-grow ">
+      <ContextMenu>
+        <ContextMenuTrigger className="flex flex-grow">
+          <ScrollArea data-drop-zone className=" relative w-full h-full ">
 
-          <DndContext
-            sensors={sensors}
-            collisionDetection={closestCenter}
-            onDragStart={handleDragStart}
-            onDragEnd={handleDragEnd}
-          >
+            <div
+              className="absolute bottom-4 right-4 z-50"
+              style={{
+                maxWidth: '90%',
+                pointerEvents: 'none'
+              }}
+            >
+            </div><div className="flex flex-grow ">
 
-            <div style={{ paddingLeft: '20px' }} className="text-xs dark:text-white text-slate-800 mb-2" >
-
-              <table style={{
-                width: '100%',
-                minWidth: '800px', // Set your desired minimum width
-                borderCollapse: 'collapse',
-                tableLayout: 'fixed',
-              }}>
-
-                <thead>
-
-                  <tr className="text-xs font-thin dark:text-white text-slate-600">
-
-
-                    <ResizableHeader column="name" width={columnWidths.name}
-                    >
-                      Name
-                    </ResizableHeader>
-                    <ResizableHeader column="owner" width={columnWidths.owner}
-                    >
-                      Owner
-                    </ResizableHeader>
-                    <ResizableHeader column="lastModified" width={columnWidths.lastModified}
-                    >
-                      Last modified
-                    </ResizableHeader>
-                    <ResizableHeader column="fileSize" width={columnWidths.fileSize}
-                    >
-                      File size
-                    </ResizableHeader>
-                    <ResizableHeader column="tags" width={columnWidths.tags}
-                    >
-                      Tags
-                    </ResizableHeader>
-                    <ResizableHeader column="" width={columnWidths.status}
-                    >
-                      {''}
-                    </ResizableHeader>
-                    <ResizableHeader column="actions" width={columnWidths.actions}
-                    >
-                      {' '}
-                    </ResizableHeader>
-
-                  </tr>
-                </thead>
-                <tbody className="w-full">
-                  <SortableContext items={tableData} strategy={horizontalListSortingStrategy}>
-                    {isLoading ? (
-                      <>
-                        <SortableItem
-                          item={dummy}
-                          loading={true}
-                          selectedItemId={selectedItemId}
-                          onSelect={setSelectedItemId}
-                        />
-                        <SortableItem
-                          item={dummy}
-                          loading={true}
-                          selectedItemId={selectedItemId}
-                          onSelect={setSelectedItemId}
-                        />
-                        <SortableItem
-                          item={dummy}
-                          loading={true}
-                          selectedItemId={selectedItemId}
-                          onSelect={setSelectedItemId}
-                        />
-                        <SortableItem
-                          item={dummy}
-                          loading={true}
-                          selectedItemId={selectedItemId}
-                          onSelect={setSelectedItemId}
-                        />
-                        <SortableItem
-                          item={dummy}
-                          loading={true}
-                          selectedItemId={selectedItemId}
-                          onSelect={setSelectedItemId}
-                        />
-                      </>
-
-                    ) : (
-                      tableData.map((item) => (
-                        <SortableItem
-                          key={item.id}
-                          item={item}
-                          loading={false}
-                          selectedItemId={selectedItemId}
-                          onSelect={setSelectedItemId}
-                        />
-                      ))
-                    )}
+              <DndContext
+                sensors={sensors}
+                collisionDetection={closestCenter}
+                onDragStart={handleDragStart}
+                onDragEnd={handleDragEnd}
+              >
 
 
 
-                  </SortableContext>
-                </tbody>
-              </table>
+                <div style={{ paddingLeft: '20px' }} className="text-xs dark:text-white text-slate-800 mb-2" >
+
+                  <table style={{
+                    width: '100%',
+                    minWidth: '800px', // Set your desired minimum width
+                    borderCollapse: 'collapse',
+                    tableLayout: 'fixed',
+                  }}>
+
+                    <thead>
+
+                      <tr className="text-xs font-thin dark:text-white text-slate-600">
+
+
+                        <ResizableHeader column="name" width={columnWidths.name}
+                        >
+                          Name
+                        </ResizableHeader>
+                        <ResizableHeader column="owner" width={columnWidths.owner}
+                        >
+                          Owner
+                        </ResizableHeader>
+                        <ResizableHeader column="lastModified" width={columnWidths.lastModified}
+                        >
+                          Last modified
+                        </ResizableHeader>
+                        <ResizableHeader column="fileSize" width={columnWidths.fileSize}
+                        >
+                          File size
+                        </ResizableHeader>
+                        <ResizableHeader column="tags" width={columnWidths.tags}
+                        >
+                          Tags
+                        </ResizableHeader>
+                        <ResizableHeader column="" width={columnWidths.status}
+                        >
+                          {''}
+                        </ResizableHeader>
+                        <ResizableHeader column="actions" width={columnWidths.actions}
+                        >
+                          {' '}
+                        </ResizableHeader>
+
+                      </tr>
+                    </thead>
+                    <tbody className="w-full">
+                      <SortableContext items={tableData} strategy={horizontalListSortingStrategy}>
+                        {isLoading ? (
+                          <>
+                            <SortableItem
+                              item={dummy}
+                              loading={true}
+                              selectedItemId={selectedItemId}
+                              onSelect={setSelectedItemId}
+                            />
+                            <SortableItem
+                              item={dummy}
+                              loading={true}
+                              selectedItemId={selectedItemId}
+                              onSelect={setSelectedItemId}
+                            />
+                            <SortableItem
+                              item={dummy}
+                              loading={true}
+                              selectedItemId={selectedItemId}
+                              onSelect={setSelectedItemId}
+                            />
+                            <SortableItem
+                              item={dummy}
+                              loading={true}
+                              selectedItemId={selectedItemId}
+                              onSelect={setSelectedItemId}
+                            />
+                            <SortableItem
+                              item={dummy}
+                              loading={true}
+                              selectedItemId={selectedItemId}
+                              onSelect={setSelectedItemId}
+                            />
+                          </>
+
+                        ) : (
+                          tableData.map((item) => (
+                            <SortableItem
+                              key={item.id}
+                              item={item}
+                              loading={false}
+                              selectedItemId={selectedItemId}
+                              onSelect={setSelectedItemId}
+                            />
+                          ))
+                        )}
+
+
+
+                      </SortableContext>
+                    </tbody>
+                  </table>
+                </div>
+                <DragOverlay>
+                  {activeId ? (
+                    <DragPreview
+                      item={tableData.find(item => item.id === activeId)!}
+                    />
+                  ) : null}
+                </DragOverlay>
+              </DndContext>
             </div>
-            <DragOverlay>
-              {activeId ? (
-                <DragPreview
-                  item={tableData.find(item => item.id === activeId)!}
-                />
-              ) : null}
-            </DragOverlay>
-          </DndContext>
-        </div>
 
 
-        <ScrollBar orientation="horizontal" />
-      </ScrollArea>
+            <ScrollBar orientation="horizontal" />
+          </ScrollArea>
+        </ContextMenuTrigger>
+        <ContextMenuContent>
+          <ContextMenuItem onClick={() => setShowFolderModal(true)}>
+            <Plus className="mr-2 h-4 w-4" />
+            Create Folder
+          </ContextMenuItem>
+          <ContextMenuItem onClick={() => setShowUploadOverlay(true)}>
+            <Upload className="mr-2 h-4 w-4" />
+            Upload File
+          </ContextMenuItem>
+        </ContextMenuContent>
+      </ContextMenu>
+
+
 
       {showUploadOverlay && (
         <DragDropOverlay
@@ -1591,7 +1598,7 @@ th {
         </div>
       )}
 
-{showRenameModal && (
+      {showRenameModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white dark:bg-gray-800 rounded-lg p-6 w-96">
             <h3 className="text-lg font-semibold mb-4 dark:text-white">Rename File</h3>
