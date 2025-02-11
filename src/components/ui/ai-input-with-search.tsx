@@ -86,9 +86,9 @@ export const AIInputWithSearch: React.FC<AIInputWithSearchProps> = ({
                         >
                           <Paperclip className="w-4 h-4 text-black/50 dark:text-white/50" />
                           <span className="text-sm text-black/70 dark:text-white/70 whitespace-nowrap">
-                          {file.metadata.originalname.length > 15
-                            ? file.metadata.originalname.slice(0, 15) + '...'
-                            : file.metadata.originalname}
+                          {file.fileName > 15
+                            ? file.fileName.slice(0, 15) + '...'
+                            : file.fileName}
                           </span>
                           <button
                           onClick={(e) => {

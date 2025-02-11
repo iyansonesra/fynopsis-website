@@ -1171,7 +1171,7 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
     return (
       <div style={{
         padding: '8px 12px',
-        background: 'white',
+  
         borderRadius: '4px',
         boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
         display: 'flex',
@@ -1179,7 +1179,7 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
         gap: '8px',
         fontSize: '14px',
         width: 'fit-content',
-      }}>
+      }} className='dark:bg-slate-800 dark:text-white'>
         {item.type === 'folder' ? '📁' : '📄'} {item.name}
       </div>
     );

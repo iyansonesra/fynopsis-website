@@ -26,6 +26,8 @@ import { Separator } from '@radix-ui/react-separator';
 import { TagDisplay } from '@/components/TagsHover';
 import { AuditLogViewer } from '@/components/AuditLogViewer';
 import Link from 'next/link';
+import { useFileStore } from '@/components/HotkeyService';
+
 
 type IndicatorStyle = {
   top: string;
@@ -54,6 +56,8 @@ export default function Home() {
   const params = useParams();
   const [hasPermission, setHasPermission] = useState<boolean>(true);
   const dataroomId = Array.isArray(params.id) ? params.id[0] : params.id;
+  const { setSearchableFiles } = useFileStore();
+
 
 
   const tabs: Tab[] = [
@@ -114,20 +118,36 @@ export default function Home() {
 
   useEffect(() => {
     fetchPermissionLevel();
+    fetchSearchableFiles();
 
   }, []);
 
-  // useEffect(() => {
-  //   if (tabRefs.current[0]) {
-  //     setIndicatorStyle({
-  //       top: `${tabRefs.current[0].offsetTop}px`,
-  //       height: `${tabRefs.current[0].offsetHeight}px`,
-  //     });
-  //   }
-  // }, []); // This will set the initial indicator style for Library tab
+  const fetchSearchableFiles = async () => {
+
+
+    try {
+      const restOperation = get({
+        apiName: 'S3_API',
+        path: `/s3/${bucketUuid}/get-file-keys`,
+      });
+      // await restOperation.response; // Wait for response to confirm permissions
+
+      const { body } = await restOperation.response;
+      // console.log('Body:', body);
+      const responseText = await body.text();
+      const response = JSON.parse(responseText);
+      console.log('Users response:', response);
+      setSearchableFiles(response);
+
+    } catch (error) {
+      console.error('Error fetching searchable files:', error);
+      setSearchableFiles([]);
+    }
+  }
 
   const fetchPermissionLevel = async () => {
     console.log("bucketuid", bucketUuid);
+
     try {
       const restOperation = get({
         apiName: 'S3_API',
@@ -143,6 +163,7 @@ export default function Home() {
       const responseText = await body.text();
       const response = JSON.parse(responseText);
       console.log('Users response:', response);
+
       setHasPermission(true);
     } catch (error) {
       setHasPermission(false);

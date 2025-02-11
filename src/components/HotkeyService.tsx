@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 
 interface FileNode {
-    parentId: string;
+  parentId: string;
   name: string;
   uploadedBy: string;
   type: string;
@@ -20,9 +20,13 @@ interface FileNode {
 interface FileStore {
   cutFile: FileNode | null;
   setCutFile: (file: FileNode | null) => void;
+  searchableFiles: string[];
+  setSearchableFiles: (files: string[]) => void;
 }
 
 export const useFileStore = create<FileStore>((set) => ({
   cutFile: null,
   setCutFile: (file) => set({ cutFile: file }),
+  searchableFiles: [],
+  setSearchableFiles: (files) => set({ searchableFiles: files }),
 }));

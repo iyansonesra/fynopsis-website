@@ -10,6 +10,7 @@ import { format } from 'date-fns';
 import { ArrowRight, Calendar as CalendarIcon, Download, FileIcon, FolderIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Skeleton } from "./ui/skeleton"; // Add this import
+import DetailSection from './DetailsSection';
 
 interface AuditEvent {
     eventId: string;
@@ -20,6 +21,13 @@ interface AuditEvent {
     userEmail: string;
     userName: string;
     details: {
+        newParentName: any;
+        oldParentName: any;
+        fileName: any;
+        isFolder: any;
+        newName: any;
+        oldName: any;
+        itemName: any;
         sourceFile?: string;
         targetFile?: string;
         oldValue?: string;
@@ -68,6 +76,7 @@ export const AuditLogViewer: React.FC<AuditLogViewerProps> = ({ bucketId }) => {
             console.log("response", response);
 
             const data = (await response.body.json() as unknown) as AuditLogResponse;
+            console.log("data", data);
 
             if (reset) {
                 setEvents(data?.events || []);
@@ -152,27 +161,10 @@ export const AuditLogViewer: React.FC<AuditLogViewerProps> = ({ bucketId }) => {
         };
 
         if (event.action === "FILE_MOVE") {
-            const isFolder = event.details.targetFile?.endsWith("/");
-
-            const partsOG = event.details.sourceFile?.split("/");
-
-            console.log("curr source", event.details.sourceFile);
-            console.log("partsog", partsOG);
-            let nameOfObject = "";
-            if (partsOG) {
-                if (partsOG?.length == 1) {
-                    nameOfObject = partsOG[0];
-                } else {
-                    if (isFolder) {
-                        nameOfObject = partsOG[partsOG.length - 2];
-                    } else
-                        nameOfObject = partsOG[partsOG.length - 1];
-                }
-            }
+            console.log("event", event);
 
 
-
-            return nameOfObject;
+            // return nameOfObject;
 
             console.log("current event", event);
         }
@@ -251,17 +243,109 @@ export const AuditLogViewer: React.FC<AuditLogViewerProps> = ({ bucketId }) => {
                             >
                                 <div className="flex justify-between items-start">
                                     <div className="flex flex-col gap-2">
-                                        <h3 className="font-medium dark:text-gray-100">
+                                        <h3 className="font-medium dark:text-gray-100 text-sm">
                                             {event.action === "FILE_MOVE" ?
                                                 <div className="flex flex-row items-center justify-center gap-2">
                                                     <h1>{`Moved ${' '}`}</h1>
                                                     <div className="px-2 py-1 bg-gray-200 rounded-lg dark:bg-gray-700 dark:text-gray-100 flex flex-row gap-2 items-center">
-                                                        {event.details.sourceFile?.endsWith('/') ? <FolderIcon className="w-3 h-3" /> : <FileIcon className="w-3 h-3" />}
-                                                        <h1 className="text-sm">{` ${formatAction(event)}`}</h1>
+                                                        {event.details.isFolder ? <FolderIcon className="w-3 h-3" /> : <FileIcon className="w-3 h-3" />}
+                                                        <h1 className="text-sm">{`${event.details.itemName}`}</h1>
                                                     </div>
+                                                    <h1>from</h1>
+                                                    <div className="px-2 py-1 bg-gray-200 rounded-lg dark:bg-gray-700 dark:text-gray-100 flex flex-row gap-2 items-center">
+                                                          <FolderIcon className="w-3 h-3" /> 
+                                                            <h1 className="text-sm">{`${event.details.oldParentName}`}</h1>
+
+                                                        </div>
+
+                                                        <ArrowRight className="w-4 h-4" />
+                                                        <div className="px-2 py-1 bg-gray-200 rounded-lg dark:bg-gray-700 dark:text-gray-100 flex flex-row gap-2 items-center">
+                                                         <FolderIcon className="w-3 h-3" />
+
+                                                            <h1 className="text-sm">{`${event.details.newParentName}`}</h1>
+
+                                                        </div>
 
                                                 </div>
-                                                : event.details.targetFile}
+                                                :
+                                                event.action === "FILE_RENAME" ?
+                                                    <div className="flex flex-row items-center justify-center gap-2">
+                                                        <h1>{`Renamed ${' '}`}</h1>
+                                                        <div className="px-2 py-1 bg-gray-200 rounded-lg dark:bg-gray-700 dark:text-gray-100 flex flex-row gap-2 items-center">
+                                                            {event.details.isFolder ? <FolderIcon className="w-3 h-3" /> : <FileIcon className="w-3 h-3" />}
+                                                            <h1 className="text-sm">{`${event.details.oldName}`}</h1>
+
+                                                        </div>
+
+                                                        <ArrowRight className="w-4 h-4" />
+                                                        <div className="px-2 py-1 bg-gray-200 rounded-lg dark:bg-gray-700 dark:text-gray-100 flex flex-row gap-2 items-center">
+                                                            {event.details.isFolder ? <FolderIcon className="w-3 h-3" /> : <FileIcon className="w-3 h-3" />}
+
+                                                            <h1 className="text-sm">{`${event.details.newName}`}</h1>
+
+                                                        </div>
+
+                                                    </div>
+                                                    :
+                                                    event.action === "FILE_UPLOAD" ?
+                                                        <div className="flex flex-row items-center justify-center gap-2">
+                                                            <h1>{`Uploaded ${' '}`}</h1>
+                                                            <div className="px-2 py-1 bg-gray-200 rounded-lg dark:bg-gray-700 dark:text-gray-100 flex flex-row gap-2 items-center">
+                                                                {event.details.isFolder ? <FolderIcon className="w-3 h-3" /> : <FileIcon className="w-3 h-3" />}
+                                                                <h1 className="text-sm">{`${event.details.fileName}`}</h1>
+
+                                                            </div>
+                                                            <h1>in</h1>
+                                                            <div className="px-2 py-1 bg-gray-200 rounded-lg dark:bg-gray-700 dark:text-gray-100 flex flex-row gap-2 items-center">
+                                                                {event.details.isFolder ? <FolderIcon className="w-3 h-3" /> : <FileIcon className="w-3 h-3" />}
+                                                                <h1 className="text-sm">{`${event.details.fileName}`}</h1>
+
+                                                            </div>
+
+
+
+                                                        </div> :  event.action === "FOLDER_MOVE" ?
+                                                        <div className="flex flex-row items-center justify-center gap-2">
+                                                            <h1>{`Moved ${' '}`}</h1>
+                                                            <div className="px-2 py-1 bg-gray-200 rounded-lg dark:bg-gray-700 dark:text-gray-100 flex flex-row gap-2 items-center">
+                                                                {event.details.isFolder ? <FolderIcon className="w-3 h-3" /> : <FileIcon className="w-3 h-3" />}
+                                                                <h1 className="text-sm">{`${event.details.itemName}`}</h1>
+
+                                                            </div>
+                                                            <h1>to</h1>
+                                                            <div className="px-2 py-1 bg-gray-200 rounded-lg dark:bg-gray-700 dark:text-gray-100 flex flex-row gap-2 items-center">
+                                                                {event.details.isFolder ? <FolderIcon className="w-3 h-3" /> : <FileIcon className="w-3 h-3" />}
+                                                                <h1 className="text-sm">{`${event.details.itemName}`}</h1>
+
+                                                            </div>
+
+
+
+                                                        </div> : event.action === "FILE_DELETE" ?
+                                                        <div className="flex flex-row items-center justify-center gap-2">
+                                                            <h1>{`Deleted ${' '}`}</h1>
+                                                            <div className="px-2 py-1 bg-gray-200 rounded-lg dark:bg-gray-700 dark:text-gray-100 flex flex-row gap-2 items-center">
+                                                                {event.details.isFolder ? <FolderIcon className="w-3 h-3" /> : <FileIcon className="w-3 h-3" />}
+                                                                <h1 className="text-sm">{`${event.details.itemName}`}</h1>
+
+                                                            </div>
+                                                           
+
+
+
+                                                        </div> : event.action === "FOLDER_DELETE" ?
+                                                        <div className="flex flex-row items-center justify-center gap-2">
+                                                            <h1>{`Deleted ${' '}`}</h1>
+                                                            <div className="px-2 py-1 bg-gray-200 rounded-lg dark:bg-gray-700 dark:text-gray-100 flex flex-row gap-2 items-center">
+                                                                {event.details.isFolder ? <FolderIcon className="w-3 h-3" /> : <FileIcon className="w-3 h-3" />}
+                                                                <h1 className="text-sm">{`${event.details.itemName}`}</h1>
+
+                                                            </div>
+                                                           
+
+
+
+                                                        </div> : null }
                                         </h3>
 
                                         <p className="text-sm text-gray-500">
