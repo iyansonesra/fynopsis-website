@@ -857,6 +857,8 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
       }
     };
 
+
+
     if (loading) {
       return (
         <tr
@@ -970,7 +972,7 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
 
     return (
       <ContextMenu>
-        <ContextMenuTrigger  asChild>
+        <ContextMenuTrigger asChild>
           <tr
             ref={setNodeRef}
             style={{
@@ -982,7 +984,7 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
               opacity: item.status === 'GRAY' ? 0.5 : 1,
               overflow: 'visible',
               width: '100%', // Add full width
-          display: 'table-row'
+              display: 'table-row'
             }}
             {...attributes}
             {...listeners}
@@ -1171,7 +1173,7 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
     return (
       <div style={{
         padding: '8px 12px',
-  
+
         borderRadius: '4px',
         boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
         display: 'flex',
@@ -1242,6 +1244,19 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
     console.log("tableData:", tableData);
     setShowUploadOverlay(false);
 
+  };
+
+
+  const handleRefresh = async () => {
+    setIsLoading(true);
+    await handleSetTableData(pathArray[3] === "home" ? "ROOT" : pathArray[3]);
+    setIsLoading(false);
+  }
+
+  const handleOrganize = (changes: FileChange[]) => {
+    // Handle the organization changes here
+    // This might involve refreshing the view or updating the tree
+    handleRefresh();
   };
 
 
@@ -1348,64 +1363,35 @@ th {
                 <span>Create Folder</span>
               </DropdownMenuItem>
 
-              <DropdownMenuItem className="flex items-center gap-2">
+              <DropdownMenuItem onClick={() => setShowFileOrganizer(true)} className="flex items-center gap-2">
                 <Folder size={16} />
                 <span>Organize Documents</span>
               </DropdownMenuItem>
-
-              {/* <DropdownMenuItem onClick={() => setShowFileOrganizer(true)} className="flex items-center gap-2">
-                                <Folder size={16} />
-                                <span>Organize Documents</span>
-                            </DropdownMenuItem> */}
             </DropdownMenuContent>
           </DropdownMenu>
-          {/* {showFileOrganizer && (
-                        <FileOrganizerDialog
-                            bucketId={bucketUuid}
-                            onOrganize={(...args) => {
-                                setShowFileOrganizer(false);
-                                handleOrganize(...args);
-                            }}
-                            onClose={() => setShowFileOrganizer(false)}
-                            open={true}
-                        />
-                    )} */}
-          {/* <button
-                        onClick={handleRefresh}
-                        className="flex items-center justify-center p-2 text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-white transition-colors"
-                        aria-label="Refresh"
-                    >
-                        <RefreshCcw size={16} />
-                    </button> */}
+          {showFileOrganizer && (
+            <FileOrganizerDialog
+              bucketId={bucketUuid}
+              onOrganize={(...args) => {
+                setShowFileOrganizer(false);
+                handleOrganize(...args);
+              }}
+              onClose={() => setShowFileOrganizer(false)}
+              open={true}
+            />
+          )}
+          <button
+            onClick={handleRefresh}
+            className="flex items-center justify-center p-2 text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-white transition-colors"
+            aria-label="Refresh"
+          >
+            <RefreshCcw size={16} />
+          </button>
 
         </div>
-
-
         <div className="relative xl:w-[45%] flex">
-          {/* <Select defaultValue="current" onValueChange={(value) => setSearchScope(value)}>
-                        <SelectTrigger
-                            className="absolute left-[10px] top-[20%] h-[60%] w-[120px] border dark:border-slate-600 rounded-ml 
-            dark:bg-transparent dark:text-slate-300 focus-visible:ring-0 focus-visible:ring-offset-0 
-            focus:outline-none focus-visible:outline-none ring-0"
-                        >
-                            <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent className='dark:bg-darkbg dark:text-white outline-none border dark:border-slate-600'>
-                            <SelectItem value="current" className='dark:text-slate-300'>Folder</SelectItem>
-                            <SelectItem value="all" className='dark:text-slate-300'>All Files</SelectItem>
-                        </SelectContent>
-                    </Select>
-                    <Input
-                        placeholder="Search files..."
-                        value={searchValue}
-                        onChange={handleSearch}
-                        className="pl-[140px] w-full dark:border-slate-600 
-        border-slate-200 dark:bg-darkbg dark:text-white outline-none"
-                    /> */}
+
         </div>
-
-
-
       </div>
 
       <ContextMenu>

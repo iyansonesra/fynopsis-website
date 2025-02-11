@@ -62,7 +62,7 @@ const TreeNode: React.FC<TreeNodeProps> = ({ item, level, onDelete, onAdd, onMov
       }}
       className="flex items-center gap-2 py-1 group"
     >
-      <GripVertical className="h-4 w-4 cursor-move opacity-0 group-hover:opacity-100" />
+      <GripVertical className="h-4 w-4 cursor-move opacity-0 group-hover:opacity-100 dark:text-gray-200" />
       {item.type === 'folder' ? (
         <FolderIcon className="h-4 w-4 text-yellow-500" />
       ) : (
@@ -76,13 +76,13 @@ const TreeNode: React.FC<TreeNodeProps> = ({ item, level, onDelete, onAdd, onMov
           onChange={(e) => setName(e.target.value)}
           onBlur={handleNameSubmit}
           onKeyDown={(e) => e.key === 'Enter' && handleNameSubmit()}
-          className="border rounded px-1 text-sm"
+          className="px-1 text-sm dark:bg-darkbg dark:text-gray-200 select-none outline-none"
           autoFocus
         />
       ) : (
         <span
           onDoubleClick={() => setIsEditing(true)}
-          className="text-sm cursor-text"
+          className="text-sm cursor-text dark:text-gray-200"
         >
           {item.name}
         </span>
@@ -94,7 +94,7 @@ const TreeNode: React.FC<TreeNodeProps> = ({ item, level, onDelete, onAdd, onMov
             <Button
               variant="ghost"
               size="sm"
-              className="h-6 px-2"
+              className="h-6 px-2 dark:text-gray-200"
               onClick={() => onAdd(item.id, 'folder')}
             >
               <Plus className="h-3 w-3" />
@@ -103,7 +103,7 @@ const TreeNode: React.FC<TreeNodeProps> = ({ item, level, onDelete, onAdd, onMov
             <Button
               variant="ghost"
               size="sm"
-              className="h-6 px-2"
+              className="h-6 px-2 dark:text-gray-200"
               onClick={() => onAdd(item.id, 'file')}
             >
               <Plus className="h-3 w-3" />
@@ -247,11 +247,10 @@ export const FolderTreeEditor: React.FC<FolderTreeEditorProps> = ({ onSchemaChan
     <div className="p-4">
       {renderTree(tree)}
       <Button
-        variant="outline"
-        className="mt-4"
+        className="mt-4 dark:bg-slate-800 bg-white border-none text-black dark:text-white bg-slate-200 hover:bg-slate-300"
         onClick={() => handleAdd('1', 'folder')}
       >
-        <Plus className="h-4 w-4 mr-2" />
+        <Plus className="h-4 w-4 mr-2 dark:text-gray-200 text-black" />
         Add Root Folder
       </Button>
     </div>

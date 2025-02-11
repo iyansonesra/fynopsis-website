@@ -358,43 +358,43 @@ export const FileOrganizerDialog: React.FC<FileOrganizerDialogProps> = ({ bucket
   const handleApplyChanges = async () => {
     setIsApplying(true);
     try {
-        if (!schemaId || !organizationResults) {
-            throw new Error('Missing schema ID or organization results');
-        }
+      if (!schemaId || !organizationResults) {
+        throw new Error('Missing schema ID or organization results');
+      }
 
-        // Create file assignments with new names
-        const file_assignments: Record<string, string> = {};
-        Object.entries(organizationResults.file_assignments).forEach(([sourceKey, destPath]) => {
-            const sourceFileName = sourceKey.split('/').pop() || '';
-            const newFileName = organizationResults.new_names[sourceKey] || sourceFileName;
-            const destFolder = destPath as string;
-            
-            // Ensure destFolder ends with '/' if it's not empty
-            const formattedDestFolder = destFolder && !destFolder.endsWith('/') ? destFolder + '/' : destFolder;
-            
-            // Combine destination path with new filename
-            file_assignments[sourceKey] = formattedDestFolder + newFileName;
-        });
+      // Create file assignments with new names
+      const file_assignments: Record<string, string> = {};
+      Object.entries(organizationResults.file_assignments).forEach(([sourceKey, destPath]) => {
+        const sourceFileName = sourceKey.split('/').pop() || '';
+        const newFileName = organizationResults.new_names[sourceKey] || sourceFileName;
+        const destFolder = destPath as string;
 
-        console.log(file_assignments);
+        // Ensure destFolder ends with '/' if it's not empty
+        const formattedDestFolder = destFolder && !destFolder.endsWith('/') ? destFolder + '/' : destFolder;
 
-        const response = await post({
-            apiName: 'S3_API',
-            path: `/s3/${bucketId}/apply-organization`,
-            options: {
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: {
-                    schemaId,
-                    changes: {
-                        file_assignments,
-                        new_names: organizationResults.new_names,
-                        reasoning: organizationResults.reasoning
-                    }
-                }
+        // Combine destination path with new filename
+        file_assignments[sourceKey] = formattedDestFolder + newFileName;
+      });
+
+      console.log(file_assignments);
+
+      const response = await post({
+        apiName: 'S3_API',
+        path: `/s3/${bucketId}/apply-organization`,
+        options: {
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: {
+            schemaId,
+            changes: {
+              file_assignments,
+              new_names: organizationResults.new_names,
+              reasoning: organizationResults.reasoning
             }
-        });
+          }
+        }
+      });
 
       const apiResponse = await response.response;
       const data = await apiResponse.body.json() as { results: { successful: boolean } };
@@ -475,7 +475,7 @@ export const FileOrganizerDialog: React.FC<FileOrganizerDialogProps> = ({ bucket
   const renderContent = () => {
     if (schemaStatus === 'IN_PROGRESS') {
       return (
-        <div className="flex flex-col items-center justify-center space-y-4 p-8">
+        <div className="flex flex-col items-center justify-center space-y-4 p-8 dark:bg-darkbg">
           <Loader2 className="h-8 w-8 animate-spin" />
           <h3 className="text-lg font-semibold">Organizing Files</h3>
           <p className="text-sm text-gray-500 text-center">
@@ -634,40 +634,44 @@ export const FileOrganizerDialog: React.FC<FileOrganizerDialogProps> = ({ bucket
 
     // NO_SCHEMA or default case
     return (
-      <div className="flex flex-col gap-4 h-full">
-        <div className="flex-1 min-h-[400px] overflow-auto border rounded-md p-4">
+      <div className="flex flex-col gap-4 h-full dark:bg-darkbg ">
+        <div className="flex-1 h-full overflow-auto rounded-md p-4">
           <DndProvider backend={HTML5Backend}>
             <FolderTreeEditor onSchemaChange={setSchema} />
           </DndProvider>
         </div>
-        <div className="flex items-center space-x-4">
-          <div className="flex items-center space-x-2">
-            <Checkbox
-              id="rename"
-              checked={shouldRename}
-              onCheckedChange={(checked: boolean | 'indeterminate') => setShouldRename(checked as boolean)}
-            />
-            <Label htmlFor="rename">Rename Files</Label>
+        <div className="flex items-center justify-between space-x-4">
+          <div className = "flex flex-row gap-4">
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="rename"
+                checked={shouldRename}
+                onCheckedChange={(checked: boolean | 'indeterminate') => setShouldRename(checked as boolean)}
+              />
+              <Label htmlFor="rename dark:text-gray-200" className='dark:text-gray-200'>Rename Files</Label>
+            </div>
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="reorder"
+                checked={shouldReorder}
+                onCheckedChange={(checked) => setShouldReorder(checked as boolean)}
+              />
+              <Label htmlFor="reorder dark:text-gray-200" className='dark:text-gray-200'>Reorder Files</Label>
+            </div>
           </div>
-          <div className="flex items-center space-x-2">
-            <Checkbox
-              id="reorder"
-              checked={shouldReorder}
-              onCheckedChange={(checked) => setShouldReorder(checked as boolean)}
-            />
-            <Label htmlFor="reorder">Reorder Files</Label>
-          </div>
+
+          <Button onClick={handlePreview} disabled={isLoading}>
+            {isLoading ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Generating Preview
+              </>
+            ) : (
+              'Preview Changes'
+            )}
+          </Button>
         </div>
-        <Button onClick={handlePreview} disabled={isLoading}>
-          {isLoading ? (
-            <>
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              Generating Preview
-            </>
-          ) : (
-            'Preview Changes'
-          )}
-        </Button>
+
       </div>
     );
   };
@@ -675,14 +679,16 @@ export const FileOrganizerDialog: React.FC<FileOrganizerDialogProps> = ({ bucket
   return (
 
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-4xl h-[80vh]">
-        <DialogHeader>
-          <DialogTitle>Organize Files</DialogTitle>
-        </DialogHeader>
-        <div className="grid gap-4 h-full">
-          {renderContent()}
-        </div>
-      </DialogContent>
+      <div className="flex flex-col h-full">
+        <DialogContent className="max-w-4xl h-[80vh] dark:bg-darkbg border-none select-none outline-none flex flex-col">
+          <DialogHeader>
+            <DialogTitle className="dark:text-gray-200">Organize Files</DialogTitle>
+          </DialogHeader>
+          <div className="flex-1 grid gap-4">
+            {renderContent()}
+          </div>
+        </DialogContent>
+      </div>
     </Dialog>
 
   );
