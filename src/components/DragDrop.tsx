@@ -1,12 +1,15 @@
 import React, { useState, useCallback } from 'react';
 import { useDropzone } from 'react-dropzone';
-import { Upload as UploadIcon, X, Info, HelpCircle } from 'lucide-react';
+import { Upload as UploadIcon, X, Info, HelpCircle, Archive } from 'lucide-react';
 import { post } from 'aws-amplify/api';
 import { usePathname } from 'next/navigation';
 import { useS3Store, TreeNode } from "./fileService";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
 import { TbChevronsDownLeft } from 'react-icons/tb';
+import JSZip from 'jszip';
+import { Alert, AlertDescription } from './ui/alert';
+
 
 interface DragDropOverlayProps {
   onClose: () => void;
@@ -60,6 +63,52 @@ const ALLOWED_FILE_TYPES = {
   'image/heic': '.heic',
   'image/png': '.png',
   'image/jpeg': '.jpg,.jpeg',
+
+  'application/zip': '.zip',
+  'application/x-zip-compressed': '.zip',
+};
+
+interface ExtractedFile {
+  path: string;
+  file: File;
+}
+
+const processZipFile = async (zipFile: File): Promise<ExtractedFile[]> => {
+  const zip = new JSZip();
+  const extractedFiles: ExtractedFile[] = [];
+  
+  try {
+    const zipContent = await zip.loadAsync(zipFile);
+    
+    for (const [path, file] of Object.entries(zipContent.files)) {
+      // Skip directories
+      if (file.dir) continue;
+      
+      // Get the file extension
+      const ext = path.split('.').pop()?.toLowerCase() || '';
+      const mimeType = Object.entries(ALLOWED_FILE_TYPES).find(([_, extensions]) => 
+        extensions.split(',').some(e => e.toLowerCase() === `.${ext}`)
+      )?.[0];
+      
+      // Skip files with unsupported extensions
+      if (!mimeType) continue;
+      
+      // Get file content as blob
+      const content = await file.async('blob');
+      // Use the full path as the name to preserve directory structure
+      const extractedFile = new File([content], path, { type: mimeType });
+      
+      extractedFiles.push({
+        path: path,
+        file: extractedFile
+      });
+    }
+    
+    return extractedFiles;
+  } catch (error) {
+    console.error('Error processing ZIP file:', error);
+    throw new Error('Failed to process ZIP file');
+  }
 };
 
 const getAllowedExtensions = () => {
@@ -114,6 +163,9 @@ const DragDropOverlay: React.FC<DragDropOverlayProps> = ({
   const pathname = usePathname();
   const pathArray = pathname.split('/');
   const bucketUuid = pathArray[2] || '';
+  const [isProcessingZip, setIsProcessingZip] = useState(false);
+  const [zipProcessingError, setZipProcessingError] = useState<string | null>(null);
+  
 
   const getFullPath = (fileName: string) => {
     if (currentPath.length === 0) {
@@ -207,42 +259,85 @@ const DragDropOverlay: React.FC<DragDropOverlayProps> = ({
     return validFileNameRegex.test(fileName);
   };
 
+  
   const onDrop = useCallback(async (acceptedFiles: File[]) => {
-    const newUploads = acceptedFiles.reduce((acc, file) => {
-      let status: FileUpload['status'] = 'completed';
-
-      if (file.size > MAX_FILE_SIZE) {
-        status = 'file too large';
-      } else if (!isValidFileType(file)) {
-        status = 'invalid file type';
-      } else if (!isValidFileName(file.name)) {
-        status = 'invalid filename';
+    setZipProcessingError(null);
+    
+    const processFiles = async (files: File[]) => {
+      const newUploads: FileUploads = {};
+      const processedFiles: File[] = [];
+      
+      for (const file of files) {
+        if (file.type === 'application/zip' || file.type === 'application/x-zip-compressed') {
+          setIsProcessingZip(true);
+          try {
+            const extractedFiles = await processZipFile(file);
+            for (const { file: extractedFile, path } of extractedFiles) {
+              const fileName = path; // Use the full path as the file name
+              if (isValidFileType(extractedFile)) {
+                newUploads[fileName] = {
+                  file: extractedFile,
+                  progress: 0,
+                  status: 'completed'
+                };
+                processedFiles.push(extractedFile);
+              }
+            }
+          } catch (error) {
+            console.error('ZIP processing error:', error);
+            setZipProcessingError('Failed to process ZIP file. Please ensure it contains supported file types.');
+          } finally {
+            setIsProcessingZip(false);
+          }
+        } else {
+          let status: FileUpload['status'] = 'completed';
+          
+          if (file.size > MAX_FILE_SIZE) {
+            status = 'file too large';
+          } else if (!isValidFileType(file)) {
+            status = 'invalid file type';
+          } else if (!isValidFileName(file.name)) {
+            status = 'invalid filename';
+          }
+          
+          newUploads[file.name] = {
+            file,
+            progress: 0,
+            status
+          };
+          
+          if (status === 'completed') {
+            processedFiles.push(file);
+          }
+        }
       }
-
-      acc[file.name] = {
-        file,
-        progress: 0,
-        status
-      };
-      return acc;
-    }, {} as FileUploads);
-
-    setFileUploads(prev => ({
-      ...prev,
-      ...newUploads
-    }));
-
-    const validFiles = acceptedFiles.filter(file =>
-      file.size <= MAX_FILE_SIZE &&
-      isValidFileType(file) &&
-      isValidFileName(file.name)
-    );
-
-    setPendingFiles(validFiles);
+      
+      // Only update state if we have valid files
+      if (Object.keys(newUploads).length > 0) {
+        setFileUploads(prev => ({
+          ...prev,
+          ...newUploads
+        }));
+        
+        setPendingFiles(prev => [...prev, ...processedFiles]);
+      }
+    };
+    
+    await processFiles(acceptedFiles);
   }, []);
 
-  const { getRootProps, getInputProps, isDragActive } = useDropzone({ onDrop });
-
+  const { getRootProps, getInputProps, isDragActive } = useDropzone({
+    onDrop,
+    accept: {
+      'application/zip': ['.zip'],
+      'application/x-zip-compressed': ['.zip'],
+      ...Object.fromEntries(
+        Object.entries(ALLOWED_FILE_TYPES).map(([mimeType, extensions]) => 
+          [mimeType, extensions.split(',')]
+        )
+      )
+    }
+  });
   const handleConfirmUpload = async () => {
     setIsConfirming(true);
     try {
@@ -372,6 +467,41 @@ const DragDropOverlay: React.FC<DragDropOverlayProps> = ({
     </li>
   );
 
+  const renderDropzoneContent = () => (
+    <div
+      {...getRootProps()}
+      className={`border-2 border-dashed rounded-lg p-8 text-center cursor-pointer 
+        ${isDragActive ? 'border-blue-500 bg-blue-50' : 'border-gray-300'}`}
+    >
+      <input {...getInputProps()} />
+      {isProcessingZip ? (
+        <div className="space-y-4">
+          <Archive className="mx-auto h-12 w-12 text-blue-500 animate-pulse" />
+          <p className="text-sm text-gray-600">Processing ZIP file...</p>
+          {/* <Progress value={undefined} className="w-1/2 mx-auto" /> */}
+        </div>
+      ) : (
+        <>
+          <UploadIcon className="mx-auto h-12 w-12 text-gray-400" />
+          <p className="mt-2 text-sm text-gray-600 dark:text-gray-200">
+            Drag and drop files or ZIP archives here, or click to select
+          </p>
+          <p className="mt-2 text-sm text-gray-500">
+            Maximum file size: {formatFileSize(MAX_FILE_SIZE)}
+          </p>
+          <div className="mt-2">
+            <FileTypeInfo />
+          </div>
+        </>
+      )}
+      {zipProcessingError && (
+        <Alert variant="destructive" className="mt-4">
+          <AlertDescription>{zipProcessingError}</AlertDescription>
+        </Alert>
+      )}
+    </div>
+  );
+
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
       <div className="bg-white p-8 rounded-lg shadow-lg w-2/3 max-w-2xl dark:bg-darkbg">
@@ -382,23 +512,8 @@ const DragDropOverlay: React.FC<DragDropOverlayProps> = ({
         </div>
         {Object.keys(fileUploads).length === 0 ? (
           // This is the key change - wrap everything in the dropzone
-          <div
-            {...getRootProps()}
-            className={`border-2 border-dashed rounded-lg p-8 text-center cursor-pointer 
-              ${isDragActive ? 'border-blue-500 bg-blue-50' : 'border-gray-300'}`}
-          >
-            <input {...getInputProps()} />
-            <UploadIcon className="mx-auto h-12 w-12 text-gray-400" />
-            <p className="mt-2 text-sm text-gray-600 dark:text-gray-200">
-              Drag and drop files here, or click to select files
-            </p>
-            <p className="mt-2 text-sm text-gray-500">
-              Maximum file size: {formatFileSize(MAX_FILE_SIZE)}
-            </p>
-            <div className="mt-2">
-              <FileTypeInfo />
-            </div>
-          </div>
+          renderDropzoneContent()
+
         ) : (
           <div className="w-full h-full flex flex-col justify-between">
             <div>

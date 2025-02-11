@@ -243,18 +243,18 @@ export const AuditLogViewer: React.FC<AuditLogViewerProps> = ({ bucketId }) => {
                             >
                                 <div className="flex justify-between items-start">
                                     <div className="flex flex-col gap-2">
-                                        <h3 className="font-medium dark:text-gray-100 text-sm">
+                                        <h3 className="font-medium dark:text-gray-100 text-xs">
                                             {event.action === "FILE_MOVE" ?
                                                 <div className="flex flex-row items-center justify-center gap-2">
                                                     <h1>{`Moved ${' '}`}</h1>
                                                     <div className="px-2 py-1 bg-gray-200 rounded-lg dark:bg-gray-700 dark:text-gray-100 flex flex-row gap-2 items-center">
                                                         {event.details.isFolder ? <FolderIcon className="w-3 h-3" /> : <FileIcon className="w-3 h-3" />}
-                                                        <h1 className="text-sm">{`${event.details.itemName}`}</h1>
+                                                        <h1 className="text-xs">{`${event.details.itemName}`}</h1>
                                                     </div>
                                                     <h1>from</h1>
                                                     <div className="px-2 py-1 bg-gray-200 rounded-lg dark:bg-gray-700 dark:text-gray-100 flex flex-row gap-2 items-center">
                                                           <FolderIcon className="w-3 h-3" /> 
-                                                            <h1 className="text-sm">{`${event.details.oldParentName}`}</h1>
+                                                            <h1 className="text-xs">{`${event.details.oldParentName}`}</h1>
 
                                                         </div>
 
@@ -262,7 +262,7 @@ export const AuditLogViewer: React.FC<AuditLogViewerProps> = ({ bucketId }) => {
                                                         <div className="px-2 py-1 bg-gray-200 rounded-lg dark:bg-gray-700 dark:text-gray-100 flex flex-row gap-2 items-center">
                                                          <FolderIcon className="w-3 h-3" />
 
-                                                            <h1 className="text-sm">{`${event.details.newParentName}`}</h1>
+                                                            <h1 className="text-xs">{`${event.details.newParentName}`}</h1>
 
                                                         </div>
 
@@ -273,7 +273,7 @@ export const AuditLogViewer: React.FC<AuditLogViewerProps> = ({ bucketId }) => {
                                                         <h1>{`Renamed ${' '}`}</h1>
                                                         <div className="px-2 py-1 bg-gray-200 rounded-lg dark:bg-gray-700 dark:text-gray-100 flex flex-row gap-2 items-center">
                                                             {event.details.isFolder ? <FolderIcon className="w-3 h-3" /> : <FileIcon className="w-3 h-3" />}
-                                                            <h1 className="text-sm">{`${event.details.oldName}`}</h1>
+                                                            <h1 className="text-xs">{`${event.details.oldName}`}</h1>
 
                                                         </div>
 
@@ -281,7 +281,7 @@ export const AuditLogViewer: React.FC<AuditLogViewerProps> = ({ bucketId }) => {
                                                         <div className="px-2 py-1 bg-gray-200 rounded-lg dark:bg-gray-700 dark:text-gray-100 flex flex-row gap-2 items-center">
                                                             {event.details.isFolder ? <FolderIcon className="w-3 h-3" /> : <FileIcon className="w-3 h-3" />}
 
-                                                            <h1 className="text-sm">{`${event.details.newName}`}</h1>
+                                                            <h1 className="text-xs">{`${event.details.newName}`}</h1>
 
                                                         </div>
 
@@ -292,13 +292,13 @@ export const AuditLogViewer: React.FC<AuditLogViewerProps> = ({ bucketId }) => {
                                                             <h1>{`Uploaded ${' '}`}</h1>
                                                             <div className="px-2 py-1 bg-gray-200 rounded-lg dark:bg-gray-700 dark:text-gray-100 flex flex-row gap-2 items-center">
                                                                 {event.details.isFolder ? <FolderIcon className="w-3 h-3" /> : <FileIcon className="w-3 h-3" />}
-                                                                <h1 className="text-sm">{`${event.details.fileName}`}</h1>
+                                                                <h1 className="text-xs">{`${event.details.fileName}`}</h1>
 
                                                             </div>
                                                             <h1>in</h1>
                                                             <div className="px-2 py-1 bg-gray-200 rounded-lg dark:bg-gray-700 dark:text-gray-100 flex flex-row gap-2 items-center">
                                                                 {event.details.isFolder ? <FolderIcon className="w-3 h-3" /> : <FileIcon className="w-3 h-3" />}
-                                                                <h1 className="text-sm">{`${event.details.fileName}`}</h1>
+                                                                <h1 className="text-xs">{`${event.details.fileName}`}</h1>
 
                                                             </div>
 
@@ -309,13 +309,13 @@ export const AuditLogViewer: React.FC<AuditLogViewerProps> = ({ bucketId }) => {
                                                             <h1>{`Moved ${' '}`}</h1>
                                                             <div className="px-2 py-1 bg-gray-200 rounded-lg dark:bg-gray-700 dark:text-gray-100 flex flex-row gap-2 items-center">
                                                                 {event.details.isFolder ? <FolderIcon className="w-3 h-3" /> : <FileIcon className="w-3 h-3" />}
-                                                                <h1 className="text-sm">{`${event.details.itemName}`}</h1>
+                                                                <h1 className="text-xs">{`${event.details.itemName}`}</h1>
 
                                                             </div>
                                                             <h1>to</h1>
                                                             <div className="px-2 py-1 bg-gray-200 rounded-lg dark:bg-gray-700 dark:text-gray-100 flex flex-row gap-2 items-center">
                                                                 {event.details.isFolder ? <FolderIcon className="w-3 h-3" /> : <FileIcon className="w-3 h-3" />}
-                                                                <h1 className="text-sm">{`${event.details.itemName}`}</h1>
+                                                                <h1 className="text-xs">{`${event.details.itemName}`}</h1>
 
                                                             </div>
 
@@ -326,7 +326,7 @@ export const AuditLogViewer: React.FC<AuditLogViewerProps> = ({ bucketId }) => {
                                                             <h1>{`Deleted ${' '}`}</h1>
                                                             <div className="px-2 py-1 bg-gray-200 rounded-lg dark:bg-gray-700 dark:text-gray-100 flex flex-row gap-2 items-center">
                                                                 {event.details.isFolder ? <FolderIcon className="w-3 h-3" /> : <FileIcon className="w-3 h-3" />}
-                                                                <h1 className="text-sm">{`${event.details.itemName}`}</h1>
+                                                                <h1 className="text-xs">{`${event.details.itemName}`}</h1>
 
                                                             </div>
                                                            
@@ -338,7 +338,7 @@ export const AuditLogViewer: React.FC<AuditLogViewerProps> = ({ bucketId }) => {
                                                             <h1>{`Deleted ${' '}`}</h1>
                                                             <div className="px-2 py-1 bg-gray-200 rounded-lg dark:bg-gray-700 dark:text-gray-100 flex flex-row gap-2 items-center">
                                                                 {event.details.isFolder ? <FolderIcon className="w-3 h-3" /> : <FileIcon className="w-3 h-3" />}
-                                                                <h1 className="text-sm">{`${event.details.itemName}`}</h1>
+                                                                <h1 className="text-xs">{`${event.details.itemName}`}</h1>
 
                                                             </div>
                                                            
@@ -348,7 +348,7 @@ export const AuditLogViewer: React.FC<AuditLogViewerProps> = ({ bucketId }) => {
                                                         </div> : null }
                                         </h3>
 
-                                        <p className="text-sm text-gray-500">
+                                        <p className="text-xs text-gray-500">
                                             {format(new Date(event.timestamp), 'PPp')}
                                         </p>
 
@@ -357,7 +357,7 @@ export const AuditLogViewer: React.FC<AuditLogViewerProps> = ({ bucketId }) => {
                                                 <ArrowRight className="w-4 h-4" />
                                                 <div className="px-2 py-1 bg-gray-200 rounded-lg dark:bg-gray-700 dark:text-gray-100 flex flex-row gap-2 items-center">
                                                     {event.details.targetFile?.endsWith('/') ? <FolderIcon className="w-3 h-3" /> : <FileIcon className="w-3 h-3" />}
-                                                    <h1 className="text-sm">{` ${event.details.targetFile}`}</h1>
+                                                    <h1 className="text-xs">{` ${event.details.targetFile}`}</h1>
                                                 </div>
                                             </div>
                                         ) : null} */}
@@ -365,12 +365,12 @@ export const AuditLogViewer: React.FC<AuditLogViewerProps> = ({ bucketId }) => {
                                     </div>
 
                                     <div className="text-right">
-                                        <p className="text-sm font-medium dark:text-gray-100">{event.userName}</p>
-                                        <p className="text-sm text-gray-500 dark:text-gray-500">{event.userEmail}</p>
+                                        <p className="text-xs font-medium dark:text-gray-100">{event.userName}</p>
+                                        <p className="text-xs text-gray-500 dark:text-gray-500">{event.userEmail}</p>
                                     </div>
                                 </div>
                                 {/* {event.details && (
-                                    <div className="mt-2 text-sm text-gray-600">
+                                    <div className="mt-2 text-xs text-gray-600">
                                         {event.details.targetPath && (
                                             <p>Path: {event.details.targetPath}</p>
                                         )}

@@ -442,6 +442,10 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
       const { body } = await restOperation.response;
       const responseText = await body.text();
       const response = JSON.parse(responseText);
+
+      console.log("itemsitems:", response);
+
+
       const mappedData = response.items.map((item: any) => ({
         id: item.id,
         name: item.name,
@@ -452,7 +456,7 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
         createByEmail: '',
         createByName: item.uploadedBy,
         lastModified: item.lastModified,
-        tags: item.tags || [],
+        tags:  item.tags ? JSON.parse(item.tags) : [],
         summary: '',
         status: 'COMPLETE',
         parentId: item.parentFolderId
