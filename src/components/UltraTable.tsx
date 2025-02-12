@@ -1348,7 +1348,7 @@ th {
         <div className="buttons flex flex-row gap-2">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <button className="flex items-center gap-2 bg-transparent text-black border dark:border-slate-600 dark:text-gray-200 px-4 py-1 rounded-full hover:bg-blue-700 select-none outline-none">
+              <button className="flex items-center gap-2 bg-transparent text-black border dark:border-slate-600 dark:text-gray-200 px-4 py-1 rounded-full hover:bg-slate-200 select-none outline-none">
                 <span className="text-sm">Manage Documents</span>
                 <ChevronDown size={16} />
               </button>

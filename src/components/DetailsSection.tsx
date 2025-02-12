@@ -60,8 +60,8 @@ interface DetailsSectionProps {
     showDetailsView: boolean;
     setShowDetailsView: (show: boolean) => void;
     selectedFile: any;
-    onFileSelect: (file: FileSelectProps) => void;  // Changed type
-    tableData: TableFile[];  // Add this prop
+    onFileSelect: (file: FileSelectProps) => void; // Changed type
+    tableData: TableFile[]; // Add this prop
 }
 
 // Add new interface for onFileSelect properties
@@ -70,11 +70,11 @@ interface FileSelectProps {
     name: string;
     s3Url: string;
     parentId: string;
-   
+
     uploadedBy: string;
     type: string;
     size: string;
-    
+
     isFolder: boolean;
     createByEmail: string;
     createByName: string;
@@ -346,7 +346,7 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
         try {
             // Don't allow new queries while WebSocket is active
             // if (isWebSocketActive) {
-            //     return;
+            // return;
             // }
 
 
@@ -359,8 +359,7 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
                 sources: {},
                 thread_id: ''
             });
-
-            const bucketUuid = window.location.pathname.split('/').pop() || '';
+            const bucketUuid = window.location.pathname.split('/')[2] || '';
             const websocketHost = `${process.env.NEXT_PUBLIC_SEARCH_API_CODE}.execute-api.${process.env.NEXT_PUBLIC_REGION}.amazonaws.com`;
 
             const idToken = await getIdToken();
@@ -375,9 +374,9 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
 
             // Debug URL
             // console.log('WebSocket URL components:', {
-            //     host: websocketHost,
-            //     params: Object.fromEntries(params.entries()),
-            //     fullUrl: websocketUrl
+            // host: websocketHost,
+            // params: Object.fromEntries(params.entries()),
+            // fullUrl: websocketUrl
             // });
 
             const ws = new WebSocket(websocketUrl);
@@ -460,9 +459,9 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
                     setIsWebSocketActive(false);
                     setIsLoading(false);
                     // console.log('WebSocket closed:', {
-                    //     code: event.code,
-                    //     reason: event.reason,
-                    //     wasClean: event.wasClean
+                    // code: event.code,
+                    // reason: event.reason,
+                    // wasClean: event.wasClean
                     // });
                 };
             });
@@ -486,15 +485,15 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
     }, []);
 
     const fadeInAnimation = `
-    @keyframes fadeIn {
-        from { opacity: 0; transform: translateY(10px); }
-        to { opacity: 1; transform: translateY(0); }
-    }
+ @keyframes fadeIn {
+ from { opacity: 0; transform: translateY(10px); }
+ to { opacity: 1; transform: translateY(0); }
+ }
 
-    .batch-fade-in {
-        animation: fadeIn 0.5s ease-out forwards;
-        opacity: 0;
-    }
+ .batch-fade-in {
+ animation: fadeIn 0.5s ease-out forwards;
+ opacity: 0;
+ }
 `;
 
     const items = [
@@ -545,7 +544,7 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
         type: 'question' | 'answer' | 'error';
         content: string;
         sources?: Record<string, any>;
-        steps?: string[];  // Add steps to the message interface
+        steps?: string[]; // Add steps to the message interface
     }
 
     const [messages, setMessages] = useState<Message[]>([]);
@@ -556,7 +555,7 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
             const query = inputValue.trim();
 
             // queryAllDocuments(query);
-            // //   handleSearch(query);
+            // // handleSearch(query);
             setInputValue('');
         }
     };
@@ -571,11 +570,11 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
     const [stepsTaken, setStepsTaken] = useState<string[]>([]);
     const [thoughts, setThoughts] = useState('');
     const pathname = usePathname();
-    const bucketUuid = pathname.split('/').pop() || '';
+    const bucketUuid = pathname.split('/')[2] || '';
 
     useEffect(() => {
         if (searchResult && searchResult.response) {
-            setIsAnswerLoading(true);  // Start loading when processing begins
+            setIsAnswerLoading(true); // Start loading when processing begins
             let response = searchResult.response;
 
             // Helper function to extract content between tags
@@ -631,7 +630,7 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
                 }
 
                 // If we have an error (complete or not), stop processing
-                setIsAnswerLoading(false);  // Stop loading on error
+                setIsAnswerLoading(false); // Stop loading on error
                 setIsLoading(false);
                 setIsWebSocketActive(false);
                 return;
@@ -640,45 +639,45 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
             // Process sources section first since it's JSON
             // const sourcesResult = extractContent(response, '<sources>', '</sources>');
             // if (sourcesResult) {
-            //     if (sourcesResult.isComplete) {
-            //         try {
-            //             // Try to parse the accumulated JSON string
-            //             const sourcesJson = JSON.parse(sourcesResult.content);
-            //             const extractedUrls: string[] = [];
+            // if (sourcesResult.isComplete) {
+            // try {
+            // // Try to parse the accumulated JSON string
+            // const sourcesJson = JSON.parse(sourcesResult.content);
+            // const extractedUrls: string[] = [];
 
-            //             // Process each key-value pair in the JSON
-            //             Object.entries(sourcesJson).forEach(([key, value]) => {
-            //                 if (key.includes(bucketUuid)) {
-            //                     extractedUrls.push(key);
-            //                 }
-            //             });
+            // // Process each key-value pair in the JSON
+            // Object.entries(sourcesJson).forEach(([key, value]) => {
+            // if (key.includes(bucketUuid)) {
+            // extractedUrls.push(key);
+            // }
+            // });
 
-            //             if (extractedUrls.length > 0) {
-            //                 setMessages(prev => {
-            //                     const newMessages = [...prev];
-            //                     if (newMessages.length > 0) {
-            //                         const lastMessage = newMessages[newMessages.length - 1];
-            //                         if (lastMessage.type === 'answer') {
-            //                             const sourcesObject: Record<string, any> = {};
-            //                             extractedUrls.forEach(url => {
-            //                                 sourcesObject[url] = sourcesJson[url] || {};
-            //                             });
-            //                             lastMessage.sources = sourcesObject;
-            //                         }
-            //                     }
-            //                     return newMessages;
-            //                 });
-            //             }
-            //             setGeneratingSources(false);
-            //             response = sourcesResult.remaining;
-            //         } catch (error) {
-            //             // If JSON parsing fails, it means we're still receiving the JSON string
-            //             console.log("Incomplete JSON in sources:", sourcesResult.content);
-            //         }
-            //     } else {
-            //         // Still receiving sources content
-            //         setGeneratingSources(true);
-            //     }
+            // if (extractedUrls.length > 0) {
+            // setMessages(prev => {
+            // const newMessages = [...prev];
+            // if (newMessages.length > 0) {
+            // const lastMessage = newMessages[newMessages.length - 1];
+            // if (lastMessage.type === 'answer') {
+            // const sourcesObject: Record<string, any> = {};
+            // extractedUrls.forEach(url => {
+            // sourcesObject[url] = sourcesJson[url] || {};
+            // });
+            // lastMessage.sources = sourcesObject;
+            // }
+            // }
+            // return newMessages;
+            // });
+            // }
+            // setGeneratingSources(false);
+            // response = sourcesResult.remaining;
+            // } catch (error) {
+            // // If JSON parsing fails, it means we're still receiving the JSON string
+            // console.log("Incomplete JSON in sources:", sourcesResult.content);
+            // }
+            // } else {
+            // // Still receiving sources content
+            // setGeneratingSources(true);
+            // }
             // }
 
             // Process thinking section
@@ -723,7 +722,7 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
                 });
 
                 if (answerResult.isComplete) {
-                    setIsAnswerLoading(false);  // Stop loading when answer is complete
+                    setIsAnswerLoading(false); // Stop loading when answer is complete
                     response = answerResult.remaining;
                 }
             }
@@ -731,7 +730,12 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
             // Process sources section
             const sourcesResult = extractContent(response, '<sources>', '</sources>');
             if (sourcesResult) {
+              
                 if (sourcesResult.isComplete) {
+                    console.log('Full sourcesResult:', sourcesResult);
+                    console.log('sourcesResult content:', sourcesResult.content);
+                    console.log('sourcesResult remaining:', sourcesResult.remaining);
+                    console.log('sourcesResult isComplete:', sourcesResult.isComplete);
                     try {
                         // Try to parse the accumulated JSON string
                         const sourcesContent = sourcesResult.content.replace(/\n/g, '');
@@ -913,7 +917,7 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
                     {messages.map((message, index) => (
                         <div key={index} className="flex flex-col gap-4 mb-4 pl-2" >
                             {message.type === 'question' ? (
-                                <div className="flex items-end  dark:text-white  mt-4">
+                                <div className="flex items-end dark:text-white mt-4">
                                     <p className="text-2xl font-medium dark:text-white pr-4 rounded-lg">{message.content}</p>
                                 </div>
                             ) : message.type === 'error' ? (
@@ -1078,7 +1082,7 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
                     />
                 ) : (
                     <>
-                        {renderChatHistoryButton()}
+                        {/* {renderChatHistoryButton()} */}
                         {(showDetailsView && sourceUrls.length === 0) ? renderFileDetails() : renderAdvancedSearch()}
                     </>
                 )}
