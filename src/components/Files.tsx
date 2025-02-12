@@ -49,15 +49,12 @@ interface TableFile {
 
 // Add the interface for file selection
 interface FileSelectProps {
-    id: string;
-    name: string;
-    s3Url: string;
     parentId: string;
-   
+    name: string;
     uploadedBy: string;
     type: string;
     size: string;
-    
+    id: string;
     isFolder: boolean;
     createByEmail: string;
     createByName: string;
@@ -65,6 +62,7 @@ interface FileSelectProps {
     tags: string[];
     summary: string;
     status: string;
+    s3Url?: string;
     
 }
 
@@ -73,7 +71,7 @@ export default function Files({ setSelectedTab }: { setSelectedTab: React.Dispat
     const [folderViewWidth, setFolderViewWidth] = useState('54%');
 
     const [showDetailsView, setShowDetailsView] = useState(false);
-    const [selectedFile, setSelectedFile] = useState<{ id: string; name: string; s3Url: string } | null>(null);
+    const [selectedFile, setSelectedFile] = useState<FileSelectProps | null>(null);
     const { 
         currentTabs,
         setCurrentTabs,

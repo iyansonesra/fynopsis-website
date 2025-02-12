@@ -457,9 +457,9 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
         createByName: item.uploadedBy,
         lastModified: item.lastModified,
         tags:  item.tags ? JSON.parse(item.tags) : [],
-        summary: '',
+        summary: item.documentSummary ? item.documentSummary : "",
         status: 'COMPLETE',
-        parentId: item.parentFolderId
+        parentId: item.parentFolderId,
       }));
       setTableData(sortTableData(mappedData));
 
@@ -798,6 +798,7 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
           const { body } = await downloadResponse.response;
           const responseText = await body.text();
           const { signedUrl } = JSON.parse(responseText);
+          console.log("double clicked item:", item);
           onFileSelect({
             ...item,
             s3Url: signedUrl,

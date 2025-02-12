@@ -160,6 +160,7 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
 
             if (s3Object) {
                 // If file exists in s3Objects, use its metadata
+                console.log("The s3 object:", s3Object);
                 const metadata = s3Object.metadata;
                 onFileSelect({
                     id: metadata.Metadata?.id || sourceUrl.split('/').pop() || '',
@@ -470,6 +471,7 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
             setIsWebSocketActive(false);
             console.log("selected files!!!!!", selectedFiles);
             console.log("BRLRLLELWFLLEFLW");
+
             console.error('Error querying collection:', err);
             setError('Failed to fetch search results. Please try again.');
             setIsLoading(false);
@@ -1058,7 +1060,7 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
                             <p><strong>Type:</strong> {selectedFile.type}</p>
                             <p><strong>Size:</strong> {selectedFile.size}</p>
                             <p><strong>Uploaded By:</strong> {selectedFile.uploadedBy}</p>
-                            <p><strong>Date:</strong> {new Date(selectedFile.date).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
+                            <p><strong>Date:</strong> {new Date(selectedFile.lastModified).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
                             <p><strong>Detailed Summary:</strong> {selectedFile.summary ? decodeUnicodeEscapes(selectedFile.summary?.slice(1, -1)) : 'No summary available'}</p>
                             {/* Add more details as needed */}
                         </div>
