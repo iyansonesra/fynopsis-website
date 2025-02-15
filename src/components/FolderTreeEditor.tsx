@@ -128,7 +128,7 @@ export const FolderTreeEditor: React.FC<FolderTreeEditorProps> = ({ onSchemaChan
   const [tree, setTree] = useState<TreeItem[]>([
     {
       id: '1',
-      name: 'Root Folder',
+      name: 'Root',
       type: 'folder',
       children: [],
     },

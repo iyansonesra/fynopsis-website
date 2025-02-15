@@ -40,7 +40,20 @@ interface CancelOrganizationResponse {
   message: string;
 }
 
-type SchemaStatus = 'NO_SCHEMA' | 'IN_PROGRESS' | 'COMPLETED' | 'FAILED';
+interface UndoOrganizationResponse {
+  message: string;
+  results?: {
+    successful: any[];
+    failed: any[];
+    summary?: {
+      total: number;
+      succeeded: number;
+      failed: number;
+    }
+  }
+}
+
+type SchemaStatus = 'NO_SCHEMA' | 'IN_PROGRESS' | 'COMPLETED' | 'FAILED' | 'UNDO_BACKUP';
 
 interface OrganizationResults {
   file_assignments: Record<string, string>;
@@ -49,11 +62,13 @@ interface OrganizationResults {
 }
 
 interface SchemaResponse {
-  status: SchemaStatus;
-  error?: string;
-  results?: OrganizationResults;
-  schemaId?: string;
-  schema?: string;
+  schemas: Array<{
+    status: SchemaStatus;
+    error?: string;
+    results?: OrganizationResults;
+    schemaId?: string;
+    schema?: string;
+  }>;
 }
 
 interface TreeViewProps {
@@ -236,7 +251,8 @@ export const FileOrganizerDialog: React.FC<FileOrganizerDialogProps> = ({ bucket
   const [organizationResults, setOrganizationResults] = useState<OrganizationResults | null>(null);
   const [isCancelling, setIsCancelling] = useState(false);
   const [isApplying, setIsApplying] = useState(false);
-
+  const [isUndoing, setIsUndoing] = useState(false);
+  const [undoSchemaId, setUndoSchemaId] = useState<string>();
 
   // Function to check schema status
   const checkSchemaStatus = async () => {
@@ -247,23 +263,34 @@ export const FileOrganizerDialog: React.FC<FileOrganizerDialogProps> = ({ bucket
       }).response;
 
       const data = (await response.body.json() as unknown) as SchemaResponse;
-      setSchemaStatus(data.status);
 
-      if (data.status === 'FAILED') {
-        setSchemaError(data.error);
-        toast({
-          title: "Organization Failed",
-          description: data.error || "Please try again",
-          variant: "destructive",
-        });
-        setIsPolling(false);
-      } else if (data.status === 'COMPLETED') {
-        // console.log('Organization results:', data.results);
-        // setOrganizationResults(data.results || null);
+      console.log('data', data);
+      
+      // Find the active schema (one with IN_PROGRESS, COMPLETED, or FAILED status)
+      const activeSchema = data.schemas.find(schema => 
+        ['IN_PROGRESS', 'COMPLETED', 'FAILED'].includes(schema.status)
+      );
+
+      if (activeSchema) {
+        setSchemaStatus(activeSchema.status);
+
+        if (activeSchema.status === 'FAILED') {
+          setSchemaError(activeSchema.error);
+          toast({
+            title: "Organization Failed",
+            description: activeSchema.error || "Please try again",
+            variant: "destructive",
+          });
+          setIsPolling(false);
+        } else if (activeSchema.status === 'COMPLETED') {
+          setIsPolling(false);
+        }
+
+        return activeSchema;
+      } else {
+        setSchemaStatus('NO_SCHEMA');
         setIsPolling(false);
       }
-
-      return data;
     } catch (error) {
       console.error('Error checking schema status:', error);
       setIsPolling(false);
@@ -271,19 +298,19 @@ export const FileOrganizerDialog: React.FC<FileOrganizerDialogProps> = ({ bucket
   };
 
   // Start polling when needed
-  useEffect(() => {
-    let pollInterval: NodeJS.Timeout;
+  // useEffect(() => {
+  //   let pollInterval: NodeJS.Timeout;
 
-    if (isPolling && schemaStatus === 'IN_PROGRESS') {
-      pollInterval = setInterval(checkSchemaStatus, 5000);
-    }
+  //   if (isPolling && schemaStatus === 'IN_PROGRESS') {
+  //     pollInterval = setInterval(checkSchemaStatus, 5000);
+  //   }
 
-    return () => {
-      if (pollInterval) {
-        clearInterval(pollInterval);
-      }
-    };
-  }, [isPolling, schemaStatus]);
+  //   return () => {
+  //     if (pollInterval) {
+  //       clearInterval(pollInterval);
+  //     }
+  //   };
+  // }, [isPolling, schemaStatus]);
 
   // Initial schema check
   useEffect(() => {
@@ -295,15 +322,27 @@ export const FileOrganizerDialog: React.FC<FileOrganizerDialogProps> = ({ bucket
         }).response;
 
         const data = (await response.body.json() as unknown) as SchemaResponse;
-        console.log('Current schema:', data);
-        if (data.schema) {
-          setSchema(data.schema);
-          setSchemaId(data.schemaId);
+        console.log('Current schemas:', data);
+        
+        // Find the completed schema and undo backup schema
+        const completedSchema = data.schemas.find(schema => schema.status === 'COMPLETED');
+        const undoBackupSchema = data.schemas.find(schema => schema.status === 'UNDO_BACKUP');
+
+        console.log('completedSchema', completedSchema);
+        
+        if (completedSchema?.schemaId) {
+          setSchema(completedSchema.schema || '');
+          setSchemaId(completedSchema.schemaId);
           setSchemaStatus('COMPLETED');
           // Also set organization results if they exist
-          if (data.results) {
-            setOrganizationResults(data.results);
+          if (completedSchema.results) {
+            setOrganizationResults(completedSchema.results);
           }
+        }
+
+        // Set undo schema ID if available
+        if (undoBackupSchema?.schemaId) {
+          setUndoSchemaId(undoBackupSchema.schemaId);
         }
       } catch (error) {
         console.error('Error fetching current schema:', error);
@@ -332,13 +371,13 @@ export const FileOrganizerDialog: React.FC<FileOrganizerDialogProps> = ({ bucket
 
       const data = (await response.body.json() as unknown) as SchemaResponse;
 
-      if (!data || !data.schemaId) {
+      if (!data || !data.schemas[0].schemaId) {
         throw new Error('Failed to start organization preview');
       }
 
       console.log('Preview data:', data);
-      if (data && data.schemaId) {
-        setSchemaId(data.schemaId);
+      if (data && data.schemas[0].schemaId) {
+        setSchemaId(data.schemas[0].schemaId);
         setSchemaStatus('IN_PROGRESS');
         setIsPolling(true);
         setIsPreviewOpen(true);
@@ -366,6 +405,7 @@ export const FileOrganizerDialog: React.FC<FileOrganizerDialogProps> = ({ bucket
       const file_assignments: Record<string, string> = {};
       Object.entries(organizationResults.file_assignments).forEach(([sourceKey, destPath]) => {
         const sourceFileName = sourceKey.split('/').pop() || '';
+        // TODO fix this if they don't want to rename the file need to access the id stored
         const newFileName = organizationResults.new_names[sourceKey] || sourceFileName;
         const destFolder = destPath as string;
 
@@ -469,6 +509,55 @@ export const FileOrganizerDialog: React.FC<FileOrganizerDialogProps> = ({ bucket
       });
     } finally {
       setIsCancelling(false);
+    }
+  };
+
+  const handleUndo = async () => {
+    if (!undoSchemaId) {
+      toast({
+        title: "Error",
+        description: "No undo backup available",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsUndoing(true);
+    try {
+      const response = await post({
+        apiName: 'S3_API',
+        path: `/s3/${bucketId}/undo-organization`,
+        options: {
+          body: {
+            schemaId: undoSchemaId
+          }
+        }
+      }).response;
+
+      const data = (await response.body.json() as unknown) as UndoOrganizationResponse;
+      
+      if (data.message === 'Organization successfully undone') {
+        toast({
+          title: "Success",
+          description: "Organization has been undone successfully",
+        });
+        // Reset states
+        setSchemaStatus('NO_SCHEMA');
+        setOrganizationResults(null);
+        setSchemaId(undefined);
+        setUndoSchemaId(undefined);
+      } else {
+        throw new Error('Failed to undo organization');
+      }
+    } catch (error) {
+      console.error('Error undoing organization:', error);
+      toast({
+        title: "Error",
+        description: "Failed to undo organization",
+        variant: "destructive",
+      });
+    } finally {
+      setIsUndoing(false);
     }
   };
 
@@ -603,7 +692,7 @@ export const FileOrganizerDialog: React.FC<FileOrganizerDialogProps> = ({ bucket
             <Button
               variant="outline"
               onClick={handleCancel}
-              disabled={isCancelling || isApplying}
+              disabled={isCancelling || isApplying || isUndoing}
             >
               {isCancelling ? (
                 <>
@@ -616,7 +705,7 @@ export const FileOrganizerDialog: React.FC<FileOrganizerDialogProps> = ({ bucket
             </Button>
             <Button
               onClick={handleApplyChanges}
-              disabled={!organizationResults || isApplying || isCancelling}
+              disabled={!organizationResults || isApplying || isCancelling || isUndoing}
             >
               {isApplying ? (
                 <>
@@ -659,6 +748,22 @@ export const FileOrganizerDialog: React.FC<FileOrganizerDialogProps> = ({ bucket
               <Label htmlFor="reorder dark:text-gray-200" className='dark:text-gray-200'>Reorder Files</Label>
             </div>
           </div>
+          {undoSchemaId && (
+              <Button
+                variant="outline"
+                onClick={handleUndo}
+                disabled={isUndoing || isApplying || isCancelling}
+              >
+                {isUndoing ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Undoing...
+                  </>
+                ) : (
+                  'Undo Last Organization'
+                )}
+              </Button>
+            )}
 
           <Button onClick={handlePreview} disabled={isLoading}>
             {isLoading ? (
