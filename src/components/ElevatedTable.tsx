@@ -1621,13 +1621,13 @@ th {
                     onNavigate={handleBreadcrumbClick}
                 />
             </div>
-            <div className="flex justify-between items-center  py-4 h-[10%] px-[36px] mb-2">
+            <div className="flex justify-between items-center  py-4 h-[10%] px-[36px] mb-2 bg-green-100">
 
                 <div className="buttons flex flex-row gap-2">
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                             <button className="flex items-center gap-2 bg-transparent text-black border dark:border-slate-600 dark:text-gray-200 px-4 py-1 rounded-full hover:bg-blue-700 select-none outline-none">
-                                <span className = "text-sm">Manage Documents</span>
+                                <span className = "text-sm">Manage Docs</span>
                                 <ChevronDown size={16} />
                             </button>
                         </DropdownMenuTrigger>
@@ -1695,7 +1695,7 @@ th {
 
             </div>
 
-            <ScrollArea data-drop-zone className=" relative w-full h-full ">
+            <ScrollArea data-drop-zone className=" relative w-full h-full  bg-green-100">
                 <div
                     className="absolute bottom-4 right-4 z-50"
                     style={{

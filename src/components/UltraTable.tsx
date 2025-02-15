@@ -456,7 +456,7 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
         createByEmail: '',
         createByName: item.uploadedBy,
         lastModified: item.lastModified,
-        tags:  item.tags ? JSON.parse(item.tags) : [],
+        tags: item.tags ? JSON.parse(item.tags) : [],
         summary: item.documentSummary ? item.documentSummary : "",
         status: 'COMPLETE',
         parentId: item.parentFolderId,
@@ -1267,7 +1267,7 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
 
 
   return (
-    <div className="select-none w-full dark:bg-darkbg pt-4 h-full flex flex-col outline-none" onClick={handleBackgroundClick}>
+    <div className="select-none w-full dark:bg-darkbg pt-4 h-full flex flex-col overflow-hidden">
       <style jsx>{`
                 .resizer {
     position: absolute;
@@ -1282,12 +1282,26 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
     transition: background 0.2s;
 }
 
-.ScrollArea {
-    position: relative;
-    overflow: hidden;
+ .ScrollArea {
+    display: flex;
+    flex-direction: column;
     height: 100%;
+    min-height: 0; /* Important for Firefox */
+  }
+
+  table {
     width: 100%;
-}
+    border-collapse: separate;
+    border-spacing: 0;
+    min-width: 800px; /* Your minimum width */
+    max-width: 100%; /* Ensure table doesn't exceed container */
+  }
+
+  /* Add if you want the table to scroll horizontally when needed */
+  .table-container {
+    overflow-x: auto;
+    width: 100%;
+  }
 
 .resizer:hover,
 .resizer.isResizing {
@@ -1328,11 +1342,7 @@ th {
                     }
                 }
                 
-                table {
-                    width: 100%;
-                    border-collapse: separate;
-                    border-spacing: 0;
-                }
+            
                 
          
             `}</style>
@@ -1398,154 +1408,170 @@ th {
 
         </div>
       </div>
+      <div className="flex flex-col flex-1 overflow-hidden">
 
-      <ContextMenu>
-        <ContextMenuTrigger className="flex flex-grow">
-          <ScrollArea data-drop-zone className=" relative w-full h-full ">
-
-            <div
-              className="absolute bottom-4 right-4 z-50"
-              style={{
-                maxWidth: '90%',
-                pointerEvents: 'none'
-              }}
-            >
-            </div><div className="flex flex-grow ">
-
-              <DndContext
-                sensors={sensors}
-                collisionDetection={closestCenter}
-                onDragStart={handleDragStart}
-                onDragEnd={handleDragEnd}
+        {/* <ContextMenu>
+          <ContextMenuTrigger className="flex flex-grow"> */}
+        <ScrollArea data-drop-zone className="relative w-full flex-1">
+          <ContextMenu>
+            <ContextMenuTrigger className="flex flex-grow">
+              <div
+                className="absolute bottom-4 right-4 z-50"
+                style={{
+                  maxWidth: '90%',
+                  pointerEvents: 'none'
+                }}
               >
+              </div><div className="flex flex-grow ">
+
+                <DndContext
+                  sensors={sensors}
+                  collisionDetection={closestCenter}
+                  onDragStart={handleDragStart}
+                  onDragEnd={handleDragEnd}
+                >
 
 
 
-                <div style={{ paddingLeft: '20px' }} className="text-xs dark:text-white text-slate-800 mb-2" >
+                  <div style={{ paddingLeft: '20px' }} className="text-xs dark:text-white text-slate-800 mb-2" >
 
-                  <table style={{
-                    width: '100%',
-                    minWidth: '800px', // Set your desired minimum width
-                    borderCollapse: 'collapse',
-                    tableLayout: 'fixed',
-                  }}>
+                    <table style={{
+                      width: '100%',
+                      minWidth: '800px', // Set your desired minimum width
+                      borderCollapse: 'collapse',
+                      tableLayout: 'fixed',
+                    }}>
 
-                    <thead>
+                      <thead>
 
-                      <tr className="text-xs font-thin dark:text-white text-slate-600">
-
-
-                        <ResizableHeader column="name" width={columnWidths.name}
-                        >
-                          Name
-                        </ResizableHeader>
-                        <ResizableHeader column="owner" width={columnWidths.owner}
-                        >
-                          Owner
-                        </ResizableHeader>
-                        <ResizableHeader column="lastModified" width={columnWidths.lastModified}
-                        >
-                          Last modified
-                        </ResizableHeader>
-                        <ResizableHeader column="fileSize" width={columnWidths.fileSize}
-                        >
-                          File size
-                        </ResizableHeader>
-                        <ResizableHeader column="tags" width={columnWidths.tags}
-                        >
-                          Tags
-                        </ResizableHeader>
-                        <ResizableHeader column="" width={columnWidths.status}
-                        >
-                          {''}
-                        </ResizableHeader>
-                        <ResizableHeader column="actions" width={columnWidths.actions}
-                        >
-                          {' '}
-                        </ResizableHeader>
-
-                      </tr>
-                    </thead>
-                    <tbody className="w-full">
-                      <SortableContext items={tableData} strategy={horizontalListSortingStrategy}>
-                        {isLoading ? (
-                          <>
-                            <SortableItem
-                              item={dummy}
-                              loading={true}
-                              selectedItemId={selectedItemId}
-                              onSelect={setSelectedItemId}
-                            />
-                            <SortableItem
-                              item={dummy}
-                              loading={true}
-                              selectedItemId={selectedItemId}
-                              onSelect={setSelectedItemId}
-                            />
-                            <SortableItem
-                              item={dummy}
-                              loading={true}
-                              selectedItemId={selectedItemId}
-                              onSelect={setSelectedItemId}
-                            />
-                            <SortableItem
-                              item={dummy}
-                              loading={true}
-                              selectedItemId={selectedItemId}
-                              onSelect={setSelectedItemId}
-                            />
-                            <SortableItem
-                              item={dummy}
-                              loading={true}
-                              selectedItemId={selectedItemId}
-                              onSelect={setSelectedItemId}
-                            />
-                          </>
-
-                        ) : (
-                          tableData.map((item) => (
-                            <SortableItem
-                              key={item.id}
-                              item={item}
-                              loading={false}
-                              selectedItemId={selectedItemId}
-                              onSelect={setSelectedItemId}
-                            />
-                          ))
-                        )}
+                        <tr className="text-xs font-thin dark:text-white text-slate-600">
 
 
+                          <ResizableHeader column="name" width={columnWidths.name}
+                          >
+                            Name
+                          </ResizableHeader>
+                          <ResizableHeader column="owner" width={columnWidths.owner}
+                          >
+                            Owner
+                          </ResizableHeader>
+                          <ResizableHeader column="lastModified" width={columnWidths.lastModified}
+                          >
+                            Last modified
+                          </ResizableHeader>
+                          <ResizableHeader column="fileSize" width={columnWidths.fileSize}
+                          >
+                            File size
+                          </ResizableHeader>
+                          <ResizableHeader column="tags" width={columnWidths.tags}
+                          >
+                            Tags
+                          </ResizableHeader>
+                          <ResizableHeader column="" width={columnWidths.status}
+                          >
+                            {''}
+                          </ResizableHeader>
+                          <ResizableHeader column="actions" width={columnWidths.actions}
+                          >
+                            {' '}
+                          </ResizableHeader>
 
-                      </SortableContext>
-                    </tbody>
-                  </table>
-                </div>
-                <DragOverlay>
-                  {activeId ? (
-                    <DragPreview
-                      item={tableData.find(item => item.id === activeId)!}
-                    />
-                  ) : null}
-                </DragOverlay>
-              </DndContext>
-            </div>
+                        </tr>
+                      </thead>
+                      <tbody className="w-full">
+                        <SortableContext items={tableData} strategy={horizontalListSortingStrategy}>
+                          {isLoading ? (
+                            <>
+                              <SortableItem
+                                item={dummy}
+                                loading={true}
+                                selectedItemId={selectedItemId}
+                                onSelect={setSelectedItemId}
+                              />
+                              <SortableItem
+                                item={dummy}
+                                loading={true}
+                                selectedItemId={selectedItemId}
+                                onSelect={setSelectedItemId}
+                              />
+                              <SortableItem
+                                item={dummy}
+                                loading={true}
+                                selectedItemId={selectedItemId}
+                                onSelect={setSelectedItemId}
+                              />
+                              <SortableItem
+                                item={dummy}
+                                loading={true}
+                                selectedItemId={selectedItemId}
+                                onSelect={setSelectedItemId}
+                              />
+                              <SortableItem
+                                item={dummy}
+                                loading={true}
+                                selectedItemId={selectedItemId}
+                                onSelect={setSelectedItemId}
+                              />
+                            </>
+
+                          ) : (
+                            tableData.map((item) => (
+                              <SortableItem
+                                key={item.id}
+                                item={item}
+                                loading={false}
+                                selectedItemId={selectedItemId}
+                                onSelect={setSelectedItemId}
+                              />
+                            ))
+                          )}
 
 
-            <ScrollBar orientation="horizontal" />
-          </ScrollArea>
-        </ContextMenuTrigger>
-        <ContextMenuContent>
-          <ContextMenuItem onClick={() => setShowFolderModal(true)}>
-            <Plus className="mr-2 h-4 w-4" />
-            Create Folder
-          </ContextMenuItem>
-          <ContextMenuItem onClick={() => setShowUploadOverlay(true)}>
-            <Upload className="mr-2 h-4 w-4" />
-            Upload File
-          </ContextMenuItem>
-        </ContextMenuContent>
-      </ContextMenu>
 
+                        </SortableContext>
+                      </tbody>
+                    </table>
+                  </div>
+                  <DragOverlay>
+                    {activeId ? (
+                      <DragPreview
+                        item={tableData.find(item => item.id === activeId)!}
+                      />
+                    ) : null}
+                  </DragOverlay>
+                </DndContext>
+              </div>
+
+            </ContextMenuTrigger>
+            <ContextMenuContent>
+              <ContextMenuItem onClick={() => setShowFolderModal(true)}>
+                <Plus className="mr-2 h-4 w-4" />
+                Create Folder
+              </ContextMenuItem>
+              <ContextMenuItem onClick={() => setShowUploadOverlay(true)}>
+                <Upload className="mr-2 h-4 w-4" />
+                Upload File
+              </ContextMenuItem>
+            </ContextMenuContent>
+          </ContextMenu>
+
+
+          <ScrollBar orientation="horizontal" />
+        </ScrollArea>
+        {/* </ContextMenuTrigger>
+          <ContextMenuContent>
+            <ContextMenuItem onClick={() => setShowFolderModal(true)}>
+              <Plus className="mr-2 h-4 w-4" />
+              Create Folder
+            </ContextMenuItem>
+            <ContextMenuItem onClick={() => setShowUploadOverlay(true)}>
+              <Upload className="mr-2 h-4 w-4" />
+              Upload File
+            </ContextMenuItem>
+          </ContextMenuContent>
+        </ContextMenu> */}
+
+      </div>
 
 
       {showUploadOverlay && (
