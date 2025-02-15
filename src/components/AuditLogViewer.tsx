@@ -7,10 +7,11 @@ import { ScrollArea } from './ui/scroll-area';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
 import { format } from 'date-fns';
-import { ArrowRight, Calendar as CalendarIcon, Download, FileIcon, FolderIcon } from 'lucide-react';
+import { ArrowRight, BookKey, Calendar as CalendarIcon, Download, FileDown, FileIcon, FileOutput, FilePen, FileUp, FileX, FileX2, FolderIcon, FolderPen, FolderUp, FolderX, UserPlus, UserRoundX } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { Skeleton } from "./ui/skeleton"; // Add this import
 import DetailSection from './DetailsSection';
+import { Skeleton } from '@mui/material';
+import { HoverCard, HoverCardContent, HoverCardTrigger } from './ui/hover-card';
 
 interface AuditEvent {
     eventId: string;
@@ -21,6 +22,7 @@ interface AuditEvent {
     userEmail: string;
     userName: string;
     details: {
+        filePath: ReactNode;
         newParentName: any;
         oldParentName: any;
         fileName: any;
@@ -44,6 +46,278 @@ interface AuditLogResponse {
     events: AuditEvent[];
     nextToken: string | null;
 }
+
+const SortableItem = React.memo<{
+    event: AuditEvent;
+    loading: boolean;
+}>(({ event, loading }) => {
+    if (loading) {
+        return (
+            <tr className="text-xs transition-all duration-200 hover:bg-blue-50 cursor-pointer dark:text-white border-b border-[#e0e0e0] dark:border-[#333]">
+                <td className="p-4"><Skeleton variant="text" className='dark:bg-slate-700' /></td>
+                <td className="p-4"><Skeleton variant="text" className='dark:bg-slate-700' /></td>
+                <td className="p-4"><Skeleton variant="text" className='dark:bg-slate-700' /></td>
+                <td className="p-4"><Skeleton variant="text" className='dark:bg-slate-700' /></td>
+                <td className="p-4"><Skeleton variant="text" className='dark:bg-slate-700' /></td>
+            </tr>
+        );
+    }
+
+    const formatDate = (timestamp: string) => {
+        return format(new Date(timestamp), 'MMM dd, yyyy');
+    };
+
+    const formatTime = (timestamp: string) => {
+        return format(new Date(timestamp), 'HH:mm:ss');
+    };
+
+    return (
+        <tr className="text-xs transition-all duration-200 hover:bg-blue-50 cursor-pointer dark:text-white border-b border-[#e0e0e0] dark:border-[#333]">
+            <td className="p-4 whitespace-nowrap">{formatDate(event.timestamp)}</td>
+            <td className="p-4 whitespace-nowrap">{formatTime(event.timestamp)}</td>
+            <td className="p-4">
+                <div className="flex items-center gap-2">
+                    {event.action === 'FILE_UPLOAD' && <FileUp className="w-4 h-4" />}
+                    {event.action === 'FILE_DOWNLOAD' && <FileDown className="w-4 h-4" />}
+                    {event.action === 'FILE_DELETE' && <FileX2 className="w-4 h-4" />}
+                    {event.action === 'FILE_MOVE' && <FileOutput className="w-4 h-4" />}
+                    {event.action === 'FOLDER_CREATE' && <FolderUp className="w-4 h-4" />}
+                    {event.action === 'FILE_RENAME' && <FilePen className="w-4 h-4" />}
+
+                    {event.action === 'FOLDER_RENAME' && <FolderPen className="w-4 h-4" />}
+
+                    {event.action === 'FOLDER_DELETE' && <FolderX className="w-4 h-4" />}
+                    {event.action === 'USER_INVITE' && <UserPlus className="w-4 h-4" />}
+                    {event.action === 'USER_REMOVE' && <UserRoundX className="w-4 h-4" />}
+                    {event.action === 'PERMISSION_CHANGE' && <BookKey className="w-4 h-4" />}
+                    <span>{event.action.split('_').map(word => word.charAt(0) + word.slice(1).toLowerCase()).join(' ')}</span>
+                </div>
+            </td>
+            <td className="p-4">
+                <div className="flex flex-col">
+                    <span className="font-medium">{event.userName}</span>
+                    <span className="text-gray-500 dark:text-gray-400">{event.userEmail}</span>
+                </div>
+            </td>
+            <td className="p-4">
+                <div className="flex flex-col gap-1">
+                    {event.action === 'FILE_MOVE' && (
+                         <HoverCard>
+                         <HoverCardTrigger asChild>
+                             <span className="text-gray-600 dark:text-gray-300 rounded-full inline-block">
+                                 File Moved: {event.details.itemName}
+                             </span>
+                         </HoverCardTrigger>
+                         <HoverCardContent className="w-80">
+                             <div className="flex justify-between space-x-4">
+                                 <div className="space-y-1">
+                                     <h4 className="text-xs font-semibold">Full Path</h4>
+                                     <p className="text-xs text-gray-600 dark:text-gray-300">
+                                         {event.details.metadata?.fullPath || event.details.itemName}
+                                     </p>
+                                 </div>
+                             </div>
+                         </HoverCardContent>
+                     </HoverCard>
+                    )}
+                    {event.action === 'FILE_UPLOAD' && (
+                        <HoverCard>
+                            <HoverCardTrigger asChild>
+                                <span className="text-gray-600 dark:text-gray-300 rounded-full inline-block">
+                                    New File: {event.details.fileName}
+                                </span>
+                            </HoverCardTrigger>
+                            <HoverCardContent className="w-80">
+                                <div className="flex justify-between space-x-4">
+                                    <div className="space-y-1">
+                                        <h4 className="text-xs font-semibold">Full Path</h4>
+                                        <p className="text-xs text-gray-600 dark:text-gray-300">
+                                            {event.details.filePath}
+                                        </p>
+                                    </div>
+                                </div>
+                            </HoverCardContent>
+                        </HoverCard>
+                    )}
+                    {event.action === 'FILE_DOWNLOAD' && (
+                        <HoverCard>
+                            <HoverCardTrigger asChild>
+                                <span className="text-gray-600 dark:text-gray-300 rounded-full inline-block">
+                                    Item: {event.details.itemName}
+                                </span>
+                            </HoverCardTrigger>
+                            <HoverCardContent className="w-80">
+                                <div className="flex justify-between space-x-4">
+                                    <div className="space-y-1">
+                                        <h4 className="text-xs font-semibold">Full Path</h4>
+                                        <p className="text-xs text-gray-600 dark:text-gray-300">
+                                            {event.details.metadata?.fullPath || event.details.itemName}
+                                        </p>
+                                    </div>
+                                </div>
+                            </HoverCardContent>
+                        </HoverCard>
+                    )}
+                    {event.action === 'FILE_DELETE' && (
+                        <HoverCard>
+                            <HoverCardTrigger asChild>
+                                <span className="text-gray-600 dark:text-gray-300 rounded-full inline-block">
+                                    Item: {event.details.itemName}
+                                </span>
+                            </HoverCardTrigger>
+                            <HoverCardContent className="w-80">
+                                <div className="flex justify-between space-x-4">
+                                    <div className="space-y-1">
+                                        <h4 className="text-xs font-semibold">Full Path</h4>
+                                        <p className="text-xs text-gray-600 dark:text-gray-300">
+                                            {event.details.metadata?.fullPath || event.details.itemName}
+                                        </p>
+                                    </div>
+                                </div>
+                            </HoverCardContent>
+                        </HoverCard>
+                    )}
+                    {event.action === 'FOLDER_CREATE' && (
+                        <HoverCard>
+                            <HoverCardTrigger asChild>
+                                <span className="text-gray-600 dark:text-gray-300 rounded-full inline-block">
+                                    Folder: {event.details.itemName}
+                                </span>
+                            </HoverCardTrigger>
+                            <HoverCardContent className="w-80">
+                                <div className="flex justify-between space-x-4">
+                                    <div className="space-y-1">
+                                        <h4 className="text-xs font-semibold">Full Path</h4>
+                                        <p className="text-xs text-gray-600 dark:text-gray-300">
+                                            {event.details.metadata?.fullPath || event.details.itemName}
+                                        </p>
+                                    </div>
+                                </div>
+                            </HoverCardContent>
+                        </HoverCard>
+                    )}
+                    {event.action === 'FOLDER_DELETE' && (
+                        <HoverCard>
+                            <HoverCardTrigger asChild>
+                                <span className="text-gray-600 dark:text-gray-300 rounded-full inline-block">
+                                    Folder: {event.details.itemName}
+                                </span>
+                            </HoverCardTrigger>
+                            <HoverCardContent className="w-80">
+                                <div className="flex justify-between space-x-4">
+                                    <div className="space-y-1">
+                                        <h4 className="text-xs font-semibold">Full Path</h4>
+                                        <p className="text-xs text-gray-600 dark:text-gray-300">
+                                            {event.details.metadata?.fullPath || event.details.itemName}
+                                        </p>
+                                    </div>
+                                </div>
+                            </HoverCardContent>
+                        </HoverCard>
+                    )}
+                    {event.action === 'USER_INVITE' && (
+                        <HoverCard>
+                        <HoverCardTrigger asChild>
+                            <span className="text-gray-600 dark:text-gray-300 rounded-full inline-block">
+                                User: {event.details.itemName}
+                            </span>
+                        </HoverCardTrigger>
+                        <HoverCardContent className="w-80">
+                            <div className="flex justify-between space-x-4">
+                                <div className="space-y-1">
+                                    <h4 className="text-xs font-semibold">Full Path</h4>
+                                    <p className="text-xs text-gray-600 dark:text-gray-300">
+                                        {event.details.metadata?.fullPath || event.details.itemName}
+                                    </p>
+                                </div>
+                            </div>
+                        </HoverCardContent>
+                    </HoverCard>
+                    )}
+                    {event.action === 'USER_REMOVE' && (
+                        <HoverCard>
+                        <HoverCardTrigger asChild>
+                            <span className="text-gray-600 dark:text-gray-300 rounded-full inline-block">
+                                User: {event.details.itemName}
+                            </span>
+                        </HoverCardTrigger>
+                        <HoverCardContent className="w-80">
+                            <div className="flex justify-between space-x-4">
+                                <div className="space-y-1">
+                                    <h4 className="text-xs font-semibold">Full Path</h4>
+                                    <p className="text-xs text-gray-600 dark:text-gray-300">
+                                        {event.details.metadata?.fullPath || event.details.itemName}
+                                    </p>
+                                </div>
+                            </div>
+                        </HoverCardContent>
+                    </HoverCard>
+                    )}
+                    {event.action === 'PERMISSION_CHANGE' && (
+                         <HoverCard>
+                         <HoverCardTrigger asChild>
+                             <span className="text-gray-600 dark:text-gray-300 rounded-full inline-block">
+                                 Permission Change: {event.details.itemName}
+                             </span>
+                         </HoverCardTrigger>
+                         <HoverCardContent className="w-80">
+                             <div className="flex justify-between space-x-4">
+                                 <div className="space-y-1">
+                                     <h4 className="text-xs font-semibold">Full Path</h4>
+                                     <p className="text-xs text-gray-600 dark:text-gray-300">
+                                         {event.details.metadata?.fullPath || event.details.itemName}
+                                     </p>
+                                 </div>
+                             </div>
+                         </HoverCardContent>
+                     </HoverCard>
+                    )}
+                    {event.action === 'FILE_RENAME' && (
+                       <HoverCard>
+                       <HoverCardTrigger asChild>
+                           <span className="text-gray-600 dark:text-gray-300 rounded-full inline-block">
+                               File Renamed: {event.details.newName}
+                           </span>
+                       </HoverCardTrigger>
+                       <HoverCardContent className="w-80">
+                           <div className="flex justify-between space-x-4">
+                               <div className="space-y-1">
+                               <h4 className="text-xs font-semibold">Old Name</h4>
+                                    <p className="text-xs text-gray-600 dark:text-gray-300">
+                                        {event.details.oldName}
+                                    </p>
+                               </div>
+                           </div>
+                       </HoverCardContent>
+                   </HoverCard>
+                    )}
+                    {event.action === 'FOLDER_RENAME' && (
+                        <HoverCard>
+                        <HoverCardTrigger asChild>
+                            <span className="text-gray-600 dark:text-gray-300 rounded-full inline-block">
+                                Folder Renamed: {event.details.newName}
+                            </span>
+                        </HoverCardTrigger>
+                        <HoverCardContent className="w-80">
+                            <div className="flex justify-between space-x-4">
+                                <div className="space-y-1">
+                                    <h4 className="text-xs font-semibold">Old Name</h4>
+                                    <p className="text-xs text-gray-600 dark:text-gray-300">
+                                        {event.details.oldName}
+                                    </p>
+                                </div>
+                            </div>
+                        </HoverCardContent>
+                    </HoverCard>
+                    )}
+                </div>
+            </td>
+        </tr>
+    );
+});
+
+SortableItem.displayName = 'SortableItem';
+
 
 export const AuditLogViewer: React.FC<AuditLogViewerProps> = ({ bucketId }) => {
     const [events, setEvents] = useState<AuditEvent[]>([]);
@@ -232,168 +506,45 @@ export const AuditLogViewer: React.FC<AuditLogViewerProps> = ({ bucketId }) => {
             </div>
 
             <ScrollArea className="flex-1 pr-8">
-                <div className="space-y-2">
-                    {loading ? (
-                        renderSkeletons()
-                    ) : (
-                        events.map((event) => (
-                            <div
-                                key={event.eventId}
-                                className="p-4 bg-white dark:bg-gray-800 rounded-lg shadow"
-                            >
-                                <div className="flex justify-between items-start">
-                                    <div className="flex flex-col gap-2">
-                                        <h3 className="font-medium dark:text-gray-100 text-xs">
-                                            {event.action === "FILE_MOVE" ?
-                                                <div className="flex flex-row items-center justify-center gap-2">
-                                                    <h1>{`Moved ${' '}`}</h1>
-                                                    <div className="px-2 py-1 bg-gray-200 rounded-lg dark:bg-gray-700 dark:text-gray-100 flex flex-row gap-2 items-center">
-                                                        {event.details.isFolder ? <FolderIcon className="w-3 h-3" /> : <FileIcon className="w-3 h-3" />}
-                                                        <h1 className="text-xs">{`${event.details.itemName}`}</h1>
-                                                    </div>
-                                                    <h1>from</h1>
-                                                    <div className="px-2 py-1 bg-gray-200 rounded-lg dark:bg-gray-700 dark:text-gray-100 flex flex-row gap-2 items-center">
-                                                          <FolderIcon className="w-3 h-3" /> 
-                                                            <h1 className="text-xs">{`${event.details.oldParentName}`}</h1>
+                <table className="w-full min-w-[800px] border-collapse">
+                    <thead>
+                        <tr className="text-xs font-thin dark:text-white text-slate-600 border-b border-[#e0e0e0] dark:border-[#333]">
+                            <th className="p-4 text-left">Date</th>
+                            <th className="p-4 text-left">Time</th>
+                            <th className="p-4 text-left">Action</th>
+                            <th className="p-4 text-left">User</th>
+                            <th className="p-4 text-left">More Info</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {loading ? (
+                            Array(3).fill(0).map((_, idx) => (
+                                <SortableItem
+                                    key={idx}
+                                    event={{} as AuditEvent}
+                                    loading={true}
+                                />
+                            ))
+                        ) : (
+                            events.map((event) => (
+                                <SortableItem
+                                    key={event.eventId}
+                                    event={event}
+                                    loading={false}
+                                />
+                            ))
+                        )}
+                    </tbody>
+                </table>
 
-                                                        </div>
-
-                                                        <ArrowRight className="w-4 h-4" />
-                                                        <div className="px-2 py-1 bg-gray-200 rounded-lg dark:bg-gray-700 dark:text-gray-100 flex flex-row gap-2 items-center">
-                                                         <FolderIcon className="w-3 h-3" />
-
-                                                            <h1 className="text-xs">{`${event.details.newParentName}`}</h1>
-
-                                                        </div>
-
-                                                </div>
-                                                :
-                                                event.action === "FILE_RENAME" ?
-                                                    <div className="flex flex-row items-center justify-center gap-2">
-                                                        <h1>{`Renamed ${' '}`}</h1>
-                                                        <div className="px-2 py-1 bg-gray-200 rounded-lg dark:bg-gray-700 dark:text-gray-100 flex flex-row gap-2 items-center">
-                                                            {event.details.isFolder ? <FolderIcon className="w-3 h-3" /> : <FileIcon className="w-3 h-3" />}
-                                                            <h1 className="text-xs">{`${event.details.oldName}`}</h1>
-
-                                                        </div>
-
-                                                        <ArrowRight className="w-4 h-4" />
-                                                        <div className="px-2 py-1 bg-gray-200 rounded-lg dark:bg-gray-700 dark:text-gray-100 flex flex-row gap-2 items-center">
-                                                            {event.details.isFolder ? <FolderIcon className="w-3 h-3" /> : <FileIcon className="w-3 h-3" />}
-
-                                                            <h1 className="text-xs">{`${event.details.newName}`}</h1>
-
-                                                        </div>
-
-                                                    </div>
-                                                    :
-                                                    event.action === "FILE_UPLOAD" ?
-                                                        <div className="flex flex-row items-center justify-center gap-2">
-                                                            <h1>{`Uploaded ${' '}`}</h1>
-                                                            <div className="px-2 py-1 bg-gray-200 rounded-lg dark:bg-gray-700 dark:text-gray-100 flex flex-row gap-2 items-center">
-                                                                {event.details.isFolder ? <FolderIcon className="w-3 h-3" /> : <FileIcon className="w-3 h-3" />}
-                                                                <h1 className="text-xs">{`${event.details.fileName}`}</h1>
-
-                                                            </div>
-                                                            <h1>in</h1>
-                                                            <div className="px-2 py-1 bg-gray-200 rounded-lg dark:bg-gray-700 dark:text-gray-100 flex flex-row gap-2 items-center">
-                                                                {event.details.isFolder ? <FolderIcon className="w-3 h-3" /> : <FileIcon className="w-3 h-3" />}
-                                                                <h1 className="text-xs">{`${event.details.fileName}`}</h1>
-
-                                                            </div>
-
-
-
-                                                        </div> :  event.action === "FOLDER_MOVE" ?
-                                                        <div className="flex flex-row items-center justify-center gap-2">
-                                                            <h1>{`Moved ${' '}`}</h1>
-                                                            <div className="px-2 py-1 bg-gray-200 rounded-lg dark:bg-gray-700 dark:text-gray-100 flex flex-row gap-2 items-center">
-                                                                {event.details.isFolder ? <FolderIcon className="w-3 h-3" /> : <FileIcon className="w-3 h-3" />}
-                                                                <h1 className="text-xs">{`${event.details.itemName}`}</h1>
-
-                                                            </div>
-                                                            <h1>to</h1>
-                                                            <div className="px-2 py-1 bg-gray-200 rounded-lg dark:bg-gray-700 dark:text-gray-100 flex flex-row gap-2 items-center">
-                                                                {event.details.isFolder ? <FolderIcon className="w-3 h-3" /> : <FileIcon className="w-3 h-3" />}
-                                                                <h1 className="text-xs">{`${event.details.itemName}`}</h1>
-
-                                                            </div>
-
-
-
-                                                        </div> : event.action === "FILE_DELETE" ?
-                                                        <div className="flex flex-row items-center justify-center gap-2">
-                                                            <h1>{`Deleted ${' '}`}</h1>
-                                                            <div className="px-2 py-1 bg-gray-200 rounded-lg dark:bg-gray-700 dark:text-gray-100 flex flex-row gap-2 items-center">
-                                                                {event.details.isFolder ? <FolderIcon className="w-3 h-3" /> : <FileIcon className="w-3 h-3" />}
-                                                                <h1 className="text-xs">{`${event.details.itemName}`}</h1>
-
-                                                            </div>
-                                                           
-
-
-
-                                                        </div> : event.action === "FOLDER_DELETE" ?
-                                                        <div className="flex flex-row items-center justify-center gap-2">
-                                                            <h1>{`Deleted ${' '}`}</h1>
-                                                            <div className="px-2 py-1 bg-gray-200 rounded-lg dark:bg-gray-700 dark:text-gray-100 flex flex-row gap-2 items-center">
-                                                                {event.details.isFolder ? <FolderIcon className="w-3 h-3" /> : <FileIcon className="w-3 h-3" />}
-                                                                <h1 className="text-xs">{`${event.details.itemName}`}</h1>
-
-                                                            </div>
-                                                           
-
-
-
-                                                        </div> : null }
-                                        </h3>
-
-                                        <p className="text-xs text-gray-500">
-                                            {format(new Date(event.timestamp), 'PPp')}
-                                        </p>
-
-                                        {/* {event.action === "FILE_MOVE" ? (
-                                            <div className="flex flex-row items-center gap-2">
-                                                <ArrowRight className="w-4 h-4" />
-                                                <div className="px-2 py-1 bg-gray-200 rounded-lg dark:bg-gray-700 dark:text-gray-100 flex flex-row gap-2 items-center">
-                                                    {event.details.targetFile?.endsWith('/') ? <FolderIcon className="w-3 h-3" /> : <FileIcon className="w-3 h-3" />}
-                                                    <h1 className="text-xs">{` ${event.details.targetFile}`}</h1>
-                                                </div>
-                                            </div>
-                                        ) : null} */}
-
-                                    </div>
-
-                                    <div className="text-right">
-                                        <p className="text-xs font-medium dark:text-gray-100">{event.userName}</p>
-                                        <p className="text-xs text-gray-500 dark:text-gray-500">{event.userEmail}</p>
-                                    </div>
-                                </div>
-                                {/* {event.details && (
-                                    <div className="mt-2 text-xs text-gray-600">
-                                        {event.details.targetPath && (
-                                            <p>Path: {event.details.targetPath}</p>
-                                        )}
-                                        {event.details.targetUser && (
-                                            <p>Target User: {event.details.targetUser}</p>
-                                        )}
-                                        {event.details.oldValue && event.details.newValue && (
-                                            <p>Changed from {event.details.oldValue} to {event.details.newValue}</p>
-                                        )}
-                                    </div>
-                                )} */}
-                            </div>
-                        ))
-                    )}
-                    {nextToken && !loading && (
-                        <Button
-                            onClick={() => fetchAuditLogs()}
-                            className="w-full mt-4"
-                        >
-                            Load More
-                        </Button>
-                    )}
-                </div>
+                {nextToken && !loading && (
+                    <Button
+                        onClick={() => fetchAuditLogs()}
+                        className="w-full mt-4"
+                    >
+                        Load More
+                    </Button>
+                )}
             </ScrollArea>
         </div>
     );
