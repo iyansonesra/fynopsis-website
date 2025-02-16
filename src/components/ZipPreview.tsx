@@ -1,6 +1,7 @@
 import React from 'react';
 import { ChevronRight, ChevronDown, Folder, File } from 'lucide-react';
 import Particles from './ui/particles';
+import { ScrollArea } from './ui/scroll-area';
 
 interface ZipPreviewProps {
     items: ProcessedItem[];
@@ -116,7 +117,11 @@ const ZipPreview: React.FC<ZipPreviewProps> = ({ items, onUpload, onCancel }) =>
             <div className="rounded-lg max-h-[400px] overflow-y-auto flex-grow">
             <h3 className="text-lg font-semibold dark:text-gray-200 mb-2">ZIP Contents Preview</h3>
 
-            {tree.map(node => renderTreeNode(node))}
+            <div className="h-[300px]">
+                <ScrollArea className="h-full">
+                    {tree.map(node => renderTreeNode(node))}
+                </ScrollArea>
+            </div>
             </div>
 
             <div className="flex justify-end items-center  p-4 mt-auto">
