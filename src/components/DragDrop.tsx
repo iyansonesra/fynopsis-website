@@ -9,6 +9,8 @@ import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/h
 import { TbChevronsDownLeft } from 'react-icons/tb';
 import JSZip from 'jszip';
 import { Alert, AlertDescription } from './ui/alert';
+import ZipPreview from './ZipPreview';
+import ZipUploadProgress from './ZipUploadProgress';
 
 
 interface DragDropOverlayProps {
@@ -16,6 +18,7 @@ interface DragDropOverlayProps {
   onFilesUploaded: (files: File[], fileHashes: FileHashMapping) => void;
   currentPath?: string[];  // Add current path prop
   folderId?: string;
+  onRefreshNeeded?: () => void; // Add new callback prop
 }
 
 interface FileUpload {
@@ -71,45 +74,14 @@ const ALLOWED_FILE_TYPES = {
 interface ExtractedFile {
   path: string;
   file: File;
+  isDirectory: boolean;
 }
 
-const processZipFile = async (zipFile: File): Promise<ExtractedFile[]> => {
-  const zip = new JSZip();
-  const extractedFiles: ExtractedFile[] = [];
-  
-  try {
-    const zipContent = await zip.loadAsync(zipFile);
-    
-    for (const [path, file] of Object.entries(zipContent.files)) {
-      // Skip directories
-      if (file.dir) continue;
-      
-      // Get the file extension
-      const ext = path.split('.').pop()?.toLowerCase() || '';
-      const mimeType = Object.entries(ALLOWED_FILE_TYPES).find(([_, extensions]) => 
-        extensions.split(',').some(e => e.toLowerCase() === `.${ext}`)
-      )?.[0];
-      
-      // Skip files with unsupported extensions
-      if (!mimeType) continue;
-      
-      // Get file content as blob
-      const content = await file.async('blob');
-      // Use the full path as the name to preserve directory structure
-      const extractedFile = new File([content], path, { type: mimeType });
-      
-      extractedFiles.push({
-        path: path,
-        file: extractedFile
-      });
-    }
-    
-    return extractedFiles;
-  } catch (error) {
-    console.error('Error processing ZIP file:', error);
-    throw new Error('Failed to process ZIP file');
-  }
-};
+interface FolderMapping {
+  [path: string]: string; // path -> folderId mapping
+}
+
+
 
 const getAllowedExtensions = () => {
   return Object.values(ALLOWED_FILE_TYPES).flat().join(', ');
@@ -154,7 +126,8 @@ const DragDropOverlay: React.FC<DragDropOverlayProps> = ({
   onClose,
   onFilesUploaded,
   currentPath = [], // Default to empty array for root folder
-  folderId
+  folderId,
+  onRefreshNeeded
 }) => {
   const fileHashes: FileHashMapping = {}; 
   const [pendingFiles, setPendingFiles] = useState<File[]>([]);
@@ -165,7 +138,171 @@ const DragDropOverlay: React.FC<DragDropOverlayProps> = ({
   const bucketUuid = pathArray[2] || '';
   const [isProcessingZip, setIsProcessingZip] = useState(false);
   const [zipProcessingError, setZipProcessingError] = useState<string | null>(null);
+  const [zipPreviewItems, setZipPreviewItems] = useState<ProcessedItem[]>([]);
+const [showZipPreview, setShowZipPreview] = useState(false);
+  const [zipFileStore, setZipFileStore] = useState<File>([]);
+  const [isUploadingZip, setIsUploadingZip] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  interface ProcessedItem {
+    path: string;
+    file: File;
+    isDirectory: boolean;
+    level: number;
+    parentPath: string;
+  }
   
+  const processZipFile = async (zipFile: File, bucketUuid: string): Promise<ExtractedFile[]> => {
+    const zip = new JSZip();
+    const extractedItems: ProcessedItem[] = [];
+    const folderIds: FolderMapping = { '/': 'ROOT' };
+    
+    try {
+      const zipContent = await zip.loadAsync(zipFile);
+      
+      // Process each file path
+      for (const [path, file] of Object.entries(zipContent.files)) {
+        if (path === '') continue;
+        console.log("Processing path:", path);
+        
+        const parts = path.split('/').filter(part => part !== '');
+        let currentPath = '';
+        let parentFolderId = 'ROOT';
+        
+        // Process each part of the path except the last one if it's a file
+        const partsToProcess = file.dir ? parts : parts.slice(0, -1);
+        
+        // Create or verify each folder in the path
+        for (const part of partsToProcess) {
+          currentPath = currentPath ? `${currentPath}/${part}` : part;
+
+          console.log("currentPath:", currentPath);
+          
+          // Check if we've already created this folder
+          if (!folderIds[currentPath]) {
+            console.log(`Creating folder: ${part} in parent: ${parentFolderId}`);
+            const newFolderId = await createFolder(part, parentFolderId, bucketUuid);
+            folderIds[currentPath] = newFolderId;
+            
+            // Add to extracted items
+            extractedItems.push({
+              path: currentPath,
+              file: new File([], currentPath),
+              isDirectory: true,
+              level: currentPath.split('/').length,
+              parentPath: currentPath.split('/').slice(0, -1).join('/') || '/'
+            });
+          }
+          
+          // Update parent folder ID for next iteration
+          parentFolderId = folderIds[currentPath];
+        }
+        
+        // If this is a file, process it
+        if (!file.dir) {
+          const fileName = parts[parts.length - 1];
+          console.log(`Processing file: ${fileName} in folder: ${parentFolderId}`);
+          
+          const fileContent = await createFileFromZip(file, path);
+          
+          // Upload the file to the correct folder
+          await uploadFile(fileContent, parentFolderId, bucketUuid);
+          
+          // Add to extracted items
+          extractedItems.push({
+            path,
+            file: fileContent,
+            isDirectory: false,
+            level: parts.length,
+            parentPath: parts.slice(0, -1).join('/') || '/'
+          });
+        }
+      }
+      
+      return extractedItems;
+    } catch (error) {
+      console.error('Error processing ZIP file:', error);
+      throw new Error('Failed to process ZIP file');
+    }
+  };
+
+  const handleZipUploadConfirm = async () => {
+    setShowZipPreview(false);
+    setIsUploadingZip(true);
+    setUploadProgress(0);
+    
+    try {
+      // Start progress animation
+      const progressInterval = setInterval(() => {
+        setUploadProgress(prev => {
+          if (prev >= 90) {
+            clearInterval(progressInterval);
+            return 90;
+          }
+          return prev + 10;
+        });
+      }, 500);
+  
+      // Process the ZIP file
+      await processZipFile(zipFileStore, bucketUuid);
+      
+      // Clear interval and set to 100%
+      clearInterval(progressInterval);
+      setUploadProgress(100);
+      
+      // Wait for animation to complete
+      setTimeout(() => {
+        setIsUploadingZip(false);
+        onClose();
+        onRefreshNeeded?.(); 
+      }, 500);
+
+    } catch (error) {
+      console.error('Error processing ZIP:', error);
+      setZipProcessingError('Failed to process ZIP file');
+      setIsUploadingZip(false);
+    }
+  };
+  
+  // Helper function to create a file from zip entry
+  const createFileFromZip = async (zipEntry: JSZip.JSZipObject, path: string): Promise<File> => {
+    const content = await zipEntry.async('blob');
+    const ext = path.split('.').pop()?.toLowerCase() || '';
+    const mimeType = Object.entries(ALLOWED_FILE_TYPES).find(([_, extensions]) => 
+      extensions.split(',').some(e => e.toLowerCase() === `.${ext}`)
+    )?.[0] || 'application/octet-stream';
+    
+    return new File([content], path.split('/').pop()!, { type: mimeType });
+  };
+  
+  // Helper function to create a folder
+  const createFolder = async (name: string, parentFolderId: string, bucketUuid: string): Promise<string> => {
+    console.log("createFolder", name, parentFolderId, bucketUuid);
+    
+    try {
+      const response = await post({
+        apiName: 'S3_API',
+        path: `/s3/${bucketUuid}/create-folder`,
+        options: {
+          withCredentials: true,
+          body: {
+            folderName: name,
+            parentFolderId
+          }
+        }
+      });
+  
+      const { body } = await response.response;
+      const result = await body.json();
+      if(result) {
+        const response = result as { folderId: string };
+        return response.folderId;
+      }
+      throw new Error('No folder ID returned from server'); 
+    } catch (error) {
+      console.error('Error creating folder:', error);
+      throw error;
+    }
+  };
 
   const getFullPath = (fileName: string) => {
     if (currentPath.length === 0) {
@@ -175,21 +312,9 @@ const DragDropOverlay: React.FC<DragDropOverlayProps> = ({
     return `${currentPath.join('/')}/${fileName}`;
   };
 
-  const uploadFile = async (file: File) => {
+  const uploadFile = async (file: File, parentFolderId: string, bucketUuid: string) => {
     try {
-      const fullPath = getCurrentPathString(useS3Store.getState().currentNode);
-      let filePathOut = `${fullPath}${file.name}`;
-      if (fullPath === '/') {
-        filePathOut = filePathOut.slice(1);
-      }
-
-      console.log('filePathOut:', filePathOut);
-
-      console.log("file name in uploadFile:", file.name);
-      console.log("breh", file.type)
-      console.log("folder id in uploadFile:", folderId);
-
-      // Get presigned URL from API with the full path
+      // Get presigned URL from API with the folder ID
       const getUrlResponse = await post({
         apiName: 'S3_API',
         path: `/s3/${bucketUuid}/upload-url`,
@@ -197,25 +322,19 @@ const DragDropOverlay: React.FC<DragDropOverlayProps> = ({
           withCredentials: true,
           body: {
             fileName: file.name,
-            folderId: folderId || null,
+            folderId: parentFolderId, // Use the provided parent folder ID
             contentType: file.type,
           }
         }
       });
-
+  
       const { body } = await getUrlResponse.response;
       const responseText = await body.text();
       const { signedUrl, fileHash, fileName } = JSON.parse(responseText);
-
+  
       const fileKey = `${fileName}-${file.size}`;
-      console.log('fileKey:', fileKey);
-      console.log('fileHash:', fileHash);
-      fileHashes[fileKey] = fileHash;  // Store hash in local object
-
-
-      console.log("file hash table:", fileHashes);
-
-
+      fileHashes[fileKey] = fileHash;
+  
       // Upload file using presigned URL
       const uploadResponse = await fetch(signedUrl, {
         method: 'PUT',
@@ -225,30 +344,15 @@ const DragDropOverlay: React.FC<DragDropOverlayProps> = ({
           'Content-Length': file.size.toString(),
         },
       });
-
+  
       if (!uploadResponse.ok) {
-        const errorText = await uploadResponse.text();
-        throw new Error(`Upload failed: ${errorText}`);
+        throw new Error(`Upload failed: ${await uploadResponse.text()}`);
       }
-
-      setFileUploads(prev => ({
-        ...prev,
-        [file.name]: {
-          ...prev[file.name],
-          status: 'completed',
-          progress: 100
-        }
-      }));
-
+  
+      return true;
     } catch (error) {
       console.error('Error uploading file:', error);
-      setFileUploads(prev => ({
-        ...prev,
-        [file.name]: {
-          ...prev[file.name],
-          status: 'invalid filename'
-        }
-      }));
+      throw error;
     }
   };
 
@@ -270,19 +374,26 @@ const DragDropOverlay: React.FC<DragDropOverlayProps> = ({
       for (const file of files) {
         if (file.type === 'application/zip' || file.type === 'application/x-zip-compressed') {
           setIsProcessingZip(true);
+          setZipFileStore(file);
           try {
-            const extractedFiles = await processZipFile(file);
-            for (const { file: extractedFile, path } of extractedFiles) {
-              const fileName = path; // Use the full path as the file name
-              if (isValidFileType(extractedFile)) {
-                newUploads[fileName] = {
-                  file: extractedFile,
-                  progress: 0,
-                  status: 'completed'
-                };
-                processedFiles.push(extractedFile);
-              }
+            const zip = new JSZip();
+            const zipContent = await zip.loadAsync(file);
+            const items: ProcessedItem[] = [];
+            
+            for (const [path, zipEntry] of Object.entries(zipContent.files)) {
+              if (path === '') continue;
+              
+              items.push({
+                path,
+                file: await createFileFromZip(zipEntry, path),
+                isDirectory: zipEntry.dir,
+                level: path.split('/').length,
+                parentPath: path.split('/').slice(0, -1).join('/') || '/'
+              });
             }
+            
+            setZipPreviewItems(items);
+            setShowZipPreview(true);
           } catch (error) {
             console.error('ZIP processing error:', error);
             setZipProcessingError('Failed to process ZIP file. Please ensure it contains supported file types.');
@@ -353,10 +464,9 @@ const DragDropOverlay: React.FC<DragDropOverlayProps> = ({
         });
         return updated;
       });
-
+  
       // Upload all pending files
       for (const file of pendingFiles) {
-        // Simulate progress updates
         const updateProgress = (progress: number) => {
           setFileUploads(prev => ({
             ...prev,
@@ -366,21 +476,27 @@ const DragDropOverlay: React.FC<DragDropOverlayProps> = ({
             }
           }));
         };
-
-        // Update progress before upload starts
+  
         updateProgress(20);
-
-        // Start upload
-        await uploadFile(file);
-
-        // Set final progress
+        
+        // Use the provided folderId or 'ROOT' as default
+        await uploadFile(file, folderId || 'ROOT', bucketUuid);
+        
         updateProgress(100);
+        
+        setFileUploads(prev => ({
+          ...prev,
+          [file.name]: {
+            ...prev[file.name],
+            status: 'completed'
+          }
+        }));
       }
-
+  
       const uploadedFiles = Object.values(fileUploads)
         .filter(upload => upload.status === 'completed')
         .map(upload => upload.file);
-
+  
       onFilesUploaded(uploadedFiles, fileHashes);
       onClose();
     } catch (error) {
@@ -389,7 +505,6 @@ const DragDropOverlay: React.FC<DragDropOverlayProps> = ({
       setIsConfirming(false);
     }
   };
-
   const areAllUploadsComplete = Object.values(fileUploads).every(
     upload => upload.status === 'completed'
   );
@@ -398,25 +513,7 @@ const DragDropOverlay: React.FC<DragDropOverlayProps> = ({
     upload => upload.status === 'error'
   );
 
-  const EmptyDropzone = ({ isDragActive, ...props }: { isDragActive: boolean } & React.HTMLAttributes<HTMLDivElement>) => (
-    <div
-      {...props}
-      className={`border-2 border-dashed rounded-lg p-8 text-center cursor-pointer 
-        ${isDragActive ? 'border-blue-500 bg-blue-50' : 'border-gray-300'}`}
-    >
-      <input {...getInputProps()} />
-      <UploadIcon className="mx-auto h-12 w-12 text-gray-400" />
-      <p className="mt-2 text-sm text-gray-600 dark:text-gray-200">
-        Drag and drop files here, or click to select files
-      </p>
-      <p className="mt-2 text-sm text-gray-500">
-        Maximum file size: {formatFileSize(MAX_FILE_SIZE)}
-      </p>
-      <div className="mt-2">
-        <FileTypeInfo />
-      </div>
-    </div>
-  );
+  
 
   const FileItem = ({ fileName, upload }: { fileName: string; upload: FileUpload }) => (
     <li key={fileName} className="space-y-2">
@@ -470,7 +567,7 @@ const DragDropOverlay: React.FC<DragDropOverlayProps> = ({
   const renderDropzoneContent = () => (
     <div
       {...getRootProps()}
-      className={`border-2 border-dashed rounded-lg p-8 text-center cursor-pointer 
+      className={` rounded-lg p-8 text-center cursor-pointer 
         ${isDragActive ? 'border-blue-500 bg-blue-50' : 'border-gray-300'}`}
     >
       <input {...getInputProps()} />
@@ -504,13 +601,21 @@ const DragDropOverlay: React.FC<DragDropOverlayProps> = ({
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white p-8 rounded-lg shadow-lg w-2/3 max-w-2xl dark:bg-darkbg">
-        <div className="flex justify-end">
+      <div className="relative bg-white p-8 rounded-lg shadow-lg w-2/3 max-w-2xl dark:bg-darkbg">
+        <div className="absolute top-4 right-4">
           <button onClick={onClose} className="text-gray-500 hover:text-gray-700">
-            <X className="h-6 w-6" />
+            <X className="h-6 w-6 dark:text-gray-200" />
           </button>
         </div>
-        {Object.keys(fileUploads).length === 0 ? (
+        {isUploadingZip ? (
+        <ZipUploadProgress progress={uploadProgress} />
+      ) : showZipPreview ? (
+        <ZipPreview
+          items={zipPreviewItems}
+          onUpload={handleZipUploadConfirm}
+          onCancel={() => setShowZipPreview(false)}
+        />
+      ) : Object.keys(fileUploads).length === 0 ? (
           // This is the key change - wrap everything in the dropzone
           renderDropzoneContent()
 

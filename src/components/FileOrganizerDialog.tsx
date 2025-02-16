@@ -135,11 +135,9 @@ const TreeView: React.FC<TreeViewProps> = ({ schema, fileAssignments, newNames }
   };
 
   return (
-    <ScrollArea className="h-[300px] w-full rounded-md border p-4">
       <div className="space-y-2">
         {renderTree(parseSchema(schema))}
       </div>
-    </ScrollArea>
   );
 };
 
@@ -230,11 +228,9 @@ const FileMovementTree: React.FC<FileMovementTreeProps> = ({ fileAssignments, ne
   const tree = buildTreeStructure();
 
   return (
-    <ScrollArea className="h-[400px] w-full rounded-md border p-4">
       <div className="space-y-2">
         {renderTreeNode(tree)}
       </div>
-    </ScrollArea>
   );
 };
 
@@ -356,6 +352,7 @@ export const FileOrganizerDialog: React.FC<FileOrganizerDialogProps> = ({ bucket
 
   const handlePreview = async () => {
     setIsLoading(true);
+   
     try {
       const response = await post({
         apiName: 'S3_API',
@@ -369,6 +366,8 @@ export const FileOrganizerDialog: React.FC<FileOrganizerDialogProps> = ({ bucket
         }
       }).response;
 
+      setSchemaStatus('IN_PROGRESS');
+
       const data = (await response.body.json() as unknown) as SchemaResponse;
 
       if (!data || !data.schemas[0].schemaId) {
@@ -378,7 +377,6 @@ export const FileOrganizerDialog: React.FC<FileOrganizerDialogProps> = ({ bucket
       console.log('Preview data:', data);
       if (data && data.schemas[0].schemaId) {
         setSchemaId(data.schemas[0].schemaId);
-        setSchemaStatus('IN_PROGRESS');
         setIsPolling(true);
         setIsPreviewOpen(true);
       }
@@ -565,8 +563,8 @@ export const FileOrganizerDialog: React.FC<FileOrganizerDialogProps> = ({ bucket
     if (schemaStatus === 'IN_PROGRESS') {
       return (
         <div className="flex flex-col items-center justify-center space-y-4 p-8 dark:bg-darkbg">
-          <Loader2 className="h-8 w-8 animate-spin" />
-          <h3 className="text-lg font-semibold">Organizing Files</h3>
+          <Loader2 className="h-8 w-8 animate-spin dark:text-gray-200" />
+          <h3 className="text-lg font-semibold dark:text-gray-200">Organizing Files</h3>
           <p className="text-sm text-gray-500 text-center">
             This could take up to a few minutes. We&apos;ll notify you when it&apos;s ready.
           </p>
@@ -611,84 +609,48 @@ export const FileOrganizerDialog: React.FC<FileOrganizerDialogProps> = ({ bucket
 
     if (schemaStatus === 'COMPLETED') {
       return (
-        <div className="space-y-4">
-          <Accordion type="single" collapsible className="w-full">
-            <AccordionItem value="schema">
-              <AccordionTrigger>Folder Structure</AccordionTrigger>
-              <AccordionContent>
-                <TreeView
-                  schema={schema}
-                  fileAssignments={organizationResults?.file_assignments || {}}
-                  newNames={organizationResults?.new_names || {}}
-                />
-              </AccordionContent>
-            </AccordionItem>
-
-            <AccordionItem value="moves">
-              <AccordionTrigger>File Movements</AccordionTrigger>
-              <AccordionContent>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Original Location</TableHead>
-                      <TableHead>New Location</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {Object.entries(organizationResults?.file_assignments || {}).map(([from, to]) => (
-                      <TableRow key={from}>
-                        <TableCell className="text-xs">{from}</TableCell>
-                        <TableCell className="text-xs">{to as string}</TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </AccordionContent>
-            </AccordionItem>
-
-            <AccordionItem value="renames">
-              <AccordionTrigger>File Renames</AccordionTrigger>
-              <AccordionContent>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Original Name</TableHead>
-                      <TableHead>New Name</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {Object.entries(organizationResults?.new_names || {}).map(([path, newName]) => (
-                      <TableRow key={path}>
-                        <TableCell className="text-xs">{path.split('/').pop()}</TableCell>
-                        <TableCell className="text-xs">{newName as string}</TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </AccordionContent>
-            </AccordionItem>
-
-            <AccordionItem value="reasoning">
-              <AccordionTrigger>Organization Reasoning</AccordionTrigger>
-              <AccordionContent>
-                <p className="text-sm text-gray-600 dark:text-gray-300">
-                  {organizationResults?.reasoning || 'No reasoning provided'}
-                </p>
-              </AccordionContent>
-            </AccordionItem>
-
-            <AccordionItem value="fileTree">
-              <AccordionTrigger>File Movement Tree</AccordionTrigger>
-              <AccordionContent>
-                <FileMovementTree
-                  fileAssignments={organizationResults?.file_assignments || {}}
-                  newNames={organizationResults?.new_names || {}}
-                />
-              </AccordionContent>
-            </AccordionItem>
-          </Accordion>
-
-          <div className="flex justify-end gap-2">
+        <div className="relative flex flex-col h-full">
+          {/* Main content area with fixed height */}
+          <div className="absolute inset-0 bottom-[64px]">
+            <ScrollArea className="h-full">
+              <div className="space-y-4 p-4">
+                <Accordion type="single" collapsible className="w-full dark:text-gray-200">
+                  <AccordionItem value="schema">
+                    <AccordionTrigger>Folder Structure</AccordionTrigger>
+                    <AccordionContent>
+                      <TreeView
+                        schema={schema}
+                        fileAssignments={organizationResults?.file_assignments || {}}
+                        newNames={organizationResults?.new_names || {}}
+                      />
+                    </AccordionContent>
+                  </AccordionItem>
+    
+                  <AccordionItem value="reasoning">
+                    <AccordionTrigger>Organization Reasoning</AccordionTrigger>
+                    <AccordionContent>
+                      <p className="text-sm text-gray-600 dark:text-gray-300">
+                        {organizationResults?.reasoning || 'No reasoning provided'}
+                      </p>
+                    </AccordionContent>
+                  </AccordionItem>
+    
+                  <AccordionItem value="fileTree">
+                    <AccordionTrigger>File Movement Tree</AccordionTrigger>
+                    <AccordionContent>
+                      <FileMovementTree
+                        fileAssignments={organizationResults?.file_assignments || {}}
+                        newNames={organizationResults?.new_names || {}}
+                      />
+                    </AccordionContent>
+                  </AccordionItem>
+                </Accordion>
+              </div>
+            </ScrollArea>
+          </div>
+    
+          {/* Fixed button area at bottom */}
+          <div className="absolute bottom-0 left-0 right-0 h-[64px] bg-white dark:bg-darkbg flex justify-end items-center gap-2 px-4">
             <Button
               variant="outline"
               onClick={handleCancel}

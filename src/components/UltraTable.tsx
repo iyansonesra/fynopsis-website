@@ -1359,26 +1359,22 @@ th {
         <div className="buttons flex flex-row gap-2">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <button className="flex items-center gap-2 bg-transparent text-black border dark:border-slate-600 dark:text-gray-200 px-4 py-1 rounded-full hover:bg-slate-200 select-none outline-none">
-                <span className="text-sm">Manage Documents</span>
+              <button className="flex items-center gap-2 bg-transparent text-black border dark:border-slate-600 dark:text-gray-200 px-4 py-1 rounded-full hover:bg-slate-200 dark:hover:bg-slate-900 select-none outline-none">
+                <span className="text-sm whitespace-nowrap">Manage Documents</span>
                 <ChevronDown size={16} />
               </button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              {/* <DropdownMenuItem className="flex items-center gap-2">
-                <Upload size={16} />
-                <span>Upload</span>
-              </DropdownMenuItem> */}
-              <DropdownMenuItem onClick={() => setShowUploadOverlay(true)} className="flex items-center gap-2">
+            <DropdownMenuContent align="end" className = "dark:bg-slate-900 dark:border-none dark:outline-none dark:text-gray-200 ">
+              <DropdownMenuItem onClick={() => setShowUploadOverlay(true)} className="flex items-center gap-2 dark:hover:text-gray-400">
                 <Upload size={16} />
                 <span>Upload</span>
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setShowFolderModal(true)} className="flex items-center gap-2">
+              <DropdownMenuItem onClick={() => setShowFolderModal(true)} className="flex items-center gap-2 dark:hover:text-gray-400">
                 <Plus size={16} />
                 <span>Create Folder</span>
               </DropdownMenuItem>
 
-              <DropdownMenuItem onClick={() => setShowFileOrganizer(true)} className="flex items-center gap-2">
+              <DropdownMenuItem onClick={() => setShowFileOrganizer(true)} className="flex items-center gap-2 dark:hover:text-gray-400">
                 <Folder size={16} />
                 <span>Organize Documents</span>
               </DropdownMenuItem>
@@ -1575,12 +1571,13 @@ th {
 
 
       {showUploadOverlay && (
-        <DragDropOverlay
-          onClose={() => setShowUploadOverlay(false)}
-          onFilesUploaded={handleFilesUploaded}
-          currentPath={currentPath} // Pass the current path
-          folderId={pathArray[3] === "home" ? "ROOT" : pathArray[3]}
-        />
+         <DragDropOverlay
+         onClose={() => setShowUploadOverlay(false)}
+         onFilesUploaded={handleFilesUploaded}
+         currentPath={currentPath}
+         folderId={pathArray[3] === "home" ? "ROOT" : pathArray[3]}
+         onRefreshNeeded={handleRefresh} // Pass the refresh callback
+       />
       )}
       {showFolderModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">

@@ -141,7 +141,7 @@ const UserManagement: React.FC<UserManagementProps> = () => {
     const canModify = canModifyUserRole(currentUserRole, user.role as Role);
 
     if (!canModify) {
-      return <div className="text-gray-600 font-medium dark:text-white">
+      return <div className="text-gray-600 font-medium dark:text-white text-sm">
         {user.role.charAt(0).toUpperCase() + user.role.slice(1).toLowerCase()}
       </div>;
     }
@@ -156,11 +156,11 @@ const UserManagement: React.FC<UserManagementProps> = () => {
           <SelectValue placeholder="Select permission" />
         </SelectTrigger>
         <SelectContent className='dark:text-white'>
-          <SelectItem value="READ" className='dark:text-white'>Read</SelectItem>
-          <SelectItem value="WRITE" className='dark:text-white'>Write</SelectItem>
-          <SelectItem value="ADMIN" className='dark:text-white'>Admin</SelectItem>
+          <SelectItem value="READ" className='dark:text-white text-sm'>Read</SelectItem>
+          <SelectItem value="WRITE" className='dark:text-white text-sm'>Write</SelectItem>
+          <SelectItem value="ADMIN" className='dark:text-white text-sm'>Admin</SelectItem>
           {currentUserRole === 'OWNER' && (
-            <SelectItem value="OWNER">Owner</SelectItem>
+            <SelectItem value="OWNER text-xs">Owner</SelectItem>
           )}
         </SelectContent>
       </Select>
@@ -270,11 +270,12 @@ const UserManagement: React.FC<UserManagementProps> = () => {
       };
       console.log('Permissions retrieved:', permissions);
       setUsers(response);
+     
     } catch (error) {
       setError('Failed to fetch users');
       console.error('Error fetching users:', error);
     } finally {
-      setIsLoading(false);
+      // setIsLoading(false);
     }
   };
 
@@ -328,11 +329,15 @@ const UserManagement: React.FC<UserManagementProps> = () => {
       }));
 
       setUsers(transformedUsers);
+      if(response && transformedUsers.length > 0) {
+        setTimeout(() => {
+          setIsLoading(false);
+        }, 500);
+      }
     } catch (error) {
       setError('Failed to fetch users');
       console.error('Error fetching users:', error);
     } finally {
-      setIsLoading(false);
     }
   };
 
@@ -444,10 +449,10 @@ const UserManagement: React.FC<UserManagementProps> = () => {
     <>
       <div className="mx-auto px-4 py-6 flex flex-col w-full dark:bg-darkbg">
         <div className="flex justify-between items-center mb-6">
-          <h2 className="text-2xl font-bold text-gray-800 dark:text-white">User Management</h2>
+          <h2 className="text-xl font-bold text-gray-800 dark:text-white">User Management</h2>
           <Button
             onClick={() => setIsInviteDialogOpen(true)}
-            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white"
+            className="flex items-center gap-2 text-white"
           >
             <UserPlus className="h-4 w-4" />
             Add User

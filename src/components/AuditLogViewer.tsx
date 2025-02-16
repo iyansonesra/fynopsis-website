@@ -66,13 +66,12 @@ const SortableItem = React.memo<{
     const formatDate = (timestamp: string) => {
         return format(new Date(timestamp), 'MMM dd, yyyy');
     };
-
     const formatTime = (timestamp: string) => {
-        return format(new Date(timestamp), 'HH:mm:ss');
+        return format(new Date(timestamp), 'hh:mm a');
     };
 
     return (
-        <tr className="text-xs transition-all duration-200 hover:bg-blue-50 cursor-pointer dark:text-white border-b border-[#e0e0e0] dark:border-[#333]">
+        <tr className="text-xs transition-all duration-200 hover:bg-blue-50 dark:hover:bg-slate-800 cursor-pointer dark:text-white border-b border-[#e0e0e0] dark:border-[#333]">
             <td className="p-4 whitespace-nowrap">{formatDate(event.timestamp)}</td>
             <td className="p-4 whitespace-nowrap">{formatTime(event.timestamp)}</td>
             <td className="p-4">
@@ -449,7 +448,8 @@ export const AuditLogViewer: React.FC<AuditLogViewerProps> = ({ bucketId }) => {
     return (
         <div className="flex flex-col h-full p-4 gap-4 w-full">
             <div className="flex items-center justify-between gap-4 pr-8">
-                <div className="flex-1">
+            {/* <h2 className="text-xl font-bold text-gray-800 dark:text-white">Audit Log</h2> */}
+            <div className="flex-1 flex flex-row">
                     <Input
                         placeholder="Search..."
                         value={searchTerm}

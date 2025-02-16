@@ -732,7 +732,7 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
             // Process sources section
             const sourcesResult = extractContent(response, '<sources>', '</sources>');
             if (sourcesResult) {
-              
+
                 if (sourcesResult.isComplete) {
                     console.log('Full sourcesResult:', sourcesResult);
                     console.log('sourcesResult content:', sourcesResult.content);
@@ -1043,7 +1043,7 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
     const renderFileDetails = () => (
         <>
             <ScrollArea>
-                <div className="flex justify-between items-center mb-2 mt-2 dark:bg-darkbg px-4 pt-2">
+                <div className="flex justify-between items-center mb-2 mt-2 dark:bg-darkbg px-4 pt-2 max-w-full">
                     <h2 className="text-base font-semibold dark:text-white">File Details</h2>
                     <Button
                         variant="outline"
@@ -1054,17 +1054,21 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
                     </Button>
                 </div>
                 {selectedFile && (
-                    <>
-                        <div className="text-sm dark:text-white px-4">
-                            <p><strong>Name:</strong> {selectedFile.name}</p>
-                            <p><strong>Type:</strong> {selectedFile.type}</p>
-                            <p><strong>Size:</strong> {selectedFile.size}</p>
-                            <p><strong>Uploaded By:</strong> {selectedFile.uploadedBy}</p>
-                            <p><strong>Date:</strong> {new Date(selectedFile.lastModified).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
-                            <p><strong>Detailed Summary:</strong> {selectedFile.summary ? decodeUnicodeEscapes(selectedFile.summary?.slice(1, -1)) : 'No summary available'}</p>
-                            {/* Add more details as needed */}
-                        </div>
-                    </>
+                    <div className="text-sm dark:text-white px-4 max-w-full">
+                        {/* <div className="flex min-w-0"> 
+        <strong className="flex-shrink-0 whitespace-nowrap">Name:&nbsp;</strong>
+        <div className="min-w-0 flex-1">
+            <p className="truncate">
+                {selectedFile.name}
+            </p>
+        </div>
+    </div> */}
+                        <p><strong>Type:</strong> {selectedFile.type}</p>
+                        <p><strong>Size:</strong> {selectedFile.size}</p>
+                        <p><strong>Uploaded By:</strong> {selectedFile.uploadedBy}</p>
+                        <p><strong>Date:</strong> {new Date(selectedFile.lastModified).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
+                        <p><strong>Detailed Summary:</strong> {selectedFile.summary ? decodeUnicodeEscapes(selectedFile.summary?.slice(1, -1)) : 'No summary available'}</p>
+                    </div>
 
 
                 )}
