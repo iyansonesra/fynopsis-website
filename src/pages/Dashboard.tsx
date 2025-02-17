@@ -421,15 +421,19 @@ export default function GeneralDashboard() {
                 </div>
 
 
-                <div className="flex-1 overflow-hidden flex flex-col dark:bg-darkbg">
+                <div className="flex-1 overflow-hidden flex flex-row dark:bg-darkbg">
                     <div className="flex-[2] px-4 py-4">
                         <div className="flex justify-between items-center mb-4">
-                            <h1 className="font-semibold text-xl dark:text-white">Your Datarooms</h1>
+                            <div className="flex flex-row gap-2 items-center ml-2">
+                                <Library className="w-6 h-6 dark:text-gray-200" />
+                                <h1 className="font-semibold text-xl dark:text-white">Your Datarooms</h1>
+                            </div>
+
                             <Button onClick={() => setIsAddDialogOpen(true)}>
                                 <Plus className="mr-2 h-4 w-4" /> Add Dataroom
                             </Button>
                         </div>
-                        <div className="flex flex-wrap gap-4">
+                        <div className="flex flex-col">
                             {isLoading ? (
                                 <>
                                     <SkeletonCard />
@@ -438,7 +442,7 @@ export default function GeneralDashboard() {
                                 </>
                             ) : (
                                 dataRooms.map((room) => (
-                                    <div key={room.id} className="w-[400px]">
+                                    <div key={room.id} className="w-full">
                                         <DataRoomCard
                                             id={room.id || ''}
                                             title={room.title}
@@ -470,16 +474,16 @@ export default function GeneralDashboard() {
                                     disabled={isCreating}
                                 />
                                 <DialogFooter>
-                                    <Button 
-                                        variant="outline" 
-                                        onClick={() => setIsAddDialogOpen(false)} 
+                                    <Button
+                                        variant="outline"
+                                        onClick={() => setIsAddDialogOpen(false)}
                                         className="dark:bg-darkbg dark:border dark:hover:text-slate-400"
                                         disabled={isCreating}
                                     >
                                         Cancel
                                     </Button>
-                                    <Button 
-                                        onClick={handleAddDataroom} 
+                                    <Button
+                                        onClick={handleAddDataroom}
                                         className="dark:hover:text-slate-400"
                                         disabled={isCreating}
                                     >
@@ -499,11 +503,62 @@ export default function GeneralDashboard() {
                             </DialogContent>
                         </Dialog>
                     </div>
-                    <div className="flex-1 px-4 py-4">
-                        <h1 className="font-semibold text-xl dark:text-white">Recent Activity</h1>
+
+                    <Separator orientation="vertical" className="h-full dark:text-gray-200" />
+                    <div className="flex-1 px-4 py-4 flex flex-col h-full">
+                        <div className="flex min-h-[50%] mb-4 flex-col">
+                            <h1 className="font-semibold text-xl mb-4 dark:text-white">Recent Activity</h1>
+                            <p className="text-sm text-gray-500 dark:text-white">No Recent Activity</p>
+
+                        </div>
+
+                        <div className="flex min-h-[50%]  mb-4 flex-col">
+
+                            <h2 className="font-semibold text-lg mb-4 dark:text-white">Pending Invites</h2>
+                            {isInvitesLoading ? (
+                                <>
+                                    <SkeletonInvite />
+                                    <SkeletonInvite />
+                                </>
+                            ) : invitedDatarooms.length > 0 ? (
+                                invitedDatarooms.map((room) => (
+                                    <div
+                                        key={room.bucketId}
+                                        className="bg-white  dark:bg-gray-800 rounded-lg shadow p-4 mb-3 border border-gray-100 dark:border-none"
+                                    >
+                                        <h3 className="font-medium text-sm dark:text-white">{room.bucketName}</h3>
+                                        <p className="text-xs text-gray-500 mt-1 dark:text-slate-300">
+                                            Shared by: {room.sharedBy}
+                                        </p>
+                                        <div className="flex gap-2 mt-3">
+                                            <button
+                                                onClick={() => handleAcceptInvite(room.bucketId)}
+                                                className="flex items-center justify-center p-1 rounded-full bg-green-100 text-green-600 hover:bg-green-200 transition-colors"
+                                            >
+                                                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                                                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                                                </svg>
+                                            </button>
+                                            <button
+                                                onClick={() => handleDeclineInvite(room.bucketId)}
+                                                className="flex items-center justify-center p-1 rounded-full bg-red-100 text-red-600 hover:bg-red-200 transition-colors"
+                                            >
+                                                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                                                    <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+                                                </svg>
+                                            </button>
+                                        </div>
+                                    </div>
+                                ))
+                            ) : (
+                                <p className="text-sm text-gray-500 dark:text-white">No pending invites</p>
+                            )}
+
+                        </div>
+
 
                     </div>
-                    <div className="w-64 p-4 overflow-y-auto">
+                    {/* <div className="w-64 p-4 overflow-y-auto">
                         <h2 className="font-semibold text-lg mb-4 dark:text-white">Pending Invites</h2>
                         {isInvitesLoading ? (
                             <>
@@ -543,7 +598,7 @@ export default function GeneralDashboard() {
                         ) : (
                             <p className="text-sm text-gray-500 dark:text-white">No pending invites</p>
                         )}
-                    </div>
+                    </div> */}
                 </div>
             </div > :
             <div className="grid h-screen place-items-center dark:bg-darkbg">

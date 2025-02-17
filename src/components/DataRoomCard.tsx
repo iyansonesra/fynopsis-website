@@ -84,7 +84,7 @@ const DataRoomCard: React.FC<DataRoomCardProps> = ({ id, title, lastOpened, onCl
 
   return (
     <>
-      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-md overflow-hidden cursor-pointer hover:shadow-lg transition-shadow duration-300 w-full max-w-sm relative group ">
+      <div className="bg-white dark:bg-transparent shadow-md overflow-hidden cursor-pointer hover:shadow-lg dark:hover:bg-slate-900 transition-shadow duration-300 w-full relative group border-b border-gray-200 dark:border-gray-700" onClick={onClick}>
         <div className="absolute right-2 top-2">
           <Popover>
             <PopoverTrigger asChild>
@@ -97,7 +97,7 @@ const DataRoomCard: React.FC<DataRoomCardProps> = ({ id, title, lastOpened, onCl
                 <MoreVertical className="h-4 w-4 text-gray-500 dark:text-gray-400" />
               </Button>
             </PopoverTrigger>
-            <PopoverContent className="w-40" align="end">
+            <PopoverContent className="w-40 dark:bg-slate-800 dark:border-none" align="end">
               <div className="flex flex-col space-y-1">
                 <Button 
                   variant="ghost" 
@@ -110,7 +110,7 @@ const DataRoomCard: React.FC<DataRoomCardProps> = ({ id, title, lastOpened, onCl
                 <Button 
                   variant="ghost" 
                   onClick={() => setIsDeleteDialogOpen(true)} 
-                  className="justify-start text-red-600 dark:text-red-400 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/10"
+                  className="justify-start text-red-600 dark:text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/10"
                 >
                   <Trash2 className="mr-2 h-4 w-4" />
                   Delete
