@@ -36,6 +36,10 @@ import { ChatHistoryPanel } from './ChatHistoryPanel';
 // import { w3cwebsocket as W3CWebSocket } from "websocket";
 // import { Signer } from '@aws-amplify/core';
 
+interface ThoughtStep {
+    number: number;
+    content: string;
+}
 
 interface SearchResponse {
     response: string;
@@ -135,7 +139,8 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
     const [showChatHistory, setShowChatHistory] = useState(false);
     const getFileName = useFileStore(state => state.getFileName);
     const getFile = useFileStore(state => state.getFile);
-
+    const [lastQuery, setLastQuery] = useState<string>('');
+    const [showRetry, setShowRetry] = useState(false);
 
 
     // Add selector for S3Store
@@ -183,7 +188,7 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
                     status: ''
                 });
             }
-       
+
         }
         catch (error) {
             console.error('DetailSection - Error handling source click:', error);
@@ -329,6 +334,8 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
     const queryAllDocuments = async (searchTerm: string, withReasoning: boolean, selectedFiles: any[]) => {
         console.log("selected files!!!!!", selectedFiles);
         console.log("BRLRLLELWFLLEFLW");
+        setLastQuery(searchTerm); // Add this line at the start of the function
+
         try {
             // Don't allow new queries while WebSocket is active
             // if (isWebSocketActive) {
@@ -431,7 +438,7 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
                 ws.onerror = (error) => {
                     setIsWebSocketActive(false);
                     setIsLoading(false);
-                    // console.log('WebSocket Error:', error);
+                    setShowRetry(true);
                     console.error('WebSocket Error Details:', {
                         error,
                         url: websocketUrl.substring(0, 100) + '...',
@@ -439,6 +446,8 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
                     });
                     reject(new Error('WebSocket connection failed'));
                 };
+
+
 
 
                 ws.onclose = (event) => {
@@ -492,25 +501,7 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
         },
     ];
 
-    const querySingleDocument = async (fileKey: string | number | boolean, searchTerm: any) => {
-        // const userPrefix = await getUserPrefix();
-        const bucketUuid = window.location.pathname.split('/').pop() || '';
-        const encodedS3Key = encodeURIComponent(fileKey);
-        const restOperation = post({
-            apiName: 'VDR_API',
-            path: `/${bucketUuid}/documents/${encodedS3Key}/query`,
-            options: {
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: {
-                    query: searchTerm
-                }
-            }
-        });
 
-        // console.log(restOperation);
-    };
 
     const [inputValue, setInputValue] = useState('');
     const [userSearch, setUserSearch] = useState('');
@@ -531,7 +522,7 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
         type: 'question' | 'answer' | 'error';
         content: string;
         sources?: Record<string, any>;
-        steps?: string[]; // Add steps to the message interface
+        steps?: ThoughtStep[]; // Update this line
     }
 
     const [messages, setMessages] = useState<Message[]>([]);
@@ -554,11 +545,18 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
     const [generatingSources, setGeneratingSources] = useState(false);
     const [isGeneratingComplete, setIsGeneratingComplete] = useState(false);
 
-    const [stepsTaken, setStepsTaken] = useState<string[]>([]);
-    const [thoughts, setThoughts] = useState('');
+    const [stepsTaken, setStepsTaken] = useState<ThoughtStep[]>([]); const [thoughts, setThoughts] = useState('');
     const pathname = usePathname();
     const bucketUuid = pathname.split('/')[2] || '';
 
+    const [accordionValue, setAccordionValue] = useState<string>("steps");
+
+
+    const handleRetry = async () => {
+        setShowRetry(false);
+        setIsLoading(true);
+        await queryAllDocuments(lastQuery, true, []); // Adjust parameters as needed
+    };
     useEffect(() => {
         if (searchResult && searchResult.response) {
             setIsAnswerLoading(true); // Start loading when processing begins
@@ -623,22 +621,69 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
                 return;
             }
 
+
+
+            // Process thinking section
+            // Process thinking section
             // Process thinking section
             const thinkResult = extractContent(response, '<think>', '</think>');
             if (thinkResult) {
-                if (thinkResult.isComplete) {
-                    const thoughtLines = thinkResult.content
-                        .split('\n')
-                        .map(line => line.trim())
-                        .filter(line => line.length > 0)
-                        .map(line => line.replace(/^\d+\.\s*/, ''));
+                console.log("thinkResult:", thinkResult);
+                const content = thinkResult.content;
 
+                // Parse numbered thoughts - look for complete steps
+                const completeStepPattern = /(\d+)\.\s*([^1-9]+)(?=\d+\.|$)/g;
+                let match;
+                const newThoughts: ThoughtStep[] = [];
+
+                while ((match = completeStepPattern.exec(content))) {
+                    const [_, number, thoughtContent] = match;
+                    // Only add if we have both number and content
+                    if (number && thoughtContent.trim()) {
+                        newThoughts.push({
+                            number: parseInt(number),
+                            content: thoughtContent.trim()
+                        });
+                    }
+                }
+
+                if (newThoughts.length > 0) {
+                    setStepsTaken(prev => {
+                        const currentNumbers = prev.map(step => step.number);
+                        // Only add completely new steps
+                        const uniqueNewThoughts = newThoughts.filter(thought =>
+                            !currentNumbers.includes(thought.number)
+                        );
+                        return [...prev, ...uniqueNewThoughts];
+                    });
+
+                    // Update message with complete steps only
+                    setMessages(prev => {
+                        const newMessages = [...prev];
+                        const lastMessage = newMessages.length > 0 ? newMessages[newMessages.length - 1] : null;
+
+                        if (lastMessage?.type === 'answer') {
+                            // Replace steps with complete ones
+                            lastMessage.steps = [...newThoughts];
+                        } else {
+                            // Create new answer message with complete steps
+                            newMessages.push({
+                                type: 'answer',
+                                content: '',
+                                steps: [...newThoughts]
+                            });
+                        }
+                        return newMessages;
+                    });
+                }
+
+                if (thinkResult.isComplete) {
                     setThoughts(thinkResult.content);
-                    setStepsTaken(thoughtLines);
                     response = thinkResult.remaining;
-                } else {
-                    // Still receiving thinking content
-                    setThoughts(thinkResult.content);
+                    setTimeout(() => {
+                        setAccordionValue(""); // This will collapse the accordion
+                    }, 500);
+
                 }
             }
 
@@ -649,23 +694,24 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
                     const newMessages = [...prev];
                     const lastMessage = newMessages.length > 0 ? newMessages[newMessages.length - 1] : null;
 
-                    const messageContent = {
-                        type: 'answer' as const,
-                        content: answerResult.content,
-                        sources: searchResult.sources,
-                        steps: thinkResult?.isComplete ? stepsTaken : undefined
-                    };
-
                     if (lastMessage?.type === 'answer') {
-                        newMessages[newMessages.length - 1] = messageContent;
+                        // Update only the content of the existing answer message
+                        lastMessage.content = answerResult.content;
+                        lastMessage.sources = searchResult.sources;
                     } else {
-                        newMessages.push(messageContent);
+                        // Create new answer message if none exists
+                        newMessages.push({
+                            type: 'answer',
+                            content: answerResult.content,
+                            sources: searchResult.sources,
+                            steps: []
+                        });
                     }
                     return newMessages;
                 });
 
                 if (answerResult.isComplete) {
-                    setIsAnswerLoading(false); // Stop loading when answer is complete
+                    setIsAnswerLoading(false);
                     response = answerResult.remaining;
                 }
             }
@@ -757,7 +803,10 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
                                 <div className="flex items-center gap-2">
                                     <FileText className="h-4 w-4 text-slate-600 dark:text-white" />
                                     <span className="text-sm text-blue-500 dark:text-white select-none">
-                                        {key.split('/').pop()}
+                                        {key.length > 20
+                         
+                                            ? `${key.slice(0, key.length/2)} ${key.slice(key.length/2)}`
+                                            : key}
                                     </span>
                                 </div>
                             </CardContent>
@@ -851,17 +900,17 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
         return (
             <div className="flex flex-col h-full overflow-none dark:bg-darkbg w-full">
                 <div className="absolute top-0 right-0 p-4 z-50">
-                    <div className = "flex flex-row gap-4">
+                    <div className="flex flex-row gap-4">
                         <ReceiptText
                             className="h-5 w-5 text-gray-500 dark:text-gray-400 cursor-pointer hover:text-gray-700 dark:hover:text-gray-300"
                             onClick={() => setShowDetailsView(true)}
                         />
-                    <PlusCircle
-                        className="h-5 w-5 text-gray-500 dark:text-gray-400 cursor-pointer hover:text-gray-700 dark:hover:text-gray-300"
-                        onClick={handleClearChat}
-                    />
+                        <PlusCircle
+                            className="h-5 w-5 text-gray-500 dark:text-gray-400 cursor-pointer hover:text-gray-700 dark:hover:text-gray-300"
+                            onClick={handleClearChat}
+                        />
                     </div>
-                  
+
                 </div>
                 <ScrollArea
                     className="flex-1 overflow-none w-full px-4 [mask-image:linear-gradient(to_bottom,white_calc(100%-64px),transparent)]"
@@ -871,7 +920,7 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
                         <div key={index} className="flex flex-col gap-4 mb-4 pl-2" >
                             {message.type === 'question' ? (
                                 <div className="flex items-end dark:text-white mt-4">
-                                    <p className="text-2xl font-medium dark:text-white pr-4 rounded-lg">{message.content}</p>
+                                    <p className="text-2xl font-medium dark:text-white pr-4 rounded-lg w-[80%]">{message.content}</p>
                                 </div>
                             ) : message.type === 'error' ? (
                                 <div className="w-full">
@@ -889,12 +938,18 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
                                 <div className={`w-full ${index === messages.length - 1 ? 'mb-8' : ''}`}>
                                     {message.steps && message.steps.length > 0 && (
                                         <div className="w-full pr-4">
-                                            <Accordion type="single" collapsible className="w-full -space-y-px mb-6">
+                                            <Accordion
+                                                type="single"
+                                                collapsible
+                                                value={accordionValue}
+                                                onValueChange={setAccordionValue}
+                                                className="w-full -space-y-px mb-6"
+                                            >
                                                 <AccordionItem
                                                     value="steps"
                                                     className="border bg-background px-4 py-1 rounded-lg dark:bg-darkbg dark:border-slate-800"
                                                 >
-                                                    <AccordionTrigger className="py-1 text-[15px] leading-6 hover:no-underline dark:text-slate-400 flex items-center justify-center ">
+                                                    <AccordionTrigger className="py-1 text-[15px] leading-6 hover:no-underline dark:text-slate-400 flex items-center justify-center">
                                                         <div className="flex flex-row gap-2 items-center w-full justify-between pr-2">
                                                             <div className="flex flex-row gap-2 items-center">
                                                                 <Footprints className="h-4 w-4 text-gray-500" />
@@ -906,9 +961,9 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
                                                     <AccordionContent className="pb-2 pt-2 text-muted-foreground">
                                                         {message.steps.map((step, stepIndex) => (
                                                             <div key={stepIndex} className="flex flex-row gap-2 items-center mb-2">
-                                                                <span className="text-xs text-gray-500">{stepIndex + 1}.</span>
+                                                                <span className="text-xs text-gray-500">{step.number}.</span>
                                                                 <span className="text-xs text-gray-700 dark:text-gray-300 font-normal">
-                                                                    {step}
+                                                                    {step.content}
                                                                 </span>
                                                             </div>
                                                         ))}
@@ -920,6 +975,7 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
 
                                     <div className="mr-auto mb-6 rounded-lg">
                                         {renderAnswerHeader()}
+                                      
                                         <ReactMarkdown className="text-wrap text-sm pr-4 dark:text-white leading-7">
                                             {message.content}
                                         </ReactMarkdown>
@@ -941,17 +997,30 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
                                                 <SourcesList sources={message.sources} />
                                             </div>
                                         )}
-
-
                                     </div>
                                     <div className="w-full flex items-center justify-center mt-4 "></div>
-                                    <Separator className="bg-slate-200 dark:bg-slate-800 w-full" orientation='horizontal' />
+                                    {index !== messages.length - 1 && (
+                                        <Separator className="bg-slate-200 dark:bg-slate-800 w-full" orientation='horizontal' />
+                                    )}
                                 </div>
                             )
                             }
 
                         </div>
                     ))}
+
+                    {showRetry && (
+                        <div className="w-full flex items-center justify-start mb-6">
+                            <Button
+                                variant="outline"
+                                onClick={handleRetry}
+                                className="flex items-center gap-2 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/10"
+                            >
+                                <ArrowUp className="h-4 w-4" />
+                                Retry last query
+                            </Button>
+                        </div>
+                    )}
 
 
                     {isLoading && (
@@ -1006,7 +1075,7 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
                 </div>
                 {selectedFile && (
                     <div className="text-sm dark:text-white px-4 max-w-full">
-                      
+
                         <p><strong>Type:</strong> {selectedFile.type}</p>
                         <p><strong>Size:</strong> {selectedFile.size}</p>
                         <p><strong>Uploaded By:</strong> {selectedFile.uploadedBy}</p>
