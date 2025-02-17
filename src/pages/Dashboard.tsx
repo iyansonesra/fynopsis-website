@@ -53,6 +53,7 @@ type DataRoom = {
     permissionLevel: string;
     sharedBy?: string;
     addedAt: string;
+    users?: sharedUser[];
 };
 
 type InvitedRoom = {
@@ -63,8 +64,14 @@ type InvitedRoom = {
     sharedAt: string;
 };
 
+interface sharedUser {
+    email: string;
+    name: string;
+    role: string;
+}
+
 const SkeletonCard = () => (
-    <div className="w-[400px] h-[160px] bg-gray-200 dark:bg-gray-800 rounded-lg animate-pulse">
+    <div className="w-full h-[160px] bg-gray-200 dark:bg-gray-800 rounded-lg animate-pulse">
         <div className="p-4 space-y-3">
             <div className="h-6 bg-gray-300 dark:bg-gray-700 rounded w-3/4"></div>
             <div className="h-4 bg-gray-300 dark:bg-gray-700 rounded w-1/2"></div>
@@ -74,7 +81,7 @@ const SkeletonCard = () => (
 );
 
 const SkeletonInvite = () => (
-    <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 mb-3 animate-pulse">
+    <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 mb-3 animate-pulse w-full">
         <div className="space-y-2">
             <div className="h-4 bg-gray-300 dark:bg-gray-700 rounded w-3/4"></div>
             <div className="h-3 bg-gray-300 dark:bg-gray-700 rounded w-1/2"></div>
@@ -211,7 +218,8 @@ export default function GeneralDashboard() {
                     minute: '2-digit'
                 }),
                 permissionLevel: room.permissionLevel,
-                sharedBy: room.sharedBy
+                sharedBy: room.sharedBy,
+                users: room.users
             }));
 
             // Update invited rooms from the response
@@ -435,17 +443,18 @@ export default function GeneralDashboard() {
                         </div>
                         <div className="flex flex-col">
                             {isLoading ? (
-                                <>
+                                <div className = "flex flex-col gap-2">
                                     <SkeletonCard />
                                     <SkeletonCard />
                                     <SkeletonCard />
-                                </>
+                                </div>
                             ) : (
                                 dataRooms.map((room) => (
                                     <div key={room.id} className="w-full">
                                         <DataRoomCard
                                             id={room.id || ''}
                                             title={room.title}
+                                            users={room.users || []}
                                             lastOpened={room.lastOpened}
                                             permissionLevel={room.permissionLevel}
                                             sharedBy={room.sharedBy || ''}
