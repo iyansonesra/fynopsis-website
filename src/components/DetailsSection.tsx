@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { ArrowLeft, ArrowUp, BadgeInfo, FileText, Footprints, Plus, PlusCircle, Search, MessageSquare } from 'lucide-react';
+import { ArrowLeft, ArrowUp, BadgeInfo, FileText, Footprints, Plus, PlusCircle, Search, MessageSquare, ReceiptText } from 'lucide-react';
 import { Input, Skeleton } from '@mui/material';
 import { Button } from './ui/button';
 import { post, get } from 'aws-amplify/api';
@@ -851,10 +851,17 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
         return (
             <div className="flex flex-col h-full overflow-none dark:bg-darkbg w-full">
                 <div className="absolute top-0 right-0 p-4 z-50">
+                    <div className = "flex flex-row gap-4">
+                        <ReceiptText
+                            className="h-5 w-5 text-gray-500 dark:text-gray-400 cursor-pointer hover:text-gray-700 dark:hover:text-gray-300"
+                            onClick={() => setShowDetailsView(true)}
+                        />
                     <PlusCircle
                         className="h-5 w-5 text-gray-500 dark:text-gray-400 cursor-pointer hover:text-gray-700 dark:hover:text-gray-300"
                         onClick={handleClearChat}
                     />
+                    </div>
+                  
                 </div>
                 <ScrollArea
                     className="flex-1 overflow-none w-full px-4 [mask-image:linear-gradient(to_bottom,white_calc(100%-64px),transparent)]"
@@ -990,23 +997,16 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
                 <div className="flex justify-between items-center mb-2 mt-2 dark:bg-darkbg px-4 pt-2 max-w-full">
                     <h2 className="text-base font-semibold dark:text-white">File Details</h2>
                     <Button
-                        variant="outline"
+                        variant="ghost"
                         onClick={() => setShowDetailsView(false)}
-                        className="dark:bg-darkbg dark:text-white text-sm"
+                        className="bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 h-8 w-8 p-0"
                     >
-                        Back to Search
+                        <Search className="h-4 w-4 text-gray-500 dark:text-gray-400" />
                     </Button>
                 </div>
                 {selectedFile && (
                     <div className="text-sm dark:text-white px-4 max-w-full">
-                        {/* <div className="flex min-w-0"> 
-        <strong className="flex-shrink-0 whitespace-nowrap">Name:&nbsp;</strong>
-        <div className="min-w-0 flex-1">
-            <p className="truncate">
-                {selectedFile.name}
-            </p>
-        </div>
-    </div> */}
+                      
                         <p><strong>Type:</strong> {selectedFile.type}</p>
                         <p><strong>Size:</strong> {selectedFile.size}</p>
                         <p><strong>Uploaded By:</strong> {selectedFile.uploadedBy}</p>

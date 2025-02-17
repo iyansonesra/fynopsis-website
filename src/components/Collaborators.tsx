@@ -152,15 +152,15 @@ const UserManagement: React.FC<UserManagementProps> = () => {
         onValueChange={(newValue) => handleRoleChange(user.email, newValue)}
 
       >
-        <SelectTrigger className="w-[140px] bg-white">
+        <SelectTrigger className="w-[140px] bg-white dark:bg-slate-800 dark:text-white dark:border-gray-700 select-none outline-none">
           <SelectValue placeholder="Select permission" />
         </SelectTrigger>
-        <SelectContent className='dark:text-white'>
+        <SelectContent className='dark:text-white dark:bg-slate-800'>
           <SelectItem value="READ" className='dark:text-white text-sm'>Read</SelectItem>
           <SelectItem value="WRITE" className='dark:text-white text-sm'>Write</SelectItem>
           <SelectItem value="ADMIN" className='dark:text-white text-sm'>Admin</SelectItem>
           {currentUserRole === 'OWNER' && (
-            <SelectItem value="OWNER text-xs">Owner</SelectItem>
+            <SelectItem value="OWNER text-xs dark:text-white">Owner</SelectItem>
           )}
         </SelectContent>
       </Select>
