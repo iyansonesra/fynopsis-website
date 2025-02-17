@@ -623,50 +623,6 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
                 return;
             }
 
-            // Process sources section first since it's JSON
-            // const sourcesResult = extractContent(response, '<sources>', '</sources>');
-            // if (sourcesResult) {
-            // if (sourcesResult.isComplete) {
-            // try {
-            // // Try to parse the accumulated JSON string
-            // const sourcesJson = JSON.parse(sourcesResult.content);
-            // const extractedUrls: string[] = [];
-
-            // // Process each key-value pair in the JSON
-            // Object.entries(sourcesJson).forEach(([key, value]) => {
-            // if (key.includes(bucketUuid)) {
-            // extractedUrls.push(key);
-            // }
-            // });
-
-            // if (extractedUrls.length > 0) {
-            // setMessages(prev => {
-            // const newMessages = [...prev];
-            // if (newMessages.length > 0) {
-            // const lastMessage = newMessages[newMessages.length - 1];
-            // if (lastMessage.type === 'answer') {
-            // const sourcesObject: Record<string, any> = {};
-            // extractedUrls.forEach(url => {
-            // sourcesObject[url] = sourcesJson[url] || {};
-            // });
-            // lastMessage.sources = sourcesObject;
-            // }
-            // }
-            // return newMessages;
-            // });
-            // }
-            // setGeneratingSources(false);
-            // response = sourcesResult.remaining;
-            // } catch (error) {
-            // // If JSON parsing fails, it means we're still receiving the JSON string
-            // console.log("Incomplete JSON in sources:", sourcesResult.content);
-            // }
-            // } else {
-            // // Still receiving sources content
-            // setGeneratingSources(true);
-            // }
-            // }
-
             // Process thinking section
             const thinkResult = extractContent(response, '<think>', '</think>');
             if (thinkResult) {

@@ -57,6 +57,9 @@ export default function Home() {
   const [hasPermission, setHasPermission] = useState<boolean>(true);
   const dataroomId = Array.isArray(params.id) ? params.id[0] : params.id;
   const { setSearchableFiles } = useFileStore();
+  const [familyName, setFamilyName] = useState('');
+  const [givenName, setGivenName] = useState('');
+
 
 
 
@@ -251,6 +254,8 @@ export default function Home() {
       const attributes = await fetchUserAttributes();
       console.log('User attributes:', attributes);
       setUserAttributes(attributes);
+      setFamilyName(attributes.family_name || '');
+      setGivenName(attributes.given_name || '');
     } catch (error) {
       console.log("error");
     }
@@ -376,7 +381,11 @@ export default function Home() {
               <Share size={24} />
             </Button>
             <Popover>
-              <PopoverTrigger className='bg-sky-600 h-10 aspect-square rounded-full'></PopoverTrigger>
+                <PopoverTrigger className='bg-sky-600 h-10 aspect-square rounded-full flex items-center justify-center text-white'>
+                {userAttributes?.given_name && userAttributes?.family_name 
+                  ? (givenName[0]+familyName[0]).toUpperCase()
+                  : 'U'}
+                </PopoverTrigger>
               <PopoverContent className="w-auto p-0">
                 <button
                   onClick={signOut}
