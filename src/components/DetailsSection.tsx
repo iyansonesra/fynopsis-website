@@ -30,6 +30,7 @@ import {
 import { TextShimmer } from './ui/text-shimmer';
 import { AIInputWithSearch } from './ui/ai-input-with-search';
 import { useS3Store } from './fileService';
+import { useFileStore } from './HotkeyService';
 import { ChatHistoryPanel } from './ChatHistoryPanel';
 
 // import { w3cwebsocket as W3CWebSocket } from "websocket";
@@ -132,25 +133,30 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
     const [isAnswerLoading, setIsAnswerLoading] = useState(false);
     const [isWebSocketActive, setIsWebSocketActive] = useState(false);
     const [showChatHistory, setShowChatHistory] = useState(false);
+    const getFileName = useFileStore(state => state.getFileName);
+    const getFile = useFileStore(state => state.getFile);
+
+
 
     // Add selector for S3Store
     const s3Objects = useS3Store(state => state.objects);
 
     const handleSourceCardClick = async (sourceUrl: string) => {
         // console.log('DetailSection - Source clicked:', sourceUrl);
-        const bucketUuid = window.location.pathname.split('/').pop() || '';
+        const bucketUuid = window.location.pathname.split('/')[2] || '';
+
         try {
             // First check if file exists in s3Objects
-            const s3Object = s3Objects.find(obj => obj.key === sourceUrl);
             // console.log('DetailSection - Found S3 object:', s3Object);
 
             // Get the signed URL
+            console.log("selected files!!!!!", sourceUrl);
             const downloadResponse = await get({
                 apiName: 'S3_API',
-                path: `/s3/${bucketUuid}/download-url`,
+                path: `/s3/${bucketUuid}/view-url`,
                 options: {
                     withCredentials: true,
-                    queryParams: { path: sourceUrl }
+                    queryParams: { fileId: sourceUrl }
                 }
             });
 
@@ -158,49 +164,28 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
             const responseText = await body.text();
             const { signedUrl } = JSON.parse(responseText);
 
-            if (s3Object) {
-                // If file exists in s3Objects, use its metadata
-                console.log("The s3 object:", s3Object);
-                const metadata = s3Object.metadata;
+            const file = getFile(sourceUrl);
+            if (file) {
                 onFileSelect({
-                    id: metadata.Metadata?.id || sourceUrl.split('/').pop() || '',
-                    name: metadata.Metadata?.originalname || sourceUrl.split('/').pop() || '',
+                    id: sourceUrl,
+                    name: file.fileName,
                     s3Url: signedUrl,
-                    type: sourceUrl.split('.').pop()?.toUpperCase() || 'Unknown',
-                    size: formatFileSize(metadata.ContentLength || 0),
-                    status: "success",
-                    lastModified: metadata.LastModified || '',
-                    uploadedBy: metadata.Metadata?.uploadbyname || 'Unknown',
-                    summary: metadata.Metadata?.document_summary || '',
-                    tags: metadata.Metadata?.tags || [],
-                    isFolder: false,
-                    createByEmail: metadata.Metadata?.createbyemail || '',
-                    createByName: metadata.Metadata?.createbyname || '',
-                    parentId: metadata.Metadata?.parentid || ''
-                });
-            } else {
-                // Fallback to basic file info if not found
-                const fileName = sourceUrl.split('/').pop() || '';
-                const fileObject = {
-                    id: fileName,
-                    name: fileName,
-                    s3Url: signedUrl,
-                    type: fileName.split('.').pop()?.toUpperCase() || 'Unknown',
-                    size: '0',
-                    status: "success" as const,
-                    lastModified: '',
-                    uploadedBy: 'Unknown',
-                    summary: '',
-                    tags: [],
+                    parentId: file.parentFolderId,
+                    uploadedBy: '',
+                    type: '',
+                    size: '',
                     isFolder: false,
                     createByEmail: '',
                     createByName: '',
-                    parentId: ''
-                };
-
-                onFileSelect(fileObject);
+                    lastModified: '',
+                    tags: [],
+                    summary: '',
+                    status: ''
+                });
             }
-        } catch (error) {
+       
+        }
+        catch (error) {
             console.error('DetailSection - Error handling source click:', error);
         }
     };
@@ -759,7 +744,10 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
                                     if (lastMessage.type === 'answer') {
                                         const sourcesObject: Record<string, any> = {};
                                         extractedUrls.forEach(url => {
-                                            sourcesObject[url] = sourcesJson[url] || {};
+                                            const last = url.split('/').pop();
+                                            if (last) {
+                                                sourcesObject[getFileName(last)] = last || {};
+                                            }
                                         });
                                         lastMessage.sources = sourcesObject;
                                     }
@@ -807,7 +795,7 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
                         <Card
                             key={index}
                             className="p-2 inline-block cursor-pointer hover:bg-gray-50 transition-colors dark:bg-darkbg border select-none"
-                            onClick={() => handleSourceCardClick(key)}
+                            onClick={() => handleSourceCardClick(value)}
                         >
                             <CardContent className="p-2">
                                 <div className="flex items-center gap-2">

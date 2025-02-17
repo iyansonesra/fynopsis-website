@@ -124,6 +124,15 @@ export default function Home() {
 
   const fetchSearchableFiles = async () => {
 
+    interface Files {
+      fileId: string;
+      fileName: string;
+      fullPath: string;
+      parentFolderId: string;
+      parentFolderName: string;
+      size: string;
+    }
+
 
     try {
       const restOperation = get({
@@ -136,8 +145,18 @@ export default function Home() {
       // console.log('Body:', body);
       const responseText = await body.text();
       const response = JSON.parse(responseText);
-      console.log('Users response:', response);
-      setSearchableFiles(response);
+     console.log('Files response:', response);
+      const formattedFiles: Files[] = response.files ? response.files.map(file => ({
+        fileId: file.fileId || '',
+        fileName: file.fileName || '',
+        fullPath: file.fullPath || '',
+        parentFolderId: file.parentFolderId || '',
+        parentFolderName: file.parentFolderName || '',
+        size: file.size || ''
+      })) : [];
+
+      console.log("formattedFiles", formattedFiles);
+      setSearchableFiles(formattedFiles);
 
     } catch (error) {
       console.error('Error fetching searchable files:', error);

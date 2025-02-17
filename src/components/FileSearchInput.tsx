@@ -26,13 +26,15 @@ const FileSelector: React.FC<FileSelectorProps> = ({ onFileSelect }) => {
   const { searchableFiles } = useFileStore();
 
   const filteredFiles: FileItem[] = useMemo(() => {
-      const files = searchableFiles?.files || [];
+      const files = searchableFiles;
       return files.filter((file: FileItem) =>
           file.fileName.toLowerCase().includes(searchQuery.toLowerCase())
       );
   }, [searchQuery, searchableFiles]);
 
   useEffect(() => {
+    console.log('searchableFiles:', searchableFiles);
+
       if (selectedFile && !filteredFiles.find((file) => file.fileId === selectedFile)) {
           setSelectedFile(null);
       }

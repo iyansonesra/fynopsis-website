@@ -17,16 +17,41 @@ interface FileNode {
   s3Url?: string;
 }
 
+interface Files {
+  fileId: string;
+  fileName: string;
+  fullPath: string;
+  parentFolderId: string;
+  parentFolderName: string;
+  size: string;
+}
+
 interface FileStore {
   cutFile: FileNode | null;
   setCutFile: (file: FileNode | null) => void;
-  searchableFiles: string[];
-  setSearchableFiles: (files: string[]) => void;
+  searchableFiles: Files[];
+  setSearchableFiles: (files: Files[]) => void;
+  getFileName: (id: string) => string;
+  getFile: (id: string) => Files | null;  // Add this new method
+
+
 }
 
-export const useFileStore = create<FileStore>((set) => ({
+export const useFileStore = create<FileStore>((set, get) => ({
   cutFile: null,
   setCutFile: (file) => set({ cutFile: file }),
   searchableFiles: [],
   setSearchableFiles: (files) => set({ searchableFiles: files }),
+  getFileName: (id) => {
+    console.log('searchableFiles:', get().searchableFiles);
+    console.log('id:', id);
+    const file = get().searchableFiles.find(file => file.fileId === id);
+    return file ? file.fileName : '';
+  },
+  getFile: (id) => {
+    console.log('searchableFiles:', get().searchableFiles);
+    console.log('id:', id);
+    const file = get().searchableFiles.find(file => file.fileId === id);
+    return file || null;
+  }
 }));
