@@ -27,19 +27,18 @@ interface Files {
 }
 
 interface FileStore {
-  cutFile: FileNode | null;
-  setCutFile: (file: FileNode | null) => void;
+  cutFiles: FileNode[]; // Changed from cutFile to cutFiles
+  setCutFiles: (files: FileNode[]) => void; // Changed from setCutFile
   searchableFiles: Files[];
   setSearchableFiles: (files: Files[]) => void;
   getFileName: (id: string) => string;
-  getFile: (id: string) => Files | null;  // Add this new method
-
-
+  getFile: (id: string) => Files | null;
 }
 
+// Then update the store implementation
 export const useFileStore = create<FileStore>((set, get) => ({
-  cutFile: null,
-  setCutFile: (file) => set({ cutFile: file }),
+  cutFiles: [], // Changed from cutFile: null
+  setCutFiles: (files) => set({ cutFiles: files }), // Changed from setCutFile
   searchableFiles: [],
   setSearchableFiles: (files) => set({ searchableFiles: files }),
   getFileName: (id) => {

@@ -83,6 +83,8 @@ const dummy: FileNode = {
 interface SortableItemProps {
   item: FileNode;
   loading: boolean;
+  selectedItemIds: string[];
+  onSelect: (ids: string[]) => void;
 }
 
 interface FileHashMapping {
@@ -131,51 +133,53 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
   const dropZoneRef = useRef<HTMLTableSectionElement>(null);
   const [searchScope, setSearchScope] = useState('current');
   const [showFileOrganizer, setShowFileOrganizer] = useState(false);
-  const { cutFile, setCutFile } = useFileStore();
+  const { cutFiles, setCutFiles } = useFileStore();
+  const [selectedItemIds, setSelectedItemIds] = useState<string[]>([]);
+  const [lastSelectedIndex, setLastSelectedIndex] = useState<number | null>(null);
+
 
 
   React.useEffect(() => {
     const handleKeyboardShortcuts = async (e: KeyboardEvent) => {
       if (e.ctrlKey || e.metaKey) {  // metaKey for Mac support
-        if (e.key === 'x' && selectedItemId) {
+        if (e.key === 'x' && selectedItemIds) {
           // Handle cut
-          const selectedItem = tableData.find(item => item.id === selectedItemId);
-          console.log("selected item:", selectedItem);
-          if (selectedItem) {
+          console.log("selected item ids:", selectedItemIds);
+          const selectedItems = tableData.filter(item => selectedItemIds.includes(item.id));
+          console.log("selected item:", selectedItems);
+          if (selectedItems) {
 
-            setCutFile(selectedItem);
+            setCutFiles(selectedItems);
 
             setTableData(prevData => prevData.map(item =>
-              item.id === selectedItemId
+              selectedItemIds.includes(item.id)
                 ? { ...item, status: 'GRAY' }
                 : item
             ));
 
             // console.log('Cut:', selectedItem.s3Key);
           }
-        } else if (e.key === 'v' && cutFile) {
-          console.log("CUT FILE ID:", cutFile);
-
-
-
+        } else if (e.key === 'v' && cutFiles) {
+          // Handle paste (you might need to modify this to handle multiple files)
           try {
-            await moveFile(cutFile.id, pathArray[3] === "home" ? "ROOT" : pathArray[3]);
+            console.log("passing in ids:", selectedItemIds);
 
+            const fileIds = cutFiles.map(file => file.id);
+
+            await moveFile(fileIds, pathArray[3] === "home" ? "ROOT" : pathArray[3]);
+  
+  
             // Update the UI after successful move
-            // Update the UI after successful move
-            setTableData(prevData => sortTableData([...prevData, cutFile]));
-
-
-            setCutFile(null);
-
+            setTableData(prevData => sortTableData([...prevData, ...cutFiles]));
+            setCutFiles([]);
           } catch (error) {
             // Revert the grayed out state if there's an error
             setTableData(prevData => prevData.map(item =>
-              item.id === cutFile.id
+              selectedItemIds.includes(item.id)
                 ? { ...item, uploadProcess: 'COMPLETED' }
                 : item
             ));
-            console.error('Error moving file:', error);
+            console.error('Error moving files:', error);
           }
         }
       }
@@ -183,7 +187,7 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
 
     window.addEventListener('keydown', handleKeyboardShortcuts);
     return () => window.removeEventListener('keydown', handleKeyboardShortcuts);
-  }, [selectedItemId, cutFileKey, currentPath, bucketUuid]);
+  }, [selectedItemIds, cutFileKey, currentPath, bucketUuid]);
 
 
   React.useEffect(() => {
@@ -240,10 +244,18 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
   );
 
   const handleDragStart = (event: DragStartEvent) => {
-    setActiveId(event.active.id as string);
+    const draggedId = event.active.id as string;
+    
+    // If the dragged item is not in the current selection, clear selection and select only this item
+    if (!selectedItemIds.includes(draggedId)) {
+      setSelectedItemIds([draggedId]);
+    }
+    
+    setActiveId(draggedId);
   };
 
-  const moveFile = async (id: string, folderId: string) => {
+  const moveFile = async (ids: string[], folderId: string) => {
+    console.log("ids:", ids);
     try {
       const response = await post({
         apiName: 'S3_API',
@@ -251,8 +263,8 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
         options: {
           withCredentials: true,
           body: {
-        fileIds: [id],      // Pass id as an array
-        newParentFolderId: folderId
+            fileIds: ids,      // Pass id as an array
+            newParentFolderId: folderId
           }
         }
       });
@@ -279,13 +291,13 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
 
       return;
     }
-    const activeItem = tableData.find(item => item.id === active.id);
     const overItem = tableData.find(item => item.id === over.id);
-
-    if (!activeItem || !overItem || activeItem === overItem) {
-      setActiveId(null);
-      return;
-    }
+  
+  // Check if target is a folder and is not one of the selected items
+  if (!overItem?.isFolder || selectedItemIds.includes(over.id.toString())) {
+    setActiveId(null);
+    return;
+  }
 
     // Only proceed if dropping onto a folder
     if (!overItem.isFolder) {
@@ -295,41 +307,33 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
       return;
     }
 
-
     try {
+      // Mark all selected items as grayed out
       setTableData(prevData => prevData.map(item =>
-        (item.id === activeItem.id || item.id === overItem.id)
+        selectedItemIds.includes(item.id)
           ? { ...item, status: 'GRAY' }
           : item
       ));
-
-      console.log("activeItem:", activeItem);
-      console.log("overItem:", overItem);
-
-      await moveFile(activeItem.id, overItem.id);
-
-      // Update the UI after successful move
-      setTableData(prevData => prevData.filter(item => item.id !== activeItem.id));
-      setTableData(prevData => prevData.map(item =>
-        (item.id === overItem.id)
-          ? { ...item, status: 'COMPLETED' }
-          : item
-      ));
-
-
+  
+      // Move all selected files
+      await moveFile(selectedItemIds, overItem.id);
+  
+      // Remove moved items from the table
+      setTableData(prevData => prevData.filter(item => !selectedItemIds.includes(item.id)));
+      
     } catch (error) {
-      // Revert the UI state on error
+      // Revert UI state on error
       setTableData(prevData => prevData.map(item =>
-        (item.id === activeItem.id || item.id === overItem.id)
+        selectedItemIds.includes(item.id)
           ? { ...item, status: 'COMPLETED' }
           : item
       ));
-      console.error('Error moving file:', error);
+      console.error('Error moving files:', error);
     }
-
+  
     setActiveId(null);
   };
-
+  
   function formatFileSize(bytes: number): string {
     if (bytes === 0) return '0 B';
 
@@ -725,16 +729,48 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
   };
 
   const SortableItem = React.memo<SortableItemProps & {
-    selectedItemId: string | null;
-    onSelect: (id: string) => void;
-  }>(({ item, loading, selectedItemId, onSelect }) => {
-    const isSelected = selectedItemId === item.id;
+    selectedItemIds: string[] | null;
+    onSelect: (ids: string[]) => void;
+  }>(({ item, loading, selectedItemIds, onSelect }) => {
+    const isSelected = selectedItemIds.includes(item.id);
 
     const handleClick = (e: React.MouseEvent) => {
       e.stopPropagation();
-      // console.log("status:", item.status);
-      onSelect(item.id);
-      // console.log("selected items s3Key:", item.s3Key);
+      
+      const currentIndex = tableData.findIndex(file => file.id === item.id);
+      
+      // Small delay to allow double-click detection
+      setTimeout(() => {
+        if (e.shiftKey && lastSelectedIndex !== null) {
+          // Shift + click: select range
+          const start = Math.min(lastSelectedIndex, currentIndex);
+          const end = Math.max(lastSelectedIndex, currentIndex);
+          const itemsInRange = tableData.slice(start, end + 1).map(item => item.id);
+          
+          setSelectedItemIds(prevSelected => {
+            const newSelection = new Set([...prevSelected]);
+            itemsInRange.forEach(id => newSelection.add(id));
+            return Array.from(newSelection);
+          });
+        } else if (e.ctrlKey) {
+          // Ctrl + click: toggle single item
+          setSelectedItemIds(prev => {
+            if (prev.includes(item.id)) {
+              return prev.filter(id => id !== item.id);
+            } else {
+              return [...prev, item.id];
+            }
+          });
+        } else {
+          // Normal click: select only this item
+          setSelectedItemIds([item.id]);
+        }
+        
+        // Update last selected index
+        if (!e.ctrlKey) {
+          setLastSelectedIndex(currentIndex);
+        }
+      }, 0);
     };
     const pathname = usePathname() || '';
     const bucketUuid = pathArray[2] || '';
@@ -1084,7 +1120,7 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
                           <Circle className="max-h-2 max-w-2 text-green-600" fill="currentColor" />
                         ) : item.status === "FAILED" ? (
                           <Circle className="max-h-2 max-w-2 text-red-600" fill="currentColor" />
-                        ) :  <Circle className="max-h-2 max-w-2 text-yellow-600" fill="currentColor" />}
+                        ) : <Circle className="max-h-2 max-w-2 text-yellow-600" fill="currentColor" />}
                       </div>
                     </HoverCardTrigger>
                     <HoverCardContent
@@ -1164,23 +1200,30 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
     }
   };
 
-  const DragPreview = React.memo<{ item: FileNode }>(({ item }) => {
-    return (
-      <div style={{
-        padding: '8px 12px',
-
-        borderRadius: '4px',
-        boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-        display: 'flex',
-        alignItems: 'center',
-        gap: '8px',
-        fontSize: '14px',
-        width: 'fit-content',
-      }} className='dark:bg-slate-800 dark:text-white'>
-        {item.type === 'folder' ? '📁' : '📄'} {item.name}
-      </div>
-    );
-  });
+const DragPreview = React.memo<{ item: FileNode }>(({ item }) => {
+  const selectedCount = selectedItemIds.length;
+  
+  return (
+    <div style={{
+      padding: '8px 12px',
+      borderRadius: '4px',
+      boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+      display: 'flex',
+      alignItems: 'center',
+      gap: '8px',
+      fontSize: '14px',
+      width: 'fit-content',
+    }} className='dark:bg-slate-800 dark:text-white bg-white'>
+      {item.type === 'folder' ? '📁' : '📄'} 
+      {item.name}
+      {selectedCount > 1 && (
+        <span className="ml-2 text-sm text-gray-500 dark:text-gray-400">
+          +{selectedCount - 1}
+        </span>
+      )}
+    </div>
+  );
+});
 
   DragPreview.displayName = 'DragPreview';
 
@@ -1354,7 +1397,7 @@ th {
                 <ChevronDown size={16} />
               </button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className = "dark:bg-slate-900 dark:border-none dark:outline-none dark:text-gray-200 ">
+            <DropdownMenuContent align="end" className="dark:bg-slate-900 dark:border-none dark:outline-none dark:text-gray-200 ">
               <DropdownMenuItem onClick={() => setShowUploadOverlay(true)} className="flex items-center gap-2 dark:hover:text-gray-400">
                 <Upload size={16} />
                 <span>Upload</span>
@@ -1471,32 +1514,32 @@ th {
                               <SortableItem
                                 item={dummy}
                                 loading={true}
-                                selectedItemId={selectedItemId}
-                                onSelect={setSelectedItemId}
+                                selectedItemIds={selectedItemIds}
+                                onSelect={setSelectedItemIds}
                               />
                               <SortableItem
                                 item={dummy}
                                 loading={true}
-                                selectedItemId={selectedItemId}
-                                onSelect={setSelectedItemId}
+                                selectedItemIds={selectedItemIds}
+                                onSelect={setSelectedItemIds}
                               />
                               <SortableItem
                                 item={dummy}
                                 loading={true}
-                                selectedItemId={selectedItemId}
-                                onSelect={setSelectedItemId}
+                                selectedItemIds={selectedItemIds}
+                                onSelect={setSelectedItemIds}
                               />
                               <SortableItem
                                 item={dummy}
                                 loading={true}
-                                selectedItemId={selectedItemId}
-                                onSelect={setSelectedItemId}
+                                selectedItemIds={selectedItemIds}
+                                onSelect={setSelectedItemIds}
                               />
                               <SortableItem
                                 item={dummy}
                                 loading={true}
-                                selectedItemId={selectedItemId}
-                                onSelect={setSelectedItemId}
+                                selectedItemIds={selectedItemIds}
+                                onSelect={setSelectedItemIds}
                               />
                             </>
 
@@ -1506,9 +1549,8 @@ th {
                                 key={item.id}
                                 item={item}
                                 loading={false}
-                                selectedItemId={selectedItemId}
-                                onSelect={setSelectedItemId}
-                              />
+                                selectedItemIds={selectedItemIds}
+                                onSelect={setSelectedItemIds}                            />
                             ))
                           )}
 
@@ -1561,13 +1603,13 @@ th {
 
 
       {showUploadOverlay && (
-         <DragDropOverlay
-         onClose={() => setShowUploadOverlay(false)}
-         onFilesUploaded={handleFilesUploaded}
-         currentPath={currentPath}
-         folderId={pathArray[3] === "home" ? "ROOT" : pathArray[3]}
-         onRefreshNeeded={handleRefresh} // Pass the refresh callback
-       />
+        <DragDropOverlay
+          onClose={() => setShowUploadOverlay(false)}
+          onFilesUploaded={handleFilesUploaded}
+          currentPath={currentPath}
+          folderId={pathArray[3] === "home" ? "ROOT" : pathArray[3]}
+          onRefreshNeeded={handleRefresh} // Pass the refresh callback
+        />
       )}
       {showFolderModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
