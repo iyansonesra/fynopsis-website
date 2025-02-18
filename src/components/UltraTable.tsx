@@ -136,6 +136,8 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
   const { cutFiles, setCutFiles } = useFileStore();
   const [selectedItemIds, setSelectedItemIds] = useState<string[]>([]);
   const [lastSelectedIndex, setLastSelectedIndex] = useState<number | null>(null);
+  const [openDropdownId, setOpenDropdownId] = useState<string | null>(null);
+
 
 
 
@@ -167,8 +169,8 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
             const fileIds = cutFiles.map(file => file.id);
 
             await moveFile(fileIds, pathArray[3] === "home" ? "ROOT" : pathArray[3]);
-  
-  
+
+
             // Update the UI after successful move
             setTableData(prevData => sortTableData([...prevData, ...cutFiles]));
             setCutFiles([]);
@@ -245,12 +247,12 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
 
   const handleDragStart = (event: DragStartEvent) => {
     const draggedId = event.active.id as string;
-    
+
     // If the dragged item is not in the current selection, clear selection and select only this item
     if (!selectedItemIds.includes(draggedId)) {
       setSelectedItemIds([draggedId]);
     }
-    
+
     setActiveId(draggedId);
   };
 
@@ -292,12 +294,12 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
       return;
     }
     const overItem = tableData.find(item => item.id === over.id);
-  
-  // Check if target is a folder and is not one of the selected items
-  if (!overItem?.isFolder || selectedItemIds.includes(over.id.toString())) {
-    setActiveId(null);
-    return;
-  }
+
+    // Check if target is a folder and is not one of the selected items
+    if (!overItem?.isFolder || selectedItemIds.includes(over.id.toString())) {
+      setActiveId(null);
+      return;
+    }
 
     // Only proceed if dropping onto a folder
     if (!overItem.isFolder) {
@@ -314,13 +316,13 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
           ? { ...item, status: 'GRAY' }
           : item
       ));
-  
+
       // Move all selected files
       await moveFile(selectedItemIds, overItem.id);
-  
+
       // Remove moved items from the table
       setTableData(prevData => prevData.filter(item => !selectedItemIds.includes(item.id)));
-      
+
     } catch (error) {
       // Revert UI state on error
       setTableData(prevData => prevData.map(item =>
@@ -330,10 +332,10 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
       ));
       console.error('Error moving files:', error);
     }
-  
+
     setActiveId(null);
   };
-  
+
   function formatFileSize(bytes: number): string {
     if (bytes === 0) return '0 B';
 
@@ -736,9 +738,9 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
 
     const handleClick = (e: React.MouseEvent) => {
       e.stopPropagation();
-      
+
       const currentIndex = tableData.findIndex(file => file.id === item.id);
-      
+
       // Small delay to allow double-click detection
       setTimeout(() => {
         if (e.shiftKey && lastSelectedIndex !== null) {
@@ -746,7 +748,7 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
           const start = Math.min(lastSelectedIndex, currentIndex);
           const end = Math.max(lastSelectedIndex, currentIndex);
           const itemsInRange = tableData.slice(start, end + 1).map(item => item.id);
-          
+
           setSelectedItemIds(prevSelected => {
             const newSelection = new Set([...prevSelected]);
             itemsInRange.forEach(id => newSelection.add(id));
@@ -765,7 +767,7 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
           // Normal click: select only this item
           setSelectedItemIds([item.id]);
         }
-        
+
         // Update last selected index
         if (!e.ctrlKey) {
           setLastSelectedIndex(currentIndex);
@@ -868,7 +870,7 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
         )
       );
 
-  
+
 
 
 
@@ -1145,26 +1147,43 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
               whiteSpace: 'nowrap',
               overflow: 'hidden',
               textOverflow: 'ellipsis'
-            }} className="select-none outline-none">
-              <DropdownMenu>
+            }} className="select-none outline-none z-50">
+              <DropdownMenu
+                open={openDropdownId === item.id}
+                onOpenChange={(open) => {
+                  setOpenDropdownId(open ? item.id : null);
+                }}
+              >
                 <DropdownMenuTrigger>
-                  <button>⋮</button>
+                  <button onClick={(e) => e.stopPropagation()}>⋮</button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent>
                   <DropdownMenuItem
-                    onClick={handleDownload}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDownload();
+                      setOpenDropdownId(null);
+                    }}
                     className="text-black"
                   >
                     Download
                   </DropdownMenuItem>
                   <DropdownMenuItem
-                    onClick={handleRename}
-                    className="text-black "
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleRename();
+                      setOpenDropdownId(null);
+                    }}
+                    className="text-black"
                   >
                     Rename
                   </DropdownMenuItem>
                   <DropdownMenuItem
-                    onClick={handleDelete}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDelete();
+                      setOpenDropdownId(null);
+                    }}
                     className="text-red-600 focus:text-red-600"
                   >
                     Delete
@@ -1204,30 +1223,30 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
     }
   };
 
-const DragPreview = React.memo<{ item: FileNode }>(({ item }) => {
-  const selectedCount = selectedItemIds.length;
-  
-  return (
-    <div style={{
-      padding: '8px 12px',
-      borderRadius: '4px',
-      boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-      display: 'flex',
-      alignItems: 'center',
-      gap: '8px',
-      fontSize: '14px',
-      width: 'fit-content',
-    }} className='dark:bg-slate-800 dark:text-white bg-white'>
-      {item.type === 'folder' ? '📁' : '📄'} 
-      {item.name}
-      {selectedCount > 1 && (
-        <span className="ml-2 text-sm text-gray-500 dark:text-gray-400">
-          +{selectedCount - 1}
-        </span>
-      )}
-    </div>
-  );
-});
+  const DragPreview = React.memo<{ item: FileNode }>(({ item }) => {
+    const selectedCount = selectedItemIds.length;
+
+    return (
+      <div style={{
+        padding: '8px 12px',
+        borderRadius: '4px',
+        boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+        display: 'flex',
+        alignItems: 'center',
+        gap: '8px',
+        fontSize: '14px',
+        width: 'fit-content',
+      }} className='dark:bg-slate-800 dark:text-white bg-white'>
+        {item.type === 'folder' ? '📁' : '📄'}
+        {item.name}
+        {selectedCount > 1 && (
+          <span className="ml-2 text-sm text-gray-500 dark:text-gray-400">
+            +{selectedCount - 1}
+          </span>
+        )}
+      </div>
+    );
+  });
 
   DragPreview.displayName = 'DragPreview';
 
@@ -1554,7 +1573,7 @@ th {
                                 item={item}
                                 loading={false}
                                 selectedItemIds={selectedItemIds}
-                                onSelect={setSelectedItemIds}                            />
+                                onSelect={setSelectedItemIds} />
                             ))
                           )}
 
