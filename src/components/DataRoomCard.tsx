@@ -93,7 +93,8 @@ const DataRoomCard: React.FC<DataRoomCardProps> = ({ id, title, lastOpened, onCl
 
   return (
     <>
-      <div className="bg-white dark:bg-transparent shadow-md overflow-hidden cursor-pointer hover:shadow-lg dark:hover:bg-slate-900 transition-shadow duration-300 w-full relative group border-b border-gray-200 dark:border-gray-700" onClick={onClick}>
+      <div className="bg-white dark:bg-transparent shadow-md overflow-hidden cursor-pointer hover:shadow-lg dark:hover:bg-slate-900 transition-shadow duration-300 w-full relative group border-b border-gray-200 dark:border-gray-700" onDoubleClick={onClick}>
+
         <div className="absolute right-2 top-2">
           <div className="flex flex-row items-center">
             <Button
@@ -164,7 +165,7 @@ const DataRoomCard: React.FC<DataRoomCardProps> = ({ id, title, lastOpened, onCl
       </div>
 
       <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-        <DialogContent>
+        <DialogContent className = "z-50">
           <DialogHeader>
             <DialogTitle>Delete Dataroom</DialogTitle>
           </DialogHeader>

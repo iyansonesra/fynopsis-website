@@ -251,8 +251,8 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
         options: {
           withCredentials: true,
           body: {
-            fileId: id,      // e.g. 'folder1/oldfile.pdf'
-            newParentFolderId: folderId  // e.g. 'folder2/newfile.pdf'
+        fileIds: [id],      // Pass id as an array
+        newParentFolderId: folderId
           }
         }
       });
@@ -458,7 +458,7 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
         lastModified: item.lastModified,
         tags: item.tags ? JSON.parse(item.tags) : [],
         summary: item.documentSummary ? item.documentSummary : "",
-        status: 'COMPLETE',
+        status: item.batchStatus,
         parentId: item.parentFolderId,
       }));
       setTableData(sortTableData(mappedData));
@@ -840,7 +840,7 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
           options: {
             withCredentials: true,
             body: {
-              fileId: item.id
+              fileId: [item.id]
             }
           }
         });
@@ -1080,21 +1080,11 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
                   <HoverCard openDelay={100} closeDelay={0}>
                     <HoverCardTrigger asChild>
                       <div className="p-1.5 cursor-default">
-                        {item.status === "PENDING" ? (
-                          <Circle className="max-h-2 max-w-2 text-yellow-600" fill="currentColor" />
-                        ) : item.status === "BATCHED" ? (
-                          <Circle className="max-h-2 max-w-2 text-yellow-600" fill="currentColor" />
+                        {item.status === "COMPLETED" ? (
+                          <Circle className="max-h-2 max-w-2 text-green-600" fill="currentColor" />
                         ) : item.status === "FAILED" ? (
                           <Circle className="max-h-2 max-w-2 text-red-600" fill="currentColor" />
-                        ) : item.status === "COMPLETE" ? (
-                          <Circle className="max-h-2 max-w-2 text-green-600" fill="currentColor" />
-                        ) : item.status === "FAILED_SIZE" ? (
-                          <Circle className="max-h-2 max-w-2 text-red-600" fill="currentColor" />
-                        ) : item.status === "FAILED_TYPE" ? (
-                          <Circle className="max-h-2 max-w-2 text-red-600" fill="currentColor" />
-                        ) : item.status === "PROCESSING" ? (
-                          <Circle className="max-h-2 max-w-2 text-yellow-600" fill="currentColor" />
-                        ) : null}
+                        ) :  <Circle className="max-h-2 max-w-2 text-yellow-600" fill="currentColor" />}
                       </div>
                     </HoverCardTrigger>
                     <HoverCardContent

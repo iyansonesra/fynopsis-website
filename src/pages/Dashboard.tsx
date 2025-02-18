@@ -121,6 +121,8 @@ export default function GeneralDashboard() {
 
     const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
     const [newDataroomName, setNewDataroomName] = useState('');
+    const [familyName, setFamilyName] = useState('');
+    const [givenName, setGivenName] = useState('');
 
 
     const handleDataRoomClick = (id: string | null | undefined) => {
@@ -277,6 +279,8 @@ export default function GeneralDashboard() {
         try {
             const attributes = await fetchUserAttributes();
             setUserAttributes(attributes);
+            setFamilyName(attributes.family_name || '');
+            setGivenName(attributes.given_name || '');
         } catch (error) {
         }
     }
@@ -405,7 +409,11 @@ export default function GeneralDashboard() {
                     </div>
 
                     <Popover>
-                        <PopoverTrigger className='bg-sky-600 h-10 aspect-square rounded-full'></PopoverTrigger>
+                        <PopoverTrigger className='bg-sky-600 h-10 aspect-square rounded-full text-gray-200'>
+                            {userAttributes?.given_name && userAttributes?.family_name
+                                ? (givenName[0] + familyName[0]).toUpperCase()
+                                : 'U'}
+                        </PopoverTrigger>
                         <PopoverContent className="w-auto p-0">
                             <button
                                 onClick={signOut}
@@ -443,7 +451,7 @@ export default function GeneralDashboard() {
                         </div>
                         <div className="flex flex-col">
                             {isLoading ? (
-                                <div className = "flex flex-col gap-2">
+                                <div className="flex flex-col gap-2">
                                     <SkeletonCard />
                                     <SkeletonCard />
                                     <SkeletonCard />
