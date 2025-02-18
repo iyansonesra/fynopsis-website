@@ -1030,7 +1030,7 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
             {...attributes}
             {...listeners}
             data-is-folder={item.isFolder}
-            className="text-xs transition-all duration-200 hover:bg-blue-50 cursor-pointer dark:text-white border-b border-[#e0e0e0] dark:border-[#333] "
+            className="text-xs transition-all duration-200 hover:bg-blue-50 cursor-pointer dark:text-white border-b border-[#e0e0e0] dark:border-[#333] outline-none select-none"
             onDoubleClick={handleDoubleClick}
             onClick={handleClick}
 
