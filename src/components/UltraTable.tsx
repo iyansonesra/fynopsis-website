@@ -868,6 +868,10 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
         )
       );
 
+  
+
+
+
       try {
         // Make API call to delete folder
         const response = await post({
@@ -876,7 +880,7 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
           options: {
             withCredentials: true,
             body: {
-              fileId: [item.id]
+              fileIds: [item.id]
             }
           }
         });
