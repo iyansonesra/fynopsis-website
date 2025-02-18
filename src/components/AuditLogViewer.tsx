@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, ReactNode } from 'react';
 import { get } from 'aws-amplify/api';
 import { Input } from './ui/input';
 import { Button } from './ui/button';

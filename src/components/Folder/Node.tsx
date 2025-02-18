@@ -19,7 +19,7 @@ const Node = ({ node, style, dragHandle, tree }: { node: any; style: any; dragHa
   const CustomIcon = node.data.icon;
   const iconColor = node.data.iconColor;
   const pathname = usePathname();
-  const bucketUuid = pathname.split('/').pop() || '';
+  const bucketUuid = pathname?.split('/').pop() || '';
   const { objects, isLoading, fetchObjects } = useS3Store();
   
 

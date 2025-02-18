@@ -107,7 +107,7 @@ const TreeFolder: React.FC<TreeFolderProps> = ({ onFileSelect }) => {
   const treeRef = useRef<TreeApi<TreeNode> | null>(null);
   const pathname = usePathname();
   const { objects, isLoading, fetchObjects } = useS3Store();
-  const bucketUuid = pathname.split('/').pop() || '';
+  const bucketUuid = pathname?.split('/').pop() || '';
 
   const getS3Client = async () => {
     try {

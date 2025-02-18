@@ -547,7 +547,7 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
 
     const [stepsTaken, setStepsTaken] = useState<ThoughtStep[]>([]); const [thoughts, setThoughts] = useState('');
     const pathname = usePathname();
-    const bucketUuid = pathname.split('/')[2] || '';
+    const bucketUuid = pathname?.split('/')[2] || '';
 
     const [accordionValue, setAccordionValue] = useState<string>("steps");
 

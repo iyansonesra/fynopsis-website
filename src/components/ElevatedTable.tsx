@@ -142,7 +142,7 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
     const goBack = useS3Store(state => state.goBack);
     const [isLoading, setIsLoading] = React.useState(true);
     const pathname = usePathname();
-    const bucketUuid = pathname.split('/').pop() || '';
+    const bucketUuid = (pathname ?? '').split('/').pop() || '';
     const [currentPath, setCurrentPath] = React.useState<string[]>([`${bucketUuid}`]);
     const [searchValue, setSearchValue] = React.useState('');
     const [showUploadOverlay, setShowUploadOverlay] = React.useState(false);
@@ -459,7 +459,7 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
             // console.log("selected items s3Key:", item.s3Key);
         };
         const pathname = usePathname();
-        const bucketUuid = pathname.split('/').pop() || '';
+        const bucketUuid = pathname?.split('/').pop() || '';
 
         const {
             attributes,

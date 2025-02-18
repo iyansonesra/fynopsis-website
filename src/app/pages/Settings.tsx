@@ -2,7 +2,6 @@ import React, { useEffect, useState } from 'react';
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Menu, Search, LogOut, SettingsIcon } from "lucide-react";
 import Link from 'next/link';
-import logo from "../assets/fynopsis_noBG.png";
 import { useAuthenticator } from '@aws-amplify/ui-react';
 import { fetchUserAttributes, FetchUserAttributesOutput } from 'aws-amplify/auth';
 
@@ -44,7 +43,6 @@ export default function Settings({ setSelectedTab }: { setSelectedTab: (tab: str
                         <SheetContent side="left" className='pl-2 pt-3'>
                             <div className="flex flex-col justify-start items-start">
                                 <div className="inline-block w-full flex items-center gap-2 mb-4">
-                                    <img src={logo.src} alt="Fynopsis Logo" className="h-8 w-8" />
                                     <h1>{userAttributes?.given_name} {userAttributes?.family_name} </h1>
                                 </div>
 

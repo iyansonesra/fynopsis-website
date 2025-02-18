@@ -1,7 +1,7 @@
 /* eslint-disable react/no-unescaped-entities */
 "use client";
 
-import logo from './../app/assets/fynopsis_noBG.png'
+import logo from './../assets/fynopsis_noBG.png'
 import { useState, useEffect } from "react"
 import { useAuthenticator } from '@aws-amplify/ui-react';
 import { Clipboard, LucideIcon, Activity } from "lucide-react";
@@ -51,11 +51,11 @@ export default function Home() {
   const [userEmail, setUserEmail] = useState('');
   const [permissionLevel, setPermissionLevel] = useState('READ');
   const pathname = usePathname();
-  const pathArray = pathname.split('/');
+  const pathArray = pathname?.split('/') ?? [];
   const bucketUuid = pathArray[2] || '';
   const params = useParams();
   const [hasPermission, setHasPermission] = useState<boolean>(true);
-  const dataroomId = Array.isArray(params.id) ? params.id[0] : params.id;
+  const dataroomId = Array.isArray(params?.id) ? params.id[0] : params?.id ?? '';
   const { setSearchableFiles } = useFileStore();
   const [familyName, setFamilyName] = useState('');
   const [givenName, setGivenName] = useState('');
@@ -149,7 +149,16 @@ export default function Home() {
       const responseText = await body.text();
       const response = JSON.parse(responseText);
      console.log('Files response:', response);
-      const formattedFiles: Files[] = response.files ? response.files.map(file => ({
+      interface FileResponse {
+        fileId?: string;
+        fileName?: string;
+        fullPath?: string;
+        parentFolderId?: string;
+        parentFolderName?: string;
+        size?: string;
+      }
+
+      const formattedFiles: Files[] = response.files ? response.files.map((file: FileResponse): Files => ({
         fileId: file.fileId || '',
         fileName: file.fileName || '',
         fullPath: file.fullPath || '',

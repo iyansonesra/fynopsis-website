@@ -133,14 +133,14 @@ const DragDropOverlay: React.FC<DragDropOverlayProps> = ({
   const [pendingFiles, setPendingFiles] = useState<File[]>([]);
   const [fileUploads, setFileUploads] = useState<FileUploads>({});
   const [isConfirming, setIsConfirming] = useState(false);
-  const pathname = usePathname();
+  const pathname = usePathname() ?? '';
   const pathArray = pathname.split('/');
   const bucketUuid = pathArray[2] || '';
   const [isProcessingZip, setIsProcessingZip] = useState(false);
   const [zipProcessingError, setZipProcessingError] = useState<string | null>(null);
   const [zipPreviewItems, setZipPreviewItems] = useState<ProcessedItem[]>([]);
 const [showZipPreview, setShowZipPreview] = useState(false);
-  const [zipFileStore, setZipFileStore] = useState<File>([]);
+  const [zipFileStore, setZipFileStore] = useState<File | null>(null);
   const [isUploadingZip, setIsUploadingZip] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   interface ProcessedItem {
@@ -242,6 +242,9 @@ const [showZipPreview, setShowZipPreview] = useState(false);
         });
       }, 500);
   
+      if (!zipFileStore) {
+        throw new Error('No ZIP file to process');
+      }
       // Process the ZIP file
       await processZipFile(zipFileStore, bucketUuid);
       

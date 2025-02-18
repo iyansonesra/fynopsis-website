@@ -1,9 +1,9 @@
 import { Library, Users, TrendingUp, LucideIcon, ChevronRight, Lock, PersonStanding, ArrowRight, Linkedin } from 'lucide-react';
 import React, { useRef, useEffect, useState } from 'react';
-import logo from './../app/assets/fynopsis_noBG.png'
-import FadeInSlideUp from '../components/animation/FadeInSlideUp';
+import logo from './../assets/fynopsis_noBG.png'
+import FadeInSlideUp from '../../components/animation/FadeInSlideUp';
 import { useRouter } from 'next/navigation';
-import darkDemo from './../app/assets/dark_demo.png';
+import darkDemo from './../assets/dark_demo.png';
 import AnimatedGridPattern from '@/components/ui/animated-grid-pattern';
 import { cn } from '@/lib/utils';
 import AnimatedGradientText from '@/components/ui/animated-gradient-text';

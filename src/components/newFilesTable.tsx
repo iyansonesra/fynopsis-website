@@ -75,7 +75,7 @@ export function DataTable({ onFileSelect, setTableData }: {
     const [rowSelection, setRowSelection] = React.useState({})
     const [showUploadOverlay, setShowUploadOverlay] = React.useState(false);
     const pathname = usePathname();
-    const bucketUuid = pathname.split('/').pop() || '';
+    const bucketUuid = pathname?.split('/').pop() || '';
     const S3_BUCKET_NAME = 'vdr-documents';
     const REGION = 'us-east-1';
     const [currentPath, setCurrentPath] = React.useState<string[]>([`${bucketUuid}`]);
