@@ -18,7 +18,7 @@ interface TabSystemProps {
 }
 
 const TabSystem: React.FC<TabSystemProps> = ({ tabs, setTabs }) => {
-  const { activeTabId, setActiveTabId } = useTabStore();
+  const { activeTabId, setActiveTabId, reorderTabs } = useTabStore();
 
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
   const contentRef = useRef<HTMLDivElement | null>(null);
@@ -34,23 +34,14 @@ const TabSystem: React.FC<TabSystemProps> = ({ tabs, setTabs }) => {
   const onDragEnd = (result: any) => {
     if (!result.destination) return;
     
-    setTabs(prevTabs => {
-        const newTabs = Array.from(prevTabs);
-        const [reorderedItem] = newTabs.splice(result.source.index, 1);
-        newTabs.splice(result.destination.index, 0, reorderedItem);
-        return newTabs;
-    });
-};
+    reorderTabs(result.source.index, result.destination.index);
+    setTabs(useTabStore.getState().tabs);
+  };
 
   const closeTab = (tabId: string) => {
-    setTabs(prevTabs => {
-        const newTabs = prevTabs.filter(tab => tab.id !== tabId);
-        if (activeTabId === tabId) {
-            setActiveTabId(newTabs[0]?.id || '');
-        }
-        return newTabs;
-    });
-};
+    useTabStore.getState().removeTab(tabId);
+    setTabs(useTabStore.getState().tabs);
+  };
 
   function truncateString(str: string) {
     if (str.length > 20) {

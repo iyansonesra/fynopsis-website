@@ -100,7 +100,7 @@ const PDFViewer: React.FC<PDFViewerProps> = ({
           clearInterval(checkTimer);
         }
       } catch (error) {
-        console.log('Checking iframe content failed:', error);
+        // console.log('Checking iframe content failed:', error);
       }
     };
 

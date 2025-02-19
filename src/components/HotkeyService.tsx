@@ -42,14 +42,11 @@ export const useFileStore = create<FileStore>((set, get) => ({
   searchableFiles: [],
   setSearchableFiles: (files) => set({ searchableFiles: files }),
   getFileName: (id) => {
-    console.log('searchableFiles:', get().searchableFiles);
-    console.log('id:', id);
+  
     const file = get().searchableFiles.find(file => file.fileId === id);
     return file ? file.fileName : '';
   },
   getFile: (id) => {
-    console.log('searchableFiles:', get().searchableFiles);
-    console.log('id:', id);
     const file = get().searchableFiles.find(file => file.fileId === id);
     return file || null;
   }

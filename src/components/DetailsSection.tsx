@@ -1,9 +1,9 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { ArrowLeft, ArrowUp, BadgeInfo, FileText, Footprints, Plus, PlusCircle, Search, MessageSquare, ReceiptText } from 'lucide-react';
+import { ArrowLeft, ArrowUp, BadgeInfo, FileText, Footprints, Plus, PlusCircle, Search, MessageSquare, ReceiptText, SearchIcon } from 'lucide-react';
 import { Input, Skeleton } from '@mui/material';
 import { Button } from './ui/button';
 import { post, get } from 'aws-amplify/api';
-import { ScrollArea } from './ui/scroll-area';
+import { ScrollArea, ScrollBar } from './ui/scroll-area';
 import { fetchAuthSession } from 'aws-amplify/auth';
 import { Card, CardContent } from './ui/card';
 import { GetObjectCommand, S3Client } from '@aws-sdk/client-s3';
@@ -59,6 +59,23 @@ interface TableFile {
     uploadProcess: string;
     status: "success";
     summary?: string;
+}
+
+interface Source {
+    id: string,
+    pageNumber: number,
+    chunkTitle: string,
+    chunkText: string,
+}
+
+interface Message {
+    type: 'question' | 'answer' | 'error';
+    content: string;
+    sources?: Source[];
+    steps?: ThoughtStep[]; // Update this line,
+    progressText?: string;
+    sourcingSteps?: string[];
+    subSources?: Record<string, any>;
 }
 
 interface DetailsSectionProps {
@@ -141,6 +158,8 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
     const getFile = useFileStore(state => state.getFile);
     const [lastQuery, setLastQuery] = useState<string>('');
     const [showRetry, setShowRetry] = useState(false);
+    const [progressText, setProgressText] = useState('');
+    const [endThinkFound, setEndThinkFound] = useState(false);
 
 
     // Add selector for S3Store
@@ -155,13 +174,14 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
             // console.log('DetailSection - Found S3 object:', s3Object);
 
             // Get the signed URL
+            const id = sourceUrl.split('/').pop();
             console.log("selected files!!!!!", sourceUrl);
             const downloadResponse = await get({
                 apiName: 'S3_API',
                 path: `/s3/${bucketUuid}/view-url`,
                 options: {
                     withCredentials: true,
-                    queryParams: { fileId: sourceUrl }
+                    queryParams: { fileId: id || '' }
                 }
             });
 
@@ -169,7 +189,7 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
             const responseText = await body.text();
             const { signedUrl } = JSON.parse(responseText);
 
-            const file = getFile(sourceUrl);
+            const file = getFile(id ?? '');
             if (file) {
                 onFileSelect({
                     id: sourceUrl,
@@ -328,7 +348,27 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
 
 
 
+    const AnimatedProgressText: React.FC<{ text: string }> = ({ text }) => {
+        return (
+            <div className="relative h-6 overflow-hidden w-full flex items-center justify-start">
+                <div
+                    key={text}
+                    className="w-full animate-slide-up flex justify-start "
+                >
+                    {text === "Source Analysis Complete" ? (
+                        <span className="text-xs">
+                            {text}
+                        </span>
+                    ) : (
+                        <TextShimmer className="text-xs text-left">
+                            {text}
+                        </TextShimmer>
+                    )}
 
+                </div>
+            </div>
+        );
+    };
 
 
     const queryAllDocuments = async (searchTerm: string, withReasoning: boolean, selectedFiles: any[]) => {
@@ -410,23 +450,119 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
                 };
 
                 ws.onmessage = (event) => {
-                    // console.log('WebSocket message:', event.data);
                     try {
                         const data = JSON.parse(event.data);
-                        if (data.type === 'content') {
-                            // Check if this is the last message
-                            if (data.content.includes('</sources>')) {
-                                setIsWebSocketActive(false);
-                                setIsLoading(false);
+                        console.log("data:", data);
+                        if (data.type === 'progress') {
+                            const progressText = data.step || data.message;
+                            setProgressText(progressText);
+                            setEndThinkFound(false);
+
+                            // Update messages with progress
+                            setMessages(prev => {
+                                const newMessages = [...prev];
+                                const lastMessage = newMessages.length > 0 ? newMessages[newMessages.length - 1] : null;
+
+                                if (lastMessage?.type === 'answer') {
+                                    // Update existing answer's progress text
+                                    lastMessage.progressText = progressText;
+                                    return newMessages;
+                                } else {
+                                    // Create new answer message with progress
+                                    return [...prev, {
+                                        type: 'answer',
+                                        content: '',
+                                        progressText: progressText
+                                    }];
+                                }
+                            });
+                        }
+                        if (data.type === 'status') {
+                            if (data.sources) {
+                                setMessages(prev => {
+                                    const newMessages = [...prev];
+                                    const lastMessage = newMessages.length > 0 ? newMessages[newMessages.length - 1] : null;
+
+                                    if (lastMessage?.type === 'answer') {
+                                        // Initialize sourcingSteps array if it doesn't exist
+                                        lastMessage.sourcingSteps = lastMessage.sourcingSteps || [];
+                                        // Add new step to the array
+                                        lastMessage.sourcingSteps.push(data.message);
+                                        lastMessage.progressText = "Generating sources...";
+
+                                        if (Array.isArray(data.sources)) {
+                                            lastMessage.subSources = {};
+                                            data.sources.forEach((source: { fileKey: string; }) => {
+                                                if (source.fileKey) {
+                                                    const id = source.fileKey.split('/').pop();
+                                                    const fileName = id ? getFileName(id) : undefined;
+                                                    if (fileName) {
+                                                        if (!lastMessage.subSources) {
+                                                            lastMessage.subSources = {};
+                                                        }
+                                                        lastMessage.subSources[fileName] = source.fileKey;
+
+                                                    }
+                                                }
+                                            });
+                                        }
+                                    }
+                                    return newMessages;
+                                });
+                            } else if (data.final_sources) {
+                                setMessages(prev => {
+                                    const newMessages = [...prev];
+                                    const lastMessage = newMessages.length > 0 ? newMessages[newMessages.length - 1] : null;
+
+                                    if (lastMessage?.type === 'answer') {
+                                        // Initialize sourcingSteps array if it doesn't exist
+                                        lastMessage.sourcingSteps = lastMessage.sourcingSteps || [];
+                                        // Add new step to the array
+                                        lastMessage.sourcingSteps.push(data.message);
+                                        lastMessage.progressText = "Finalizing sources...";
+
+                                        // Convert final_sources to Source objects
+                                        if (Array.isArray(data.final_sources)) {
+                                            lastMessage.sources = data.final_sources.map((source: any) => ({
+                                                id: source.fileKey,
+                                                pageNumber: source.pageNumber || 1,
+                                                chunkTitle: source.chunkTitle || '',
+                                                chunkText: source.chunkText || ''
+                                            }));
+                                        }
+                                    }
+                                    return newMessages;
+                                });
                             }
+                        }
+                        if (data.type === 'response') {
+
                             if (data.thread_id) {
                                 setCurrentThreadId(data.thread_id);
                             }
-                            setSearchResult(prevResult => ({
-                                response: (prevResult?.response || '') + data.content,
-                                sources: data.sources || {},
-                                thread_id: data.thread_id || ''
-                            }));
+
+                            setMessages(prev => {
+                                const newMessages = [...prev];
+                                const lastMessage = newMessages.length > 0 ? newMessages[newMessages.length - 1] : null;
+
+                                if (lastMessage?.type === 'answer') {
+                                    lastMessage.progressText = "Source Analysis Complete";
+                                }
+                                return newMessages;
+                            });
+
+                            
+                                setSearchResult(prevResult => ({
+                                    response: (prevResult?.response || '') + data.response,
+                                    sources: data.sources || {},
+                                    thread_id: data.thread_id || ''
+                                }));
+                           
+                        }
+
+                        if (data.type === 'complete') {
+                            setIsWebSocketActive(false);
+                            setIsLoading(false);
                         }
                     } catch (error) {
                         console.error('Error processing message:', error);
@@ -518,12 +654,7 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
         textarea.style.height = `${textarea.scrollHeight}px`;
     }
 
-    interface Message {
-        type: 'question' | 'answer' | 'error';
-        content: string;
-        sources?: Record<string, any>;
-        steps?: ThoughtStep[]; // Update this line
-    }
+
 
     const [messages, setMessages] = useState<Message[]>([]);
 
@@ -561,7 +692,11 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
         if (searchResult && searchResult.response) {
             setIsAnswerLoading(true); // Start loading when processing begins
             let response = searchResult.response;
+            console.log("repsonse:", searchResult);
+            if (searchResult.response.includes("</think>")) {
+                setEndThinkFound(true);
 
+            }
             // Helper function to extract content between tags
             const extractContent = (text: string, startTag: string, endTag: string) => {
                 const startIndex = text.indexOf(startTag);
@@ -697,13 +832,13 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
                     if (lastMessage?.type === 'answer') {
                         // Update only the content of the existing answer message
                         lastMessage.content = answerResult.content;
-                        lastMessage.sources = searchResult.sources;
+                        // lastMessage.sources = searchResult.sources;
                     } else {
                         // Create new answer message if none exists
                         newMessages.push({
                             type: 'answer',
                             content: answerResult.content,
-                            sources: searchResult.sources,
+                            // sources: searchResult.sources,
                             steps: []
                         });
                     }
@@ -751,7 +886,7 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
                                                 sourcesObject[getFileName(last)] = last || {};
                                             }
                                         });
-                                        lastMessage.sources = sourcesObject;
+                                        // lastMessage.sources = sourcesObject;
                                     }
                                 }
                                 return newMessages;
@@ -804,8 +939,8 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
                                     <FileText className="h-4 w-4 text-slate-600 dark:text-white" />
                                     <span className="text-sm text-blue-500 dark:text-white select-none">
                                         {key.length > 20
-                         
-                                            ? `${key.slice(0, key.length/2)} ${key.slice(key.length/2)}`
+
+                                            ? `${key.slice(0, key.length / 2)} ${key.slice(key.length / 2)}`
                                             : key}
                                     </span>
                                 </div>
@@ -898,7 +1033,7 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
     const renderAdvancedSearch = () => {
 
         return (
-            <div className="flex flex-col h-full overflow-none dark:bg-darkbg w-full">
+            <div className="flex flex-col h-full overflow-none dark:bg-darkbg w-full max-w-full">
                 <div className="absolute top-0 right-0 p-4 z-50">
                     <div className="flex flex-row gap-4">
                         <ReceiptText
@@ -913,129 +1048,255 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
 
                 </div>
                 <ScrollArea
-                    className="flex-1 overflow-none w-full px-4 [mask-image:linear-gradient(to_bottom,white_calc(100%-64px),transparent)]"
+                    className="flex-1 overflow-none w-full max-w-full  px-4 [mask-image:linear-gradient(to_bottom,white_calc(100%-64px),transparent)]"
                 >
-
-                    {messages.map((message, index) => (
-                        <div key={index} className="flex flex-col gap-4 mb-4 pl-2" >
-                            {message.type === 'question' ? (
-                                <div className="flex items-end dark:text-white mt-4">
-                                    <p className="text-2xl font-medium dark:text-white pr-4 rounded-lg w-[80%]">{message.content}</p>
-                                </div>
-                            ) : message.type === 'error' ? (
-                                <div className="w-full">
-                                    <div className="mr-auto mb-6 rounded-lg bg-red-50 dark:bg-red-900/10 p-4">
-                                        <div className='flex flex-row gap-2 items-center mb-3'>
-                                            <BadgeInfo className="h-5 w-5 text-red-500" />
-                                            <h1 className='text-red-500 font-semibold'>Error</h1>
-                                        </div>
-                                        <ReactMarkdown className="text-wrap text-sm pr-4 text-red-600 dark:text-red-400 leading-7">
-                                            {message.content}
-                                        </ReactMarkdown>
+                    <div className="w-full h-full">
+                        {messages.map((message, index) => (
+                            <div key={index} className="flex flex-col gap-0 mb-4 pl-2 max-w-full w-full" >
+                                {message.type === 'question' ? (
+                                    <div className="flex items-end dark:text-white mt-4">
+                                        <p className="text-2xl font-medium dark:text-white pr-4 rounded-lg w-[80%]">{message.content}</p>
                                     </div>
-                                </div>
-                            ) : (
-                                <div className={`w-full ${index === messages.length - 1 ? 'mb-8' : ''}`}>
-                                    {message.steps && message.steps.length > 0 && (
-                                        <div className="w-full pr-4">
-                                            <Accordion
-                                                type="single"
-                                                collapsible
-                                                value={accordionValue}
-                                                onValueChange={setAccordionValue}
-                                                className="w-full -space-y-px mb-6"
-                                            >
-                                                <AccordionItem
-                                                    value="steps"
-                                                    className="border bg-background px-4 py-1 rounded-lg dark:bg-darkbg dark:border-slate-800"
+                                ) : message.type === 'error' ? (
+                                    <div className="w-full">
+                                        <div className="mr-auto mb-6 rounded-lg bg-red-50 dark:bg-red-900/10 p-4">
+                                            <div className='flex flex-row gap-2 items-center mb-3'>
+                                                <BadgeInfo className="h-5 w-5 text-red-500" />
+                                                <h1 className='text-red-500 font-semibold'>Error</h1>
+                                            </div>
+                                            <ReactMarkdown className="text-wrap text-sm pr-4 text-red-600 dark:text-red-400 leading-7">
+                                                {message.content}
+                                            </ReactMarkdown>
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <div className={`w-full gap-0 max-w-full ${index === messages.length - 1 ? 'mb-8' : ''}`}>
+                                        {((message.steps && message.steps.length > 0) || (message.progressText)) && (
+                                            <div className="w-full pr-4 pb-0">
+                                                <Accordion
+                                                    type="single"
+                                                    collapsible
+                                                    value={accordionValue}
+                                                    onValueChange={setAccordionValue}
+                                                    className="w-full -space-y-px mb-2"
                                                 >
-                                                    <AccordionTrigger className="py-1 text-[15px] leading-6 hover:no-underline dark:text-slate-400 flex items-center justify-center">
-                                                        <div className="flex flex-row gap-2 items-center w-full justify-between pr-2">
-                                                            <div className="flex flex-row gap-2 items-center">
-                                                                <Footprints className="h-4 w-4 text-gray-500" />
-                                                                <h1>Search Steps</h1>
+
+                                                    <AccordionItem
+                                                        value="steps"
+                                                        className="border bg-background px-4 py-1 rounded-lg dark:bg-darkbg dark:border-slate-800 w-full"
+                                                    >
+                                                        <AccordionTrigger className="py-1 text-[15px] leading-6 hover:no-underline dark:text-slate-400 flex items-center justify-center">
+                                                            <div className="flex flex-row gap-2 items-center w-full justify-between pr-2">
+                                                                <div className="flex flex-row gap-2 items-center">
+                                                                    <SearchIcon className="h-4 w-4 text-gray-500" />
+                                                                    <h1>Pro Search</h1>
+                                                                </div>
+                                                                <h1 className="text-sm font-light">{message.steps?.length || 0} steps</h1>
                                                             </div>
-                                                            <h1 className="text-sm font-light">{message.steps.length} steps</h1>
-                                                        </div>
-                                                    </AccordionTrigger>
-                                                    <AccordionContent className="pb-2 pt-2 text-muted-foreground">
-                                                        {message.steps.map((step, stepIndex) => (
-                                                            <div key={stepIndex} className="flex flex-row gap-2 items-center mb-2">
-                                                                <span className="text-xs text-gray-500">{step.number}.</span>
-                                                                <span className="text-xs text-gray-700 dark:text-gray-300 font-normal">
-                                                                    {step.content}
+                                                        </AccordionTrigger>
+                                                        <AccordionContent className="pb-2 pt-2 text-muted-foreground w-full">
+                                                            {message.progressText && (
+                                                                <Accordion
+                                                                    type="single"
+                                                                    collapsible
+                                                                    className="w-full mb-3"
+                                                                >
+                                                                    <AccordionItem
+                                                                        value="progress"
+                                                                        className="border-none bg-slate-50 dark:bg-slate-800/50 rounded-md w-full"
+                                                                    >
+                                                                        <AccordionTrigger className="py-2 px-3 text-xs hover:no-underline">
+                                                                            <AnimatedProgressText text={message.progressText || 'giiii'} />
+                                                                            {/* <span className = "text-left">
+                                                                                {message.progressText}
+                                                                            </span> */}
+                                                                        </AccordionTrigger>
+                                                                        <AccordionContent className="px-3 pb-2 w-full overflow-hidden">
+                                                                            {message.sourcingSteps && message.sourcingSteps.length > 0 ? (
+                                                                                <div className="space-y-2 w-full ">
+                                                                                    {message.sourcingSteps.map((step, index) => (
+                                                                                        <div key={index} className="space-y-1 w-full">
+                                                                                            <div className="text-xs text-gray-600 dark:text-gray-300">
+                                                                                                {step}
+                                                                                            </div>
+
+                                                                                            {/* Show subSources for first step (index 0) */}
+                                                                                            {index === 0 && message.subSources && (
+                                                                                                <div className="w-full overflow-hidden">
+                                                                                                    <div className="flex items-center space-x-2 p-2">
+                                                                                                        {Object.entries(message.subSources).slice(0, 2).map(([fileName, fileKey]) => (
+                                                                                                            <div
+                                                                                                                key={fileKey}
+                                                                                                                className="inline-flex shrink-0 items-center gap-2 px-3 py-1 rounded-md bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 cursor-pointer"
+                                                                                                                onClick={() => handleSourceCardClick(fileKey as string)}
+                                                                                                            >
+                                                                                                                <FileText className="h-3 w-3 text-slate-500 dark:text-slate-400" />
+                                                                                                                <span className="text-xs text-slate-600 dark:text-slate-300 truncate max-w-[150px]">
+                                                                                                                    {fileName}
+                                                                                                                </span>
+                                                                                                            </div>
+                                                                                                        ))}
+                                                                                                        {Object.keys(message.subSources).length > 2 && (
+                                                                                                            <div className="text-xs text-slate-500 dark:text-slate-400">
+                                                                                                                +{Object.keys(message.subSources).length - 2} more
+                                                                                                            </div>
+                                                                                                        )}
+                                                                                                    </div>
+                                                                                                </div>
+                                                                                            )}
+
+                                                                                            {/* Show sources for second step (index 1) */}
+                                                                                            {index === 1 && message.sources && (
+                                                                                                <ScrollArea className="w-full whitespace-nowrap w-[400px]">
+                                                                                                    <div className="flex space-x-2 p-2">
+                                                                                                        {message.sources.map((source, idx) => (
+                                                                                                            <div
+                                                                                                                key={idx}
+                                                                                                                className="inline-flex flex-col justify-between min-h-[80px] w-[200px] px-3 py-2 rounded-md bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 cursor-pointer"
+                                                                                                                onClick={() => handleSourceCardClick(source.id)}
+                                                                                                            >
+                                                                                                                <div className="text-xs text-slate-700 dark:text-slate-200 line-clamp-2">
+                                                                                                                    {source.chunkTitle}
+                                                                                                                </div>
+                                                                                                                <div className="flex items-center gap-2 mt-2">
+                                                                                                                    <FileText className="h-3 w-3 text-slate-400 dark:text-slate-500" />
+                                                                                                                    <span className="text-xs text-slate-400 dark:text-slate-500 truncate">
+                                                                                                                        {getFileName(source.id.split('/').pop() || '')}
+                                                                                                                    </span>
+                                                                                                                </div>
+                                                                                                            </div>
+                                                                                                        ))}
+                                                                                                    </div>
+                                                                                                    <ScrollBar orientation="horizontal" />
+                                                                                                </ScrollArea>
+                                                                                            )}
+                                                                                        </div>
+                                                                                    ))}
+                                                                                </div>
+                                                                            ) : (
+                                                                                <div className="text-xs text-gray-500">No sourcing steps available</div>
+                                                                            )}
+                                                                        </AccordionContent>
+                                                                    </AccordionItem>
+                                                                </Accordion>
+                                                            )}
+
+                                                            {message.steps && message.steps.length > 0 ? (
+                                                                message.steps.map((step, stepIndex) => (
+                                                                    <div key={stepIndex} className="flex flex-row gap-2 items-center mb-2">
+                                                                        <span className="text-xs text-gray-500">{step.number}.</span>
+                                                                        <span className="text-xs text-gray-700 dark:text-gray-300 font-normal">
+                                                                            {step.content}
+                                                                        </span>
+                                                                    </div>
+                                                                ))
+                                                            ) : (
+                                                                <div className="text-xs text-gray-500"></div>
+                                                            )}
+                                                        </AccordionContent>
+                                                    </AccordionItem>
+                                                </Accordion>
+                                            </div>
+                                        )}
+
+                                        {/* show source blocks here!!! */}
+                                        {message.sources && message.sources.length > 0 && (
+                                            <ScrollArea className="w-full whitespace-nowrap ">
+                                                <div className="flex space-x-2 p-2 mb-4 ">
+                                                    {message.sources.map((source, idx) => (
+                                                        <div
+                                                            key={idx}
+                                                            className="inline-flex flex-col justify-between min-h-[80px] w-[200px] px-3 py-2 rounded-md bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 cursor-pointer"
+                                                            onClick={() => handleSourceCardClick(source.id)}
+                                                        >
+                                                            <div className="text-xs text-slate-700 dark:text-slate-200 line-clamp-2">
+                                                                {source.chunkTitle}
+                                                            </div>
+                                                            <div className="flex items-center gap-2 mt-2">
+                                                                <FileText className="h-3 w-3 text-slate-400 dark:text-slate-500" />
+                                                                <span className="text-xs text-slate-400 dark:text-slate-500 truncate">
+                                                                    {getFileName(source.id.split('/').pop() || '')}
                                                                 </span>
                                                             </div>
-                                                        ))}
-                                                    </AccordionContent>
-                                                </AccordionItem>
-                                            </Accordion>
-                                        </div>
-                                    )}
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                                <ScrollBar orientation="horizontal" />
+                                            </ScrollArea>
+                                        )}
 
-                                    <div className="mr-auto mb-6 rounded-lg">
-                                        {renderAnswerHeader()}
-                                      
-                                        <ReactMarkdown className="text-wrap text-sm pr-4 dark:text-white leading-7">
-                                            {message.content}
-                                        </ReactMarkdown>
-                                    </div>
-                                    <div>
-                                        {!isGeneratingComplete && generatingSources && (
-                                            <div className='flex flex-row gap-2 items-center mb-3'>
-                                                <TextShimmer
-                                                    key="generating-sources"
-                                                    className='text-sm'
-                                                    duration={1}
-                                                >
-                                                    Generating sources...
-                                                </TextShimmer>
-                                            </div>
+                                        <div className="mr-auto mb-6 rounded-lg">
+                                            {/* {renderAnswerHeader()} */}
+
+                                            <ReactMarkdown className="text-wrap text-sm pr-4 dark:text-white leading-7">
+                                                {message.content}
+                                            </ReactMarkdown>
+                                        </div>
+                                        {/* <div>
+                                            {!isGeneratingComplete && generatingSources && (
+                                                <div className='flex flex-row gap-2 items-center mb-3'>
+                                                    <TextShimmer
+                                                        key="generating-sources"
+                                                        className='text-sm'
+                                                        duration={1}
+                                                    >
+                                                        Generating sources...
+                                                    </TextShimmer>
+                                                </div>
+                                            )}
+                                            {isGeneratingComplete && message.sources && Object.keys(message.sources).length > 0 && (
+                                                <div>
+                                                    <SourcesList sources={message.sources} />
+                                                </div>
+                                            )}
+                                        </div> */}
+                                        <div className="w-full flex items-center justify-center mt-4 "></div>
+                                        {index !== messages.length - 1 && (
+                                            <Separator className="bg-slate-200 dark:bg-slate-800 w-full" orientation='horizontal' />
                                         )}
-                                        {isGeneratingComplete && message.sources && Object.keys(message.sources).length > 0 && (
-                                            <div>
-                                                <SourcesList sources={message.sources} />
-                                            </div>
-                                        )}
                                     </div>
-                                    <div className="w-full flex items-center justify-center mt-4 "></div>
-                                    {index !== messages.length - 1 && (
-                                        <Separator className="bg-slate-200 dark:bg-slate-800 w-full" orientation='horizontal' />
-                                    )}
+                                )
+                                }
+
+                            </div>
+                        ))
+                        }
+
+                        {
+                            showRetry && (
+                                <div className="w-full flex items-center justify-start mb-6">
+                                    <Button
+                                        variant="outline"
+                                        onClick={handleRetry}
+                                        className="flex items-center gap-2 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/10"
+                                    >
+                                        <ArrowUp className="h-4 w-4" />
+                                        Retry last query
+                                    </Button>
                                 </div>
                             )
-                            }
+                        }
 
-                        </div>
-                    ))}
-
-                    {showRetry && (
-                        <div className="w-full flex items-center justify-start mb-6">
-                            <Button
-                                variant="outline"
-                                onClick={handleRetry}
-                                className="flex items-center gap-2 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/10"
-                            >
-                                <ArrowUp className="h-4 w-4" />
-                                Retry last query
-                            </Button>
-                        </div>
-                    )}
+                    </div>
 
 
-                    {isLoading && (
-                        <div className='flex flex-row gap-2 items-center mb-3'>
-                            <object type="image/svg+xml" data={loadingAnimation.src} className="h-6 w-6">
-                                svg-animation
-                            </object>
-                            <h1 className='dark:text-white font-semibold'>Answer</h1>
-                        </div>
-                    )}
+
+
+                    {/* {
+                        isLoading && (
+                            <div className='flex flex-row gap-2 items-center mb-3'>
+                                <object type="image/svg+xml" data={loadingAnimation.src} className="h-6 w-6">
+                                    svg-animation
+                                </object>
+                                <h1 className='dark:text-white font-semibold'>Answer</h1>
+                            </div>
+                        )
+                    } */}
 
 
                     <div ref={messagesEndRef} style={{ height: 0 }} /> {/* Add this line */}
 
-                </ScrollArea>
+                </ScrollArea >
 
                 <div className="px-4 bg-transparent">
                     <AIInputWithSearch

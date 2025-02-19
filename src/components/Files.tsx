@@ -24,7 +24,7 @@ import PDFViewer from './PDFViewer';
 import { ThemeProvider } from '../lib/ThemeContext';
 import SpreadsheetApp from './ExcelViewer';
 import { DataTable } from './newFilesTable';
-import {FileSystem} from './ElevatedTable';
+import {FileSystem} from './UltraTable';
 import { useTabStore } from './tabStore';
 
 interface Tab {
@@ -72,17 +72,19 @@ export default function Files({ setSelectedTab }: { setSelectedTab: React.Dispat
 
     const [showDetailsView, setShowDetailsView] = useState(false);
     const [selectedFile, setSelectedFile] = useState<FileSelectProps | null>(null);
-    const { 
-        currentTabs,
-        setCurrentTabs,
-        activeTabId,
-        setActiveTabId,
-        initializeDefaultTab 
-    } = useTabStore();
+    const { tabs, activeTabId, setActiveTabId, addTab } = useTabStore();
+
     const [tableData, setTableData] = useState<TableFile[]>([]);
 
     useEffect(() => {
-        initializeDefaultTab(handleFileSelect);
+        // Only initialize if there are no tabs
+        if (tabs.length === 0) {
+            addTab({
+                id: 'all-files',
+                title: 'All Files',
+                content: <FileSystem onFileSelect={handleFileSelect} />
+            });
+        }
     }, []);
 
     // Add debug log for table data updates
@@ -100,46 +102,50 @@ export default function Files({ setSelectedTab }: { setSelectedTab: React.Dispat
         }
     }, [showFolderTree, showDetailsView]);
 
-    const addOrActivateTab = (newTab: { id: string; title: string; content: JSX.Element }) => {
-        setCurrentTabs(prevTabs => {
-            const existingTab = prevTabs.find(tab => tab.title === newTab.title);
-            if (existingTab) {
-                // If tab exists, just activate it
-                setActiveTabId(existingTab.id);
-                return prevTabs;
-            } else {
-                // If it's a new tab, add it and activate it
-                setActiveTabId(newTab.id);  // Set active tab ID for the new tab
-                return [...prevTabs, newTab];
-            }
-        });
-    };
+    // const addOrActivateTab = (newTab: { id: string; title: string; content: JSX.Element }) => {
+    //     setCurrentTabs(prevTabs => {
+    //         const existingTab = prevTabs.find(tab => tab.title === newTab.title);
+    //         if (existingTab) {
+    //             // If tab exists, just activate it
+    //             setActiveTabId(existingTab.id);
+    //             return prevTabs;
+    //         } else {
+    //             // If it's a new tab, add it and activate it
+    //             setActiveTabId(newTab.id);  // Set active tab ID for the new tab
+    //             return [...prevTabs, newTab];
+    //         }
+    //     });
+    // };
     
-    function handleFileSelect(file: FileSelectProps) {  // Update type here
+       // Remove the addOrActivateTab function and update handleFileSelect:
+       function handleFileSelect(file: FileSelectProps) {
         console.log('Files component - File selected:', file);
         setSelectedFile(file);
-        setShowDetailsView(true);
+        if(file.type && file.type.length > 0){
+            setShowDetailsView(true);
+        }
         
         if (file.id && file.name && file.s3Url) {
             const newTabId = `file-${file.id}`;
             
-            // Check if a tab with the same title already exists
-            const existingTab = currentTabs.find(tab => tab.title === file.name);
+            // Use the store's methods directly
+            const existingTab = tabs.find(tab => tab.title === file.name);
             
             if (existingTab) {
                 setActiveTabId(existingTab.id);
-            } else {
-                addOrActivateTab({
-                    id: newTabId,
-                    title: file.name,
-                    content: (
-                        <PDFViewer 
-                            documentUrl={file.s3Url} 
-                            containerId={`pdf-viewer-${file.id}`}
-                        />
-                    )
+              } else {
+                addTab({
+                  id: newTabId,
+                  title: file.name,
+                  content: (
+                    <PDFViewer 
+                      documentUrl={file.s3Url} 
+                      containerId={`pdf-viewer-${file.id}`}
+                      tabId={newTabId}  // Add this prop
+                    />
+                  )
                 });
-            }
+              }
         }
     }
     
@@ -153,11 +159,18 @@ export default function Files({ setSelectedTab }: { setSelectedTab: React.Dispat
 
                 <ResizablePanel defaultSize={75} minSize={40}>
                 <TabSystem
-                        tabs={currentTabs}
-                        activeTabId={activeTabId}
-                        setActiveTabId={setActiveTabId}
-                        setTabs={setCurrentTabs}
-                    />
+                    tabs={tabs}
+                    activeTabId={activeTabId}
+                    setActiveTabId={setActiveTabId}
+                    setTabs={(newTabs) => {
+                        if (typeof newTabs === 'function') {
+                            const updatedTabs = newTabs(tabs);
+                            useTabStore.getState().setTabs(updatedTabs);
+                        } else {
+                            useTabStore.getState().setTabs(newTabs);
+                        }
+                    }}
+                />
                     {/* <DataTable 
                         onFileSelect={handleFileSelect} 
                         setTableData={setTableData}  // Pass setTableData to DataTable
