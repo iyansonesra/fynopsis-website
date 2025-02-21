@@ -44,7 +44,9 @@ export const ChatHistoryPanel: React.FC<ChatHistoryPanelProps> = ({
         options: { withCredentials: true }
       }).response;
       
+      console.log("response", response);
       const data = (await response.body.json() as unknown) as { chats: ChatHistory[] };
+      console.log("data", data);
       if (data == null) {
         throw new Error('Failed to load chat history');
     }
@@ -69,8 +71,9 @@ export const ChatHistoryPanel: React.FC<ChatHistoryPanelProps> = ({
           withCredentials: true
         }
       }).response;
-      
+      console.log("response", response);
       const data = (await response.body.json() as unknown) as { messages: ChatMessage[] };
+      console.log("data", data);
       if (data == null) {
         throw new Error('Failed to load chat thread');
       }

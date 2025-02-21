@@ -1470,7 +1470,7 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
                     />
                 ) : (
                     <>
-                        {/* {renderChatHistoryButton()} */}
+                        {renderChatHistoryButton()}
                         {(showDetailsView && sourceUrls.length === 0) ? renderFileDetails() : renderAdvancedSearch()}
                     </>
                 )}
