@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { ArrowLeft, ArrowUp, BadgeInfo, FileText, Footprints, Plus, PlusCircle, Search, MessageSquare, ReceiptText, SearchIcon, Database, User, Tags, AlignLeft } from 'lucide-react';
+import { ArrowLeft, ArrowUp, BadgeInfo, FileText, Footprints, Plus, PlusCircle, Search, MessageSquare, ReceiptText, SearchIcon, Database, User, Tags, AlignLeft, History } from 'lucide-react';
 import { Input, Skeleton } from '@mui/material';
 import { Button } from './ui/button';
 import { post, get } from 'aws-amplify/api';
@@ -1052,7 +1052,7 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
             variant="outline"
             size="sm"
             onClick={() => setShowChatHistory(true)}
-            className="absolute top-4 left-4 z-50"
+            className="flex items-center gap-2"
         >
             <MessageSquare className="h-4 w-4 mr-2" />
             Chat History
@@ -1063,8 +1063,13 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
 
         return (
             <div className="flex flex-col h-full overflow-none dark:bg-darkbg w-full max-w-full">
-                <div className="absolute top-0 right-0 p-4 z-50">
-                    <div className="flex flex-row gap-4">
+                <div className="absolute top-4 right-4 z-50">
+                    
+                    <div className="flex flex-row gap-3 items-center">
+                        <History
+                            className="h-5 w-5 text-gray-500 dark:text-gray-400 cursor-pointer hover:text-gray-700 dark:hover:text-gray-300"
+                            onClick={() => setShowChatHistory(true)}
+                        />
                         <ReceiptText
                             className="h-5 w-5 text-gray-500 dark:text-gray-400 cursor-pointer hover:text-gray-700 dark:hover:text-gray-300"
                             onClick={() => setShowDetailsView(true)}
@@ -1084,7 +1089,7 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
                             <div key={index} className="flex flex-col gap-0 mb-4 pl-2 max-w-full w-full" >
                                 {message.type === 'question' ? (
                                     <div className="flex items-end dark:text-white mt-4">
-                                        <p className="text-2xl font-medium dark:text-white pr-4 rounded-lg w-[80%]">{message.content}</p>
+                                        <p className="text-2xl font-medium dark:text-white pr-4 rounded-lg w-[70%]">{message.content}</p>
                                     </div>
                                 ) : message.type === 'error' ? (
                                     <div className="w-full">
@@ -1462,6 +1467,7 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
     return (
         <ScrollArea className="h-full ">
             <div className="flex flex-col gap-2 overflow-auto h-screen">
+
                 {showChatHistory ? (
                     <ChatHistoryPanel
                         bucketId={bucketUuid}
@@ -1469,11 +1475,10 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
                         onBack={() => setShowChatHistory(false)}
                     />
                 ) : (
-                    <>
-                        {renderChatHistoryButton()}
-                        {(showDetailsView && sourceUrls.length === 0) ? renderFileDetails() : renderAdvancedSearch()}
-                    </>
+                    (showDetailsView) ? renderFileDetails() : renderAdvancedSearch()
                 )}
+
+
             </div>
         </ScrollArea>
 
