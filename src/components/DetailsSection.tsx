@@ -1385,7 +1385,7 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
                                 File Type
                             </h4>
                             <span className="px-2 py-1 text-xs rounded-md bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300">
-                                {selectedFile.type || 'Unknown'}
+                                {selectedFile.name ? selectedFile.name.split('.').pop()?.toUpperCase() || 'Unknown' : 'Unknown'}
                             </span>
                         </div>
 
