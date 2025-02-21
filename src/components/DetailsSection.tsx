@@ -160,6 +160,8 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
     const [showRetry, setShowRetry] = useState(false);
     const [progressText, setProgressText] = useState('');
     const [endThinkFound, setEndThinkFound] = useState(false);
+    const [isClickProcessing, setIsClickProcessing] = useState(false);
+
 
 
     // Add selector for S3Store
@@ -168,6 +170,9 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
     const handleSourceCardClick = async (sourceUrl: string) => {
         // console.log('DetailSection - Source clicked:', sourceUrl);
         const bucketUuid = window.location.pathname.split('/')[2] || '';
+        if (isClickProcessing) return;
+        setIsClickProcessing(true);
+        console.log("click processing", sourceUrl);
 
         try {
             // First check if file exists in s3Objects
@@ -212,6 +217,10 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
         }
         catch (error) {
             console.error('DetailSection - Error handling source click:', error);
+        } finally {
+            setTimeout(() => {
+                setIsClickProcessing(false);
+            }, 1000);
         }
     };
 
@@ -336,6 +345,7 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
                 size="sm"
                 className="mt-2 flex items-center gap-2"
                 onClick={() => handleOpenSource(sourceInfo.key, sourceInfo.name)}
+                onDoubleClick={() => null}
                 disabled={loadingSource === sourceInfo.key}
             >
                 <FileText size={16} />
@@ -933,6 +943,7 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
                             key={index}
                             className="p-2 inline-block cursor-pointer hover:bg-gray-50 transition-colors dark:bg-darkbg border select-none"
                             onClick={() => handleSourceCardClick(value)}
+                            
                         >
                             <CardContent className="p-2">
                                 <div className="flex items-center gap-2">
@@ -1135,6 +1146,7 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
                                                                                                                     key={fileKey}
                                                                                                                     className="inline-flex shrink-0 items-center gap-2 px-3 py-1 rounded-md bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 cursor-pointer"
                                                                                                                     onClick={() => handleSourceCardClick(fileKey as string)}
+                                                                                                                    onDoubleClick={() => null}
                                                                                                                 >
                                                                                                                     <FileText className="h-3 w-3 text-slate-500 dark:text-slate-400" />
                                                                                                                     <span className="text-xs text-slate-600 dark:text-slate-300 truncate max-w-[150px]">
@@ -1161,6 +1173,7 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
                                                                                                                     key={idx}
                                                                                                                     className="inline-flex flex-col justify-between min-h-[80px] w-[200px] px-3 py-2 rounded-md bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 cursor-pointer"
                                                                                                                     onClick={() => handleSourceCardClick(source.id)}
+                                                                                                                    onDoubleClick={() => null}
                                                                                                                 >
                                                                                                                     <div className="text-xs text-slate-700 dark:text-slate-200 line-clamp-2">
                                                                                                                         {source.chunkTitle}
