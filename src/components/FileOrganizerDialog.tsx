@@ -249,6 +249,7 @@ export const FileOrganizerDialog: React.FC<FileOrganizerDialogProps> = ({ bucket
   const [isApplying, setIsApplying] = useState(false);
   const [isUndoing, setIsUndoing] = useState(false);
   const [undoSchemaId, setUndoSchemaId] = useState<string>();
+  const [isInitialLoading, setIsInitialLoading] = useState(true);
 
   // Function to check schema status
   const checkSchemaStatus = async () => {
@@ -312,6 +313,7 @@ export const FileOrganizerDialog: React.FC<FileOrganizerDialogProps> = ({ bucket
   useEffect(() => {
     const fetchCurrentSchema = async () => {
       try {
+        setIsInitialLoading(true);
         const response = await get({
           apiName: 'S3_API',
           path: `/s3/${bucketId}/get-schema`,
@@ -342,6 +344,8 @@ export const FileOrganizerDialog: React.FC<FileOrganizerDialogProps> = ({ bucket
         }
       } catch (error) {
         console.error('Error fetching current schema:', error);
+      } finally {
+        setIsInitialLoading(false);
       }
     };
 
@@ -560,6 +564,18 @@ export const FileOrganizerDialog: React.FC<FileOrganizerDialogProps> = ({ bucket
   };
 
   const renderContent = () => {
+    if (isInitialLoading) {
+      return (
+        <div className="flex flex-col items-center justify-center space-y-4 p-8 dark:bg-darkbg">
+          <Loader2 className="h-8 w-8 animate-spin dark:text-gray-200" />
+          <h3 className="text-lg font-semibold dark:text-gray-200">Loading Schema</h3>
+          <p className="text-sm text-gray-500 text-center">
+            Please wait while we load the current schema...
+          </p>
+        </div>
+      );
+    }
+
     if (schemaStatus === 'IN_PROGRESS') {
       return (
         <div className="flex flex-col items-center justify-center space-y-4 p-8 dark:bg-darkbg">
