@@ -551,13 +551,13 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
                                 return newMessages;
                             });
 
-                            
-                                setSearchResult(prevResult => ({
-                                    response: (prevResult?.response || '') + data.response,
-                                    sources: data.sources || {},
-                                    thread_id: data.thread_id || ''
-                                }));
-                           
+
+                            setSearchResult(prevResult => ({
+                                response: (prevResult?.response || '') + data.response,
+                                sources: data.sources || {},
+                                thread_id: data.thread_id || ''
+                            }));
+
                         }
 
                         if (data.type === 'complete') {
@@ -1116,67 +1116,74 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
                                                                                 <div className="space-y-2 w-full ">
                                                                                     {message.sourcingSteps.map((step, index) => (
                                                                                         <div key={index} className="space-y-1 w-full">
-                                                                                            <div className="text-xs text-gray-600 dark:text-gray-300">
-                                                                                                {step}
-                                                                                            </div>
-
-                                                                                            {/* Show subSources for first step (index 0) */}
-                                                                                            {index === 0 && message.subSources && (
-                                                                                                <div className="w-full overflow-hidden">
-                                                                                                    <div className="flex items-center space-x-2 p-2">
-                                                                                                        {Object.entries(message.subSources).slice(0, 2).map(([fileName, fileKey]) => (
-                                                                                                            <div
-                                                                                                                key={fileKey}
-                                                                                                                className="inline-flex shrink-0 items-center gap-2 px-3 py-1 rounded-md bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 cursor-pointer"
-                                                                                                                onClick={() => handleSourceCardClick(fileKey as string)}
-                                                                                                            >
-                                                                                                                <FileText className="h-3 w-3 text-slate-500 dark:text-slate-400" />
-                                                                                                                <span className="text-xs text-slate-600 dark:text-slate-300 truncate max-w-[150px]">
-                                                                                                                    {fileName}
-                                                                                                                </span>
-                                                                                                            </div>
-                                                                                                        ))}
-                                                                                                        {Object.keys(message.subSources).length > 2 && (
-                                                                                                            <div className="text-xs text-slate-500 dark:text-slate-400">
-                                                                                                                +{Object.keys(message.subSources).length - 2} more
-                                                                                                            </div>
-                                                                                                        )}
-                                                                                                    </div>
+                                                                                            <div
+                                                                                                className="w-full animate-slide-down" // Added animation class
+                                                                                                style={{
+                                                                                                    animation: 'slideDown 0.3s ease-out forwards'
+                                                                                                }}
+                                                                                            >
+                                                                                                <div className="text-xs text-gray-600 dark:text-gray-300">
+                                                                                                    {step}
                                                                                                 </div>
-                                                                                            )}
 
-                                                                                            {/* Show sources for second step (index 1) */}
-                                                                                            {index === 1 && message.sources && (
-                                                                                                <ScrollArea className="w-full whitespace-nowrap w-[400px]">
-                                                                                                    <div className="flex space-x-2 p-2">
-                                                                                                        {message.sources.map((source, idx) => (
-                                                                                                            <div
-                                                                                                                key={idx}
-                                                                                                                className="inline-flex flex-col justify-between min-h-[80px] w-[200px] px-3 py-2 rounded-md bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 cursor-pointer"
-                                                                                                                onClick={() => handleSourceCardClick(source.id)}
-                                                                                                            >
-                                                                                                                <div className="text-xs text-slate-700 dark:text-slate-200 line-clamp-2">
-                                                                                                                    {source.chunkTitle}
-                                                                                                                </div>
-                                                                                                                <div className="flex items-center gap-2 mt-2">
-                                                                                                                    <FileText className="h-3 w-3 text-slate-400 dark:text-slate-500" />
-                                                                                                                    <span className="text-xs text-slate-400 dark:text-slate-500 truncate">
-                                                                                                                        {getFileName(source.id.split('/').pop() || '')}
+                                                                                                {/* Show subSources for first step (index 0) */}
+                                                                                                {index === 0 && message.subSources && (
+                                                                                                    <div className="w-full overflow-hidden">
+                                                                                                        <div className="flex ite`ms-center space-x-2 p-2">
+                                                                                                            {Object.entries(message.subSources).slice(0, 2).map(([fileName, fileKey]) => (
+                                                                                                                <div
+                                                                                                                    key={fileKey}
+                                                                                                                    className="inline-flex shrink-0 items-center gap-2 px-3 py-1 rounded-md bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 cursor-pointer"
+                                                                                                                    onClick={() => handleSourceCardClick(fileKey as string)}
+                                                                                                                >
+                                                                                                                    <FileText className="h-3 w-3 text-slate-500 dark:text-slate-400" />
+                                                                                                                    <span className="text-xs text-slate-600 dark:text-slate-300 truncate max-w-[150px]">
+                                                                                                                        {fileName}
                                                                                                                     </span>
                                                                                                                 </div>
-                                                                                                            </div>
-                                                                                                        ))}
+                                                                                                            ))}
+                                                                                                            {Object.keys(message.subSources).length > 2 && (
+                                                                                                                <div className="text-xs text-slate-500 dark:text-slate-400">
+                                                                                                                    +{Object.keys(message.subSources).length - 2} more
+                                                                                                                </div>
+                                                                                                            )}
+                                                                                                        </div>
                                                                                                     </div>
-                                                                                                    <ScrollBar orientation="horizontal" />
-                                                                                                </ScrollArea>
-                                                                                            )}
-                                                                                        </div>
+                                                                                                )}
+                                                                                            </div>
+
+                                                                                                {/* Show sources for second step (index 1) */}
+                                                                                                {index === 1 && message.sources && (
+                                                                                                    <ScrollArea className="w-full whitespace-nowrap w-[400px]">
+                                                                                                        <div className="flex space-x-2 p-2">
+                                                                                                            {message.sources.map((source, idx) => (
+                                                                                                                <div
+                                                                                                                    key={idx}
+                                                                                                                    className="inline-flex flex-col justify-between min-h-[80px] w-[200px] px-3 py-2 rounded-md bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 cursor-pointer"
+                                                                                                                    onClick={() => handleSourceCardClick(source.id)}
+                                                                                                                >
+                                                                                                                    <div className="text-xs text-slate-700 dark:text-slate-200 line-clamp-2">
+                                                                                                                        {source.chunkTitle}
+                                                                                                                    </div>
+                                                                                                                    <div className="flex items-center gap-2 mt-2">
+                                                                                                                        <FileText className="h-3 w-3 text-slate-400 dark:text-slate-500" />
+                                                                                                                        <span className="text-xs text-slate-400 dark:text-slate-500 truncate">
+                                                                                                                            {getFileName(source.id.split('/').pop() || '')}
+                                                                                                                        </span>
+                                                                                                                    </div>
+                                                                                                                </div>
+                                                                                                            ))}
+                                                                                                        </div>
+                                                                                                        <ScrollBar orientation="horizontal" />
+                                                                                                    </ScrollArea>
+                                                                                                )}
+                                                                                            </div>
                                                                                     ))}
-                                                                                </div>
-                                                                            ) : (
-                                                                                <div className="text-xs text-gray-500">No sourcing steps available</div>
+                                                                                        </div>
+                                                                                    ) : (
+                                                                                    <div className="text-xs text-gray-500">No sourcing steps available</div>
                                                                             )}
-                                                                        </AccordionContent>
+                                                                                </AccordionContent>
                                                                     </AccordionItem>
                                                                 </Accordion>
                                                             )}

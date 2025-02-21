@@ -58,11 +58,12 @@ interface FileNode {
   createByEmail: string;
   createByName: string;
   lastModified: string;
-  tags: string[];
+  tags: DocumentTags | null;
   summary: string;
   status: string;
   s3Url?: string;
 }
+
 const dummy: FileNode = {
   parentId: "dummy",
   name: "Loading...",
@@ -74,7 +75,7 @@ const dummy: FileNode = {
   createByEmail: "loading@example.com",
   createByName: "Loading...",
   lastModified: new Date().toISOString(),
-  tags: [],
+  tags: null,
   summary: "Loading...",
   status: "PENDING"
 };
@@ -103,6 +104,22 @@ interface ResizableHeaderProps {
 
 interface FileSystemProps {
   onFileSelect: (file: FileNode) => void;
+}
+
+interface DateInfo {
+  date: string;
+  type: string;
+  description: string;
+}
+
+interface DocumentTags {
+  document_type: string;
+  relevant_project: string;
+  involved_parties: string[];
+  key_topics: string[];
+  dates: DateInfo[];
+  deal_phase: string;
+  confidentiality: string;
 }
 
 
@@ -462,7 +479,7 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
         createByEmail: '',
         createByName: item.uploadedBy,
         lastModified: item.lastModified,
-        tags: item.tags ? JSON.parse(item.tags) : [],
+        tags: item.tags ? JSON.parse(item.tags) as DocumentTags : null,
         summary: item.documentSummary ? item.documentSummary : "",
         status: item.batchStatus,
         parentId: item.parentFolderId,
@@ -545,7 +562,7 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
       uploadedBy: "",
       isFolder: true,
       status: 'GRAY',
-      tags: [],
+      tags: null,
       summary: '',
       parentId: '',
       createByEmail: '',
@@ -1274,7 +1291,7 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
           createByEmail: '',
           createByName: `${(userInfo?.payload?.given_name as string) || ''} ${(userInfo?.payload?.family_name as string) || ''} `.trim(),
           lastModified: new Date().toISOString(),
-          tags: [],
+          tags: null,
           summary: '',
           status: 'PENDING'
         };

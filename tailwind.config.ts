@@ -86,6 +86,16 @@ const config = {
 				  opacity: '0' 
 				}
 			  },
+			  'slide-down': {
+				'0%': { 
+				  transform: 'translateY(-20px)',
+				  opacity: '0'
+				},
+				'100%': { 
+				  transform: 'translateY(0)',
+				  opacity: '1'
+				}
+			  },
 			  'progress-slide-out': {
 				'0%': { 
 				  transform: 'translateY(0)',
@@ -172,7 +182,9 @@ const config = {
   			'border-beam': 'border-beam calc(var(--duration)*1s) infinite linear',
             'fade-in': 'fadeIn 0.3s ease both',
 			'progress-slide': 'progress-slide 0.3s ease-out forwards',
-			'slide-up': 'slide-up 0.3s ease-out forwards'
+			'slide-up': 'slide-up 0.3s ease-out forwards',
+			'slide-down': 'slide-down 0.3s ease-out forwards',
+
 
 
       

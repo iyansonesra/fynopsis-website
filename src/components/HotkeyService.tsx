@@ -11,10 +11,26 @@ interface FileNode {
   createByEmail: string;
   createByName: string;
   lastModified: string;
-  tags: string[];
+  tags: DocumentTags | null;
   summary: string;
   status: string;
   s3Url?: string;
+}
+
+interface DateInfo {
+  date: string;
+  type: string;
+  description: string;
+}
+
+interface DocumentTags {
+  document_type: string;
+  relevant_project: string;
+  involved_parties: string[];
+  key_topics: string[];
+  dates: DateInfo[];
+  deal_phase: string;
+  confidentiality: string;
 }
 
 interface Files {
