@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { ArrowLeft, ArrowUp, BadgeInfo, FileText, Footprints, Plus, PlusCircle, Search, MessageSquare, ReceiptText, SearchIcon } from 'lucide-react';
+import { ArrowLeft, ArrowUp, BadgeInfo, FileText, Footprints, Plus, PlusCircle, Search, MessageSquare, ReceiptText, SearchIcon, Database, User, Tags, AlignLeft } from 'lucide-react';
 import { Input, Skeleton } from '@mui/material';
 import { Button } from './ui/button';
 import { post, get } from 'aws-amplify/api';
@@ -32,6 +32,7 @@ import { AIInputWithSearch } from './ui/ai-input-with-search';
 import { useS3Store } from './fileService';
 import { useFileStore } from './HotkeyService';
 import { ChatHistoryPanel } from './ChatHistoryPanel';
+import { TagDisplay } from './TagsHover';
 
 // import { w3cwebsocket as W3CWebSocket } from "websocket";
 // import { Signer } from '@aws-amplify/core';
@@ -101,9 +102,26 @@ interface FileSelectProps {
     createByEmail: string;
     createByName: string;
     lastModified: string;
-    tags: string[];
+    tags: DocumentTags | null;
     summary: string;
     status: string;
+}
+
+
+interface DateInfo {
+    date: string;
+    type: string;
+    description: string;
+}
+
+interface DocumentTags {
+    document_type: string;
+    relevant_project: string;
+    involved_parties: string[];
+    key_topics: string[];
+    dates: DateInfo[];
+    deal_phase: string;
+    confidentiality: string;
 }
 
 const getIdToken = async () => {
@@ -208,7 +226,7 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
                     createByEmail: '',
                     createByName: '',
                     lastModified: '',
-                    tags: [],
+                    tags: null,
                     summary: '',
                     status: ''
                 });
@@ -301,7 +319,7 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
                 createByEmail: '',
                 createByName: '',
                 lastModified: '',
-                tags: [],
+                tags: null,
                 summary: '',
                 status: ''
             });
@@ -943,7 +961,7 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
                             key={index}
                             className="p-2 inline-block cursor-pointer hover:bg-gray-50 transition-colors dark:bg-darkbg border select-none"
                             onClick={() => handleSourceCardClick(value)}
-                            
+
                         >
                             <CardContent className="p-2">
                                 <div className="flex items-center gap-2">
@@ -1164,39 +1182,39 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
                                                                                                 )}
                                                                                             </div>
 
-                                                                                                {/* Show sources for second step (index 1) */}
-                                                                                                {index === 1 && message.sources && (
-                                                                                                    <ScrollArea className="w-full whitespace-nowrap w-[400px]">
-                                                                                                        <div className="flex space-x-2 p-2">
-                                                                                                            {message.sources.map((source, idx) => (
-                                                                                                                <div
-                                                                                                                    key={idx}
-                                                                                                                    className="inline-flex flex-col justify-between min-h-[80px] w-[200px] px-3 py-2 rounded-md bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 cursor-pointer"
-                                                                                                                    onClick={() => handleSourceCardClick(source.id)}
-                                                                                                                    onDoubleClick={() => null}
-                                                                                                                >
-                                                                                                                    <div className="text-xs text-slate-700 dark:text-slate-200 line-clamp-2">
-                                                                                                                        {source.chunkTitle}
-                                                                                                                    </div>
-                                                                                                                    <div className="flex items-center gap-2 mt-2">
-                                                                                                                        <FileText className="h-3 w-3 text-slate-400 dark:text-slate-500" />
-                                                                                                                        <span className="text-xs text-slate-400 dark:text-slate-500 truncate">
-                                                                                                                            {getFileName(source.id.split('/').pop() || '')}
-                                                                                                                        </span>
-                                                                                                                    </div>
+                                                                                            {/* Show sources for second step (index 1) */}
+                                                                                            {index === 1 && message.sources && (
+                                                                                                <ScrollArea className="w-full whitespace-nowrap w-[400px]">
+                                                                                                    <div className="flex space-x-2 p-2">
+                                                                                                        {message.sources.map((source, idx) => (
+                                                                                                            <div
+                                                                                                                key={idx}
+                                                                                                                className="inline-flex flex-col justify-between min-h-[80px] w-[200px] px-3 py-2 rounded-md bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 cursor-pointer"
+                                                                                                                onClick={() => handleSourceCardClick(source.id)}
+                                                                                                                onDoubleClick={() => null}
+                                                                                                            >
+                                                                                                                <div className="text-xs text-slate-700 dark:text-slate-200 line-clamp-2">
+                                                                                                                    {source.chunkTitle}
                                                                                                                 </div>
-                                                                                                            ))}
-                                                                                                        </div>
-                                                                                                        <ScrollBar orientation="horizontal" />
-                                                                                                    </ScrollArea>
-                                                                                                )}
-                                                                                            </div>
-                                                                                    ))}
+                                                                                                                <div className="flex items-center gap-2 mt-2">
+                                                                                                                    <FileText className="h-3 w-3 text-slate-400 dark:text-slate-500" />
+                                                                                                                    <span className="text-xs text-slate-400 dark:text-slate-500 truncate">
+                                                                                                                        {getFileName(source.id.split('/').pop() || '')}
+                                                                                                                    </span>
+                                                                                                                </div>
+                                                                                                            </div>
+                                                                                                        ))}
+                                                                                                    </div>
+                                                                                                    <ScrollBar orientation="horizontal" />
+                                                                                                </ScrollArea>
+                                                                                            )}
                                                                                         </div>
-                                                                                    ) : (
-                                                                                    <div className="text-xs text-gray-500">No sourcing steps available</div>
+                                                                                    ))}
+                                                                                </div>
+                                                                            ) : (
+                                                                                <div className="text-xs text-gray-500">No sourcing steps available</div>
                                                                             )}
-                                                                                </AccordionContent>
+                                                                        </AccordionContent>
                                                                     </AccordionItem>
                                                                 </Accordion>
                                                             )}
@@ -1345,7 +1363,11 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
         <>
             <ScrollArea>
                 <div className="flex justify-between items-center mb-2 mt-2 dark:bg-darkbg px-4 pt-2 max-w-full">
-                    <h2 className="text-base font-semibold dark:text-white">File Details</h2>
+                    <div className="flex items-center gap-2">
+                        <BadgeInfo className="h-4 w-4 text-gray-500 dark:text-gray-400" />
+                        <h2 className="text-base font-semibold dark:text-white">File Details</h2>
+
+                    </div>
                     <Button
                         variant="ghost"
                         onClick={() => setShowDetailsView(false)}
@@ -1355,22 +1377,88 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
                     </Button>
                 </div>
                 {selectedFile && (
-                    <div className="text-sm dark:text-white px-4 max-w-full">
+                    <div className="px-4 py-2 space-y-4">
+                        {/* File Type */}
+                        <div className="flex flex-row gap-2 items-center">
+                            <h4 className="text-sm font-medium flex flex-row items-center gap-2 dark:text-white">
+                                <FileText className="h-4 w-4" />
+                                File Type
+                            </h4>
+                            <span className="px-2 py-1 text-xs rounded-md bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300">
+                                {selectedFile.type || 'Unknown'}
+                            </span>
+                        </div>
 
-                        <p><strong>Type:</strong> {selectedFile.type}</p>
-                        <p><strong>Size:</strong> {selectedFile.size}</p>
-                        <p><strong>Uploaded By:</strong> {selectedFile.uploadedBy}</p>
-                        <p><strong>Date:</strong> {new Date(selectedFile.lastModified).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
-                        <p><strong>Detailed Summary:</strong> {selectedFile.summary ? decodeUnicodeEscapes(selectedFile.summary?.slice(1, -1)) : 'No summary available'}</p>
+                        {/* Size */}
+                        <div className="flex flex-row gap-2 items-center">
+                            <h4 className="text-sm font-medium flex items-center gap-2 dark:text-white">
+                                <Database className="h-4 w-4" />
+                                Size
+                            </h4>
+                            <span className="px-2 py-1 text-xs rounded-md bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300">
+                                {selectedFile.size || 'Unknown'}
+                            </span>
+                        </div>
+
+                        {/* Upload Information */}
+                        <div>
+                            <h4 className="text-sm font-medium flex items-center gap-2 mb-2 dark:text-white">
+                                <User className="h-4 w-4" />
+                                Upload Information
+                            </h4>
+                            <div className="space-y-2">
+                                <div className="flex items-center gap-2">
+                                    <span className="text-xs text-gray-500 dark:text-gray-400 min-w-[80px]">
+                                        Uploaded By:
+                                    </span>
+                                    <span className="text-xs text-gray-700 dark:text-gray-300">
+                                        {selectedFile.uploadedBy || 'Unknown'}
+                                    </span>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <span className="text-xs text-gray-500 dark:text-gray-400 min-w-[80px]">
+                                        Upload Date:
+                                    </span>
+                                    <span className="text-xs text-gray-700 dark:text-gray-300">
+                                        {new Date(selectedFile.lastModified).toLocaleDateString('en-US', {
+                                            year: 'numeric',
+                                            month: 'long',
+                                            day: 'numeric'
+                                        })}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Tags */}
+                        {selectedFile.tags && (
+                            <div>
+                                <h4 className="text-sm font-medium flex items-center gap-2 mb-2 dark:text-white">
+                                    <Tags className="h-4 w-4" />
+                                    Document Tags
+                                </h4>
+                                <TagDisplay tags={selectedFile.tags} />
+                            </div>
+                        )}
+
+                        {/* Summary */}
+                        <div>
+                            <h4 className="text-sm font-medium flex items-center gap-2 mb-2 dark:text-white">
+                                <AlignLeft className="h-4 w-4" />
+                                Summary
+                            </h4>
+                            <div className="px-3 py-2 text-xs text-gray-600 dark:text-gray-300 bg-gray-50 dark:bg-gray-800/50 rounded-md">
+                                {selectedFile.summary ?
+                                    decodeUnicodeEscapes(selectedFile.summary?.slice(1, -1)) :
+                                    'No summary available'
+                                }
+                            </div>
+                        </div>
                     </div>
-
-
                 )}
             </ScrollArea>
-
         </>
     );
-
     return (
         <ScrollArea className="h-full ">
             <div className="flex flex-col gap-2 overflow-auto h-screen">

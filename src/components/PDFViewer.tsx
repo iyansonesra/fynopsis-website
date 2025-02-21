@@ -27,6 +27,7 @@ interface PDFViewerProps {
   containerId?: string;
   maxRetries?: number;
   checkInterval?: number;
+  tabId: string;
 }
 
 const getFileType = (url: string): string => {
