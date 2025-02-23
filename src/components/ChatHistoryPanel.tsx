@@ -11,6 +11,7 @@ interface ChatHistory {
   threadId: string;
   created: string;
   lastUpdated: string;
+  initialQuery: string;
 }
 
 interface ChatMessage {
@@ -38,23 +39,25 @@ export const ChatHistoryPanel: React.FC<ChatHistoryPanelProps> = ({
   const fetchChatHistories = async () => {
     try {
       setIsLoading(true);
-      const response = await get({
+      const chatResponse = await get({
         apiName: 'S3_API',
         path: `/chat/${bucketId}/chat-history`,
         options: { withCredentials: true }
-      }).response;
-      
-      console.log("response", response);
-      const data = (await response.body.json() as unknown) as { chats: ChatHistory[] };
-      console.log("data", data);
-      if (data == null) {
+      });
+      const { body } = await chatResponse.response;
+      const responseText = await body.text();
+      const { chats } = JSON.parse(responseText);
+  
+      if (!chats) {
         throw new Error('Failed to load chat history');
-    }
-      setChatHistories(data.chats);
+      }
+      
+  
+      setChatHistories(chats);
       setError(null);
-    } catch (err) {
+    } catch (error) {
       setError('Failed to load chat history');
-      console.error('Error fetching chat histories:', err);
+      console.error('Error fetching chat histories:', error);
     } finally {
       setIsLoading(false);
     }
@@ -63,27 +66,44 @@ export const ChatHistoryPanel: React.FC<ChatHistoryPanelProps> = ({
   const fetchChatThread = async (threadId: string) => {
     try {
       setSelectedThreadId(threadId);
-      const response = await post({
+      const chatResponse = await post({
         apiName: 'S3_API',
         path: `/chat/${bucketId}/chat-thread`,
         options: {
           body: { threadId },
           withCredentials: true
         }
-      }).response;
-      console.log("response", response);
-      const data = (await response.body.json() as unknown) as { messages: ChatMessage[] };
-      console.log("data", data);
-      if (data == null) {
-        throw new Error('Failed to load chat thread');
+      });
+      const { body } = await chatResponse.response;
+      const responseText = await body.text();
+      const parsedResponse = JSON.parse(responseText);
+  
+      // Extract messages from the history array
+      const messages = parsedResponse.history
+        .filter((msg: { role: string; }) => msg.role === 'HumanMessage' || msg.role === 'AIMessage')
+        .map((msg: { content: any; role: string; }) => ({
+          content: msg.content,
+          role: msg.role === 'HumanMessage' ? 'user' : 'assistant',
+          timestamp: new Date().toISOString() // You might want to add actual timestamps
+        }));
+  
+      if (!messages || !Array.isArray(messages)) {
+        throw new Error('Invalid response format: messages array is missing');
       }
+
+      console.log("messages", messages);
+  
       if (onThreadSelect) {
-        onThreadSelect(data.messages);
+        onThreadSelect(messages);
       }
       setError(null);
-    } catch (err) {
+    } catch (error) {
       setError('Failed to load chat thread');
-      console.error('Error fetching chat thread:', err);
+      console.error('Error fetching chat thread:', error);
+      setSelectedThreadId(null);
+      if (onThreadSelect) {
+        onThreadSelect([]);
+      }
     }
   };
 
@@ -143,7 +163,7 @@ export const ChatHistoryPanel: React.FC<ChatHistoryPanelProps> = ({
               <div className="flex items-center gap-2">
                 <MessageSquare className="h-4 w-4 text-gray-500" />
                 <span className="text-sm font-medium dark:text-white">
-                  Chat Session
+                {chat.initialQuery}
                 </span>
               </div>
               <div className="mt-2 flex items-center gap-2 text-xs text-gray-500">

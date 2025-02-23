@@ -179,6 +179,7 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
     const [progressText, setProgressText] = useState('');
     const [endThinkFound, setEndThinkFound] = useState(false);
     const [isClickProcessing, setIsClickProcessing] = useState(false);
+    const [isThinking, setIsThinking] = useState(false);
 
 
 
@@ -381,9 +382,9 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
             <div className="relative h-6 overflow-hidden w-full flex items-center justify-start">
                 <div
                     key={text}
-                    className="w-full animate-slide-up flex justify-start "
+                    className="w-full  flex justify-start "
                 >
-                    {text === "Source Analysis Complete" ? (
+                    {text === "Thinking complete" ? (
                         <span className="text-xs">
                             {text}
                         </span>
@@ -443,6 +444,15 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
             const ws = new WebSocket(websocketUrl);
 
             let result = '';
+
+            const extractSourceKeys = (sources: Record<string, any>) => {
+                return Object.keys(sources).filter(key =>
+                    // Filter out non-source properties like 'thread_id' and 'type'
+                    key !== 'thread_id' &&
+                    key !== 'type' &&
+                    !key.startsWith('[[')
+                );
+            };
 
             return new Promise((resolve, reject) => {
                 ws.onopen = () => {
@@ -507,6 +517,7 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
                         }
                         if (data.type === 'status') {
                             if (data.sources) {
+                                setIsThinking(true);
                                 setMessages(prev => {
                                     const newMessages = [...prev];
                                     const lastMessage = newMessages.length > 0 ? newMessages[newMessages.length - 1] : null;
@@ -518,45 +529,33 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
                                         lastMessage.sourcingSteps.push(data.message);
                                         lastMessage.progressText = "Generating sources...";
 
-                                        if (Array.isArray(data.sources)) {
+                                        if (data.sources) {
                                             lastMessage.subSources = {};
-                                            data.sources.forEach((source: { fileKey: string; }) => {
-                                                if (source.fileKey) {
-                                                    const id = source.fileKey.split('/').pop();
-                                                    const fileName = id ? getFileName(id) : undefined;
-                                                    if (fileName) {
-                                                        if (!lastMessage.subSources) {
-                                                            lastMessage.subSources = {};
-                                                        }
-                                                        lastMessage.subSources[fileName] = source.fileKey;
-
-                                                    }
+                                            // Extract source keys directly from data.sources
+                                            const keys = Object.keys(data.sources).filter(key => key !== '[[Prototype]]');
+                                            console.log("keys:", keys);
+                                            keys.forEach(key => {
+                                                const id = key.split('/').pop();
+                                                const fileName = id ? getFileName(id.substring(0, id.length - 2)) : undefined;
+                                                if (fileName && lastMessage?.subSources) {
+                                                    lastMessage.subSources[fileName] = key;
                                                 }
                                             });
-                                        }
-                                    }
-                                    return newMessages;
-                                });
-                            } else if (data.final_sources) {
-                                setMessages(prev => {
-                                    const newMessages = [...prev];
-                                    const lastMessage = newMessages.length > 0 ? newMessages[newMessages.length - 1] : null;
-
-                                    if (lastMessage?.type === 'answer') {
-                                        // Initialize sourcingSteps array if it doesn't exist
-                                        lastMessage.sourcingSteps = lastMessage.sourcingSteps || [];
-                                        // Add new step to the array
-                                        lastMessage.sourcingSteps.push(data.message);
-                                        lastMessage.progressText = "Finalizing sources...";
-
-                                        // Convert final_sources to Source objects
-                                        if (Array.isArray(data.final_sources)) {
-                                            lastMessage.sources = data.final_sources.map((source: any) => ({
-                                                id: source.fileKey,
-                                                pageNumber: source.pageNumber || 1,
-                                                chunkTitle: source.chunkTitle || '',
-                                                chunkText: source.chunkText || ''
-                                            }));
+                                            // Object.keys(data.sources).forEach(sourceKey => {
+                                            //     // Filter out non-source keys
+                                            //     if (sourceKey !== 'thread_id' && 
+                                            //         sourceKey !== 'type' && 
+                                            //         !sourceKey.startsWith('[[')) {
+                                            //         const id = sourceKey.split('/').pop();
+                                            //         const fileName = id ? getFileName(id) : undefined;
+                                            //         if (fileName) {
+                                            //             if (!lastMessage.subSources) {
+                                            //                 lastMessage.subSources = {};
+                                            //             }
+                                            //             lastMessage.subSources[fileName] = sourceKey;
+                                            //         }
+                                            //     }
+                                            // });
                                         }
                                     }
                                     return newMessages;
@@ -569,15 +568,21 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
                                 setCurrentThreadId(data.thread_id);
                             }
 
-                            setMessages(prev => {
-                                const newMessages = [...prev];
-                                const lastMessage = newMessages.length > 0 ? newMessages[newMessages.length - 1] : null;
+                            // if(isThinking) {
+                            //     setMessages(prev => {
+                            //         const newMessages = [...prev];
+                            //         const lastMessage = newMessages.length > 0 ? newMessages[newMessages.length - 1] : null;
 
-                                if (lastMessage?.type === 'answer') {
-                                    lastMessage.progressText = "Source Analysis Complete";
-                                }
-                                return newMessages;
-                            });
+                            //         if (lastMessage?.type === 'answer') {
+                            //             if(lastMessage.progressText === "Generating sources...") {
+                            //             lastMessage.progressText = "Source Analysis Complete";
+                            //             }
+                            //         }
+                            //         return newMessages;
+                            //     });
+                            //     setIsThinking(false);
+                            // }
+
 
 
                             setSearchResult(prevResult => ({
@@ -709,6 +714,7 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
     const bucketUuid = pathname?.split('/')[2] || '';
 
     const [accordionValue, setAccordionValue] = useState<string>("steps");
+    const [accordionValues, setAccordionValues] = useState<{ [key: string]: string }>({});
 
 
     const handleRetry = async () => {
@@ -788,52 +794,71 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
 
             // Process thinking section
             // Process thinking section
-            // Process thinking section
-            const thinkResult = extractContent(response, '<think>', '</think>');
-            if (thinkResult) {
-                console.log("thinkResult:", thinkResult);
-                const content = thinkResult.content;
 
-                // Parse numbered thoughts - look for complete steps
-                const completeStepPattern = /(\d+)\.\s*([^1-9]+)(?=\d+\.|$)/g;
+            const extractThinkingSteps = (content: string): ThoughtStep[] => {
+                const steps: ThoughtStep[] = [];
+                // Updated regex to capture the step number and all content until the next step or end
+                const stepPattern = /(\d+)\.\s*((?:[^1-9]|(?!\d+\.)[\d])+)(?=(?:\d+\.|$))/g;
                 let match;
-                const newThoughts: ThoughtStep[] = [];
 
-                while ((match = completeStepPattern.exec(content))) {
-                    const [_, number, thoughtContent] = match;
-                    // Only add if we have both number and content
-                    if (number && thoughtContent.trim()) {
-                        newThoughts.push({
+                while ((match = stepPattern.exec(content))) {
+                    const [_, number, stepContent] = match;
+                    if (number && stepContent.trim()) {
+                        // Process the step content to handle multi-line format
+                        const processedContent = stepContent
+                            .split('\n')
+                            .map(line => line.trim())
+                            .filter(line => line.length > 0)
+                            .join('\n');
+
+                        steps.push({
                             number: parseInt(number),
-                            content: thoughtContent.trim()
+                            content: processedContent.trim()
                         });
                     }
                 }
-
+                return steps;
+            };
+            // Process thinking section
+            const thinkResult = extractContent(response, '<think>', '</think>');
+            if (thinkResult) {
+                const content = thinkResult.content;
+                const newThoughts = extractThinkingSteps(content);
+                console.log("NEW THOUGHTS:", newThoughts);
                 if (newThoughts.length > 0) {
                     setStepsTaken(prev => {
+                        // Filter out duplicates and only add new steps
                         const currentNumbers = prev.map(step => step.number);
-                        // Only add completely new steps
                         const uniqueNewThoughts = newThoughts.filter(thought =>
                             !currentNumbers.includes(thought.number)
                         );
-                        return [...prev, ...uniqueNewThoughts];
+
+                        // Combine existing and new steps, sort by number
+                        const combinedSteps = [...prev, ...uniqueNewThoughts]
+                            .sort((a, b) => a.number - b.number);
+
+                        return combinedSteps;
                     });
 
-                    // Update message with complete steps only
+                    // Update message with all current steps
                     setMessages(prev => {
                         const newMessages = [...prev];
                         const lastMessage = newMessages.length > 0 ? newMessages[newMessages.length - 1] : null;
 
                         if (lastMessage?.type === 'answer') {
-                            // Replace steps with complete ones
+                            // Preserve the existing progressText
+                            const currentProgressText = lastMessage.progressText;
                             lastMessage.steps = [...newThoughts];
+                            // Only set progressText if it doesn't exist
+                            if (!currentProgressText) {
+                                lastMessage.progressText = "Thinking...";
+                            }
                         } else {
-                            // Create new answer message with complete steps
                             newMessages.push({
                                 type: 'answer',
                                 content: '',
-                                steps: [...newThoughts]
+                                steps: [...newThoughts],
+                                progressText: "Thinking..."
                             });
                         }
                         return newMessages;
@@ -842,11 +867,24 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
 
                 if (thinkResult.isComplete) {
                     setThoughts(thinkResult.content);
-                    response = thinkResult.remaining;
-                    setTimeout(() => {
-                        setAccordionValue(""); // This will collapse the accordion
-                    }, 500);
+                    // Update the progress text only when thinking is complete
+                    setMessages(prev => {
+                        const newMessages = [...prev];
+                        const lastMessage = newMessages.length > 0 ? newMessages[newMessages.length - 1] : null;
+                        if (lastMessage?.type === 'answer') {
+                            lastMessage.progressText = "Thinking complete";
+                        }
+                        return newMessages;
+                    });
+                    const currentMessageIndex = messages.length - 1;
 
+                    // Close the specific accordion after 500ms
+                    setTimeout(() => {
+                        setAccordionValues(prev => ({
+                            ...prev,
+                            [`accordion-${currentMessageIndex}`]: '' // Empty string closes the accordion
+                        }));
+                    }, 500);
                 }
             }
 
@@ -1032,21 +1070,75 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
         setThoughts('');
         setIsWebSocketActive(false);
         setIsLoading(false);
+        setAccordionValues({}); // Reset accordion values
         setIsAnswerLoading(false);
     };
 
     const handleChatHistorySelect = (messages: any[]) => {
-        // Convert chat history messages to the format expected by the chat interface
-        const formattedMessages = messages.map(msg => ({
-            type: msg.role === 'user' ? 'question' as const : 'answer' as const,
-            content: msg.content,
-            timestamp: msg.timestamp
-        }));
+        const formattedMessages = messages.map(msg => {
+            if (msg.role === 'user') {
+                return {
+                    type: 'question' as const,
+                    content: msg.content,
+                    timestamp: msg.timestamp
+                };
+            } else {
+                const content = msg.content;
+                let parsedMessage: Message = {
+                    type: 'answer' as const,
+                    content: '',
+                    steps: []
+                };
+
+
+                const thinkMatch = content.match(/<think>([\s\S]*?)<\/think>/);
+                if (thinkMatch) {
+                    const thinkContent = thinkMatch[1];
+                    let currentStepNumber = 0;
+                    let currentStep: ThoughtStep | null = null;
+                    const steps: ThoughtStep[] = [];
+                    const lines = thinkContent.split('\n');
+
+                    for (const line of lines) {
+                        const stepMatch = line.match(/^(\d+)\.\s+(.*)/);
+
+                        if (stepMatch) {
+                            const number = parseInt(stepMatch[1]);
+                            if (number === currentStepNumber + 1) {
+                                currentStepNumber = number;
+                                currentStep = {
+                                    number: number,
+                                    content: stepMatch[2]
+                                };
+                                steps.push(currentStep);
+                            }
+                        } else if (currentStep) {
+                            if (line.trim() || line === '') {
+                               
+                                currentStep.content += '\n' + line;
+                            }
+                        }
+                    }
+
+                    parsedMessage.steps = steps;
+                }
+
+                // Extract answer section with preserved formatting
+                const answerMatch = content.match(/<answer>([\s\S]*?)<\/answer>/);
+                if (answerMatch) {
+                    // Preserve all newlines and whitespace in the answer content
+                    parsedMessage.content = answerMatch[1]
+                        .replace(/\r\n/g, '\n')  // Normalize line endings
+                        .trim();  // Trim only the outer whitespace
+                }
+
+                return parsedMessage;
+            }
+        });
 
         setMessages(formattedMessages);
         setShowChatHistory(false);
     };
-
     const renderChatHistoryButton = () => (
         <Button
             variant="outline"
@@ -1064,7 +1156,7 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
         return (
             <div className="flex flex-col h-full overflow-none dark:bg-darkbg w-full max-w-full">
                 <div className="absolute top-4 right-4 z-50">
-                    
+
                     <div className="flex flex-row gap-3 items-center">
                         <History
                             className="h-5 w-5 text-gray-500 dark:text-gray-400 cursor-pointer hover:text-gray-700 dark:hover:text-gray-300"
@@ -1110,8 +1202,13 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
                                                 <Accordion
                                                     type="single"
                                                     collapsible
-                                                    value={accordionValue}
-                                                    onValueChange={setAccordionValue}
+                                                    value={accordionValues[`accordion-${index}`] || ''} // Use unique key for each accordion
+                                                    onValueChange={(value) => {
+                                                        setAccordionValues(prev => ({
+                                                            ...prev,
+                                                            [`accordion-${index}`]: value
+                                                        }));
+                                                    }}
                                                     className="w-full -space-y-px mb-2"
                                                 >
 
@@ -1133,6 +1230,13 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
                                                                 <Accordion
                                                                     type="single"
                                                                     collapsible
+                                                                    value={accordionValues[`progress-${index}`] || ''}
+                                                                    onValueChange={(value) => {
+                                                                        setAccordionValues(prev => ({
+                                                                            ...prev,
+                                                                            [`progress-${index}`]: value
+                                                                        }));
+                                                                    }}
                                                                     className="w-full mb-3"
                                                                 >
                                                                     <AccordionItem
@@ -1272,7 +1376,7 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
                                             {/* {renderAnswerHeader()} */}
 
                                             <ReactMarkdown className="text-wrap text-sm pr-4 dark:text-white leading-7">
-                                                {message.content}
+                                                {!(message.content.includes('<thi') || (message.content.includes('<err'))) ? message.content : ""}
                                             </ReactMarkdown>
                                         </div>
                                         {/* <div>
