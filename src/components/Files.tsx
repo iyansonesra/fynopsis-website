@@ -137,6 +137,7 @@ export default function Files({ setSelectedTab }: { setSelectedTab: React.Dispat
         console.log('Files component - File selected:', file);
         setSelectedFile(file);
         if(file.type && file.type.length > 0){
+            console.log("WE IN\n");
             setShowDetailsView(true);
         }
         
