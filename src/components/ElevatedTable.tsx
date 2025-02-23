@@ -51,7 +51,23 @@ interface Payment {
     isFolder?: boolean;
     uploadProcess: string;
     summary: string;
-    tags: string[];
+    tags: DocumentTags | null;
+}
+
+interface DateInfo {
+    date: string;
+    type: string;
+    description: string;
+}
+
+interface DocumentTags {
+    document_type: string;
+    relevant_project: string;
+    involved_parties: string[];
+    key_topics: string[];
+    dates: DateInfo[];
+    deal_phase: string;
+    confidentiality: string;
 }
 
 const data: Payment[] = []
@@ -72,7 +88,7 @@ const dummy: Payment = {
     isFolder: false,
     uploadProcess: '',
     summary: '',
-    tags: []
+    tags: null
 };
 
 
@@ -914,13 +930,7 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
             const isFolder = (node as any).type === 'folder';
             const metadata = (node as any).metadata;
 
-            const parsedTags = metadata.tags ? JSON.parse(metadata.tags) : [];
-            // console.log("metadata tags:", metadata.tags);
-            // console.log('parsed tags:', parsedTags);
-
-
-
-            // console.log('metadata:', metadata);
+            const parsedTags = metadata.tags ? JSON.parse(metadata.tags) : null;
 
             tableData.push({
                 id: metadata.Metadata?.id || crypto.randomUUID(),
@@ -935,7 +945,7 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
                 s3Url: metadata.url || '',
                 isFolder: isFolder,
                 uploadProcess: metadata?.pre_upload || 'FAILED',
-                tags: parsedTags || [],
+                tags: parsedTags,
                 summary: metadata.document_summary || '',
             });
 
@@ -1213,7 +1223,7 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
             s3Url: '',
             isFolder: true,
             uploadProcess: 'PENDING',
-            tags: [],
+            tags: null,
             summary: '',
         };
 
@@ -1506,23 +1516,23 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
         // if (data.newPath.startsWith(currentPath)) {
         //     // Add file to current view
         //     const fileName = data.newPath.split('/').pop() || '';
-        //     const newFile: Payment = {
-        //         id: crypto.randomUUID(),
-        //         name: fileName,
-        //         type: fileName.split('.').pop()?.toUpperCase() || 'Unknown',
-        //         status: "success",
-        //         size: '', // Will be updated when metadata is available
-        //         date: new Date().toISOString(),
-        //         uploadedBy: data.metadata?.uploadedBy || '',
-        //         s3Key: data.newPath,
-        //         s3Url: '',
-        //         isFolder: false,
-        //         uploadProcess: 'COMPLETE',
-        //         tags: data.metadata?.tags || [],
-        //         summary: data.metadata?.summary || ''
-        //     };
+        //     // const newFile: Payment = {
+        //     //     id: crypto.randomUUID(),
+        //     //     name: fileName,
+        //     //     type: fileName.split('.').pop()?.toUpperCase() || 'Unknown',
+        //     //     status: "success",
+        //     //     size: '', // Will be updated when metadata is available
+        //     //     date: new Date().toISOString(),
+        //     //     uploadedBy: data.metadata?.uploadedBy || '',
+        //     //     s3Key: data.newPath,
+        //     //     s3Url: '',
+        //     //     isFolder: false,
+        //     //     uploadProcess: 'COMPLETE',
+        //     //     tags: data.metadata?.tags || [],
+        //     //     summary: data.metadata?.summary || ''
+        //     // };
 
-        //     setTableData(prev => sortTableData([...prev, newFile]));
+        //     // setTableData(prev => sortTableData([...prev, newFile]));
         // }
         // console.log(data);
     };
