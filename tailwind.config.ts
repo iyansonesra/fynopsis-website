@@ -76,6 +76,36 @@ const config = {
   			sm: 'calc(var(--radius) - 4px)'
   		},
   		keyframes: {
+			'progress-slide': {
+				'0%': { 
+				  transform: 'translateY(100%)',
+				  opacity: '0'
+				},
+				'100%': { 
+				  transform: 'translateY(0)',
+				  opacity: '0' 
+				}
+			  },
+			  'slide-down': {
+				'0%': { 
+				  transform: 'translateY(-20px)',
+				  opacity: '0'
+				},
+				'100%': { 
+				  transform: 'translateY(0)',
+				  opacity: '1'
+				}
+			  },
+			  'progress-slide-out': {
+				'0%': { 
+				  transform: 'translateY(0)',
+				  opacity: '1'
+				},
+				'100%': { 
+				  transform: 'translateY(-100%)',
+				  opacity: '0'
+				}
+			  },
   			'accordion-down': {
   				from: {
   					height: '0'
@@ -130,6 +160,16 @@ const config = {
 			  '0%': { opacity: '0' },
 			  '100%': { opacity: '1' }
 			},
+			'slide-up': {
+				'0%': {
+					transform: 'translateY(100%)',
+					opacity: '0'
+				},
+				'100%': {
+					transform: 'translateY(0)',
+					opacity: '1'
+				}
+			}
     
   		},
   		animation: {
@@ -141,6 +181,12 @@ const config = {
   			'background-position-spin': 'background-position-spin 3000ms infinite alternate',
   			'border-beam': 'border-beam calc(var(--duration)*1s) infinite linear',
             'fade-in': 'fadeIn 0.3s ease both',
+			'progress-slide': 'progress-slide 0.3s ease-out forwards',
+			'slide-up': 'slide-up 0.3s ease-out forwards',
+			'slide-down': 'slide-down 0.3s ease-out forwards',
+
+
+
       
   		},
   		fontFamily: {

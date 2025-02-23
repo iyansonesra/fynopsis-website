@@ -2,8 +2,8 @@ import React, { useEffect, useRef, useState } from 'react';
 import styled from 'styled-components';
 
 const PDFContainer = styled.div`
-  width: 100%;
-  height: 94vh;
+  // width: 100%;
+  // height: 94vh;
   position: relative;
   
   iframe {
@@ -27,6 +27,7 @@ interface PDFViewerProps {
   containerId?: string;
   maxRetries?: number;
   checkInterval?: number;
+  tabId: string;
 }
 
 const getFileType = (url: string): string => {
@@ -100,7 +101,7 @@ const PDFViewer: React.FC<PDFViewerProps> = ({
           clearInterval(checkTimer);
         }
       } catch (error) {
-        console.log('Checking iframe content failed:', error);
+        // console.log('Checking iframe content failed:', error);
       }
     };
 
@@ -135,7 +136,7 @@ const PDFViewer: React.FC<PDFViewerProps> = ({
   
 
   return (
-    <PDFContainer>
+    <PDFContainer className='flex flex-grow  h-full w-inherit'>
       {(isLoading && isOfficeFile) && <div className="loader">Loading document...</div>}
       <iframe
         ref={iframeRef}

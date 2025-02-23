@@ -19,7 +19,7 @@ import { CSS } from '@dnd-kit/utilities';
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { useS3Store, TreeNode } from "./fileService";
 import { usePathname } from 'next/navigation';
-import { ChevronRight, Circle, FileIcon, FolderIcon, Plus, RefreshCcw, Upload } from 'lucide-react';
+import { ChevronDown, ChevronRight, Circle, FileIcon, FolderIcon, Plus, RefreshCcw, Upload } from 'lucide-react';
 import { Input } from './ui/input';
 import DragDropOverlay from './DragDrop';
 import { v4 as uuidv4 } from 'uuid';
@@ -31,7 +31,10 @@ import { Folder, File } from 'lucide-react';
 import { TagDisplay } from './TagsHover';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { HoverCard, HoverCardContent, HoverCardTrigger } from './ui/hover-card';
-
+import { wsManager, FileUpdateMessage } from '@/lib/websocketManager';
+import { FileOrganizerDialog, FileChange } from './FileOrganizerDialog';
+import SnackbarContent from '@mui/material';
+import Snackbar from '@mui/material/Snackbar';
 
 
 interface Payment {
@@ -43,6 +46,7 @@ interface Payment {
     date: string;
     uploadedBy: string;
     s3Key: string;
+    s3KeyArray: string[];
     s3Url: string;
     isFolder?: boolean;
     uploadProcess: string;
@@ -63,6 +67,7 @@ const dummy: Payment = {
     date: '',
     uploadedBy: '',
     s3Key: '',
+    s3KeyArray: [],
     s3Url: '',
     isFolder: false,
     uploadProcess: '',
@@ -132,11 +137,12 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
     const clearTree = useS3Store(state => state.clearTree);
     const setSearchQuery = useS3Store(state => state.setSearchQuery);
     const changeCurrentNode = useS3Store(state => state.changeCurrentNode);
+    const moveItem = useS3Store(state => state.moveItem);
     const navigateToPath = useS3Store(state => state.navigateToPath);
     const goBack = useS3Store(state => state.goBack);
     const [isLoading, setIsLoading] = React.useState(true);
     const pathname = usePathname();
-    const bucketUuid = pathname.split('/').pop() || '';
+    const bucketUuid = (pathname ?? '').split('/').pop() || '';
     const [currentPath, setCurrentPath] = React.useState<string[]>([`${bucketUuid}`]);
     const [searchValue, setSearchValue] = React.useState('');
     const [showUploadOverlay, setShowUploadOverlay] = React.useState(false);
@@ -152,10 +158,19 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
     const [cutNode, setCutNode] = useState<TreeNode | null>(null);
     const [cutPayment, setCutPayment] = useState<Payment | null>(null);
     const dropZoneRef = useRef<HTMLTableSectionElement>(null);
+    const emailRef = useRef<string | null>(null);
     const [searchScope, setSearchScope] = useState('current');
+    const [showFileOrganizer, setShowFileOrganizer] = useState(false);
 
 
+    const [snackbarOpen, setSnackbarOpen] = useState(false);
+    const [snackbarMessage, setSnackbarMessage] = useState('');
+    const handleSnackbarClose = () => setSnackbarOpen(false);
 
+    const s3ArrayToString = (s3Array: string[], isFolder: boolean): string => {
+        return s3Array.join('/') + (isFolder ? '/' : '');
+
+    }
 
     const [columnWidths, setColumnWidths] = useState<{ [key in 'name' | 'owner' | 'lastModified' | 'fileSize' | 'tags' | 'actions' | 'status']: string }>({
         status: '3%',
@@ -245,6 +260,7 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
         type: 'folder',
         metadata: {},
         s3Key: '/',
+        s3KeyArray: ['/'],
         children: {},
         size: 1,
         LastModified: '0'
@@ -258,7 +274,7 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
         return (
             <nav className="flex items-center text-base">
                 {pathNodes.map((node, index) => (
-                    <div key={node.s3Key} className="flex items-center">
+                    <div key={s3ArrayToString(node.s3KeyArray ?? [], node.type === 'folder')} className="flex items-center">
                         <button
                             onClick={() => onNavigate(node)}
                             className={`hover:text-blue-500 transition-colors ${index === pathNodes.length - 1
@@ -278,14 +294,16 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
     };
 
     const handleBreadcrumbClick = (node: TreeNode) => {
-        if (node.s3Key === '/') {
+        console.log('Breadcrumb clicked:', node);
+        if (node.s3KeyArray && node.s3KeyArray[0] === '/') {
             // Handle click on Home node
             setPathNodes([HOME_NODE]);
+
             useS3Store.getState().currentNode = useS3Store.getState().tree.children[bucketUuid]; // You'll need to implement this to reset to root directory
             transformTreeToTableData(tree, []);
         } else {
             // Your existing breadcrumb click handler
-            const nodeIndex = pathNodes.findIndex(n => n.s3Key === node.s3Key);
+            const nodeIndex = pathNodes.findIndex(n => s3ArrayToString(n.s3KeyArray ?? [], n.type === 'folder') === s3ArrayToString(node.s3KeyArray ?? [], node.type === 'folder'));
             const newPathNodes = pathNodes.slice(0, nodeIndex + 1);
             setPathNodes(newPathNodes);
             useS3Store.getState().currentNode = newPathNodes[newPathNodes.length - 1];
@@ -302,7 +320,7 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
                     // Handle cut
                     const selectedItem = tableData.find(item => item.id === selectedItemId);
                     if (selectedItem) {
-                        setCutFileKey(selectedItem.s3Key);
+                        setCutFileKey(s3ArrayToString(selectedItem.s3KeyArray ?? [], selectedItem.type === 'folder'));
                         setCutFileId(selectedItem.id);
                         setCutFileName(selectedItem.name);
                         setCutNode(useS3Store.getState().currentNode);
@@ -334,7 +352,7 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
 
                     const currentNode = useS3Store.getState().currentNode;
 
-                    let destinationKey = currentNode.s3Key;
+                    let destinationKey = s3ArrayToString(currentNode.s3KeyArray ?? [], currentNode.type === 'folder');
 
                     // console.log('destination key:', destinationKey);
                     let destFullPath = ["empty"];
@@ -350,8 +368,8 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
                     // console.log('source key;', sourceKey, 'dest key', destinationKey);
                     // console.log('filename:', fileName);
 
-                    console.log("original s3 key", sourceKey);
-                    console.log("destination s3 key", destinationKey);
+                    // console.log("original s3 key", sourceKey);
+                    // console.log("destination s3 key", destinationKey);
 
 
 
@@ -375,9 +393,10 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
 
                         // if(cutPayment?.isFolder) newS3key += '/';
                         // console.log('new s3 key:', newS3key);
-                        console.log('filename is:', fileName);
+                        // console.log('filename is:', fileName);
                         if (oldNode) {
                             oldNode.s3Key = newS3key;
+                            oldNode.s3KeyArray = newS3key.split('/');
                             if (cutPayment?.isFolder)
                                 currentNode.children[fileName.slice(0, fileName.length - 1)] = oldNode;
                             else
@@ -387,6 +406,7 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
 
                         const newV: Payment = cutPayment as Payment;
                         newV.s3Key = newS3key;
+                        newV.s3KeyArray = newS3key.split('/');
 
                         setTableData(prevData => sortTableData([...prevData, newV]));
 
@@ -434,12 +454,12 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
 
         const handleClick = (e: React.MouseEvent) => {
             e.stopPropagation();
-            console.log("uploadprocess:", item.uploadProcess);
+            // console.log("uploadprocess:", item.uploadProcess);
             onSelect(item.id);
             // console.log("selected items s3Key:", item.s3Key);
         };
         const pathname = usePathname();
-        const bucketUuid = pathname.split('/').pop() || '';
+        const bucketUuid = pathname?.split('/').pop() || '';
 
         const {
             attributes,
@@ -455,30 +475,30 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
         });
 
         const handleDownload = async () => {
-            if (!item.isFolder && item.s3Key) {
-            try {
-                const downloadResponse = await get({
-                apiName: 'S3_API',
-                path: `/s3/${bucketUuid}/download-url`,
-                options: {
-                    withCredentials: true,
-                    queryParams: { path: item.s3Key }
-                }
-                });
-                const { body } = await downloadResponse.response;
-                const responseText = await body.text();
-                const { signedUrl } = JSON.parse(responseText);
+            if (!item.isFolder && item.s3KeyArray) {
+                try {
+                    const downloadResponse = await get({
+                        apiName: 'S3_API',
+                        path: `/s3/${bucketUuid}/download-url`,
+                        options: {
+                            withCredentials: true,
+                            queryParams: { path: s3ArrayToString(item.s3KeyArray, item.s3Key.endsWith('/')) }
+                        }
+                    });
+                    const { body } = await downloadResponse.response;
+                    const responseText = await body.text();
+                    const { signedUrl } = JSON.parse(responseText);
 
-                // Create temporary link and trigger download
-                const link = document.createElement('a');
-                link.href = signedUrl;
-                link.download = item.name; // Set filename
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
-            } catch (error) {
-                console.error('Error getting presigned URL:', error);
-            }
+                    // Create temporary link and trigger download
+                    const link = document.createElement('a');
+                    link.href = signedUrl;
+                    link.download = item.name; // Set filename
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                } catch (error) {
+                    console.error('Error getting presigned URL:', error);
+                }
             }
         }
 
@@ -491,7 +511,7 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
                         path: `/s3/${bucketUuid}/download-url`,
                         options: {
                             withCredentials: true,
-                            queryParams: { path: item.s3Key }
+                            queryParams: { path: s3ArrayToString(item.s3KeyArray, item.s3Key.endsWith('/')) }
                         }
                     });
                     const { body } = await downloadResponse.response;
@@ -731,6 +751,7 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
                 }}>
                     {item.isFolder ? '' : <TagDisplay tags={item.tags} />}
                 </td>
+
                 <td style={{
                     width: columnWidths.status,
                     padding: '8px 0px',
@@ -748,7 +769,7 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
                         {!item.isFolder ? (
                             <HoverCard openDelay={100} closeDelay={0}>
                                 <HoverCardTrigger asChild>
-                                    <div className="p-1.5 cursor-default"> 
+                                    <div className="p-1.5 cursor-default">
                                         {item.uploadProcess === "PENDING" ? (
                                             <Circle className="max-h-2 max-w-2 text-yellow-600" fill="currentColor" />
                                         ) : item.uploadProcess === "BATCHED" ? (
@@ -766,10 +787,10 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
                                         ) : null}
                                     </div>
                                 </HoverCardTrigger>
-                                <HoverCardContent 
-                                    className="w-auto p-2 text-center" 
-                                    side="bottom" 
-                                    align="center" 
+                                <HoverCardContent
+                                    className="w-auto p-2 text-center dark:bg-slate-800 dark:text-white dark:border-none"
+                                    side="bottom"
+                                    align="center"
                                     sideOffset={5}
                                 >
                                     <p className="text-xs">{item.uploadProcess.charAt(0).toUpperCase() + item.uploadProcess.slice(1).toLowerCase()}</p>
@@ -784,13 +805,13 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
                     whiteSpace: 'nowrap',
                     overflow: 'hidden',
                     textOverflow: 'ellipsis'
-                }} className = "select-none outline-none">
+                }} className="select-none outline-none">
                     <DropdownMenu>
                         <DropdownMenuTrigger>
                             <button>⋮</button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent>
-                        <DropdownMenuItem
+                            <DropdownMenuItem
                                 onClick={handleDownload}
                                 className="text-black"
                             >
@@ -826,8 +847,20 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
             const userInfo = await getCurrentUser();
             const session = await fetchAuthSession();
 
+            console.log("userinfo:", userInfo);
+            console.log("signin details:", userInfo.signInDetails);
+            // console.log("login id:", userInfo.signInDetails.loginId);
+
+            console.log("SET EMAIL TO:", userInfo.signInDetails?.loginId || '');
+            const email = userInfo.signInDetails?.loginId || '';
+            // setUserEmail(email);
+            emailRef.current = email;
+
+
+
+
             const idToken = session.tokens?.idToken;
-            // console.log('idToken:', idToken);
+            console.log('idToken:', idToken);
             setUserInfo(idToken);
 
             return userInfo.username;
@@ -837,16 +870,11 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
         }
     };
 
+
+
     React.useEffect(() => {
         getUserInfo().then(username => setCurrentUser(username));
     }, []);
-
-
-    // const handleSearch = (event: React.ChangeEvent<HTMLInputElement>) => {
-    //     const value = event.target.value;
-    //     setSearchValue(value);
-    //     setSearchQuery(value);
-    // };
 
     const handleUploadClick = () => {
         setShowUploadOverlay(true);
@@ -903,6 +931,7 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
                 date: (node as any).LastModified || new Date().toISOString(),
                 uploadedBy: metadata.uploadbyname || '',
                 s3Key: node.s3Key || name,
+                s3KeyArray: node.s3KeyArray || [],
                 s3Url: metadata.url || '',
                 isFolder: isFolder,
                 uploadProcess: metadata?.pre_upload || 'FAILED',
@@ -964,8 +993,9 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
             try {
                 const currentNode = useS3Store.getState().currentNode;
                 const s3Key = await uploadToS3(file);
-                const temps3Key = getCurrentPathString(currentNode) + file.name;
+                const temps3Key = (currentNode.s3KeyArray || []).join('/') + '/' + file.name;
                 // console.log("s3key of file in s3", temps3Key);
+                console.log("temps3koey:", temps3Key);
                 const newFile = {
                     id: uuidv4(),
                     type: file.name.split('.').pop()?.toUpperCase() || 'Unknown',
@@ -975,6 +1005,7 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
                     date: new Date().toISOString(),
                     uploadedBy: `${(userInfo?.payload?.given_name as string) || ''} ${(userInfo?.payload?.family_name as string) || ''} `.trim(),
                     s3Key: temps3Key,
+                    s3KeyArray: temps3Key.split('/'),
                     uploadProcess: 'PENDING',
                 };
 
@@ -1002,6 +1033,7 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
                     name: file.name,
                     type: 'file',
                     s3Key: temps3Key,
+                    s3KeyArray: temps3Key.split('/'),
                     size: file.size,
                     children: {},
                     LastModified: new Date().toISOString(),
@@ -1098,8 +1130,8 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
                 return key.replace(/^[^/]+\//, '');
             };
 
-            const sourceKey = cleanKey(activeItem.s3Key);
-            let destinationKey = cleanKey(`${overItem.s3Key}${activeItem.name}`);
+            const sourceKey = cleanKey(s3ArrayToString(activeItem.s3KeyArray, activeItem.s3Key.endsWith('/')));
+            let destinationKey = cleanKey(`${s3ArrayToString(overItem.s3KeyArray, overItem.s3Key.endsWith('/'))}${activeItem.name}`);
 
             if (activeItem.isFolder && !destinationKey.endsWith('/')) {
                 destinationKey += '/';
@@ -1110,8 +1142,8 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
             // console.log('activeItem:', activeItem);
             // console.log('overItem:', overItem);
 
-            console.log("original s3:", sourceKey);
-            console.log("new s3 location:", destinationKey);
+            // console.log("original s3:", sourceKey);
+            // console.log("new s3 location:", destinationKey);
 
             // Set items to pending state
             setTableData(prevData => prevData.map(item =>
@@ -1134,6 +1166,9 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
             const currentNode = useS3Store.getState().currentNode;
             const nodeBeingMoved = currentNode.children[activeItem.name];
             nodeBeingMoved.s3Key = `${bucketUuid}/${destinationKey}`;
+            const destFullPath = destinationKey.split('/').filter(part => part !== '');
+            destFullPath.unshift(bucketUuid);
+            nodeBeingMoved.s3KeyArray = destFullPath;
             currentNode.children[overItem.name].children[activeItem.name] = nodeBeingMoved;
             delete currentNode.children[activeItem.name];
 
@@ -1174,6 +1209,7 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
             date: new Date().toISOString(),
             uploadedBy: "",
             s3Key: `${currS3key}${newFolderName}/`,
+            s3KeyArray: [...(currentNode.s3KeyArray || []), newFolderName],
             s3Url: '',
             isFolder: true,
             uploadProcess: 'PENDING',
@@ -1242,6 +1278,7 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
                 date: childNode.LastModified || new Date().toISOString(),
                 uploadedBy: childNode.metadata?.uploadbyname || '',
                 s3Key: childNode.s3Key || name,
+                s3KeyArray: childNode.s3KeyArray || [],
                 s3Url: childNode.metadata?.url || '',
                 isFolder: childNode.type === 'folder',
                 uploadProcess: childNode.metadata?.pre_upload || 'COMPLETED',
@@ -1273,7 +1310,6 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
                     }, 500);
                 });
         }
-
     }
 
 
@@ -1293,6 +1329,7 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
                         date: childNode.LastModified || new Date().toISOString(),
                         uploadedBy: childNode.metadata?.uploadbyname || '',
                         s3Key: childNode.s3Key || name,
+                        s3KeyArray: childNode.s3KeyArray || [],
                         s3Url: childNode.metadata?.url || '',
                         isFolder: false,
                         uploadProcess: childNode.metadata?.pre_upload || 'COMPLETED',
@@ -1326,6 +1363,7 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
                     date: childNode.LastModified || new Date().toISOString(),
                     uploadedBy: childNode.metadata?.uploadbyname || '',
                     s3Key: childNode.s3Key || name,
+                    s3KeyArray: childNode.s3KeyArray || [],
                     s3Url: childNode.metadata?.url || '',
                     isFolder: false,
                     uploadProcess: childNode.metadata?.pre_upload || 'COMPLETED',
@@ -1338,8 +1376,171 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
         return matches;
     };
 
+    // Add WebSocket connection management
+    React.useEffect(() => {
+        // Connect to WebSocket when component mounts
+        console.log('Connecting to Weboscket');
+        wsManager.connect(bucketUuid);
 
+        // Add message handler
+        const handleFileUpdate = (message: FileUpdateMessage) => {
+            console.log('WebSocket update received:', message);
+            switch (message.type) {
+                case 'FILE_UPLOADED': // simple adding to the tree. check if place to insert is current not, then add to the table
+                    console.log('File uploaded:', message.data);
+                    handleFileUploaded(message.data);
+                    break;
+                case 'FILE_DELETED': // simple check in the tree if the node exists, then delete it. check if the s3key exists in current table, if so delete it
+                    console.log('File deleted:', message.data);
+                    handleFileDeleted(message.data);
+                    break;
+                case 'FILE_MOVED':
+                    console.log('File moved:', message.data);
+                    console.log("user email:", emailRef.current);
+                    console.log("changers email:", message.data.userEmail);
+                    const input = emailRef.current || '';
+                    moveItem(message.data.filePath, message.data.newPath, bucketUuid, input, message.data.userEmail).then(returnedNode => {
+                        let splitfilePath = message.data.filePath.split('/').filter(part => part !== '');
+                        splitfilePath.pop();
 
+                        let splitDestPath = message.data.newPath.split('/').filter(part => part !== '');
+                        splitDestPath.pop();
+
+                        let destFolder = splitDestPath.join('/');
+                        if (destFolder !== '') destFolder += '/';
+                        let sourceFolder = splitfilePath.join('/');
+                        if (sourceFolder !== '') sourceFolder += '/';
+
+                        console.log("source folder:", bucketUuid + '/' + sourceFolder);
+                        console.log("destination folder:", bucketUuid + '/' + destFolder);
+                        console.log("current node   :", useS3Store.getState().currentNode.s3Key);
+
+                        if ((bucketUuid + '/' + sourceFolder) === useS3Store.getState().currentNode.s3Key) {
+                            if (emailRef.current != message.data.userEmail) {
+                                console.log("SOURCED - DELETED")
+                                setSnackbarMessage("A file has been moved");
+                                setSnackbarOpen(true);
+                                setTableData(prevData => prevData.filter(item => item.s3Key !== bucketUuid + '/' + message.data.filePath));
+                            }
+                        } else if ((bucketUuid + '/' + destFolder) === useS3Store.getState().currentNode.s3Key) {
+                            if (emailRef.current != message.data.userEmail) {
+                                console.log("DESTED - ADDED");
+                                const splitting = message.data.newPath.split('/').filter(part => part !== '');
+                                const newFolderName = splitting.pop() || '';
+                                console.log("found metadata", returnedNode);
+                                setSnackbarMessage("A file has been moved");
+                                setSnackbarOpen(true);
+                                console.log("snackbar open");
+
+                                const parsedTags = returnedNode.metadata.tags ? JSON.parse(returnedNode.metadata.tags) : [];
+
+                                const newItem: Payment = {
+                                    id: uuidv4(),
+                                    type: returnedNode.s3Key?.endsWith('/') ? 'folder' : 'file',
+                                    name: newFolderName,
+                                    status: "success",
+                                    size: '',
+                                    date: new Date().toISOString(),
+                                    uploadedBy: "",
+                                    s3Key: returnedNode.s3Key || '',
+                                    s3KeyArray: returnedNode.s3KeyArray || [],
+                                    s3Url: '',
+                                    isFolder: returnedNode.s3Key?.endsWith('/'),
+                                    uploadProcess: 'COMPLETED',
+                                    tags: parsedTags || [],
+                                    summary: '',
+                                };
+
+                                setTableData(prevData => sortTableData([...prevData, newItem]));
+
+                            }
+                        }
+                    });
+
+                    handleFileMoved(message.data);
+                    break;
+                case 'FILE_UPDATED':
+                    console.log('File updated:', message.data);
+                    handleFileUpdated(message.data);
+                    break;
+            }
+        };
+
+        wsManager.addMessageHandler(handleFileUpdate);
+
+        // Cleanup on unmount
+        return () => {
+            wsManager.removeMessageHandler(handleFileUpdate);
+            wsManager.disconnect();
+        };
+    }, [bucketUuid]);
+
+    // Add handlers for different file operations
+    const handleFileUploaded = (data: FileUpdateMessage['data']) => {
+        // Only update if the file was uploaded to the current folder
+        // const currentPath = getCurrentPathString(useS3Store.getState().currentNode);
+        // if (data.filePath.startsWith(currentPath)) {
+        //     // Refresh the file listing
+        //     handleRefresh();
+        // }
+        // console.log(data);
+    };
+
+    const handleFileDeleted = (data: FileUpdateMessage['data']) => {
+        // Remove the file from the table if it exists
+        // setTableData(prev => prev.filter(item => item.s3Key !== data.filePath));
+        // console.log(data);
+    };
+
+    const handleFileMoved = (data: FileUpdateMessage['data']) => {
+        // Get current node path
+        // const currentPath = getCurrentPathString(useS3Store.getState().currentNode);
+
+        // // If file was moved from current folder
+        // if (data.filePath.startsWith(currentPath)) {
+        //     // Remove file from current view
+        //     setTableData(prev => prev.filter(item => item.s3Key !== data.filePath));
+        // }
+
+        // If file was moved to current folder
+        // if (data.newPath.startsWith(currentPath)) {
+        //     // Add file to current view
+        //     const fileName = data.newPath.split('/').pop() || '';
+        //     const newFile: Payment = {
+        //         id: crypto.randomUUID(),
+        //         name: fileName,
+        //         type: fileName.split('.').pop()?.toUpperCase() || 'Unknown',
+        //         status: "success",
+        //         size: '', // Will be updated when metadata is available
+        //         date: new Date().toISOString(),
+        //         uploadedBy: data.metadata?.uploadedBy || '',
+        //         s3Key: data.newPath,
+        //         s3Url: '',
+        //         isFolder: false,
+        //         uploadProcess: 'COMPLETE',
+        //         tags: data.metadata?.tags || [],
+        //         summary: data.metadata?.summary || ''
+        //     };
+
+        //     setTableData(prev => sortTableData([...prev, newFile]));
+        // }
+        // console.log(data);
+    };
+
+    const handleFileUpdated = (data: FileUpdateMessage['data']) => {
+        // Update the file's metadata in the table
+        setTableData(prev => prev.map(item =>
+            item.s3Key === data.filePath
+                ? { ...item, ...data.metadata }
+                : item
+        ));
+    };
+
+    const handleOrganize = (changes: FileChange[]) => {
+        // Handle the organization changes here
+        // This might involve refreshing the view or updating the tree
+        handleRefresh();
+    };
 
     return (
         <div className="select-none w-full dark:bg-darkbg pt-4 h-full flex flex-col outline-none" onClick={handleBackgroundClick}>
@@ -1411,29 +1612,51 @@ th {
                 
          
             `}</style>
+
+
+
             <div className="w-full px-[36px] flex">
                 <BreadcrumbNav
                     pathNodes={pathNodes}
                     onNavigate={handleBreadcrumbClick}
                 />
             </div>
-            <div className="flex justify-between items-center  py-4 h-[10%] px-[36px] mb-2">
+            <div className="flex justify-between items-center  py-4 h-[10%] px-[36px] mb-2 bg-green-100">
 
                 <div className="buttons flex flex-row gap-2">
-                    <button
-                        className="flex items-center gap-2 bg-blue-500 text-white px-4 py-1 rounded-full hover:bg-blue-700"
-                        onClick={handleUploadClick}>
-                        <Upload size={16} />
-                        <span className="text-sm">Upload</span>
-                    </button>
-                    <button
-                        onClick={() => setShowFolderModal(true)}
-                        className="flex items-center gap-2 bg-gray-200 text-gray-800 px-4 py-1 rounded-full hover:bg-slate-300 dark:bg-darkbg dark:text-white dark:border dark:border-slate-600 outline-none">
-                        <span className="text-sm">Create Folder</span>
-
-                        <Plus size={16} />
-                    </button>
-
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <button className="flex items-center gap-2 bg-transparent text-black border dark:border-slate-600 dark:text-gray-200 px-4 py-1 rounded-full hover:bg-blue-700 select-none outline-none">
+                                <span className = "text-sm">Manage Docs</span>
+                                <ChevronDown size={16} />
+                            </button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={handleUploadClick} className="flex items-center gap-2">
+                                <Upload size={16} />
+                                <span>Upload</span>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => setShowFolderModal(true)} className="flex items-center gap-2">
+                                <Plus size={16} />
+                                <span>Create Folder</span>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => setShowFileOrganizer(true)} className="flex items-center gap-2">
+                                <Folder size={16} />
+                                <span>Organize Documents</span>
+                            </DropdownMenuItem>
+                        </DropdownMenuContent>
+                    </DropdownMenu>
+                    {showFileOrganizer && (
+                        <FileOrganizerDialog
+                            bucketId={bucketUuid}
+                            onOrganize={(...args) => {
+                                setShowFileOrganizer(false);
+                                handleOrganize(...args);
+                            }}
+                            onClose={() => setShowFileOrganizer(false)}
+                            open={true}
+                        />
+                    )}
                     <button
                         onClick={handleRefresh}
                         className="flex items-center justify-center p-2 text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-white transition-colors"
@@ -1472,8 +1695,52 @@ th {
 
             </div>
 
-            <ScrollArea data-drop-zone className="w-full h-full ">
-                <div className="flex flex-grow ">
+            <ScrollArea data-drop-zone className=" relative w-full h-full  bg-green-100">
+                <div
+                    className="absolute bottom-4 right-4 z-50"
+                    style={{
+                        maxWidth: '90%',
+                        pointerEvents: 'none'
+                    }}
+                >
+                    <Snackbar
+                        open={snackbarOpen}
+                        onClose={handleSnackbarClose}
+                        message={
+                            <div className="flex items-center gap-2">
+                                <div className="flex items-center justify-center w-5 h-5 rounded-full border border-white">
+                                    <svg
+                                        width="12"
+                                        height="12"
+                                        viewBox="0 0 24 24"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        strokeWidth="3"
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                    >
+                                        <polyline points="20 6 9 17 4 12" />
+                                    </svg>
+                                </div>
+                                <span>{snackbarMessage}</span>
+                            </div>
+                        }
+                        autoHideDuration={3000}
+                        ContentProps={{
+                            style: {
+                                backgroundColor: 'var(--background)',
+                                color: 'var(--foreground)',
+                            },
+                            className: 'dark:bg-slate-800 dark:text-white bg-white text-black text-xs'
+                        }}
+                        style={{
+                            position: 'relative',
+                            transform: 'none',
+                            bottom: 0,
+                            left: 0
+                        }}
+                    />
+                </div><div className="flex flex-grow ">
 
                     <DndContext
                         sensors={sensors}
@@ -1528,8 +1795,6 @@ th {
                                     </tr>
                                 </thead>
                                 <tbody className="w-full">
-
-
                                     <SortableContext items={tableData} strategy={horizontalListSortingStrategy}>
                                         {isLoading ? (
                                             <>

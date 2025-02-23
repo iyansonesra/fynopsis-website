@@ -11,7 +11,8 @@ import {
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area";
-import logo from '../assets/fynopsis_noBG.png'
+import logo from './../assets/fynopsis_noBG.png'
+
 import { useState, useEffect, Key } from "react"
 // import StockSearch from "./StockSearch";
 import Settings from "./Settings";
@@ -53,6 +54,7 @@ type DataRoom = {
     permissionLevel: string;
     sharedBy?: string;
     addedAt: string;
+    users?: sharedUser[];
 };
 
 type InvitedRoom = {
@@ -62,6 +64,35 @@ type InvitedRoom = {
     sharedBy: string;
     sharedAt: string;
 };
+
+interface sharedUser {
+    email: string;
+    name: string;
+    role: string;
+}
+
+const SkeletonCard = () => (
+    <div className="w-full h-[160px] bg-gray-200 dark:bg-gray-800 rounded-lg animate-pulse">
+        <div className="p-4 space-y-3">
+            <div className="h-6 bg-gray-300 dark:bg-gray-700 rounded w-3/4"></div>
+            <div className="h-4 bg-gray-300 dark:bg-gray-700 rounded w-1/2"></div>
+            <div className="h-4 bg-gray-300 dark:bg-gray-700 rounded w-1/4"></div>
+        </div>
+    </div>
+);
+
+const SkeletonInvite = () => (
+    <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 mb-3 animate-pulse w-full">
+        <div className="space-y-2">
+            <div className="h-4 bg-gray-300 dark:bg-gray-700 rounded w-3/4"></div>
+            <div className="h-3 bg-gray-300 dark:bg-gray-700 rounded w-1/2"></div>
+            <div className="flex gap-2 mt-3">
+                <div className="h-6 w-6 bg-gray-300 dark:bg-gray-700 rounded-full"></div>
+                <div className="h-6 w-6 bg-gray-300 dark:bg-gray-700 rounded-full"></div>
+            </div>
+        </div>
+    </div>
+);
 
 export default function GeneralDashboard() {
     const [selectedTab, setSelectedTab] = useState("library");
@@ -75,6 +106,9 @@ export default function GeneralDashboard() {
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
     const [isLeaveDialogOpen, setIsLeaveDialogOpen] = useState(false);
     const [selectedDataroom, setSelectedDataroom] = useState<string | null>(null);
+    const [isLoading, setIsLoading] = useState(true);
+    const [isInvitesLoading, setIsInvitesLoading] = useState(true);
+    const [isCreating, setIsCreating] = useState(false);
 
     const tabs: Tab[] = [
         { icon: Library, label: 'Library' },
@@ -88,22 +122,24 @@ export default function GeneralDashboard() {
 
     const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
     const [newDataroomName, setNewDataroomName] = useState('');
+    const [familyName, setFamilyName] = useState('');
+    const [givenName, setGivenName] = useState('');
 
 
     const handleDataRoomClick = (id: string | null | undefined) => {
-        router.push(`/dataroom/${id}`);
+        router.push(`/dataroom/${id}/home`);
     };
 
     const handleAddDataroom = async () => {
+        if (isCreating) return;
         if (dataRooms.length >= 8) {
-            // You can show an error message or handle the limit however you prefer
             alert("You have reached the maximum limit of 8 datarooms");
             return;
         }
 
         const newDataroomNameExist = newDataroomName.trim();
         if (newDataroomNameExist) {
-
+            setIsCreating(true);
             try {
                 const restOperation = post({
                     apiName: 'S3_API',
@@ -141,11 +177,14 @@ export default function GeneralDashboard() {
                 setNewDataroomName('');
             } catch (error) {
                 console.error('Error creating data room:', error);
+            } finally {
+                setIsCreating(false);
             }
         }
     };
 
     const handleFetchDataRooms = async () => {
+        setIsLoading(true);
         try {
             const { credentials } = await fetchAuthSession();
             if (!credentials) {
@@ -182,7 +221,8 @@ export default function GeneralDashboard() {
                     minute: '2-digit'
                 }),
                 permissionLevel: room.permissionLevel,
-                sharedBy: room.sharedBy
+                sharedBy: room.sharedBy,
+                users: room.users
             }));
 
             // Update invited rooms from the response
@@ -199,6 +239,9 @@ export default function GeneralDashboard() {
 
         } catch (error) {
             console.error('Error fetching data rooms:', error);
+        } finally {
+            setIsLoading(false);
+            setIsInvitesLoading(false);
         }
     };
 
@@ -237,6 +280,8 @@ export default function GeneralDashboard() {
         try {
             const attributes = await fetchUserAttributes();
             setUserAttributes(attributes);
+            setFamilyName(attributes.family_name || '');
+            setGivenName(attributes.given_name || '');
         } catch (error) {
         }
     }
@@ -365,7 +410,11 @@ export default function GeneralDashboard() {
                     </div>
 
                     <Popover>
-                        <PopoverTrigger className='bg-sky-600 h-10 aspect-square rounded-full'></PopoverTrigger>
+                        <PopoverTrigger className='bg-sky-600 h-10 aspect-square rounded-full text-gray-200'>
+                            {userAttributes?.given_name && userAttributes?.family_name
+                                ? (givenName[0] + familyName[0]).toUpperCase()
+                                : 'U'}
+                        </PopoverTrigger>
                         <PopoverContent className="w-auto p-0">
                             <button
                                 onClick={signOut}
@@ -389,27 +438,43 @@ export default function GeneralDashboard() {
                 </div>
 
 
-                <div className="flex-1 overflow-hidden flex flex-col dark:bg-darkbg">
+                <div className="flex-1 overflow-hidden flex flex-row dark:bg-darkbg">
                     <div className="flex-[2] px-4 py-4">
                         <div className="flex justify-between items-center mb-4">
-                            <h1 className="font-semibold text-xl dark:text-white">Your Datarooms</h1>
+                            <div className="flex flex-row gap-2 items-center ml-2">
+                                <Library className="w-6 h-6 dark:text-gray-200" />
+                                <h1 className="font-semibold text-xl dark:text-white">Your Datarooms</h1>
+                            </div>
+
                             <Button onClick={() => setIsAddDialogOpen(true)}>
                                 <Plus className="mr-2 h-4 w-4" /> Add Dataroom
                             </Button>
                         </div>
-                        <div className="flex flex-wrap gap-4">
-                            {dataRooms.map((room) => (
-                                <div key={room.id} className="w-[400px]">
-                                    <DataRoomCard
-                                        id={room.id || ''}
-                                        title={room.title}
-                                        lastOpened={room.lastOpened}
-                                        permissionLevel={room.permissionLevel}
-                                        sharedBy={room.sharedBy || ''}
-                                        onClick={() => handleDataRoomClick(room.id)}
-                                    />
+                        <div className="flex flex-col">
+                            {isLoading ? (
+                                <div className="flex flex-col gap-2">
+                                    <SkeletonCard />
+                                    <SkeletonCard />
+                                    <SkeletonCard />
                                 </div>
-                            ))}
+                            ) : (
+                                dataRooms.map((room) => (
+                                    <div key={room.id} className="w-full">
+                                        <DataRoomCard
+                                            id={room.id || ''}
+                                            title={room.title}
+                                            users={room.users || []}
+                                            lastOpened={room.lastOpened}
+                                            permissionLevel={room.permissionLevel}
+                                            sharedBy={room.sharedBy || ''}
+                                            onClick={() => handleDataRoomClick(room.id)}
+                                            onDelete={() => {
+                                                setDataRooms(dataRooms.filter(r => r.id !== room.id));
+                                            }}
+                                        />
+                                    </div>
+                                ))
+                            )}
                         </div>
 
 
@@ -424,21 +489,101 @@ export default function GeneralDashboard() {
                                     onChange={(e) => setNewDataroomName(e.target.value)}
                                     placeholder="Enter dataroom name"
                                     className="outline-none select-none dark:bg-darkbg dark:text-white"
+                                    disabled={isCreating}
                                 />
                                 <DialogFooter>
-                                    <Button variant="outline" onClick={() => setIsAddDialogOpen(false)} className="dark:bg-darkbg dark:border dark:hover:text-slate-400">Cancel</Button>
-                                    <Button onClick={handleAddDataroom} className="dark:hover:text-slate-400">Create</Button>
+                                    <Button
+                                        variant="outline"
+                                        onClick={() => setIsAddDialogOpen(false)}
+                                        className="dark:bg-darkbg dark:border dark:hover:text-slate-400"
+                                        disabled={isCreating}
+                                    >
+                                        Cancel
+                                    </Button>
+                                    <Button
+                                        onClick={handleAddDataroom}
+                                        className="dark:hover:text-slate-400"
+                                        disabled={isCreating}
+                                    >
+                                        {isCreating ? (
+                                            <span className="flex items-center">
+                                                <svg className="animate-spin -ml-1 mr-2 h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                                </svg>
+                                                Creating...
+                                            </span>
+                                        ) : (
+                                            'Create'
+                                        )}
+                                    </Button>
                                 </DialogFooter>
                             </DialogContent>
                         </Dialog>
                     </div>
-                    <div className="flex-1 px-4 py-4">
-                        <h1 className="font-semibold text-xl dark:text-white">Recent Activity</h1>
+
+                    <Separator orientation="vertical" className="h-full dark:text-gray-200" />
+                    <div className="flex-1 px-4 py-4 flex flex-col h-full">
+                        <div className="flex min-h-[50%] mb-4 flex-col">
+                            <h1 className="font-semibold text-xl mb-4 dark:text-white">Recent Activity</h1>
+                            <p className="text-sm text-gray-500 dark:text-white">No Recent Activity</p>
+
+                        </div>
+
+                        <div className="flex min-h-[50%]  mb-4 flex-col">
+
+                            <h2 className="font-semibold text-lg mb-4 dark:text-white">Pending Invites</h2>
+                            {isInvitesLoading ? (
+                                <>
+                                    <SkeletonInvite />
+                                    <SkeletonInvite />
+                                </>
+                            ) : invitedDatarooms.length > 0 ? (
+                                invitedDatarooms.map((room) => (
+                                    <div
+                                        key={room.bucketId}
+                                        className="bg-white  dark:bg-gray-800 rounded-lg shadow p-4 mb-3 border border-gray-100 dark:border-none"
+                                    >
+                                        <h3 className="font-medium text-sm dark:text-white">{room.bucketName}</h3>
+                                        <p className="text-xs text-gray-500 mt-1 dark:text-slate-300">
+                                            Shared by: {room.sharedBy}
+                                        </p>
+                                        <div className="flex gap-2 mt-3">
+                                            <button
+                                                onClick={() => handleAcceptInvite(room.bucketId)}
+                                                className="flex items-center justify-center p-1 rounded-full bg-green-100 text-green-600 hover:bg-green-200 transition-colors"
+                                            >
+                                                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                                                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                                                </svg>
+                                            </button>
+                                            <button
+                                                onClick={() => handleDeclineInvite(room.bucketId)}
+                                                className="flex items-center justify-center p-1 rounded-full bg-red-100 text-red-600 hover:bg-red-200 transition-colors"
+                                            >
+                                                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                                                    <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+                                                </svg>
+                                            </button>
+                                        </div>
+                                    </div>
+                                ))
+                            ) : (
+                                <p className="text-sm text-gray-500 dark:text-white">No pending invites</p>
+                            )}
+
+                        </div>
+
 
                     </div>
-                    <div className="w-64 p-4 overflow-y-auto">
+                    {/* <div className="w-64 p-4 overflow-y-auto">
                         <h2 className="font-semibold text-lg mb-4 dark:text-white">Pending Invites</h2>
-                        {invitedDatarooms.length > 0 ? (
+                        {isInvitesLoading ? (
+                            <>
+                                <SkeletonInvite />
+                                <SkeletonInvite />
+                            </>
+                        ) : invitedDatarooms.length > 0 ? (
                             invitedDatarooms.map((room) => (
                                 <div
                                     key={room.bucketId}
@@ -471,7 +616,7 @@ export default function GeneralDashboard() {
                         ) : (
                             <p className="text-sm text-gray-500 dark:text-white">No pending invites</p>
                         )}
-                    </div>
+                    </div> */}
                 </div>
             </div > :
             <div className="grid h-screen place-items-center dark:bg-darkbg">

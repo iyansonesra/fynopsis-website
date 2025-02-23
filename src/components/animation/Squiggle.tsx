@@ -3,8 +3,8 @@ import React, { useEffect, useRef, useMemo } from 'react';
 const FlowingLine = ({ 
   color = "#5271FF", 
   className = "",
-  height = 450,
-  amplitude = 15 // Controls how much the line curves up and down
+  height = 400,
+  amplitude = 500 // Controls how much the line curves up and down
 }) => {
   const containerRef = useRef(null);
 
@@ -36,11 +36,11 @@ const FlowingLine = ({
   return (
     <div 
       ref={containerRef}
-      className={`w-full h-32 overflow-visible opacity-0 ${className}`}
+      className={`w-full h-96 overflow-visible opacity-0 ${className}`}
     >
       <svg
         className="w-full h-full"
-        viewBox={`0 0 1000 ${height}`}
+        viewBox={`0 -${amplitude * 2} 1000 ${height + amplitude * 4}`}
         preserveAspectRatio="none"
         fill="none"
         xmlns="http://www.w3.org/2000/svg"
