@@ -270,6 +270,7 @@ export const FileOrganizerDialog: React.FC<FileOrganizerDialogProps> = ({ bucket
 
       if (activeSchema) {
         setSchemaStatus(activeSchema.status);
+        console.log("activeSchema", activeSchema.status);
 
         if (activeSchema.status === 'FAILED') {
           setSchemaError(activeSchema.error);
@@ -324,9 +325,17 @@ export const FileOrganizerDialog: React.FC<FileOrganizerDialogProps> = ({ bucket
         
         // Find the completed schema and undo backup schema
         const completedSchema = data.schemas.find(schema => schema.status === 'COMPLETED');
+        const activeSchema = data.schemas.find(schema => 
+          ['IN_PROGRESS', 'COMPLETED', 'FAILED'].includes(schema.status)
+        );
         const undoBackupSchema = data.schemas.find(schema => schema.status === 'UNDO_BACKUP');
 
-        console.log('completedSchema', completedSchema);
+        // console.log('completedSchema', completedSchema);
+        // console.log('activeSchema', activeSchema);
+        if (activeSchema) {
+          setSchemaStatus(activeSchema.status);
+          console.log("activeSchema", activeSchema.status);
+        }
         
         if (completedSchema?.schemaId) {
           setSchema(completedSchema.schema || '');
