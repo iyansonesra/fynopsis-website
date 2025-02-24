@@ -48,6 +48,27 @@ import { ContainerScroll } from './ui/container-scroll-animation';
 // import { w3cwebsocket as W3CWebSocket } from "websocket";
 // import { Signer } from '@aws-amplify/core';
 
+const throttle = <T extends (...args: any[]) => void>(func: T, limit: number): T => {
+    let inThrottle: boolean = false;
+    let lastArgs: Parameters<T> | null = null;
+
+    return ((...args: Parameters<T>) => {
+        if (!inThrottle) {
+            func(...args);
+            inThrottle = true;
+            setTimeout(() => {
+                inThrottle = false;
+                if (lastArgs) {
+                    func(...lastArgs);
+                    lastArgs = null;
+                }
+            }, limit);
+        } else {
+            lastArgs = args;
+        }
+    }) as T;
+};
+
 interface ThoughtStep {
     number: number;
     content: string;
@@ -724,8 +745,15 @@ const DetailSection: React.FC<DetailsSectionProps> = ({
 
 
 
-    const [messages, setMessages] = useState<Message[]>([]);
-
+    const [messages, setMessagesState] = useState<Message[]>([]);
+    
+    // Create throttled setMessages
+    const setMessages = useCallback(
+        throttle((newMessages: Message[] | ((prev: Message[]) => Message[])) => {
+            setMessagesState(newMessages);
+        }, 50),
+        []
+    );
     const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
         if (e.key === 'Enter') {
             setIsLoading(true);
