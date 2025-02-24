@@ -49,6 +49,12 @@ interface FileStore {
   setSearchableFiles: (files: Files[]) => void;
   getFileName: (id: string) => string;
   getFile: (id: string) => Files | null;
+  showDetailsView: boolean;
+  setShowDetailsView: (show: boolean) => void;
+  selectedFile: FileNode | null;
+  setSelectedFile: (file: FileNode | null) => void;
+  
+  
 }
 
 // Then update the store implementation
@@ -65,5 +71,9 @@ export const useFileStore = create<FileStore>((set, get) => ({
   getFile: (id) => {
     const file = get().searchableFiles.find(file => file.fileId === id);
     return file || null;
-  }
+  },
+  showDetailsView: false,
+  setShowDetailsView: (show) => set({ showDetailsView: show }),
+  selectedFile: null,
+  setSelectedFile: (file) => set({ selectedFile: file }),
 }));

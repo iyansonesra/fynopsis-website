@@ -101,9 +101,7 @@ interface Message {
 }
 
 interface DetailsSectionProps {
-    showDetailsView: boolean;
-    setShowDetailsView: (show: boolean) => void;
-    selectedFile: any;
+
     onFileSelect: (file: FileSelectProps) => void; // Changed type
     tableData: TableFile[]; // Add this prop
 }
@@ -179,16 +177,19 @@ const getUserPrefix = async () => {
 
 
 
-const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
-    setShowDetailsView,
-    selectedFile,
+const DetailSection: React.FC<DetailsSectionProps> = ({ 
     onFileSelect,
     tableData }) => {
     // Add debug logging for props
     useEffect(() => {
         // console.log('DetailSection - Received table data:', tableData);
     }, [tableData]);
-
+    const { 
+        showDetailsView, 
+        setShowDetailsView, 
+        selectedFile, 
+        setSelectedFile 
+    } = useFileStore();
     const [isLoading, setIsLoading] = useState(false);
     const [searchResults, setSearchResults] = useState('');
     const [error, setError] = useState<string | null>(null);
@@ -223,6 +224,9 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
       }, []);
 
 
+      useEffect(() => {
+        console.log("DetailSection mounted with showDetailsView:", showDetailsView);
+    }, []);
     // Add selector for S3Store
     const s3Objects = useS3Store(state => state.objects);
 
@@ -1699,7 +1703,7 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
     const renderFileDetails = () => (
         <>
             <ScrollArea>
-                {/* <h1>HELLOOO</h1> */}
+
                 <div className="flex justify-between items-center mb-2 mt-2 dark:bg-darkbg px-4 pt-2 max-w-full">
                     <div className="flex items-center gap-2">
                         <BadgeInfo className="h-4 w-4 text-gray-500 dark:text-gray-400" />
