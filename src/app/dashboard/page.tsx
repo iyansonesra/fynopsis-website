@@ -13,7 +13,12 @@ export default function Dashboard() {
     if (authStatus === 'unauthenticated') {
       router.replace('/signin');
     }
-  }, [authStatus, router]);
+    
+    if (!user && authStatus === 'authenticated') {
+      window.location.reload();
+      return;
+    }
+  }, [authStatus, router, user]);
 
   if (authStatus === 'configuring') {
     return (

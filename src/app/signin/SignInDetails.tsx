@@ -5,6 +5,9 @@ import { useRouter } from 'next/navigation';
 import { BackgroundBeams } from "../../components/ui/background-beams";
 import { CircularProgress } from "@mui/material";
 import { useAuthenticator } from '@aws-amplify/ui-react';
+import { GridBackground } from "@/components/ui/spotlight-new";
+import { Spotlight } from "@/components/ui/spotlight-new";
+import logo from "../assets/fynopsis_noBG.png";
 
 type AuthMode = 'signIn' | 'signUp' | 'verify' | 'forgotPassword' | 'resetPassword';
 
@@ -31,13 +34,8 @@ export default function SignInDetails() {
 
   useEffect(() => {
     if (authStatus === "configuring") return;
-
-    if (!user && authStatus === 'authenticated') {
-      window.location.reload();
-      return;
-    }
     
-    if (user && authStatus === 'authenticated') {
+    if (authStatus === 'authenticated') {
       router.replace('/dashboard');
     }
   }, [authStatus, router, user]);
@@ -70,21 +68,23 @@ export default function SignInDetails() {
     try {
       setLoading(true);
       setError("");
+      const password = form.elements.password.value;
+      const username = form.elements.email.value;
 
       const { isSignUpComplete } = await signUp({
-        username: form.elements.email.value,
-        password: form.elements.password.value,
+        username,
+        password,
         options: {
           userAttributes: {
             given_name: form.elements.firstName?.value || '',
             family_name: form.elements.lastName?.value || '',
-            email: form.elements.email.value,
+            email: username,
           },
         },
       });
 
       if (!isSignUpComplete) {
-        setEmail(form.elements.email.value);
+        setEmail(username);
         setMode('verify');
       }
     } catch (err) {
@@ -105,7 +105,16 @@ export default function SignInDetails() {
       });
 
       if (isSignUpComplete) {
-        setMode('signIn');
+        // Auto sign-in after successful verification
+        try {
+          await signIn({
+            username: email,
+            password: form.elements.password?.value || '',
+          });
+        } catch (signInErr) {
+          setMode('signIn');
+          setError("✓ Verification successful. Please sign in with your credentials.");
+        }
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "An error occurred during verification");
@@ -135,13 +144,24 @@ export default function SignInDetails() {
     try {
       setLoading(true);
       setError("");
+      const newPassword = form.elements.password.value;
 
       await confirmResetPassword({
         username: email,
         confirmationCode: form.elements.code?.value || '',
-        newPassword: form.elements.password.value,
+        newPassword,
       });
-      setMode('signIn');
+
+      // Auto sign-in after successful password reset
+      try {
+        await signIn({
+          username: email,
+          password: newPassword,
+        });
+      } catch (signInErr) {
+        setMode('signIn');
+        setError("Password reset successful. Please sign in with your new password.");
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "An error occurred while resetting password");
     } finally {
@@ -174,8 +194,8 @@ export default function SignInDetails() {
 
   return (
     <div className="relative min-h-screen bg-black overflow-hidden">
-      <GridBackground />
-      <Spotlight />
+        <GridBackground />
+        <Spotlight />
       <div className="flex min-h-screen items-center justify-center px-4 overflow-hidden">
         <div className="w-full max-w-md space-y-8 rounded-xl bg-gradient-to-br from-gray-900 to-black p-8 backdrop-blur-xl shadow-xl min-h-[500px]">
           <div>
@@ -296,8 +316,8 @@ export default function SignInDetails() {
             </div>
 
             {error && (
-              <div className="rounded-md bg-red-900/50 p-4 border border-red-700">
-                <div className="text-sm text-red-400">{error}</div>
+              <div className={`rounded-md ${error.startsWith('✓') ? 'bg-green-900/50 border border-green-700' : 'bg-red-900/50 border border-red-700'} p-4`}>
+                <div className={`text-sm ${error.startsWith('✓') ? 'text-green-400' : 'text-red-400'}`}>{error}</div>
               </div>
             )}
 
