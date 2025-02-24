@@ -1,46 +1,31 @@
 "use client";
-import { Amplify } from "aws-amplify";
-import { Authenticator as AmplifyAuthenticator } from "@aws-amplify/ui-react";
-import { use, useEffect } from 'react';
-import { Sign } from "crypto";
+import { useEffect } from 'react';
 import { useAuthenticator } from '@aws-amplify/ui-react';
 import { useRouter } from 'next/navigation';
-import Home from "../pages/DataroomPage";
 import GeneralDashboard from "../pages/Dashboard";
-import { get } from 'aws-amplify/api';
-import { put } from 'aws-amplify/api';
-import { fetchAuthSession } from 'aws-amplify/auth';
-import { Button } from "@/components/ui/button";
 import { CircularProgress } from "@mui/material";
 
 export default function Dashboard() {
-  const { user } = useAuthenticator();
-  
-
+  const { user, authStatus } = useAuthenticator((context) => [context.user, context.authStatus]);
   const router = useRouter();
+
   useEffect(() => {
-    const timeout = setTimeout(() => {
-      if (!user) {
-        router.push("/signin");
-      }
-    }, 2000);
+    if (authStatus === 'unauthenticated') {
+      router.replace('/signin');
+    }
+  }, [authStatus, router]);
 
-    return () => clearTimeout(timeout);
-  }, [user, router]);
-
-  // getRecentSearches();
-  // handleFetchAccess();
-
-  return (
-    user ? 
-    <AmplifyAuthenticator.Provider>
-      <GeneralDashboard/>
-    </AmplifyAuthenticator.Provider> : 
-    <AmplifyAuthenticator.Provider>
+  if (authStatus === 'configuring') {
+    return (
       <div className="grid h-screen place-items-center">
         <CircularProgress value={0.5} />
       </div>
-    </AmplifyAuthenticator.Provider>
-    
-  );
+    );
+  }
+
+  if (!user || authStatus !== 'authenticated') {
+    return null;
+  }
+
+  return <GeneralDashboard />;
 }
