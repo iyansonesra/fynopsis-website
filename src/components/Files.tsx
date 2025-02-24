@@ -26,6 +26,7 @@ import SpreadsheetApp from './ExcelViewer';
 import { DataTable } from './newFilesTable';
 import {FileSystem} from './UltraTable';
 import { useTabStore } from './tabStore';
+import { useFileStore } from './HotkeyService';
 
 interface Tab {
     id: string;
@@ -85,8 +86,12 @@ export default function Files({ setSelectedTab }: { setSelectedTab: React.Dispat
     const [showFolderTree, setShowFolderTree] = useState(true);
     const [folderViewWidth, setFolderViewWidth] = useState('54%');
 
-    const [showDetailsView, setShowDetailsView] = useState(false);
-    const [selectedFile, setSelectedFile] = useState<FileSelectProps | null>(null);
+    const { 
+        showDetailsView, 
+        setShowDetailsView, 
+        selectedFile, 
+        setSelectedFile 
+    } = useFileStore();
     const { tabs, activeTabId, setActiveTabId, addTab } = useTabStore();
 
     const [tableData, setTableData] = useState<TableFile[]>([]);
@@ -131,6 +136,10 @@ export default function Files({ setSelectedTab }: { setSelectedTab: React.Dispat
     //         }
     //     });
     // };
+
+    useEffect(() => {
+        console.log("showDetailsView changed:", showDetailsView);
+    }, [showDetailsView]);
     
        // Remove the addOrActivateTab function and update handleFileSelect:
        function handleFileSelect(file: FileSelectProps) {
@@ -139,6 +148,9 @@ export default function Files({ setSelectedTab }: { setSelectedTab: React.Dispat
         if(file.type && file.type.length > 0){
             console.log("WE IN\n");
             setShowDetailsView(true);
+
+            console.log("showDetailsView after set:", true);
+
         }
         
         if (file.id && file.name && file.s3Url) {
@@ -195,9 +207,7 @@ export default function Files({ setSelectedTab }: { setSelectedTab: React.Dispat
                 <ResizableHandle withHandle className='dark:bg-slate-900'/>
                 <ResizablePanel defaultSize={25} minSize={20} collapsible={true} collapsedSize={0}>
                     <DetailSection
-                        showDetailsView={showDetailsView}
-                        setShowDetailsView={setShowDetailsView}
-                        selectedFile={selectedFile}
+                        key={`detail-section-${showDetailsView}`}
                         onFileSelect={handleFileSelect}
                         tableData={tableData} // Add this prop
                     />
