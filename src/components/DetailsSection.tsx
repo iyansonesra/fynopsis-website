@@ -148,7 +148,7 @@ interface MessageState {
     isProcessing: boolean;
     progressText: string;
     currentSteps: ThoughtStep[];
-  }
+}
 
 const getIdToken = async () => {
     try {
@@ -177,18 +177,18 @@ const getUserPrefix = async () => {
 
 
 
-const DetailSection: React.FC<DetailsSectionProps> = ({ 
+const DetailSection: React.FC<DetailsSectionProps> = ({
     onFileSelect,
     tableData }) => {
     // Add debug logging for props
     useEffect(() => {
         // console.log('DetailSection - Received table data:', tableData);
     }, [tableData]);
-    const { 
-        showDetailsView, 
-        setShowDetailsView, 
-        selectedFile, 
-        setSelectedFile 
+    const {
+        showDetailsView,
+        setShowDetailsView,
+        selectedFile,
+        setSelectedFile
     } = useFileStore();
     const [isLoading, setIsLoading] = useState(false);
     const [searchResults, setSearchResults] = useState('');
@@ -214,17 +214,17 @@ const DetailSection: React.FC<DetailsSectionProps> = ({
         isProcessing: false,
         progressText: '',
         currentSteps: []
-      });
+    });
 
-      const updateMessages = useCallback((updater: (prev: Message[]) => Message[]) => {
+    const updateMessages = useCallback((updater: (prev: Message[]) => Message[]) => {
         setMessageState(prev => ({
-          ...prev,
-          messages: updater(prev.messages)
+            ...prev,
+            messages: updater(prev.messages)
         }));
-      }, []);
+    }, []);
 
 
-      useEffect(() => {
+    useEffect(() => {
         console.log("DetailSection mounted with showDetailsView:", showDetailsView);
     }, []);
     // Add selector for S3Store
@@ -452,7 +452,7 @@ const DetailSection: React.FC<DetailsSectionProps> = ({
         try {
             setIsWebSocketActive(true);
             setIsLoading(true);
-            
+
             // Only add question message if it's not a retry (i.e., if the last message isn't already this question)
             const lastMessage = messages[messages.length - 1];
             if (!lastMessage || lastMessage.type !== 'question' || lastMessage.content !== searchTerm) {
@@ -822,7 +822,7 @@ const DetailSection: React.FC<DetailsSectionProps> = ({
             return `<circle data-number="${number}" data-filekey="${citation?.fileKey || ''}" />`;
         });
 
-        if(content.includes("<t")) transformedContent = "";
+        if (content.includes("<t")) transformedContent = "";
 
         return (
             <div className="whitespace-pre-wrap relative group">
@@ -873,8 +873,11 @@ const DetailSection: React.FC<DetailsSectionProps> = ({
     const handleRetry = async () => {
         setShowRetry(false);
         setIsLoading(true);
-        await queryAllDocuments(lastQuery, true, []); 
+        await queryAllDocuments(lastQuery, true, []);
     };
+
+
+
 
     useEffect(() => {
         if (searchResult && searchResult.response) {
@@ -885,74 +888,33 @@ const DetailSection: React.FC<DetailsSectionProps> = ({
                 setEndThinkFound(true);
 
             }
-            // Helper function to extract content between tags
-            const extractContent = (text: string, startTag: string, endTag: string) => {
-                const startIndex = text.indexOf(startTag);
-                const endIndex = text.indexOf(endTag);
-                if (startIndex === -1) return null;
 
-                // If we have start tag but no end tag, return all content after start tag
-                if (endIndex === -1) {
-                    return {
-                        content: text.substring(startIndex + startTag.length),
-                        remaining: '',
-                        isComplete: false
-                    };
-                }
+            setMessages(prev => {
+                const newMessages = [...prev];
+                const lastMessage = newMessages.length > 0 ? newMessages[newMessages.length - 1] : null;
+                let messageUpdated = false;
 
-                // Make sure we include the end tag in the removal
-                const content = text.substring(startIndex + startTag.length, endIndex).trim();
-                const remaining = text.substring(endIndex + endTag.length).trim();
-                return { content, remaining, isComplete: true };
-            };
+                const extractContent = (text: string, startTag: string, endTag: string) => {
+                    const startIndex = text.indexOf(startTag);
+                    const endIndex = text.indexOf(endTag);
+                    if (startIndex === -1) return null;
 
-            // Process error section first since it takes precedence
-            const errorResult = extractContent(response, '<error>', '</error>');
-            if (errorResult) {
-                setMessages(prev => {
-                    const newMessages = [...prev];
-                    const lastMessage = newMessages.length > 0 ? newMessages[newMessages.length - 1] : null;
-
-                    if (lastMessage?.type === 'error' && !errorResult.isComplete) {
-                        // Update existing error message
-                        lastMessage.content = errorResult.content;
-                    } else if (errorResult.isComplete) {
-                        // Only add new error message if we have complete content
-                        // and last message wasn't an error
-                        if (!lastMessage || lastMessage.type !== 'error') {
-                            newMessages.push({
-                                type: 'error',
-                                content: errorResult.content
-                            });
-                        } else {
-                            // Update existing error with complete content
-                            lastMessage.content = errorResult.content;
-                        }
+                    // If we have start tag but no end tag, return all content after start tag
+                    if (endIndex === -1) {
+                        return {
+                            content: text.substring(startIndex + startTag.length),
+                            remaining: '',
+                            isComplete: false
+                        };
                     }
-                    return newMessages;
-                });
 
-                if (errorResult.isComplete) {
-                    // Only update response if we have a complete error tag
-                    response = errorResult.remaining;
-                }
+                    // Make sure we include the end tag in the removal
+                    const content = text.substring(startIndex + startTag.length, endIndex).trim();
+                    const remaining = text.substring(endIndex + endTag.length).trim();
+                    return { content, remaining, isComplete: true };
+                };
 
-                // If we have an error (complete or not), stop processing
-                setIsAnswerLoading(false); // Stop loading on error
-                setIsLoading(false);
-                setIsWebSocketActive(false);
-                return;
-            }
-
-            // Add this new component
-
-
-
-
-            // Process thinking section
-            // Process thinking section
-
-            const extractThinkingSteps = (content: string): ThoughtStep[] => {
+                 const extractThinkingSteps = (content: string): ThoughtStep[] => {
                 const steps: ThoughtStep[] = [];
                 let currentStepNumber = 0;
                 let currentStep: ThoughtStep | null = null;
@@ -986,40 +948,47 @@ const DetailSection: React.FC<DetailsSectionProps> = ({
 
                 return steps;
             };
-            // Process thinking section
-            const thinkResult = extractContent(response, '<think>', '</think>');
-            if (thinkResult) {
-                const content = thinkResult.content;
-                const newThoughts = extractThinkingSteps(content);
-                console.log("NEW THOUGHTS:", newThoughts);
-                if (newThoughts.length > 0) {
-                    setStepsTaken(prev => {
-                        // Filter out duplicates and only add new steps
-                        const currentNumbers = prev.map(step => step.number);
-                        const uniqueNewThoughts = newThoughts.filter(thought =>
-                            !currentNumbers.includes(thought.number)
-                        );
 
-                        // Combine existing and new steps, sort by number
-                        const combinedSteps = [...prev, ...uniqueNewThoughts]
-                            .sort((a, b) => a.number - b.number);
+                const errorResult = extractContent(response, '<error>', '</error>');
+                if (errorResult) {
+                    if (lastMessage?.type === 'error' && !errorResult.isComplete) {
+                        lastMessage.content = errorResult.content;
+                        messageUpdated = true;
+                    } else if (errorResult.isComplete) {
+                        if (!lastMessage || lastMessage.type !== 'error') {
+                            newMessages.push({
+                                type: 'error',
+                                content: errorResult.content
+                            });
+                            messageUpdated = true;
+                        } else {
+                            lastMessage.content = errorResult.content;
+                            messageUpdated = true;
+                        }
+                    }
 
-                        return combinedSteps;
-                    });
+                    if (errorResult.isComplete) {
+                        setIsAnswerLoading(false);
+                        setIsLoading(false);
+                        setIsWebSocketActive(false);
+                        return newMessages;
+                    }
+                }
 
-                    // Update message with all current steps
-                    setMessages(prev => {
-                        const newMessages = [...prev];
-                        const lastMessage = newMessages.length > 0 ? newMessages[newMessages.length - 1] : null;
+                // Process thinking section
+                const thinkResult = extractContent(response, '<think>', '</think>');
+                if (thinkResult) {
+                    const content = thinkResult.content;
+                    const newThoughts = extractThinkingSteps(content);
 
+                    if (newThoughts.length > 0) {
                         if (lastMessage?.type === 'answer') {
-                            // Preserve the existing progressText
                             const currentProgressText = lastMessage.progressText;
                             lastMessage.steps = [...newThoughts];
-                            // Only set progressText if it doesn't exist
                             if (!currentProgressText) {
                                 lastMessage.progressText = "Thinking...";
                             }
+                            messageUpdated = true;
                         } else {
                             newMessages.push({
                                 type: 'answer',
@@ -1027,164 +996,303 @@ const DetailSection: React.FC<DetailsSectionProps> = ({
                                 steps: [...newThoughts],
                                 progressText: "Thinking..."
                             });
+                            messageUpdated = true;
                         }
-                        return newMessages;
-                    });
-                }
+                    }
 
-                if (thinkResult.isComplete) {
-                    setThoughts(thinkResult.content);
-                    // Update the progress text only when thinking is complete
-                    setMessages(prev => {
-                        const newMessages = [...prev];
-                        const lastMessage = newMessages.length > 0 ? newMessages[newMessages.length - 1] : null;
+                    if (thinkResult.isComplete) {
+                        setThoughts(thinkResult.content);
                         if (lastMessage?.type === 'answer') {
                             lastMessage.progressText = "Thinking complete";
+                            messageUpdated = true;
                         }
-                        return newMessages;
-                    });
-                    const currentMessageIndex = messages.length - 1;
-
-                    // Close the specific accordion after 500ms
-                    setTimeout(() => {
-                        setAccordionValues(prev => ({
-                            ...prev,
-                            [`accordion-${currentMessageIndex}`]: '' // Empty string closes the accordion
-                        }));
-                    }, 500);
-                }
-            }
-
-            // Process answer section
-            // Process answer section
-            const answerResult = extractContent(response, '<answer>', '</answer>');
-            if (answerResult) {
-                setMessages(prev => {
-                    const newMessages = [...prev];
-                    const lastMessage = newMessages.length > 0 ? newMessages[newMessages.length - 1] : null;
-
-                    if (lastMessage?.type === 'answer') {
-                        // Parse citations from the answer content
-                        const answerContent = answerResult.content;
-                        const citations: Citation[] = [];
-
-                        // Extract citations while maintaining the original content structure
-                        const processedContent = answerContent.replace(
-                            /\[(\d+)\]\((.*?)::(.*?)\)/g,
-                            (match, stepNum, fileKey, chunkText, offset) => {
-                                citations.push({
-                                    id: `citation-${citations.length}`,
-                                    stepNumber: stepNum,
-                                    fileKey,
-                                    chunkText,
-                                    position: offset
-                                });
-                                return `@${stepNum}@`; // New citation format
-                            }
-                        );
-
-                        // Update the message with processed content and citations
-                        lastMessage.content = processedContent;
-                        lastMessage.citations = citations;
-                        console.log("last message:", lastMessage);
-                    } else {
-                        // Create new answer message if none exists
-                        const citations: Citation[] = [];
-                        const processedContent = answerResult.content.replace(
-                            /\[(\d+)\]\((.*?)::(.*?)\)/g,
-                            (match, stepNum, fileKey, chunkText, offset) => {
-                                citations.push({
-                                    id: `citation-${citations.length}`,
-                                    stepNumber: stepNum,
-                                    fileKey,
-                                    chunkText,
-                                    position: offset
-                                });
-                                return `@${stepNum}@`;
-                            }
-                        );
-
-                        newMessages.push({
-                            type: 'answer',
-                            content: processedContent,
-                            steps: [],
-                            citations
-                        });
                     }
-                    return newMessages;
-                });
+                }
+
+                const answerResult = extractContent(response, '<answer>', '</answer>');
+            if (answerResult) {
+                const answerContent = answerResult.content;
+                const citations: Citation[] = [];
+                
+                const processedContent = answerContent.replace(
+                    /\[(\d+)\]\((.*?)::(.*?)\)/g,
+                    (match, stepNum, fileKey, chunkText, offset) => {
+                        citations.push({
+                            id: `citation-${citations.length}`,
+                            stepNumber: stepNum,
+                            fileKey,
+                            chunkText,
+                            position: offset
+                        });
+                        return `@${stepNum}@`;
+                    }
+                );
+
+                if (lastMessage?.type === 'answer') {
+                    lastMessage.content = processedContent;
+                    lastMessage.citations = citations;
+                    messageUpdated = true;
+                } else {
+                    newMessages.push({
+                        type: 'answer',
+                        content: processedContent,
+                        steps: [],
+                        citations
+                    });
+                    messageUpdated = true;
+                }
 
                 if (answerResult.isComplete) {
                     setIsAnswerLoading(false);
-                    response = answerResult.remaining;
                 }
             }
 
-            // Process sources section
-            // const sourcesResult = extractContent(response, '<sources>', '</sources>');
-            // if (sourcesResult) {
+               
 
-            //     if (sourcesResult.isComplete) {
-            //         console.log('Full sourcesResult:', sourcesResult);
-            //         console.log('sourcesResult content:', sourcesResult.content);
-            //         console.log('sourcesResult remaining:', sourcesResult.remaining);
-            //         console.log('sourcesResult isComplete:', sourcesResult.isComplete);
-            //         try {
-            //             // Try to parse the accumulated JSON string
-            //             const sourcesContent = sourcesResult.content.replace(/\n/g, '');
-            //             const sourcesJson = JSON.parse(sourcesContent);
-            //             const extractedUrls: string[] = [];
+                return messageUpdated ? newMessages : prev;
+            });
 
-            //             // Process each key-value pair in the JSON
-            //             Object.entries(sourcesJson).forEach(([key, value]) => {
-            //                 if (key.includes(bucketUuid)) {
-            //                     extractedUrls.push(key);
+
+
+
+            // const extractContent = (text: string, startTag: string, endTag: string) => {
+            //     const startIndex = text.indexOf(startTag);
+            //     const endIndex = text.indexOf(endTag);
+            //     if (startIndex === -1) return null;
+
+            //     // If we have start tag but no end tag, return all content after start tag
+            //     if (endIndex === -1) {
+            //         return {
+            //             content: text.substring(startIndex + startTag.length),
+            //             remaining: '',
+            //             isComplete: false
+            //         };
+            //     }
+
+            //     // Make sure we include the end tag in the removal
+            //     const content = text.substring(startIndex + startTag.length, endIndex).trim();
+            //     const remaining = text.substring(endIndex + endTag.length).trim();
+            //     return { content, remaining, isComplete: true };
+            // };
+
+            // // Process error section first since it takes precedence
+            // const errorResult = extractContent(response, '<error>', '</error>');
+            // if (errorResult) {
+            //     setMessages(prev => {
+            //         const newMessages = [...prev];
+            //         const lastMessage = newMessages.length > 0 ? newMessages[newMessages.length - 1] : null;
+
+            //         if (lastMessage?.type === 'error' && !errorResult.isComplete) {
+            //             // Update existing error message
+            //             lastMessage.content = errorResult.content;
+            //         } else if (errorResult.isComplete) {
+            //             // Only add new error message if we have complete content
+            //             // and last message wasn't an error
+            //             if (!lastMessage || lastMessage.type !== 'error') {
+            //                 newMessages.push({
+            //                     type: 'error',
+            //                     content: errorResult.content
+            //                 });
+            //             } else {
+            //                 // Update existing error with complete content
+            //                 lastMessage.content = errorResult.content;
+            //             }
+            //         }
+            //         return newMessages;
+            //     });
+
+            //     if (errorResult.isComplete) {
+            //         // Only update response if we have a complete error tag
+            //         response = errorResult.remaining;
+            //     }
+
+            //     // If we have an error (complete or not), stop processing
+            //     setIsAnswerLoading(false); // Stop loading on error
+            //     setIsLoading(false);
+            //     setIsWebSocketActive(false);
+            //     return;
+            // }
+
+            // const extractThinkingSteps = (content: string): ThoughtStep[] => {
+            //     const steps: ThoughtStep[] = [];
+            //     let currentStepNumber = 0;
+            //     let currentStep: ThoughtStep | null = null;
+
+            //     // Split content into lines while preserving original formatting
+            //     const lines = content.split('\n');
+
+            //     for (const line of lines) {
+            //         // Check if line starts with a number followed by a period
+            //         const stepMatch = line.match(/^(\d+)\.\s+(.*)/);
+
+            //         if (stepMatch) {
+            //             const number = parseInt(stepMatch[1]);
+            //             // Only create new step if it's exactly one more than the previous step
+            //             if (number === currentStepNumber + 1) {
+            //                 currentStepNumber = number;
+            //                 currentStep = {
+            //                     number,
+            //                     content: stepMatch[2]
+            //                 };
+            //                 steps.push(currentStep);
+            //             } else if (currentStep) {
+            //                 // If number doesn't follow sequence, treat as regular content
+            //                 currentStep.content += '\n' + line;
+            //             }
+            //         } else if (currentStep) {
+            //             // Add non-step lines to current step's content
+            //             currentStep.content += '\n' + line;
+            //         }
+            //     }
+
+            //     return steps;
+            // };
+
+
+            // // Process thinking section
+            // const thinkResult = extractContent(response, '<think>', '</think>');
+            // if (thinkResult) {
+            //     const content = thinkResult.content;
+            //     const newThoughts = extractThinkingSteps(content);
+            //     console.log("NEW THOUGHTS:", newThoughts);
+            //     if (newThoughts.length > 0) {
+            //         // setStepsTaken(prev => {
+            //         //     // Filter out duplicates and only add new steps
+            //         //     const currentNumbers = prev.map(step => step.number);
+            //         //     const uniqueNewThoughts = newThoughts.filter(thought =>
+            //         //         !currentNumbers.includes(thought.number)
+            //         //     );
+
+            //         //     // Combine existing and new steps, sort by number
+            //         //     const combinedSteps = [...prev, ...uniqueNewThoughts]
+            //         //         .sort((a, b) => a.number - b.number);
+
+            //         //     return combinedSteps;
+            //         // });
+
+            //         // Update message with all current steps
+            //         setMessages(prev => {
+            //             const newMessages = [...prev];
+            //             const lastMessage = newMessages.length > 0 ? newMessages[newMessages.length - 1] : null;
+
+            //             if (lastMessage?.type === 'answer') {
+            //                 // Preserve the existing progressText
+            //                 const currentProgressText = lastMessage.progressText;
+            //                 lastMessage.steps = [...newThoughts];
+            //                 // Only set progressText if it doesn't exist
+            //                 if (!currentProgressText) {
+            //                     lastMessage.progressText = "Thinking...";
             //                 }
-            //             });
-
-            //             if (extractedUrls.length > 0) {
-            //                 setMessages(prev => {
-            //                     const newMessages = [...prev];
-            //                     if (newMessages.length > 0) {
-            //                         const lastMessage = newMessages[newMessages.length - 1];
-            //                         if (lastMessage.type === 'answer') {
-            //                             const sourcesObject: Record<string, any> = {};
-            //                             extractedUrls.forEach(url => {
-            //                                 const last = url.split('/').pop();
-            //                                 if (last) {
-            //                                     sourcesObject[getFileName(last)] = last || {};
-            //                                 }
-            //                             });
-            //                             // lastMessage.sources = sourcesObject;
-            //                         }
-            //                     }
-            //                     return newMessages;
+            //             } else {
+            //                 newMessages.push({
+            //                     type: 'answer',
+            //                     content: '',
+            //                     steps: [...newThoughts],
+            //                     progressText: "Thinking..."
             //                 });
             //             }
-            //             setGeneratingSources(false);
-            //             setIsGeneratingComplete(true);
-            //             response = sourcesResult.remaining;
-            //         } catch (error) {
-            //             // If JSON parsing fails, it means we're still receiving the JSON string
-            //             // console.log("Incomplete JSON in sources:", sourcesResult.content);
-            //             setGeneratingSources(true);
-            //         }
-            //     } else {
-            //         // Still receiving sources content
-            //         setGeneratingSources(true);
+            //             return newMessages;
+            //         });
+            //     }
+
+            //     if (thinkResult.isComplete) {
+            //         setThoughts(thinkResult.content);
+            //         // Update the progress text only when thinking is complete
+            //         setMessages(prev => {
+            //             const newMessages = [...prev];
+            //             const lastMessage = newMessages.length > 0 ? newMessages[newMessages.length - 1] : null;
+            //             if (lastMessage?.type === 'answer') {
+            //                 lastMessage.progressText = "Thinking complete";
+            //             }
+            //             return newMessages;
+            //         });
+            //         const currentMessageIndex = messages.length - 1;
+
+            //         // Close the specific accordion after 500ms
+            //         setTimeout(() => {
+            //             setAccordionValues(prev => ({
+            //                 ...prev,
+            //                 [`accordion-${currentMessageIndex}`]: '' // Empty string closes the accordion
+            //             }));
+            //         }, 500);
             //     }
             // }
 
-            // Handle streaming content that's not within any tags
-            if (!thinkResult && !answerResult && response.trim()) {
-                setMessages(prev => {
-                    const newMessages = [...prev];
-                    if (newMessages.length > 0 && newMessages[newMessages.length - 1].type === 'answer') {
-                        newMessages[newMessages.length - 1].content += response.trim();
-                    }
-                    return newMessages;
-                });
-            }
+            // // Process answer section
+            // // Process answer section
+            // const answerResult = extractContent(response, '<answer>', '</answer>');
+            // if (answerResult) {
+            //     setMessages(prev => {
+            //         const newMessages = [...prev];
+            //         const lastMessage = newMessages.length > 0 ? newMessages[newMessages.length - 1] : null;
+
+            //         if (lastMessage?.type === 'answer') {
+            //             // Parse citations from the answer content
+            //             const answerContent = answerResult.content;
+            //             const citations: Citation[] = [];
+
+            //             // Extract citations while maintaining the original content structure
+            //             const processedContent = answerContent.replace(
+            //                 /\[(\d+)\]\((.*?)::(.*?)\)/g,
+            //                 (match, stepNum, fileKey, chunkText, offset) => {
+            //                     citations.push({
+            //                         id: `citation-${citations.length}`,
+            //                         stepNumber: stepNum,
+            //                         fileKey,
+            //                         chunkText,
+            //                         position: offset
+            //                     });
+            //                     return `@${stepNum}@`; // New citation format
+            //                 }
+            //             );
+
+            //             // Update the message with processed content and citations
+            //             lastMessage.content = processedContent;
+            //             lastMessage.citations = citations;
+            //             console.log("last message:", lastMessage);
+            //         } else {
+            //             // Create new answer message if none exists
+            //             const citations: Citation[] = [];
+            //             const processedContent = answerResult.content.replace(
+            //                 /\[(\d+)\]\((.*?)::(.*?)\)/g,
+            //                 (match, stepNum, fileKey, chunkText, offset) => {
+            //                     citations.push({
+            //                         id: `citation-${citations.length}`,
+            //                         stepNumber: stepNum,
+            //                         fileKey,
+            //                         chunkText,
+            //                         position: offset
+            //                     });
+            //                     return `@${stepNum}@`;
+            //                 }
+            //             );
+
+            //             newMessages.push({
+            //                 type: 'answer',
+            //                 content: processedContent,
+            //                 steps: [],
+            //                 citations
+            //             });
+            //         }
+            //         return newMessages;
+            //     });
+
+            //     if (answerResult.isComplete) {
+            //         setIsAnswerLoading(false);
+            //         response = answerResult.remaining;
+            //     }
+            // }
+
+            // // Handle streaming content that's not within any tags
+            // if (!thinkResult && !answerResult && response.trim()) {
+            //     setMessages(prev => {
+            //         const newMessages = [...prev];
+            //         if (newMessages.length > 0 && newMessages[newMessages.length - 1].type === 'answer') {
+            //             newMessages[newMessages.length - 1].content += response.trim();
+            //         }
+            //         return newMessages;
+            //     });
+            // }
 
             setIsLoading(false);
         }
@@ -1409,7 +1517,7 @@ const DetailSection: React.FC<DetailsSectionProps> = ({
                         {messages.map((message, index) => (
                             <div key={index} className="flex flex-col gap-0 mb-4 pl-2 max-w-full w-full" >
                                 {message.type === 'question' ? (
-                                    <div className= {`flex items-end dark:text-white mt-4 ${index === messages.length - 1 ? 'mb-8' : ''}`}>
+                                    <div className={`flex items-end dark:text-white mt-4 ${index === messages.length - 1 ? 'mb-8' : ''}`}>
                                         <p className="text-2xl font-medium dark:text-white pr-4 rounded-lg w-[70%]">{message.content}</p>
                                     </div>
                                 ) : message.type === 'error' ? (
@@ -1602,33 +1710,13 @@ const DetailSection: React.FC<DetailsSectionProps> = ({
                                         )}
 
                                         <div className="mr-auto mb-6 rounded-lg">
-                                            {/* {renderAnswerHeader()} */}
-
-                                            {/* {!(message.content.includes('<thi') || (message.content.includes('<err'))) ? message.content : ""} */}
                                             <AnswerWithCitations
                                                 content={message.content}
                                                 citations={message.citations || []}
                                             />
 
                                         </div>
-                                        {/* <div>
-                                            {!isGeneratingComplete && generatingSources && (
-                                                <div className='flex flex-row gap-2 items-center mb-3'>
-                                                    <TextShimmer
-                                                        key="generating-sources"
-                                                        className='text-sm'
-                                                        duration={1}
-                                                    >
-                                                        Generating sources...
-                                                    </TextShimmer>
-                                                </div>
-                                            )}
-                                            {isGeneratingComplete && message.sources && Object.keys(message.sources).length > 0 && (
-                                                <div>
-                                                    <SourcesList sources={message.sources} />
-                                                </div>
-                                            )}
-                                        </div> */}
+
                                         <div className="w-full flex items-center justify-center mt-4 "></div>
                                         {index !== messages.length - 1 && (
                                             <Separator className="bg-slate-200 dark:bg-slate-800 w-full" orientation='horizontal' />
@@ -1657,20 +1745,6 @@ const DetailSection: React.FC<DetailsSectionProps> = ({
                         }
 
                     </div>
-
-
-
-
-                    {/* {
-                        isLoading && (
-                            <div className='flex flex-row gap-2 items-center mb-3'>
-                                <object type="image/svg+xml" data={loadingAnimation.src} className="h-6 w-6">
-                                    svg-animation
-                                </object>
-                                <h1 className='dark:text-white font-semibold'>Answer</h1>
-                            </div>
-                        )
-                    } */}
 
 
                     <div ref={messagesEndRef} style={{ height: 0 }} /> {/* Add this line */}
