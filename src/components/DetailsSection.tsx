@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { ArrowLeft, ArrowUp, BadgeInfo, FileText, Footprints, Plus, PlusCircle, Search, MessageSquare, ReceiptText, SearchIcon, Database, User, Tags, AlignLeft, History } from 'lucide-react';
+import { ArrowLeft, ArrowUp, BadgeInfo, FileText, Footprints, Plus, PlusCircle, Search, MessageSquare, ReceiptText, SearchIcon, Database, User, Tags, AlignLeft, History, Copy } from 'lucide-react';
 import { Input, Skeleton } from '@mui/material';
 import { Button } from './ui/button';
 import { post, get } from 'aws-amplify/api';
@@ -450,16 +450,15 @@ const DetailSection: React.FC<DetailsSectionProps> = ({
         setLastQuery(searchTerm); // Add this line at the start of the function
 
         try {
-            // Don't allow new queries while WebSocket is active
-            // if (isWebSocketActive) {
-            // return;
-            // }
-
-
-
             setIsWebSocketActive(true);
             setIsLoading(true);
-            setMessages(prev => [...prev, { type: 'question', content: searchTerm }]);
+            
+            // Only add question message if it's not a retry (i.e., if the last message isn't already this question)
+            const lastMessage = messages[messages.length - 1];
+            if (!lastMessage || lastMessage.type !== 'question' || lastMessage.content !== searchTerm) {
+                setMessages(prev => [...prev, { type: 'question', content: searchTerm }]);
+            }
+
             setSearchResult({
                 response: '',
                 sources: {},
@@ -796,8 +795,12 @@ const DetailSection: React.FC<DetailsSectionProps> = ({
 
     // Main Component
     const AnswerWithCitations: React.FC<AnswerWithCitationsProps> = ({ content, citations = [] }) => {
+        const handleCopyContent = () => {
+            // Remove citation markers from content
+            const cleanContent = content.replace(/@\d+@/g, '');
+            navigator.clipboard.writeText(cleanContent);
+        };
 
-        // console.log("content", content);
         // Replace citation markers with an HTML-like <circle data-number="x" /> tag
         const getCitationByStep = (stepNumber: string) => {
             return citations.find(citation => citation.stepNumber === stepNumber);
@@ -805,7 +808,6 @@ const DetailSection: React.FC<DetailsSectionProps> = ({
 
         // Function to handle source click
         const handleSourceClick = (fileKey: string) => {
-            // console.log("Clicked source:", fileKey);
             handleSourceCardClick(fileKey);
         };
 
@@ -822,34 +824,45 @@ const DetailSection: React.FC<DetailsSectionProps> = ({
 
         if(content.includes("<t")) transformedContent = "";
 
-
-
         return (
-            <div className="whitespace-pre-wrap">
-                <Markdown
-                    options={{
-                        overrides: {
-                            circle: {
-                                component: ({
-                                    "data-number": number,
-                                    "data-filekey": fileKey
-                                }: {
-                                    "data-number": string;
-                                    "data-filekey": string;
-                                }) => (
-                                    <GreenCircle
-                                        number={number}
-                                        fileKey={fileKey}
-                                        onSourceClick={handleSourceClick}
-                                    />
-                                ),
+            <div className="whitespace-pre-wrap relative group">
+                <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 w-8 p-0 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-md"
+                        onClick={handleCopyContent}
+                        title="Copy answer"
+                    >
+                        <Copy className="h-4 w-4 text-gray-500 dark:text-gray-400" />
+                    </Button>
+                </div>
+                <div className="pr-12"> {/* Add padding to prevent text from going under the button */}
+                    <Markdown
+                        options={{
+                            overrides: {
+                                circle: {
+                                    component: ({
+                                        "data-number": number,
+                                        "data-filekey": fileKey
+                                    }: {
+                                        "data-number": string;
+                                        "data-filekey": string;
+                                    }) => (
+                                        <GreenCircle
+                                            number={number}
+                                            fileKey={fileKey}
+                                            onSourceClick={handleSourceClick}
+                                        />
+                                    ),
+                                },
                             },
-                        },
-                    }}
-                    className='dark:text-gray-200'
-                >
-                    {transformedContent}
-                </Markdown>
+                        }}
+                        className='dark:text-gray-200'
+                    >
+                        {transformedContent}
+                    </Markdown>
+                </div>
             </div>
         );
     };
@@ -860,18 +873,9 @@ const DetailSection: React.FC<DetailsSectionProps> = ({
     const handleRetry = async () => {
         setShowRetry(false);
         setIsLoading(true);
-        
-        // Remove the last question message if it exists
-        setMessages(prev => {
-            const newMessages = [...prev];
-            if (newMessages.length > 0 && newMessages[newMessages.length - 1].type === 'question') {
-                newMessages.pop();
-            }
-            return newMessages;
-        });
-    
         await queryAllDocuments(lastQuery, true, []); 
     };
+
     useEffect(() => {
         if (searchResult && searchResult.response) {
             setIsAnswerLoading(true); // Start loading when processing begins
