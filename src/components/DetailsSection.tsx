@@ -446,16 +446,15 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
         setLastQuery(searchTerm); // Add this line at the start of the function
 
         try {
-            // Don't allow new queries while WebSocket is active
-            // if (isWebSocketActive) {
-            // return;
-            // }
-
-
-
             setIsWebSocketActive(true);
             setIsLoading(true);
-            setMessages(prev => [...prev, { type: 'question', content: searchTerm }]);
+            
+            // Only add question message if it's not a retry (i.e., if the last message isn't already this question)
+            const lastMessage = messages[messages.length - 1];
+            if (!lastMessage || lastMessage.type !== 'question' || lastMessage.content !== searchTerm) {
+                setMessages(prev => [...prev, { type: 'question', content: searchTerm }]);
+            }
+
             setSearchResult({
                 response: '',
                 sources: {},
@@ -856,18 +855,9 @@ const DetailSection: React.FC<DetailsSectionProps> = ({ showDetailsView,
     const handleRetry = async () => {
         setShowRetry(false);
         setIsLoading(true);
-        
-        // Remove the last question message if it exists
-        setMessages(prev => {
-            const newMessages = [...prev];
-            if (newMessages.length > 0 && newMessages[newMessages.length - 1].type === 'question') {
-                newMessages.pop();
-            }
-            return newMessages;
-        });
-    
         await queryAllDocuments(lastQuery, true, []); 
     };
+
     useEffect(() => {
         if (searchResult && searchResult.response) {
             setIsAnswerLoading(true); // Start loading when processing begins

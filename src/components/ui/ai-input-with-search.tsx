@@ -46,8 +46,8 @@ export const AIInputWithSearch: React.FC<AIInputWithSearchProps> = ({
   const handleSubmit = () => {
     console.log("hiii!");
     if (value.trim()) {
-      // Extract just the keys from selectedFiles
-      const fileKeys = selectedFiles.map(file => file.key);
+      // Extract fileId from selectedFiles
+      const fileKeys = selectedFiles.map(file => file.fileId);
       console.log("selecteFiles", selectedFiles);
       onSubmit?.(value, showSearch, fileKeys);
       setValue("");
