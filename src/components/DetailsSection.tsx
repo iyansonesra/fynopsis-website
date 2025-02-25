@@ -746,7 +746,7 @@ const DetailSection: React.FC<DetailsSectionProps> = ({
 
 
     const [messages, setMessagesState] = useState<Message[]>([]);
-    
+
     // Create throttled setMessages
     const setMessages = useCallback(
         throttle((newMessages: Message[] | ((prev: Message[]) => Message[])) => {
@@ -942,40 +942,40 @@ const DetailSection: React.FC<DetailsSectionProps> = ({
                     return { content, remaining, isComplete: true };
                 };
 
-                 const extractThinkingSteps = (content: string): ThoughtStep[] => {
-                const steps: ThoughtStep[] = [];
-                let currentStepNumber = 0;
-                let currentStep: ThoughtStep | null = null;
+                const extractThinkingSteps = (content: string): ThoughtStep[] => {
+                    const steps: ThoughtStep[] = [];
+                    let currentStepNumber = 0;
+                    let currentStep: ThoughtStep | null = null;
 
-                // Split content into lines while preserving original formatting
-                const lines = content.split('\n');
+                    // Split content into lines while preserving original formatting
+                    const lines = content.split('\n');
 
-                for (const line of lines) {
-                    // Check if line starts with a number followed by a period
-                    const stepMatch = line.match(/^(\d+)\.\s+(.*)/);
+                    for (const line of lines) {
+                        // Check if line starts with a number followed by a period
+                        const stepMatch = line.match(/^(\d+)\.\s+(.*)/);
 
-                    if (stepMatch) {
-                        const number = parseInt(stepMatch[1]);
-                        // Only create new step if it's exactly one more than the previous step
-                        if (number === currentStepNumber + 1) {
-                            currentStepNumber = number;
-                            currentStep = {
-                                number,
-                                content: stepMatch[2]
-                            };
-                            steps.push(currentStep);
+                        if (stepMatch) {
+                            const number = parseInt(stepMatch[1]);
+                            // Only create new step if it's exactly one more than the previous step
+                            if (number === currentStepNumber + 1) {
+                                currentStepNumber = number;
+                                currentStep = {
+                                    number,
+                                    content: stepMatch[2]
+                                };
+                                steps.push(currentStep);
+                            } else if (currentStep) {
+                                // If number doesn't follow sequence, treat as regular content
+                                currentStep.content += '\n' + line;
+                            }
                         } else if (currentStep) {
-                            // If number doesn't follow sequence, treat as regular content
+                            // Add non-step lines to current step's content
                             currentStep.content += '\n' + line;
                         }
-                    } else if (currentStep) {
-                        // Add non-step lines to current step's content
-                        currentStep.content += '\n' + line;
                     }
-                }
 
-                return steps;
-            };
+                    return steps;
+                };
 
                 const errorResult = extractContent(response, '<error>', '</error>');
                 if (errorResult) {
@@ -1038,44 +1038,44 @@ const DetailSection: React.FC<DetailsSectionProps> = ({
                 }
 
                 const answerResult = extractContent(response, '<answer>', '</answer>');
-            if (answerResult) {
-                const answerContent = answerResult.content;
-                const citations: Citation[] = [];
-                
-                const processedContent = answerContent.replace(
-                    /\[(\d+)\]\((.*?)::(.*?)\)/g,
-                    (match, stepNum, fileKey, chunkText, offset) => {
-                        citations.push({
-                            id: `citation-${citations.length}`,
-                            stepNumber: stepNum,
-                            fileKey,
-                            chunkText,
-                            position: offset
+                if (answerResult) {
+                    const answerContent = answerResult.content;
+                    const citations: Citation[] = [];
+
+                    const processedContent = answerContent.replace(
+                        /\[(\d+)\]\((.*?)::(.*?)\)/g,
+                        (match, stepNum, fileKey, chunkText, offset) => {
+                            citations.push({
+                                id: `citation-${citations.length}`,
+                                stepNumber: stepNum,
+                                fileKey,
+                                chunkText,
+                                position: offset
+                            });
+                            return `@${stepNum}@`;
+                        }
+                    );
+
+                    if (lastMessage?.type === 'answer') {
+                        lastMessage.content = processedContent;
+                        lastMessage.citations = citations;
+                        messageUpdated = true;
+                    } else {
+                        newMessages.push({
+                            type: 'answer',
+                            content: processedContent,
+                            steps: [],
+                            citations
                         });
-                        return `@${stepNum}@`;
+                        messageUpdated = true;
                     }
-                );
 
-                if (lastMessage?.type === 'answer') {
-                    lastMessage.content = processedContent;
-                    lastMessage.citations = citations;
-                    messageUpdated = true;
-                } else {
-                    newMessages.push({
-                        type: 'answer',
-                        content: processedContent,
-                        steps: [],
-                        citations
-                    });
-                    messageUpdated = true;
+                    if (answerResult.isComplete) {
+                        setIsAnswerLoading(false);
+                    }
                 }
 
-                if (answerResult.isComplete) {
-                    setIsAnswerLoading(false);
-                }
-            }
 
-               
 
                 return messageUpdated ? newMessages : prev;
             });
@@ -1522,7 +1522,7 @@ const DetailSection: React.FC<DetailsSectionProps> = ({
             <div className="flex flex-col h-full overflow-none dark:bg-darkbg w-full max-w-full">
                 <div className="absolute top-4 right-4 z-50">
 
-                    <div className="flex flex-row gap-3 items-center">
+                    <div className="flex flex-row gap-3 items-center p-2 backdrop-blur-sm rounded-lg">
                         <History
                             className="h-5 w-5 text-gray-500 dark:text-gray-400 cursor-pointer hover:text-gray-700 dark:hover:text-gray-300"
                             onClick={() => setShowChatHistory(true)}
@@ -1631,34 +1631,39 @@ const DetailSection: React.FC<DetailsSectionProps> = ({
 
                                                                                                 {/* Show subSources for first step (index 0) */}
                                                                                                 {index === 0 && message.subSources && (
-                                                                                                    <div className="w-full overflow-hidden">
-                                                                                                        <div className="flex ite`ms-center space-x-2 p-2">
-                                                                                                            {Object.entries(message.subSources).slice(0, 2).map(([fileName, fileKey]) => (
-                                                                                                                <div
-                                                                                                                    key={fileKey}
-                                                                                                                    className="inline-flex shrink-0 items-center gap-2 px-3 py-1 rounded-md bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 cursor-pointer"
-                                                                                                                    onClick={() => handleSourceCardClick(fileKey as string)}
-                                                                                                                    onDoubleClick={() => null}
-                                                                                                                >
-                                                                                                                    <FileText className="h-3 w-3 text-slate-500 dark:text-slate-400" />
-                                                                                                                    <span className="text-xs text-slate-600 dark:text-slate-300 truncate max-w-[150px]">
-                                                                                                                        {fileName}
-                                                                                                                    </span>
+                                                                                                    <div className="w-full overflow-hidden min-w-0">
+                                                                                                        <div className="relative w-full">
+                                                                                                            <ScrollArea className="w-full bg-green-100 min-w-0">
+                                                                                                                <div className="flex space-x-2 p-2 min-w-0">
+                                                                                                                    {/* {Object.entries(message.subSources).slice(0, 1).map(([fileName, fileKey]) => (
+                                                                                                                        <div
+                                                                                                                            key={fileKey}
+                                                                                                                            className="inline-flex shrink-0 items-center gap-2 px-3 py-1 rounded-md bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 cursor-pointer"
+                                                                                                                            onClick={() => handleSourceCardClick(fileKey as string)}
+                                                                                                                            onDoubleClick={() => null}
+                                                                                                                        >
+                                                                                                                            <FileText className="h-3 w-3 text-slate-500 dark:text-slate-400" />
+                                                                                                                            <span className="text-xs text-slate-600 dark:text-slate-300 truncate max-w-[150px]">
+                                                                                                                                {fileName}
+                                                                                                                            </span>
+                                                                                                                        </div>
+                                                                                                                    ))} */}
+                                                                                                                    {Object.keys(message.subSources).length > 2 && (
+                                                                                                                        <div className="text-xs text-slate-500 dark:text-slate-400 shrink-0">
+                                                                                                                            +{Object.keys(message.subSources).length - 2} more wowwowwwowowowwowowow wo wow oow o wo wo o wo w
+                                                                                                                        </div>
+                                                                                                                    )}
                                                                                                                 </div>
-                                                                                                            ))}
-                                                                                                            {Object.keys(message.subSources).length > 2 && (
-                                                                                                                <div className="text-xs text-slate-500 dark:text-slate-400">
-                                                                                                                    +{Object.keys(message.subSources).length - 2} more
-                                                                                                                </div>
-                                                                                                            )}
+                                                                                                                <ScrollBar orientation="horizontal" />
+                                                                                                            </ScrollArea>
                                                                                                         </div>
                                                                                                     </div>
                                                                                                 )}
                                                                                             </div>
 
                                                                                             {/* Show sources for second step (index 1) */}
-                                                                                            {index === 1 && message.sources && (
-                                                                                                <ScrollArea className="w-full whitespace-nowrap w-[400px]">
+                                                                                            {/* {index === 1 && message.sources && (
+                                                                                                <ScrollArea className="w-full whitespace-nowrap w-[400px] bg-green-100">
                                                                                                     <div className="flex space-x-2 p-2">
                                                                                                         {message.sources.map((source, idx) => (
                                                                                                             <div
@@ -1681,7 +1686,7 @@ const DetailSection: React.FC<DetailsSectionProps> = ({
                                                                                                     </div>
                                                                                                     <ScrollBar orientation="horizontal" />
                                                                                                 </ScrollArea>
-                                                                                            )}
+                                                                                            )} */}
                                                                                         </div>
                                                                                     ))}
                                                                                 </div>
