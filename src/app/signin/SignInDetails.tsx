@@ -8,6 +8,7 @@ import { useAuthenticator } from '@aws-amplify/ui-react';
 import { GridBackground } from "@/components/ui/spotlight-new";
 import { Spotlight } from "@/components/ui/spotlight-new";
 import logo from "../assets/fynopsis_noBG.png";
+import { Button } from "@/components/ui/gradient-button";
 
 type AuthMode = 'signIn' | 'signUp' | 'verify' | 'forgotPassword' | 'resetPassword';
 
@@ -34,7 +35,7 @@ export default function SignInDetails() {
 
   useEffect(() => {
     if (authStatus === "configuring") return;
-    
+
     if (authStatus === 'authenticated') {
       router.replace('/dashboard');
     }
@@ -52,7 +53,7 @@ export default function SignInDetails() {
     try {
       setLoading(true);
       setError("");
-      
+
       await signIn({
         username: form.elements.email.value,
         password: form.elements.password.value,
@@ -194,33 +195,36 @@ export default function SignInDetails() {
 
   return (
     <div className="relative min-h-screen bg-black overflow-hidden">
-        <GridBackground />
-        <Spotlight />
+      <Spotlight />
+      <GridBackground />
+
       <div className="flex min-h-screen items-center justify-center px-4 overflow-hidden">
-        <div className="w-full max-w-md space-y-8 rounded-xl bg-gradient-to-br from-gray-900 to-black p-8 backdrop-blur-xl shadow-xl min-h-[500px]">
+        <div className= {`w-full max-w-md space-y-8 rounded-xl bg-gradient-to-br from-gray-900 to-black backdrop-blur-xl p-8 shadow-xl min-h-[500px] overflow-hidden`}>
           <div>
             {/* Add the logo image */}
             <div className="flex justify-center">
-              <div className="rounded-full bg-gray-900 p-1">
-                <img
+                {mode === 'signIn' && (
+                <div className="rounded-full bg-gray-900 p-1">
+                  <img
                   src={logo.src}
                   alt="Fynopsis Logo"
                   className="h-16 w-auto"
-                />
-              </div>
+                  />
+                </div>
+                )}
             </div>
 
           </div>
           <div>
-            <h2 className="mt-6 text-center text-3xl font-bold tracking-tight text-white">
-              {mode === 'signIn' && 'Sign in to your account'}
+          <h2 className={` text-center text-3xl font-bold tracking-tight text-white`}>
+          {mode === 'signIn' && 'Sign in to your account'}
               {mode === 'signUp' && 'Create your account'}
               {mode === 'verify' && 'Verify your email'}
               {mode === 'forgotPassword' && 'Reset your password'}
               {mode === 'resetPassword' && 'Enter new password'}
             </h2>
           </div>
-          <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
+          <form className=" space-y-6" onSubmit={handleSubmit}>
             <div className="space-y-4 rounded-md shadow-sm">
               {(mode === 'signIn' || mode === 'signUp' || mode === 'forgotPassword') && (
                 <div>
@@ -322,19 +326,17 @@ export default function SignInDetails() {
             )}
 
             <div className="flex flex-col space-y-4">
-              <button
-                type="submit"
-                disabled={loading}
-                className="group relative flex w-full justify-center rounded-md border border-transparent bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:opacity-50 transition-colors"
+              <Button
+              className = "dark:text-gray-200 text-gray-200 w-full"
               >
                 {loading ? "Processing..." : (
                   mode === 'signIn' ? "Sign in" :
-                  mode === 'signUp' ? "Sign up" :
-                  mode === 'verify' ? "Verify email" :
-                  mode === 'forgotPassword' ? "Send reset link" :
-                  "Reset password"
+                    mode === 'signUp' ? "Sign up" :
+                      mode === 'verify' ? "Verify email" :
+                        mode === 'forgotPassword' ? "Send reset link" :
+                          "Reset password"
                 )}
-              </button>
+              </Button>
 
               {mode === 'signIn' && (
                 <div className="flex justify-between text-sm">

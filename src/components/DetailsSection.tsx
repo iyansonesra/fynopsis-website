@@ -43,6 +43,7 @@ import {
     HoverCardTrigger,
 } from "@/components/ui/hover-card";
 import { ContainerScroll } from './ui/container-scroll-animation';
+import { HoverCardPortal } from '@radix-ui/react-hover-card';
 
 
 // import { w3cwebsocket as W3CWebSocket } from "websocket";
@@ -751,7 +752,7 @@ const DetailSection: React.FC<DetailsSectionProps> = ({
     const setMessages = useCallback(
         throttle((newMessages: Message[] | ((prev: Message[]) => Message[])) => {
             setMessagesState(newMessages);
-        }, 50),
+        }, 10),
         []
     );
     const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -799,16 +800,19 @@ const DetailSection: React.FC<DetailsSectionProps> = ({
                     </span>
                 </HoverCardTrigger>
                 {fileKey && (
-                    <HoverCardContent className="p-2 dark:bg-gray-900 dark:border-gray-800 z-[9999] w-fit">
-                        <div className="flex items-left space-x-2">
-                            <FileText className="h-4 w-4 text-slate-500 dark:text-slate-400" />
-                            <span className="text-sm text-slate-700 dark:text-slate-300">
-                                <span className="truncate w-full">
-                                    {fileName.length > 30 ? `${fileName.substring(0, 15)}...${fileName.substring(fileName.length - 15)}` : fileName}
+                    <HoverCardPortal>
+
+                        <HoverCardContent className="p-2 dark:bg-gray-900 dark:border-gray-800 z-[9999] w-fit">
+                            <div className="flex items-left space-x-2">
+                                <FileText className="h-4 w-4 text-slate-500 dark:text-slate-400" />
+                                <span className="text-sm text-slate-700 dark:text-slate-300">
+                                    <span className="truncate w-full">
+                                        {fileName.length > 30 ? `${fileName.substring(0, 15)}...${fileName.substring(fileName.length - 15)}` : fileName}
+                                    </span>
                                 </span>
-                            </span>
-                        </div>
-                    </HoverCardContent>
+                            </div>
+                        </HoverCardContent>
+                    </HoverCardPortal>
                 )}
             </HoverCard>
         );
@@ -912,6 +916,7 @@ const DetailSection: React.FC<DetailsSectionProps> = ({
             setIsAnswerLoading(true); // Start loading when processing begins
             let response = searchResult.response;
             console.log("repsonse:", searchResult);
+
             if (searchResult.response.includes("</think>")) {
                 setEndThinkFound(true);
 

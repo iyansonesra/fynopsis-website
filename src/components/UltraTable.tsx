@@ -837,7 +837,6 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
     }
 
 
-
     const handleDoubleClick = async () => {
       if (!item.isFolder && item.id) {
         try {
