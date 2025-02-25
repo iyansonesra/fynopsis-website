@@ -115,7 +115,7 @@ export const ChatHistoryPanel: React.FC<ChatHistoryPanelProps> = ({
     return (
       <div className="p-4">
         {[1, 2, 3].map((i) => (
-          <Skeleton key={i} className="h-20 mb-2 rounded-lg" />
+          <Skeleton key={i} className="h-20 mb-2 rounded-lg dark:bg-slate-800 dark:border-none" />
         ))}
       </div>
     );
@@ -141,9 +141,9 @@ export const ChatHistoryPanel: React.FC<ChatHistoryPanelProps> = ({
             variant="ghost"
             size="sm"
             onClick={onBack}
-            className="hover:bg-gray-100 dark:hover:bg-gray-800"
+            className="hover:bg-gray-100 dark:hover:bg-gray-800 dark:text-slate-200 dark:bg-darkbg"
           >
-            <ArrowLeft className="h-4 w-4 mr-2" />
+            <ArrowLeft className="h-4 w-4 mr-2 dark:text-slate-200" />
             Back to Search
           </Button>
         </div>
@@ -155,7 +155,7 @@ export const ChatHistoryPanel: React.FC<ChatHistoryPanelProps> = ({
           chatHistories.map((chat) => (
             <Card
               key={chat.threadId}
-              className={`p-4 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors ${
+              className={`p-4 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 dark:bg-slate-800 dark:text-gray-200 border-none dark:hover:bg-slate-900 transition-colors ${
                 selectedThreadId === chat.threadId ? 'border-blue-500' : ''
               }`}
               onClick={() => fetchChatThread(chat.threadId)}

@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState, useMemo, memo } from 'react';
 import { ArrowLeft, ArrowUp, BadgeInfo, FileText, Footprints, Plus, PlusCircle, Search, MessageSquare, ReceiptText, SearchIcon, Database, User, Tags, AlignLeft, History, Copy } from 'lucide-react';
 import { Input, Skeleton } from '@mui/material';
 import { Button } from './ui/button';
@@ -36,6 +36,7 @@ import { useFileStore } from './HotkeyService';
 import { ChatHistoryPanel } from './ChatHistoryPanel';
 import { TagDisplay } from './TagsHover';
 import reactStringReplace from "react-string-replace";
+import { AnswerWithCitations } from './AnswerWithCitations';
 
 import {
     HoverCard,
@@ -44,6 +45,7 @@ import {
 } from "@/components/ui/hover-card";
 import { ContainerScroll } from './ui/container-scroll-animation';
 import { HoverCardPortal } from '@radix-ui/react-hover-card';
+import { MessageItem } from './MessageItem';
 
 
 // import { w3cwebsocket as W3CWebSocket } from "websocket";
@@ -69,6 +71,9 @@ const throttle = <T extends (...args: any[]) => void>(func: T, limit: number): T
         }
     }) as T;
 };
+
+const throttledSetState = throttle((setter, value) => setter(value), 400);
+
 
 interface ThoughtStep {
     number: number;
@@ -109,6 +114,18 @@ interface Citation {
     chunkText: string;
     position: number;  // Position in the text where citation appears
 }
+
+interface MessageItemProps {
+    message: Message;
+    index: number;
+    isLastMessage: boolean;
+    handleSourceCardClick: (sourceUrl: string) => void;
+    getFileName: (filename: string) => string;
+    accordionValues: { [key: string]: string };
+    setAccordionValues: React.Dispatch<React.SetStateAction<{ [key: string]: string }>>;
+}
+
+
 
 // Modify the Message interface to include citations
 interface Message {
@@ -172,6 +189,7 @@ interface MessageState {
     currentSteps: ThoughtStep[];
 }
 
+
 const getIdToken = async () => {
     try {
         const { tokens } = await fetchAuthSession();
@@ -231,19 +249,24 @@ const DetailSection: React.FC<DetailsSectionProps> = ({
     const [endThinkFound, setEndThinkFound] = useState(false);
     const [isClickProcessing, setIsClickProcessing] = useState(false);
     const [isThinking, setIsThinking] = useState(false);
-    const [messageState, setMessageState] = useState<MessageState>({
-        messages: [],
-        isProcessing: false,
-        progressText: '',
-        currentSteps: []
-    });
-
-    const updateMessages = useCallback((updater: (prev: Message[]) => Message[]) => {
-        setMessageState(prev => ({
-            ...prev,
-            messages: updater(prev.messages)
-        }));
+    const [messagesState, setMessagesState] = useState<Message[]>([]);
+    
+    // Use useRef to store the throttle function with closure over the latest state setter
+    const throttledSetMessagesRef = useRef<(value: Message[] | ((prev: Message[]) => Message[])) => void>();
+    
+    useEffect(() => {
+        throttledSetMessagesRef.current = (value) => throttledSetState(setMessagesState, value);
+    }, [setMessagesState]);
+    
+    // Wrapper function to access the current throttled function
+    const setMessages = useCallback((value: Message[] | ((prev: Message[]) => Message[])) => {
+        if (throttledSetMessagesRef.current) {
+            throttledSetMessagesRef.current(value);
+        }
     }, []);
+
+
+
 
 
     useEffect(() => {
@@ -476,7 +499,7 @@ const DetailSection: React.FC<DetailsSectionProps> = ({
             setIsLoading(true);
 
             // Only add question message if it's not a retry (i.e., if the last message isn't already this question)
-            const lastMessage = messages[messages.length - 1];
+            const lastMessage = messagesState[messagesState.length - 1];
             if (!lastMessage || lastMessage.type !== 'question' || lastMessage.content !== searchTerm) {
                 setMessages(prev => [...prev, { type: 'question', content: searchTerm }]);
             }
@@ -746,15 +769,14 @@ const DetailSection: React.FC<DetailsSectionProps> = ({
 
 
 
-    const [messages, setMessagesState] = useState<Message[]>([]);
 
-    // Create throttled setMessages
-    const setMessages = useCallback(
-        throttle((newMessages: Message[] | ((prev: Message[]) => Message[])) => {
-            setMessagesState(newMessages);
-        }, 10),
-        []
-    );
+    // // Create throttled setMessages
+    // const setMessages = useCallback(
+    //     throttle((newMessages: Message[] | ((prev: Message[]) => Message[])) => {
+    //         setMessagesState(newMessages);
+    //     }, 100),
+    //     []
+    // );
     const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
         if (e.key === 'Enter') {
             setIsLoading(true);
@@ -780,7 +802,21 @@ const DetailSection: React.FC<DetailsSectionProps> = ({
     const [accordionValue, setAccordionValue] = useState<string>("steps");
     const [accordionValues, setAccordionValues] = useState<{ [key: string]: string }>({});
 
-
+    const renderedMessages = useMemo(() =>
+        messagesState.map((message, index) => (
+            <MessageItem
+                key={index}
+                message={message}
+                index={index}
+                isLastMessage={index === messagesState.length - 1}
+                handleSourceCardClick={handleSourceCardClick}
+                getFileName={getFileName}
+                accordionValues={accordionValues}
+                setAccordionValues={setAccordionValues}
+            />
+        )),
+        [messagesState, accordionValues, handleSourceCardClick, getFileName]
+    );
 
     const GreenCircle: React.FC<{
         number: string,
@@ -947,8 +983,9 @@ const DetailSection: React.FC<DetailsSectionProps> = ({
                     return { content, remaining, isComplete: true };
                 };
 
-                const extractThinkingSteps = (content: string): ThoughtStep[] => {
+                const extractThinkingSteps = (content: string): { steps: ThoughtStep[], citations: Citation[] } => {
                     const steps: ThoughtStep[] = [];
+                    const citations: Citation[] = [];
                     let currentStepNumber = 0;
                     let currentStep: ThoughtStep | null = null;
 
@@ -964,9 +1001,33 @@ const DetailSection: React.FC<DetailsSectionProps> = ({
                             // Only create new step if it's exactly one more than the previous step
                             if (number === currentStepNumber + 1) {
                                 currentStepNumber = number;
+                                let stepContent = stepMatch[2];
+
+                                // Process citations in the step content
+                                let match;
+                                const citationRegex = /\[(\d+)\]\((.*?)::(.*?)\)/g;
+                                let lastIndex = 0;
+
+                                while ((match = citationRegex.exec(stepContent)) !== null) {
+                                    citations.push({
+                                        stepNumber: match[1],
+                                        fileKey: match[2],
+                                        chunkText: match[3],
+                                        id: `citation-${citations.length}`,
+                                        position: match.index
+                                    });
+                                    lastIndex = citationRegex.lastIndex;
+                                }
+
+                                // Replace citations with @stepNum@ format
+                                stepContent = stepContent.replace(
+                                    /\[(\d+)\]\((.*?)::(.*?)\)/g,
+                                    (_, stepNum) => `@${stepNum}@`
+                                );
+
                                 currentStep = {
                                     number,
-                                    content: stepMatch[2]
+                                    content: stepContent
                                 };
                                 steps.push(currentStep);
                             } else if (currentStep) {
@@ -974,12 +1035,34 @@ const DetailSection: React.FC<DetailsSectionProps> = ({
                                 currentStep.content += '\n' + line;
                             }
                         } else if (currentStep) {
-                            // Add non-step lines to current step's content
-                            currentStep.content += '\n' + line;
+                            // Process citations in the continuing content
+                            let continuingContent = line;
+                            const citationRegex = /\[(\d+)\]\((.*?)::(.*?)\)/g;
+
+                            // Find and extract citations
+                            let match;
+                            while ((match = citationRegex.exec(continuingContent)) !== null) {
+                                citations.push({
+                                    stepNumber: match[1],
+                                    fileKey: match[2],
+                                    chunkText: match[3],
+                                    id: `citation-${citations.length}`,
+                                    position: match.index
+                                });
+                            }
+
+                            // Replace citations with @stepNum@ format
+                            continuingContent = continuingContent.replace(
+                                /\[(\d+)\]\((.*?)::(.*?)\)/g,
+                                (_, stepNum) => `@${stepNum}@`
+                            );
+
+                            // Add processed non-step lines to current step's content
+                            currentStep.content += '\n' + continuingContent;
                         }
                     }
 
-                    return steps;
+                    return { steps, citations };
                 };
 
                 const errorResult = extractContent(response, '<error>', '</error>');
@@ -1012,12 +1095,18 @@ const DetailSection: React.FC<DetailsSectionProps> = ({
                 const thinkResult = extractContent(response, '<think>', '</think>');
                 if (thinkResult) {
                     const content = thinkResult.content;
-                    const newThoughts = extractThinkingSteps(content);
+                    const { steps: newThoughts, citations: thinkingCitations } = extractThinkingSteps(content);
+
 
                     if (newThoughts.length > 0) {
                         if (lastMessage?.type === 'answer') {
                             const currentProgressText = lastMessage.progressText;
                             lastMessage.steps = [...newThoughts];
+                            // Add citations from thinking steps
+                            lastMessage.citations = [
+                                ...(lastMessage.citations || []),
+                                ...thinkingCitations
+                            ];
                             if (!currentProgressText) {
                                 lastMessage.progressText = "Thinking...";
                             }
@@ -1027,7 +1116,8 @@ const DetailSection: React.FC<DetailsSectionProps> = ({
                                 type: 'answer',
                                 content: '',
                                 steps: [...newThoughts],
-                                progressText: "Thinking..."
+                                progressText: "Thinking...",
+                                citations: [...thinkingCitations] // Include citations in new message
                             });
                             messageUpdated = true;
                         }
@@ -1085,247 +1175,6 @@ const DetailSection: React.FC<DetailsSectionProps> = ({
                 return messageUpdated ? newMessages : prev;
             });
 
-
-
-
-            // const extractContent = (text: string, startTag: string, endTag: string) => {
-            //     const startIndex = text.indexOf(startTag);
-            //     const endIndex = text.indexOf(endTag);
-            //     if (startIndex === -1) return null;
-
-            //     // If we have start tag but no end tag, return all content after start tag
-            //     if (endIndex === -1) {
-            //         return {
-            //             content: text.substring(startIndex + startTag.length),
-            //             remaining: '',
-            //             isComplete: false
-            //         };
-            //     }
-
-            //     // Make sure we include the end tag in the removal
-            //     const content = text.substring(startIndex + startTag.length, endIndex).trim();
-            //     const remaining = text.substring(endIndex + endTag.length).trim();
-            //     return { content, remaining, isComplete: true };
-            // };
-
-            // // Process error section first since it takes precedence
-            // const errorResult = extractContent(response, '<error>', '</error>');
-            // if (errorResult) {
-            //     setMessages(prev => {
-            //         const newMessages = [...prev];
-            //         const lastMessage = newMessages.length > 0 ? newMessages[newMessages.length - 1] : null;
-
-            //         if (lastMessage?.type === 'error' && !errorResult.isComplete) {
-            //             // Update existing error message
-            //             lastMessage.content = errorResult.content;
-            //         } else if (errorResult.isComplete) {
-            //             // Only add new error message if we have complete content
-            //             // and last message wasn't an error
-            //             if (!lastMessage || lastMessage.type !== 'error') {
-            //                 newMessages.push({
-            //                     type: 'error',
-            //                     content: errorResult.content
-            //                 });
-            //             } else {
-            //                 // Update existing error with complete content
-            //                 lastMessage.content = errorResult.content;
-            //             }
-            //         }
-            //         return newMessages;
-            //     });
-
-            //     if (errorResult.isComplete) {
-            //         // Only update response if we have a complete error tag
-            //         response = errorResult.remaining;
-            //     }
-
-            //     // If we have an error (complete or not), stop processing
-            //     setIsAnswerLoading(false); // Stop loading on error
-            //     setIsLoading(false);
-            //     setIsWebSocketActive(false);
-            //     return;
-            // }
-
-            // const extractThinkingSteps = (content: string): ThoughtStep[] => {
-            //     const steps: ThoughtStep[] = [];
-            //     let currentStepNumber = 0;
-            //     let currentStep: ThoughtStep | null = null;
-
-            //     // Split content into lines while preserving original formatting
-            //     const lines = content.split('\n');
-
-            //     for (const line of lines) {
-            //         // Check if line starts with a number followed by a period
-            //         const stepMatch = line.match(/^(\d+)\.\s+(.*)/);
-
-            //         if (stepMatch) {
-            //             const number = parseInt(stepMatch[1]);
-            //             // Only create new step if it's exactly one more than the previous step
-            //             if (number === currentStepNumber + 1) {
-            //                 currentStepNumber = number;
-            //                 currentStep = {
-            //                     number,
-            //                     content: stepMatch[2]
-            //                 };
-            //                 steps.push(currentStep);
-            //             } else if (currentStep) {
-            //                 // If number doesn't follow sequence, treat as regular content
-            //                 currentStep.content += '\n' + line;
-            //             }
-            //         } else if (currentStep) {
-            //             // Add non-step lines to current step's content
-            //             currentStep.content += '\n' + line;
-            //         }
-            //     }
-
-            //     return steps;
-            // };
-
-
-            // // Process thinking section
-            // const thinkResult = extractContent(response, '<think>', '</think>');
-            // if (thinkResult) {
-            //     const content = thinkResult.content;
-            //     const newThoughts = extractThinkingSteps(content);
-            //     console.log("NEW THOUGHTS:", newThoughts);
-            //     if (newThoughts.length > 0) {
-            //         // setStepsTaken(prev => {
-            //         //     // Filter out duplicates and only add new steps
-            //         //     const currentNumbers = prev.map(step => step.number);
-            //         //     const uniqueNewThoughts = newThoughts.filter(thought =>
-            //         //         !currentNumbers.includes(thought.number)
-            //         //     );
-
-            //         //     // Combine existing and new steps, sort by number
-            //         //     const combinedSteps = [...prev, ...uniqueNewThoughts]
-            //         //         .sort((a, b) => a.number - b.number);
-
-            //         //     return combinedSteps;
-            //         // });
-
-            //         // Update message with all current steps
-            //         setMessages(prev => {
-            //             const newMessages = [...prev];
-            //             const lastMessage = newMessages.length > 0 ? newMessages[newMessages.length - 1] : null;
-
-            //             if (lastMessage?.type === 'answer') {
-            //                 // Preserve the existing progressText
-            //                 const currentProgressText = lastMessage.progressText;
-            //                 lastMessage.steps = [...newThoughts];
-            //                 // Only set progressText if it doesn't exist
-            //                 if (!currentProgressText) {
-            //                     lastMessage.progressText = "Thinking...";
-            //                 }
-            //             } else {
-            //                 newMessages.push({
-            //                     type: 'answer',
-            //                     content: '',
-            //                     steps: [...newThoughts],
-            //                     progressText: "Thinking..."
-            //                 });
-            //             }
-            //             return newMessages;
-            //         });
-            //     }
-
-            //     if (thinkResult.isComplete) {
-            //         setThoughts(thinkResult.content);
-            //         // Update the progress text only when thinking is complete
-            //         setMessages(prev => {
-            //             const newMessages = [...prev];
-            //             const lastMessage = newMessages.length > 0 ? newMessages[newMessages.length - 1] : null;
-            //             if (lastMessage?.type === 'answer') {
-            //                 lastMessage.progressText = "Thinking complete";
-            //             }
-            //             return newMessages;
-            //         });
-            //         const currentMessageIndex = messages.length - 1;
-
-            //         // Close the specific accordion after 500ms
-            //         setTimeout(() => {
-            //             setAccordionValues(prev => ({
-            //                 ...prev,
-            //                 [`accordion-${currentMessageIndex}`]: '' // Empty string closes the accordion
-            //             }));
-            //         }, 500);
-            //     }
-            // }
-
-            // // Process answer section
-            // // Process answer section
-            // const answerResult = extractContent(response, '<answer>', '</answer>');
-            // if (answerResult) {
-            //     setMessages(prev => {
-            //         const newMessages = [...prev];
-            //         const lastMessage = newMessages.length > 0 ? newMessages[newMessages.length - 1] : null;
-
-            //         if (lastMessage?.type === 'answer') {
-            //             // Parse citations from the answer content
-            //             const answerContent = answerResult.content;
-            //             const citations: Citation[] = [];
-
-            //             // Extract citations while maintaining the original content structure
-            //             const processedContent = answerContent.replace(
-            //                 /\[(\d+)\]\((.*?)::(.*?)\)/g,
-            //                 (match, stepNum, fileKey, chunkText, offset) => {
-            //                     citations.push({
-            //                         id: `citation-${citations.length}`,
-            //                         stepNumber: stepNum,
-            //                         fileKey,
-            //                         chunkText,
-            //                         position: offset
-            //                     });
-            //                     return `@${stepNum}@`; // New citation format
-            //                 }
-            //             );
-
-            //             // Update the message with processed content and citations
-            //             lastMessage.content = processedContent;
-            //             lastMessage.citations = citations;
-            //             console.log("last message:", lastMessage);
-            //         } else {
-            //             // Create new answer message if none exists
-            //             const citations: Citation[] = [];
-            //             const processedContent = answerResult.content.replace(
-            //                 /\[(\d+)\]\((.*?)::(.*?)\)/g,
-            //                 (match, stepNum, fileKey, chunkText, offset) => {
-            //                     citations.push({
-            //                         id: `citation-${citations.length}`,
-            //                         stepNumber: stepNum,
-            //                         fileKey,
-            //                         chunkText,
-            //                         position: offset
-            //                     });
-            //                     return `@${stepNum}@`;
-            //                 }
-            //             );
-
-            //             newMessages.push({
-            //                 type: 'answer',
-            //                 content: processedContent,
-            //                 steps: [],
-            //                 citations
-            //             });
-            //         }
-            //         return newMessages;
-            //     });
-
-            //     if (answerResult.isComplete) {
-            //         setIsAnswerLoading(false);
-            //         response = answerResult.remaining;
-            //     }
-            // }
-
-            // // Handle streaming content that's not within any tags
-            // if (!thinkResult && !answerResult && response.trim()) {
-            //     setMessages(prev => {
-            //         const newMessages = [...prev];
-            //         if (newMessages.length > 0 && newMessages[newMessages.length - 1].type === 'answer') {
-            //             newMessages[newMessages.length - 1].content += response.trim();
-            //         }
-            //         return newMessages;
-            //     });
-            // }
 
             setIsLoading(false);
         }
@@ -1386,7 +1235,7 @@ const DetailSection: React.FC<DetailsSectionProps> = ({
 
     useEffect(() => {
         scrollToBottom();
-    }, [messages, searchResult]);
+    }, [messagesState, searchResult]);
 
     const renderAnswerHeader = () => (
         <div className='flex flex-row gap-2 items-center mb-3'>
@@ -1416,6 +1265,7 @@ const DetailSection: React.FC<DetailsSectionProps> = ({
         setIsLoading(false);
         setAccordionValues({}); // Reset accordion values
         setIsAnswerLoading(false);
+        setShowRetry(false);
     };
 
     const handleChatHistorySelect = (messages: any[]) => {
@@ -1546,226 +1396,9 @@ const DetailSection: React.FC<DetailsSectionProps> = ({
                 <ScrollArea
                     className="flex-1 overflow-none w-full max-w-full  px-4 [mask-image:linear-gradient(to_bottom,white_calc(100%-64px),transparent)]"
                 >
-                    <div className="w-full h-full">
-                        {messages.map((message, index) => (
-                            <div key={index} className="flex flex-col gap-0 mb-4 pl-2 max-w-full w-full" >
-                                {message.type === 'question' ? (
-                                    <div className={`flex items-end dark:text-white mt-4 ${index === messages.length - 1 ? 'mb-8' : ''}`}>
-                                        <p className="text-2xl font-medium dark:text-white pr-4 rounded-lg w-[70%]">{message.content}</p>
-                                    </div>
-                                ) : message.type === 'error' ? (
-                                    <div className="w-full">
-                                        <div className="mr-auto mb-6 rounded-lg bg-red-50 dark:bg-red-900/10 p-4">
-                                            <div className='flex flex-row gap-2 items-center mb-3'>
-                                                <BadgeInfo className="h-5 w-5 text-red-500" />
-                                                <h1 className='text-red-500 font-semibold'>Error</h1>
-                                            </div>
-                                            <ReactMarkdown className="text-wrap text-sm pr-4 text-red-600 dark:text-red-400 leading-7">
-                                                {message.content}
-                                            </ReactMarkdown>
-                                        </div>
-                                    </div>
-                                ) : (
-                                    <div className={`w-full gap-0 max-w-full ${index === messages.length - 1 ? 'mb-8' : ''}`}>
-                                        {((message.steps && message.steps.length > 0) || (message.progressText)) && (
-                                            <div className="w-full pr-4 pb-0">
-                                                <Accordion
-                                                    type="single"
-                                                    collapsible
-                                                    value={accordionValues[`accordion-${index}`] || ''} // Use unique key for each accordion
-                                                    onValueChange={(value) => {
-                                                        setAccordionValues(prev => ({
-                                                            ...prev,
-                                                            [`accordion-${index}`]: value
-                                                        }));
-                                                    }}
-                                                    className="w-full -space-y-px mb-2"
-                                                >
+                    <div className="w-full h-full px-2">
+                        {renderedMessages}
 
-                                                    <AccordionItem
-                                                        value="steps"
-                                                        className="border bg-background px-4 py-1 rounded-lg dark:bg-darkbg dark:border-slate-800 w-full"
-                                                    >
-                                                        <AccordionTrigger className="py-1 text-[15px] leading-6 hover:no-underline dark:text-slate-400 flex items-center justify-center">
-                                                            <div className="flex flex-row gap-2 items-center w-full justify-between pr-2">
-                                                                <div className="flex flex-row gap-2 items-center">
-                                                                    <SearchIcon className="h-4 w-4 text-gray-500" />
-                                                                    <h1>Pro Search</h1>
-                                                                </div>
-                                                                <h1 className="text-sm font-light">{message.steps?.length || 0} steps</h1>
-                                                            </div>
-                                                        </AccordionTrigger>
-                                                        <AccordionContent className="pb-2 pt-2 text-muted-foreground w-full">
-                                                            {message.progressText && (
-                                                                <Accordion
-                                                                    type="single"
-                                                                    collapsible
-                                                                    value={accordionValues[`progress-${index}`] || ''}
-                                                                    onValueChange={(value) => {
-                                                                        setAccordionValues(prev => ({
-                                                                            ...prev,
-                                                                            [`progress-${index}`]: value
-                                                                        }));
-                                                                    }}
-                                                                    className="w-full mb-3"
-                                                                >
-                                                                    <AccordionItem
-                                                                        value="progress"
-                                                                        className="border-none bg-slate-50 dark:bg-slate-800/50 rounded-md w-full"
-                                                                    >
-                                                                        <AccordionTrigger className="py-2 px-3 text-xs hover:no-underline">
-                                                                            <AnimatedProgressText text={message.progressText || 'giiii'} />
-                                                                            {/* <span className = "text-left">
-                                                                                {message.progressText}
-                                                                            </span> */}
-                                                                        </AccordionTrigger>
-                                                                        <AccordionContent className="px-3 pb-2 w-full overflow-hidden">
-                                                                            {message.sourcingSteps && message.sourcingSteps.length > 0 ? (
-                                                                                <div className="space-y-2 w-full ">
-                                                                                    {message.sourcingSteps.map((step, index) => (
-                                                                                        <div key={index} className="space-y-1 w-full">
-                                                                                            <div
-                                                                                                className="w-full animate-slide-down" // Added animation class
-                                                                                                style={{
-                                                                                                    animation: 'slideDown 0.3s ease-out forwards'
-                                                                                                }}
-                                                                                            >
-                                                                                                <div className="text-xs text-gray-600 dark:text-gray-300">
-                                                                                                    {step}
-                                                                                                </div>
-
-                                                                                                {/* Show subSources for first step (index 0) */}
-                                                                                                {index === 0 && message.subSources && (
-                                                                                                    <div className="w-full overflow-hidden min-w-0">
-                                                                                                        <div className="relative w-full">
-                                                                                                            <ScrollArea className="w-full bg-green-100 min-w-0">
-                                                                                                                <div className="flex space-x-2 p-2 min-w-0">
-                                                                                                                    {/* {Object.entries(message.subSources).slice(0, 1).map(([fileName, fileKey]) => (
-                                                                                                                        <div
-                                                                                                                            key={fileKey}
-                                                                                                                            className="inline-flex shrink-0 items-center gap-2 px-3 py-1 rounded-md bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 cursor-pointer"
-                                                                                                                            onClick={() => handleSourceCardClick(fileKey as string)}
-                                                                                                                            onDoubleClick={() => null}
-                                                                                                                        >
-                                                                                                                            <FileText className="h-3 w-3 text-slate-500 dark:text-slate-400" />
-                                                                                                                            <span className="text-xs text-slate-600 dark:text-slate-300 truncate max-w-[150px]">
-                                                                                                                                {fileName}
-                                                                                                                            </span>
-                                                                                                                        </div>
-                                                                                                                    ))} */}
-                                                                                                                    {Object.keys(message.subSources).length > 2 && (
-                                                                                                                        <div className="text-xs text-slate-500 dark:text-slate-400 shrink-0">
-                                                                                                                            +{Object.keys(message.subSources).length - 2} more wowwowwwowowowwowowow wo wow oow o wo wo o wo w
-                                                                                                                        </div>
-                                                                                                                    )}
-                                                                                                                </div>
-                                                                                                                <ScrollBar orientation="horizontal" />
-                                                                                                            </ScrollArea>
-                                                                                                        </div>
-                                                                                                    </div>
-                                                                                                )}
-                                                                                            </div>
-
-                                                                                            {/* Show sources for second step (index 1) */}
-                                                                                            {/* {index === 1 && message.sources && (
-                                                                                                <ScrollArea className="w-full whitespace-nowrap w-[400px] bg-green-100">
-                                                                                                    <div className="flex space-x-2 p-2">
-                                                                                                        {message.sources.map((source, idx) => (
-                                                                                                            <div
-                                                                                                                key={idx}
-                                                                                                                className="inline-flex flex-col justify-between min-h-[80px] w-[200px] px-3 py-2 rounded-md bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 cursor-pointer"
-                                                                                                                onClick={() => handleSourceCardClick(source.id)}
-                                                                                                                onDoubleClick={() => null}
-                                                                                                            >
-                                                                                                                <div className="text-xs text-slate-700 dark:text-slate-200 line-clamp-2">
-                                                                                                                    {source.chunkTitle}
-                                                                                                                </div>
-                                                                                                                <div className="flex items-center gap-2 mt-2">
-                                                                                                                    <FileText className="h-3 w-3 text-slate-400 dark:text-slate-500" />
-                                                                                                                    <span className="text-xs text-slate-400 dark:text-slate-500 truncate">
-                                                                                                                        {getFileName(source.id.split('/').pop() || '')}
-                                                                                                                    </span>
-                                                                                                                </div>
-                                                                                                            </div>
-                                                                                                        ))}
-                                                                                                    </div>
-                                                                                                    <ScrollBar orientation="horizontal" />
-                                                                                                </ScrollArea>
-                                                                                            )} */}
-                                                                                        </div>
-                                                                                    ))}
-                                                                                </div>
-                                                                            ) : (
-                                                                                <div className="text-xs text-gray-500">No sourcing steps available</div>
-                                                                            )}
-                                                                        </AccordionContent>
-                                                                    </AccordionItem>
-                                                                </Accordion>
-                                                            )}
-
-                                                            {message.steps && message.steps.length > 0 ? (
-                                                                message.steps.map((step, stepIndex) => (
-                                                                    <div key={stepIndex} className="flex flex-row gap-2 items-center mb-2">
-                                                                        <span className="text-xs text-gray-500">{step.number}.</span>
-                                                                        <span className="text-xs text-gray-700 dark:text-gray-300 font-normal">
-                                                                            {step.content}
-                                                                        </span>
-                                                                    </div>
-                                                                ))
-                                                            ) : (
-                                                                <div className="text-xs text-gray-500"></div>
-                                                            )}
-                                                        </AccordionContent>
-                                                    </AccordionItem>
-                                                </Accordion>
-                                            </div>
-                                        )}
-
-                                        {/* show source blocks here!!! */}
-                                        {message.sources && message.sources.length > 0 && (
-                                            <ScrollArea className="w-full whitespace-nowrap ">
-                                                <div className="flex space-x-2 p-2 mb-4 ">
-                                                    {message.sources.map((source, idx) => (
-                                                        <div
-                                                            key={idx}
-                                                            className="inline-flex flex-col justify-between min-h-[80px] w-[200px] px-3 py-2 rounded-md bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 cursor-pointer"
-                                                            onClick={() => handleSourceCardClick(source.id)}
-                                                        >
-                                                            <div className="text-xs text-slate-700 dark:text-slate-200 line-clamp-2">
-                                                                {source.chunkTitle}
-                                                            </div>
-                                                            <div className="flex items-center gap-2 mt-2">
-                                                                <FileText className="h-3 w-3 text-slate-400 dark:text-slate-500" />
-                                                                <span className="text-xs text-slate-400 dark:text-slate-500 truncate">
-                                                                    {getFileName(source.id.split('/').pop() || '')}
-                                                                </span>
-                                                            </div>
-                                                        </div>
-                                                    ))}
-                                                </div>
-                                                <ScrollBar orientation="horizontal" />
-                                            </ScrollArea>
-                                        )}
-
-                                        <div className="mr-auto mb-6 rounded-lg">
-                                            <AnswerWithCitations
-                                                content={message.content}
-                                                citations={message.citations || []}
-                                            />
-
-                                        </div>
-
-                                        <div className="w-full flex items-center justify-center mt-4 "></div>
-                                        {index !== messages.length - 1 && (
-                                            <Separator className="bg-slate-200 dark:bg-slate-800 w-full" orientation='horizontal' />
-                                        )}
-                                    </div>
-                                )
-                                }
-
-                            </div>
-                        ))
-                        }
 
                         {
                             showRetry && (
