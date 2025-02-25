@@ -96,9 +96,10 @@ const SkeletonInvite = () => (
 
 export default function GeneralDashboard() {
     const [selectedTab, setSelectedTab] = useState("library");
+    const router = useRouter();
     const { user, signOut } = useAuthenticator((context) => [context.user]);
     const [userAttributes, setUserAttributes] = useState<FetchUserAttributesOutput | null>(null);
-    const router = useRouter();
+    const [isLoading, setIsLoading] = useState(true);
     const [activeTab, setActiveTab] = useState<number | null>(0);
     const [indicatorStyle, setIndicatorStyle] = useState<IndicatorStyle>({} as IndicatorStyle);
     const tabRefs = useRef<(HTMLDivElement | null)[]>([]);
@@ -106,7 +107,6 @@ export default function GeneralDashboard() {
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
     const [isLeaveDialogOpen, setIsLeaveDialogOpen] = useState(false);
     const [selectedDataroom, setSelectedDataroom] = useState<string | null>(null);
-    const [isLoading, setIsLoading] = useState(true);
     const [isInvitesLoading, setIsInvitesLoading] = useState(true);
     const [isCreating, setIsCreating] = useState(false);
 
@@ -365,21 +365,45 @@ export default function GeneralDashboard() {
 
 
     useEffect(() => {
-        if (user) {
-            handleFetchUserAttributes();
-            handleFetchDataRooms();
-        }
-    }, [user]);
-
-    useEffect(() => {
         if (isDarkMode) {
             document.documentElement.classList.add('dark');
         } else {
             document.documentElement.classList.remove('dark');
         }
     }, [isDarkMode]);
+
+    useEffect(() => {
+        async function initializeDashboard() {
+            try {
+                await handleFetchUserAttributes();
+                await handleFetchDataRooms();
+            } catch (error) {
+                console.error('Error initializing dashboard:', error);
+            } finally {
+                setIsLoading(false);
+            }
+        }
+        
+        if (user) {
+            initializeDashboard();
+        }
+    }, [user]);
+
+    async function handleSignOut() {
+        try {
+            await signOut();
+            router.replace('/signin');
+        } catch (error) {
+            console.error('Error signing out:', error);
+        }
+    }
+
     return (
-        userAttributes ?
+        isLoading ? (
+            <div className="grid h-screen place-items-center dark:bg-darkbg">
+                <CircularProgress value={0.5} />
+            </div>
+        ) : userAttributes ?
             <div className="relative h-screen w-full flex flex-row sans-serif">
                 <div className="w-20 bg-slate-900 h-full flex flex-col items-center justify-between pt-4 pb-6">
                     <div className="">
@@ -417,7 +441,7 @@ export default function GeneralDashboard() {
                         </PopoverTrigger>
                         <PopoverContent className="w-auto p-0">
                             <button
-                                onClick={signOut}
+                                onClick={handleSignOut}
                                 className="flex items-center space-x-2 px-4 py-2 text-red-500 hover:bg-gray-100 w-full text-sm"
                             >
                                 <LogOut size={14} />
