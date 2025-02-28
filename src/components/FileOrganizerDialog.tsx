@@ -16,6 +16,7 @@ import { ScrollArea } from "./ui/scroll-area";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "./ui/accordion";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "./ui/table";
 import { FolderIcon, ChevronRightIcon, FileIcon, ArrowRight } from 'lucide-react';
+import { useFileStore } from './HotkeyService';
 
 interface FileOrganizerDialogProps {
   bucketId: string;
@@ -148,6 +149,8 @@ interface FileMovementTreeProps {
 }
 
 const FileMovementTree: React.FC<FileMovementTreeProps> = ({ fileAssignments, newNames }) => {
+      const getFileName = useFileStore(state => state.getFileName);
+  
   const buildTreeStructure = () => {
     const tree: Record<string, any> = {
       id: 'root',
@@ -208,7 +211,7 @@ const FileMovementTree: React.FC<FileMovementTreeProps> = ({ fileAssignments, ne
           ) : (
             <div className="flex items-center gap-2 text-sm">
               <FileIcon className="h-4 w-4 text-gray-500" />
-              <span>{node.name}</span>
+              <span>{getFileName(node.name)}</span>
               {node.newName && (
                 <>
                   <ArrowRight className="h-4 w-4 text-gray-400" />
@@ -640,7 +643,7 @@ export const FileOrganizerDialog: React.FC<FileOrganizerDialogProps> = ({ bucket
             <ScrollArea className="h-full">
               <div className="space-y-4 p-4">
                 <Accordion type="single" collapsible className="w-full dark:text-gray-200">
-                  <AccordionItem value="schema">
+                  {/* <AccordionItem value="schema">
                     <AccordionTrigger>Folder Structure</AccordionTrigger>
                     <AccordionContent>
                       <TreeView
@@ -650,7 +653,7 @@ export const FileOrganizerDialog: React.FC<FileOrganizerDialogProps> = ({ bucket
                       />
                     </AccordionContent>
                   </AccordionItem>
-    
+     */}
                   <AccordionItem value="reasoning">
                     <AccordionTrigger>Organization Reasoning</AccordionTrigger>
                     <AccordionContent>

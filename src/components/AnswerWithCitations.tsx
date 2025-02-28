@@ -1,4 +1,4 @@
-import React, { memo } from 'react';
+import React, { memo, useMemo } from 'react';
 import Markdown from 'markdown-to-jsx';
 import { Copy, FileText } from 'lucide-react';
 import { Button } from './ui/button';
@@ -30,10 +30,14 @@ interface GreenCircleProps {
 const GreenCircle = memo<GreenCircleProps>(({ number, fileKey, onSourceClick }) => {
     const getFileName = useFileStore(state => state.getFileName);
     
-    console.log("GreenCircle rendered");
-    console.log("fileKey", fileKey);
-    // console.log("filekey split", fileKey.split('/').pop());
-    const fileName = fileKey ? getFileName(fileKey.split('/').pop() || '') : '';
+    // Remove the console.log that can cause unnecessary re-renders
+    // console.log('GreenCircle rendering 2');
+
+    // Use useMemo to avoid recalculating the file name on every render
+    const fileName = useMemo(() => {
+        if (!fileKey) return '';
+        return getFileName(fileKey.split('/').pop() || '');
+    }, [fileKey, getFileName]);
 
     return (
         <HoverCard openDelay={100} closeDelay={100}>
@@ -56,14 +60,21 @@ const GreenCircle = memo<GreenCircleProps>(({ number, fileKey, onSourceClick }) 
                                 </span>
                             </span>
                         </div>
-                    </HoverCardContent>
+                        </HoverCardContent>
                 </HoverCardPortal>
             )}
         </HoverCard>
     );
+}, (prevProps, nextProps) => {
+    // Strict equality check for props that matter
+    return prevProps.number === nextProps.number &&
+        prevProps.fileKey === nextProps.fileKey;
 });
 
-export const AnswerWithCitations = memo<AnswerWithCitationsProps>(({ content, citations = [], handleSourceClick }) => {    const handleCopyContent = () => {
+
+
+export const AnswerWithCitations = memo<AnswerWithCitationsProps>(({ content, citations = [], handleSourceClick }) => {
+    const handleCopyContent = () => {
         const cleanContent = content.replace(/@\d+@/g, '');
         navigator.clipboard.writeText(cleanContent);
     };
@@ -72,18 +83,48 @@ export const AnswerWithCitations = memo<AnswerWithCitationsProps>(({ content, ci
         return citations.find(citation => citation.stepNumber === stepNumber);
     };
 
-    // Replace citation markers with GreenCircle components
-    let transformedContent = content.replace(/@(\d+)@/g, (match, number, offset, string) => {
-        const citation = getCitationByStep(number);
-        const followingChar = string[offset + match.length] || '';
+    // Process the content once using useMemo to avoid re-processing on every render
+    const transformedContent = useMemo(() => {
+        if (content.includes("<t")) return "";
+        
+        return content.replace(/@(\d+)@/g, (match, number, offset, string) => {
+            const citation = getCitationByStep(number);
+            const followingChar = string[offset + match.length] || '';
 
-        if (followingChar === ' ' || followingChar === '' || followingChar === '\n') {
-            return `<circle data-number="${number}" data-filekey="${citation?.fileKey || ''}" />\n`;
-        }
-        return `<circle data-number="${number}" data-filekey="${citation?.fileKey || ''}" />`;
-    });
+            if (followingChar === ' ' || followingChar === '' || followingChar === '\n') {
+                return `<circle data-number="${number}" data-filekey="${citation?.fileKey || ''}" />\n`;
+            }
+            return `<circle data-number="${number}" data-filekey="${citation?.fileKey || ''}" />`;
+        });
+    }, [content, citations]);
 
-    if (content.includes("<t")) transformedContent = "";
+    // Define interface for circle component props
+    interface CircleComponentProps {
+        'data-number': string;
+        'data-filekey': string;
+    }
+
+    const circleComponent = useMemo(() => {
+        return React.memo((props: CircleComponentProps) => (
+            <GreenCircle
+                number={props["data-number"]}
+                fileKey={props["data-filekey"]}
+                onSourceClick={handleSourceClick}
+            />
+        ),
+        (prevProps: CircleComponentProps, nextProps: CircleComponentProps) => 
+            prevProps["data-number"] === nextProps["data-number"] &&
+            prevProps["data-filekey"] === nextProps["data-filekey"]
+        );
+    }, [handleSourceClick]);
+
+    const markdownOptions = useMemo(() => ({
+        // overrides: {
+        //     circle: {
+        //         component: circleComponent
+        //     },
+        // },
+    }), [circleComponent]);
 
     return (
         <div className="whitespace-pre-wrap relative group">
@@ -100,25 +141,7 @@ export const AnswerWithCitations = memo<AnswerWithCitationsProps>(({ content, ci
             </div>
             <div className="pr-12">
                 <Markdown
-                    options={{
-                        overrides: {
-                            circle: {
-                                component: ({
-                                    "data-number": number,
-                                    "data-filekey": fileKey
-                                }: {
-                                    "data-number": string;
-                                    "data-filekey": string;
-                                }) => (
-                                    <GreenCircle
-                                        number={number}
-                                        fileKey={fileKey}
-                                        onSourceClick={handleSourceClick}
-                                    />
-                                ),
-                            },
-                        },
-                    }}
+                    options={markdownOptions}
                     className='dark:text-gray-200'
                 >
                     {transformedContent}
@@ -126,4 +149,26 @@ export const AnswerWithCitations = memo<AnswerWithCitationsProps>(({ content, ci
             </div>
         </div>
     );
+}, (prevProps, nextProps) => {
+    // Keep existing comparison logic
+    if (prevProps.content !== nextProps.content) return false;
+    
+    // If citations array changed completely, re-render
+    if (prevProps.citations !== nextProps.citations) {
+        // Even if array reference changed, check if contents are the same
+        if (!prevProps.citations || !nextProps.citations) return false;
+        if (prevProps.citations.length !== nextProps.citations.length) return false;
+        
+        // Deep compare citations
+        for (let i = 0; i < prevProps.citations.length; i++) {
+            const prevCitation = prevProps.citations[i];
+            const nextCitation = nextProps.citations[i];
+            if (prevCitation.stepNumber !== nextCitation.stepNumber || 
+                prevCitation.fileKey !== nextCitation.fileKey) {
+                return false;
+            }
+        }
+    }
+    
+    return true;
 });

@@ -169,13 +169,16 @@ interface GreenCircleProps {
 }
 
 // Helper function to get file name - you need to implement this or pass it
+// Updated GreenCircle component with more efficient memoization
 const GreenCircle = memo<GreenCircleProps>(({ number, fileKey, onSourceClick }) => {
+    console.log("GreenCircle rendered with number:", number);
+    
     const getFileName = useFileStore(state => state.getFileName);
-
-    console.log("GreenCircle rendered");
-    console.log("fileKey", fileKey);
-    // console.log("filekey split", fileKey.split('/').pop());
-    const fileName = fileKey ? getFileName(fileKey.split('/').pop() || '') : '';
+    const fileName = useMemo(() => {
+        if (!fileKey) return '';
+        const id = fileKey.split('/').pop() || '';
+        return getFileName(id);
+    }, [fileKey, getFileName]);
 
     return (
         <HoverCard openDelay={100} closeDelay={100}>
@@ -203,6 +206,10 @@ const GreenCircle = memo<GreenCircleProps>(({ number, fileKey, onSourceClick }) 
             )}
         </HoverCard>
     );
+}, (prevProps, nextProps) => {
+    // Custom comparison function to avoid unnecessary re-renders
+    return prevProps.number === nextProps.number && 
+           prevProps.fileKey === nextProps.fileKey;
 });
 
 
@@ -391,27 +398,32 @@ export const MessageItem = memo<MessageItemProps>(({
                                         {message.steps.map((step, stepIndex) => (
                                             <div key={stepIndex} className="step-item w-full">
                                                 <Markdown
-                                                    options={{
-                                                        overrides: {
-                                                            p: {
-                                                                component: 'div',
-                                                                props: {
-                                                                    className: 'flex flex-row gap-2 items-start',
-                                                                },
-                                                            },
-                                                            circle: {
-                                                                component: ({ "data-number": number, "data-filekey": fileKey }) => (
-                                                                    <GreenCircle
-                                                                        number={number}
-                                                                        fileKey={fileKey}
-                                                                        onSourceClick={handleSourceClick}
-                                                                    />
-                                                                ),
-                                                            },
-                                                        }
-                                                    }}
+                                                    // options={{
+                                                    //     overrides: {
+                                                    //         p: {
+                                                    //             component: 'div',
+                                                    //             props: {
+                                                    //                 className: 'flex flex-row gap-2 items-start',
+                                                    //             },
+                                                    //         },
+                                                    //         circle: {
+                                                    //             component: React.memo(({ "data-number": number, "data-filekey": fileKey }) => (
+                                                    //                 <GreenCircle
+                                                    //                     number={number}
+                                                    //                     fileKey={fileKey}
+                                                    //                     onSourceClick={handleSourceClick}
+                                                    //                 />
+                                                    //             ), 
+                                                    //             // Only re-render if these props change
+                                                    //             (prevProps, nextProps) => 
+                                                    //                 prevProps["data-number"] === nextProps["data-number"] &&
+                                                    //                 prevProps["data-filekey"] === nextProps["data-filekey"]
+                                                    //             ),
+                                                    //         },
+                                                    //     }
+                                                    // }}
                                                 >
-                                                    {(() => {
+                                                        {(() => {
                                                         const content = `<span class="text-xs text-gray-500 whitespace-nowrap">${step.number}. </span><span class="text-xs text-gray-700 dark:text-gray-300 font-normal">${step.content}</span>`;
 
                                                         // Transform content to include citation circles if needed

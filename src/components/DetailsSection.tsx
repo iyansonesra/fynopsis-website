@@ -72,7 +72,7 @@ const throttle = <T extends (...args: any[]) => void>(func: T, limit: number): T
     }) as T;
 };
 
-const throttledSetState = throttle((setter, value) => setter(value), 400);
+const throttledSetState = throttle((setter, value) => setter(value), 1);
 
 
 interface ThoughtStep {
@@ -235,7 +235,7 @@ const DetailSection: React.FC<DetailsSectionProps> = ({
     const [error, setError] = useState<string | null>(null);
     const [searchResult, setSearchResult] = useState<SearchResponse | null>(null);
     const [loadingSource, setLoadingSource] = useState<string | null>(null);
-    const [messageBuffer, setMessageBuffer] = useState('');
+    const [messageBuffer, setMessageBuffer] = useState<{ response: string, sources: any, thread_id: string }[]>([]);
     const [sourceUrls, setSourceUrls] = useState<string[]>([]);
     const [currentThreadId, setCurrentThreadId] = useState<string>('');
     const [isAnswerLoading, setIsAnswerLoading] = useState(false);
@@ -250,14 +250,16 @@ const DetailSection: React.FC<DetailsSectionProps> = ({
     const [isClickProcessing, setIsClickProcessing] = useState(false);
     const [isThinking, setIsThinking] = useState(false);
     const [messagesState, setMessagesState] = useState<Message[]>([]);
-    
+    const processingRef = useRef<boolean>(false);
+    const pendingSearchResultsRef = useRef<{ response: string, sources: any, thread_id: string }[]>([]);
+
     // Use useRef to store the throttle function with closure over the latest state setter
     const throttledSetMessagesRef = useRef<(value: Message[] | ((prev: Message[]) => Message[])) => void>();
-    
+
     useEffect(() => {
         throttledSetMessagesRef.current = (value) => throttledSetState(setMessagesState, value);
     }, [setMessagesState]);
-    
+
     // Wrapper function to access the current throttled function
     const setMessages = useCallback((value: Message[] | ((prev: Message[]) => Message[])) => {
         if (throttledSetMessagesRef.current) {
@@ -635,21 +637,6 @@ const DetailSection: React.FC<DetailsSectionProps> = ({
                                                     lastMessage.subSources[fileName] = key;
                                                 }
                                             });
-                                            // Object.keys(data.sources).forEach(sourceKey => {
-                                            //     // Filter out non-source keys
-                                            //     if (sourceKey !== 'thread_id' && 
-                                            //         sourceKey !== 'type' && 
-                                            //         !sourceKey.startsWith('[[')) {
-                                            //         const id = sourceKey.split('/').pop();
-                                            //         const fileName = id ? getFileName(id) : undefined;
-                                            //         if (fileName) {
-                                            //             if (!lastMessage.subSources) {
-                                            //                 lastMessage.subSources = {};
-                                            //             }
-                                            //             lastMessage.subSources[fileName] = sourceKey;
-                                            //         }
-                                            //     }
-                                            // });
                                         }
                                     }
                                     return newMessages;
@@ -662,14 +649,23 @@ const DetailSection: React.FC<DetailsSectionProps> = ({
                                 setCurrentThreadId(data.thread_id);
                             }
 
-
-
-
-                            setSearchResult(prevResult => ({
-                                response: (prevResult?.response || '') + data.response,
+                            pendingSearchResultsRef.current.push({
+                                response: data.response,
                                 sources: data.sources || {},
                                 thread_id: data.thread_id || ''
-                            }));
+                            });
+
+                            // Process the buffer if not already processing
+                            if (!processingRef.current) {
+                                processSearchResultBuffer();
+                            }
+
+
+                            // setSearchResult(prevResult => ({
+                            //     response: (prevResult?.response || '') + data.response,
+                            //     sources: data.sources || {},
+                            //     thread_id: data.thread_id || ''
+                            // }));
 
                         }
 
@@ -718,6 +714,40 @@ const DetailSection: React.FC<DetailsSectionProps> = ({
             console.error('Error querying collection:', err);
             setError('Failed to fetch search results. Please try again.');
             setIsLoading(false);
+        }
+    };
+
+    const processSearchResultBuffer = () => {
+        if (pendingSearchResultsRef.current.length === 0) {
+            processingRef.current = false;
+            return;
+        }
+
+        processingRef.current = true;
+
+        // Take all pending updates and batch them together
+        const pendingUpdates = [...pendingSearchResultsRef.current];
+        pendingSearchResultsRef.current = [];
+
+        // Combine all updates into one
+        const combinedUpdate = pendingUpdates.reduce((acc, curr) => ({
+            response: acc.response + curr.response,
+            sources: { ...acc.sources, ...curr.sources },
+            thread_id: curr.thread_id || acc.thread_id
+        }), { response: '', sources: {}, thread_id: '' });
+
+        // Apply the combined update
+        setSearchResult(prevResult => ({
+            response: (prevResult?.response || '') + combinedUpdate.response,
+            sources: { ...(prevResult?.sources || {}), ...combinedUpdate.sources },
+            thread_id: combinedUpdate.thread_id || prevResult?.thread_id || ''
+        }));
+
+        // Schedule next processing using requestAnimationFrame instead of immediately recursing
+        if (pendingSearchResultsRef.current.length > 0) {
+            requestAnimationFrame(processSearchResultBuffer);
+        } else {
+            processingRef.current = false;
         }
     };
 
@@ -907,25 +937,25 @@ const DetailSection: React.FC<DetailsSectionProps> = ({
                 </div>
                 <div className="pr-12"> {/* Add padding to prevent text from going under the button */}
                     <Markdown
-                        options={{
-                            overrides: {
-                                circle: {
-                                    component: ({
-                                        "data-number": number,
-                                        "data-filekey": fileKey
-                                    }: {
-                                        "data-number": string;
-                                        "data-filekey": string;
-                                    }) => (
-                                        <GreenCircle
-                                            number={number}
-                                            fileKey={fileKey}
-                                            onSourceClick={handleSourceClick}
-                                        />
-                                    ),
-                                },
-                            },
-                        }}
+                        // options={{
+                        //     overrides: {
+                        //         circle: {
+                        //             component: ({
+                        //                 "data-number": number,
+                        //                 "data-filekey": fileKey
+                        //             }: {
+                        //                 "data-number": string;
+                        //                 "data-filekey": string;
+                        //             }) => (
+                        //                 <GreenCircle
+                        //                     number={number}
+                        //                     fileKey={fileKey}
+                        //                     onSourceClick={handleSourceClick}
+                        //                 />
+                        //             ),
+                        //         },
+                        //     },
+                        // }}
                         className='dark:text-gray-200'
                     >
                         {transformedContent}
@@ -1182,6 +1212,7 @@ const DetailSection: React.FC<DetailsSectionProps> = ({
 
     const textareaRef = useRef<HTMLTextAreaElement>(null);
 
+
     const SourcesList: React.FC<{ sources: Record<string, any> }> = ({ sources }) => {
         return (
             <div className="mt-4">
@@ -1224,18 +1255,15 @@ const DetailSection: React.FC<DetailsSectionProps> = ({
         adjustHeight();
     }, [inputValue]);
 
-    const messagesEndRef = useRef<HTMLDivElement>(null);
-    const scrollToBottom = () => {
-        messagesEndRef.current?.scrollIntoView({
-            behavior: "smooth",
-            block: "end",
-            inline: "nearest"
-        });
-    };
+   
 
-    useEffect(() => {
-        scrollToBottom();
-    }, [messagesState, searchResult]);
+
+
+
+   
+  
+
+
 
     const renderAnswerHeader = () => (
         <div className='flex flex-row gap-2 items-center mb-3'>
@@ -1394,7 +1422,8 @@ const DetailSection: React.FC<DetailsSectionProps> = ({
 
                 </div>
                 <ScrollArea
-                    className="flex-1 overflow-none w-full max-w-full  px-4 [mask-image:linear-gradient(to_bottom,white_calc(100%-64px),transparent)]"
+                  
+                    className="flex-1 overflow-none w-full max-w-full px-4 [mask-image:linear-gradient(to_bottom,white_calc(100%-64px),transparent)]"
                 >
                     <div className="w-full h-full px-2">
                         {renderedMessages}
@@ -1418,7 +1447,7 @@ const DetailSection: React.FC<DetailsSectionProps> = ({
                     </div>
 
 
-                    <div ref={messagesEndRef} style={{ height: 0 }} /> {/* Add this line */}
+                   
 
                 </ScrollArea >
 
