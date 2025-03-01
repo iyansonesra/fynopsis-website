@@ -72,7 +72,7 @@ const throttle = <T extends (...args: any[]) => void>(func: T, limit: number): T
     }) as T;
 };
 
-const throttledSetState = throttle((setter, value) => setter(value), 1);
+const throttledSetState = throttle((setter, value) => setter(value), 2);
 
 
 interface ThoughtStep {

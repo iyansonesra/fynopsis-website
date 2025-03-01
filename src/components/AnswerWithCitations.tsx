@@ -1,4 +1,4 @@
-import React, { memo, useMemo } from 'react';
+import React, { memo, useEffect, useMemo, useRef } from 'react';
 import Markdown from 'markdown-to-jsx';
 import { Copy, FileText } from 'lucide-react';
 import { Button } from './ui/button';
@@ -39,6 +39,17 @@ const GreenCircle = memo<GreenCircleProps>(({ number, fileKey, onSourceClick }) 
         return getFileName(fileKey.split('/').pop() || '');
     }, [fileKey, getFileName]);
 
+        useEffect(() => {
+            console.log(`GreenCircle effect: number=${number} re-rendered`);
+            
+            // You can also measure render performance
+            const startTime = performance.now();
+            return () => {
+                const duration = performance.now() - startTime;
+                console.log(`GreenCircle ${number} render duration: ${duration.toFixed(2)}ms`);
+            };
+        });
+
     return (
         <HoverCard openDelay={100} closeDelay={100}>
             <HoverCardTrigger asChild>
@@ -74,6 +85,9 @@ const GreenCircle = memo<GreenCircleProps>(({ number, fileKey, onSourceClick }) 
 
 
 export const AnswerWithCitations = memo<AnswerWithCitationsProps>(({ content, citations = [], handleSourceClick }) => {
+    const circleComponentsCache = useRef<Map<string, JSX.Element>>(new Map());
+
+    
     const handleCopyContent = () => {
         const cleanContent = content.replace(/@\d+@/g, '');
         navigator.clipboard.writeText(cleanContent);
@@ -104,27 +118,35 @@ export const AnswerWithCitations = memo<AnswerWithCitationsProps>(({ content, ci
         'data-filekey': string;
     }
 
-    const circleComponent = useMemo(() => {
-        return React.memo((props: CircleComponentProps) => (
-            <GreenCircle
-                number={props["data-number"]}
-                fileKey={props["data-filekey"]}
-                onSourceClick={handleSourceClick}
-            />
-        ),
-        (prevProps: CircleComponentProps, nextProps: CircleComponentProps) => 
-            prevProps["data-number"] === nextProps["data-number"] &&
-            prevProps["data-filekey"] === nextProps["data-filekey"]
-        );
-    }, [handleSourceClick]);
-
+    const CircleComponentWrapper = useMemo(() => {
+        return React.memo((props: CircleComponentProps) => {
+            const key = `${props["data-number"]}-${props["data-filekey"]}`;
+            
+            // Return cached component if it exists
+            if (!circleComponentsCache.current.has(key)) {
+                // Create and cache if it doesn't exist yet
+                circleComponentsCache.current.set(key, 
+                    <GreenCircle
+                        number={props["data-number"]}
+                        fileKey={props["data-filekey"]}
+                        onSourceClick={handleSourceClick}
+                    />
+                );
+            }
+            
+            // Return the cached component
+            return circleComponentsCache.current.get(key);
+        }, 
+        // Always return true to prevent re-rendering
+        () => true);
+    }, [handleSourceClick])
     const markdownOptions = useMemo(() => ({
-        // overrides: {
-        //     circle: {
-        //         component: circleComponent
-        //     },
-        // },
-    }), [circleComponent]);
+        overrides: {
+            circle: {
+                component: CircleComponentWrapper
+            },
+        },
+    }), [CircleComponentWrapper]);
 
     return (
         <div className="whitespace-pre-wrap relative group">
