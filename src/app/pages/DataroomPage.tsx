@@ -4,11 +4,11 @@
 import logo from './../assets/fynopsis_noBG.png'
 import { useState, useEffect } from "react"
 import { useAuthenticator } from '@aws-amplify/ui-react';
-import { Clipboard, LucideIcon, Activity, Table } from "lucide-react";
+import { Clipboard, LucideIcon, Activity, Table, Database } from "lucide-react";
 import { fetchUserAttributes, FetchUserAttributesOutput } from 'aws-amplify/auth';
 import { CircularProgress } from "@mui/material";
 import React, { useRef } from 'react';
-import { useParams, usePathname } from 'next/navigation';
+import { useParams, usePathname, useSearchParams } from 'next/navigation';
 import { useRouter } from 'next/navigation';
 import { Library, Users, LogOut } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -28,6 +28,7 @@ import { AuditLogViewer } from '@/components/AuditLogViewer';
 import Link from 'next/link';
 import { useFileStore } from '@/components/HotkeyService';
 import TableViewer from '@/components/TableViewer';
+import DeepResearchViewer from '@/components/DeepResearchViewer';
 
 
 type IndicatorStyle = {
@@ -41,11 +42,28 @@ type Tab = {
 };
 
 export default function Home() {
-  const [selectedTab, setSelectedTab] = useState("library");
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  
+  // Define tabs first so we can use it in initialTabIndex calculation
+  const tabs: Tab[] = [
+    { icon: Library, label: 'Library' },
+    { icon: Users, label: 'Users' },
+    { icon: Activity, label: 'Activity' },
+    { icon: Table, label: 'Extract' },
+    { icon: Database, label: 'Deep Research' },
+  ];
+  
+  // Get the active tab from URL query parameters or default to "library"
+  const defaultTab = searchParams.get('tab')?.toLowerCase() || "library";
+  const [selectedTab, setSelectedTab] = useState(defaultTab);
   const { user, signOut } = useAuthenticator((context) => [context.user]);
   const [userAttributes, setUserAttributes] = useState<FetchUserAttributesOutput | null>(null);
-  const router = useRouter();
-  const [activeTab, setActiveTab] = useState<number | null>(0);
+  
+  // Initialize activeTab based on the default tab from URL
+  const initialTabIndex = tabs.findIndex(tab => tab.label.toLowerCase() === defaultTab);
+  const [activeTab, setActiveTab] = useState<number | null>(initialTabIndex >= 0 ? initialTabIndex : 0);
+  
   const [indicatorStyle, setIndicatorStyle] = useState<IndicatorStyle>({} as IndicatorStyle);
   const tabRefs = useRef<(HTMLDivElement | null)[]>([]);
   const [isShareDialogOpen, setIsShareDialogOpen] = useState(false);
@@ -61,32 +79,39 @@ export default function Home() {
   const [familyName, setFamilyName] = useState('');
   const [givenName, setGivenName] = useState('');
 
-
-
-
-  const tabs: Tab[] = [
-    { icon: Library, label: 'Library' },
-    { icon: Users, label: 'Users' },
-    { icon: Activity, label: 'Activity' },
-    { icon: Table, label: 'Extract' },
-  ];
-
   function signIn(): void {
     router.push('/signin');
   }
 
-
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [newDataroomName, setNewDataroomName] = useState('');
 
-
-
-
-
   function handleTabClick(index: number): void {
+    const tabName = tabs[index].label.toLowerCase();
     setActiveTab(index);
-    setSelectedTab(tabs[index].label.toLowerCase());
+    setSelectedTab(tabName);
+    
+    // Update URL query parameter without full page navigation
+    const params = new URLSearchParams(searchParams.toString());
+    params.set('tab', tabName);
+    
+    // Use the router to update the URL
+    const pathname = window.location.pathname;
+    const newUrl = `${pathname}?${params.toString()}`;
+    window.history.pushState({}, '', newUrl);
   }
+
+  // If URL query parameter changes externally, update the selected tab
+  useEffect(() => {
+    const tabParam = searchParams.get('tab')?.toLowerCase();
+    if (tabParam) {
+      const tabIndex = tabs.findIndex(tab => tab.label.toLowerCase() === tabParam);
+      if (tabIndex >= 0) {
+        setActiveTab(tabIndex);
+        setSelectedTab(tabParam);
+      }
+    }
+  }, [searchParams, tabs]);
 
   useEffect(() => {
     // console.log("checking for tab color!");
@@ -101,18 +126,11 @@ export default function Home() {
     }
   }, [activeTab]);
 
-
-
-
-
-
   useEffect(() => {
     if (user) {
       handleFetchUserAttributes();
     }
   }, [user]);
-
-
 
   const [isDarkMode, setIsDarkMode] = useState(() => {
     if (typeof window !== 'undefined') {
@@ -252,8 +270,6 @@ export default function Home() {
     }
   };
 
-
-
   useEffect(() => {
     if (user) {
       handleFetchUserAttributes();
@@ -283,11 +299,12 @@ export default function Home() {
         return <AuditLogViewer bucketId={dataroomId} />;
       case "extract":
         return <TableViewer />;
+      case "deep research":
+        return <DeepResearchViewer />;
       default:
         return <Files setSelectedTab={setSelectedTab} />;
     }
   };
-
 
   useEffect(() => {
     if (isDarkMode) {
@@ -313,8 +330,6 @@ export default function Home() {
       </div>
     );
   }
-
-
 
   return (
  

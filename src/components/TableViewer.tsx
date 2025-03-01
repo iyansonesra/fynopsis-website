@@ -177,25 +177,52 @@ export const TableViewer: React.FC = () => {
   const handleWebSocketMessage = (event: MessageEvent) => {
     try {
       const message = JSON.parse(event.data);
-      console.log('WebSocket message:', message);
+      console.log('Received WebSocket message:', message);
       
-      // Handle different message types
       if (message.type === 'cell_update') {
-        // Update a single cell
-        const { fileKey, columnId, content, sourceFileId, sourcePageNumber, status } = message;
+        // Get the file ID and content from the message
+        const { file_key, content } = message;
         
-        setTableData(prev => {
-          const newData = { ...prev };
-          if (!newData[fileKey]) {
-            newData[fileKey] = {};
+        // Update table data for this file
+        setTableData(prevData => {
+          const newData = { ...prevData };
+          
+          // If this file doesn't have an entry yet, initialize it
+          if (!newData[file_key]) {
+            newData[file_key] = {};
           }
           
-          newData[fileKey][columnId] = {
-            content: content,
-            sourceFileId: sourceFileId,
-            sourcePageNumber: sourcePageNumber,
-            status: status
-          };
+          // Check if response contains delimited values
+          if (content && content.includes('<DELIMITER>')) {
+            // Split the content by delimiter
+            const values = content.split('<DELIMITER>');
+            
+            // Assign each value to the corresponding column
+            columns.forEach((col, index) => {
+              const value = index < values.length ? values[index] : 'N/A';
+              
+              newData[file_key][col.id] = {
+                content: value,
+                status: 'complete'
+              };
+            });
+          } else {
+            // If not delimited (old format or error), assign to first column and leave others empty
+            if (columns.length > 0) {
+              newData[file_key][columns[0].id] = {
+                content: content || '',
+                status: 'complete'
+              };
+              
+              // Mark other columns as empty
+              for (let i = 1; i < columns.length; i++) {
+                newData[file_key][columns[i].id] = {
+                  content: '',
+                  status: 'empty'
+                };
+              }
+            }
+          }
           
           return newData;
         });
@@ -326,6 +353,29 @@ export const TableViewer: React.FC = () => {
       setIsLoading(false);
       return;
     }
+
+    // Validate columns
+    if (columns.length === 0) {
+      toast({
+        title: "No columns defined",
+        description: "Please add at least one column before analyzing documents.",
+        variant: "destructive"
+      });
+      setIsLoading(false);
+      return;
+    }
+
+    // Check for empty column titles
+    const emptyTitleColumns = columns.filter(col => !col.title.trim());
+    if (emptyTitleColumns.length > 0) {
+      toast({
+        title: "Empty column title",
+        description: "Please provide a title for all columns.",
+        variant: "destructive"
+      });
+      setIsLoading(false);
+      return;
+    }
     
     // First, update all selected files with loading state cells
     const initialTableData = { ...tableData };
@@ -388,12 +438,13 @@ export const TableViewer: React.FC = () => {
       
       // Send the query message
       const message = {
-        action: 'table_query',
+        action: 'query',
         data: {
           collection_name: collection_name,
           query: searchQuery,
           file_keys: selectedFileIds,
-          columns: columnData,
+          for_table: true,
+          table_cols: columnData.map(col => col.title),
           use_reasoning: true
         }
       };

@@ -220,15 +220,48 @@ const InteractiveFileTree: React.FC<InteractiveFileTreeProps> = ({
       return depthA - depthB;
     });
 
+    // Function to debug tree paths
+    const logTreeStructure = (node: TreeNode, level = 0) => {
+      const indent = ' '.repeat(level * 2);
+      console.log(`${indent}${node.name} (${node.type}) - Path: ${node.path}`);
+      node.children.forEach(child => logTreeStructure(child, level + 1));
+    };
+    
+    // First, create a map of all unique paths to ensure we create all folder levels
+    const allPaths = new Set<string>();
+    
+    // Collect all folder paths from file assignments
     sortedEntries.forEach(([source, dest]) => {
-      // Remove Root/ prefix from destination path
       const cleanDest = removeRootPrefix(dest);
-      const parts = cleanDest.split('/').filter(Boolean);
+      
+      // Handle paths that might end with a slash
+      const pathWithoutTrailingSlash = cleanDest.endsWith('/') 
+        ? cleanDest.slice(0, -1) 
+        : cleanDest;
+      
+      const parts = pathWithoutTrailingSlash.split('/').filter(Boolean);
+      
+      // Add all subfolder paths to the set
+      let currentPath = '';
+      for (let i = 0; i < parts.length; i++) {
+        currentPath = currentPath ? `${currentPath}/${parts[i]}` : parts[i];
+        allPaths.add(currentPath);
+      }
+    });
+    
+    // Log all detected paths for debugging
+    console.log("All folder paths detected:", Array.from(allPaths));
+    
+    // Create all folders first to ensure complete structure
+    Array.from(allPaths).sort((a, b) => {
+      // Sort by depth to ensure parent folders are created first
+      return a.split('/').length - b.split('/').length;
+    }).forEach(path => {
+      const parts = path.split('/');
       let currentNode = root;
       let currentPath = '';
-
-      // Create folder structure
-      for (let i = 0; i < parts.length - 1; i++) {
+      
+      for (let i = 0; i < parts.length; i++) {
         const part = parts[i];
         currentPath = currentPath ? `${currentPath}/${part}` : part;
         
@@ -245,50 +278,127 @@ const InteractiveFileTree: React.FC<InteractiveFileTreeProps> = ({
           };
           currentNode.children.push(newFolder);
           found = newFolder;
+        } else {
+          // Ensure all folders are expanded
+          found.isExpanded = true;
         }
         
         currentNode = found;
       }
-
-      // Add file
-      const sourceFileId = source.split('/').pop() || '';
+    });
+    
+    // Now add files to their appropriate folders
+    sortedEntries.forEach(([source, dest]) => {
+      const cleanDest = removeRootPrefix(dest);
       
-      // Get the proper filename from searchableFiles
+      // Handle paths that might end with a slash
+      const pathWithoutTrailingSlash = cleanDest.endsWith('/') 
+        ? cleanDest.slice(0, -1) 
+        : cleanDest;
+      
+      const parts = pathWithoutTrailingSlash.split('/').filter(Boolean);
+      
+      // If the path ends with a slash, it means it's a folder path without a filename
+      // In this case, the file should be placed in that folder with its original name
+      const isDestFolderOnly = cleanDest.endsWith('/');
+      
+      // The file name is the last part of the path ONLY if the path doesn't end with a slash
+      const fileName = !isDestFolderOnly && parts.length > 0 ? parts[parts.length - 1] : '';
+      
+      // If dest ends with a slash or has no parts, use all parts as folder path
+      // Otherwise, use all parts except the last one as folder path
+      const folderParts = isDestFolderOnly || parts.length === 0 ? parts : parts.slice(0, -1);
+      
+      // Find the parent folder for this file
+      let currentNode = root;
+      if (folderParts.length > 0) {
+        let parentFolderPath = '';
+        
+        for (const part of folderParts) {
+          parentFolderPath = parentFolderPath ? `${parentFolderPath}/${part}` : part;
+          
+          const found = currentNode.children.find(child => 
+            child.name === part && child.type === 'folder'
+          );
+          
+          if (!found) {
+            console.error(`Missing folder '${part}' in path: ${cleanDest}`);
+            break;
+          }
+          
+          currentNode = found;
+        }
+      }
+      
+      // Get original file name
+      const sourceFileId = source.split('/').pop() || '';
       let originalName = getFileNameById(sourceFileId);
       
-      // If we couldn't find it in searchableFiles, try the getFileName function
       if (!originalName || originalName === sourceFileId) {
         const fallbackName = getFileName(sourceFileId);
         if (fallbackName) {
           originalName = fallbackName;
         }
       }
-
-      // Determine the file name to show in the tree:
-      // 1. Use the new name if available from the newNames object
-      // 2. Otherwise use the filename from the destination path
-      // 3. If destination filename is empty, use the original name
-      const fileName = parts[parts.length - 1] || originalName;
-      const newName = newNames[source] || fileName;
       
+      // Determine the file name to display:
+      // 1. If path ends with slash, use original name
+      // 2. If newNames has entry, use that
+      // 3. Otherwise use last part of path
+      // 4. Fallback to original name
+      let fileDisplayName;
+      if (newNames[source]) {
+        fileDisplayName = newNames[source];
+      } else if (!isDestFolderOnly && fileName) {
+        fileDisplayName = fileName;
+      } else {
+        fileDisplayName = originalName;
+      }
+      
+      // Add the file to its parent folder
       currentNode.children.push({
         id: `file-${Math.random().toString(36).substr(2, 9)}`,
-        name: newName,
+        name: fileDisplayName,
         type: 'file',
         children: [],
-        path: cleanDest,
+        path: pathWithoutTrailingSlash,
         sourceFile: source,
         originalName: originalName,
-        newName: newName
+        newName: fileDisplayName
       });
     });
+
+    // Debug log
+    console.log("Complete tree structure:");
+    logTreeStructure(root);
 
     return root;
   }, [fileAssignments, newNames, getFileName, getFileNameById]);
 
   // Initialize tree when file assignments change
   useEffect(() => {
-    setTreeData(buildTreeStructure());
+    // Make sure we're rendering the tree when assignments change
+    const tree = buildTreeStructure();
+    setTreeData(tree);
+    
+    // Log the assignments for debugging
+    console.log("File assignments:", fileAssignments);
+    
+    // Check how many levels of folders are in the paths
+    const folderLevels = new Set<number>();
+    Object.values(fileAssignments).forEach(path => {
+      // Count folder levels (excluding Root and the filename)
+      const parts = path.split('/').filter(Boolean);
+      if (parts[0] === 'Root') {
+        parts.shift(); // Remove 'Root'
+      }
+      // Subtract 1 for the filename at the end if the path doesn't end with a slash
+      const isFolder = path.endsWith('/');
+      const levels = isFolder ? parts.length : parts.length - 1;
+      folderLevels.add(Math.max(0, levels));
+    });
+    
+    console.log("Folder levels in paths:", Array.from(folderLevels));
   }, [fileAssignments, buildTreeStructure]);
 
   // Toggle folder expansion
@@ -587,6 +697,9 @@ const InteractiveFileTree: React.FC<InteractiveFileTreeProps> = ({
     <div className="space-y-2 px-2">
       <div className="text-sm mb-2 text-gray-500 dark:text-gray-400">
         Click on folder icons to expand/collapse. Hover over a file to rename it.
+      </div>
+      <div className="text-sm mb-2 text-gray-500 dark:text-gray-400">
+        File paths shown: {Object.keys(fileAssignments).length}
       </div>
       {renderTreeNode(treeData)}
     </div>
