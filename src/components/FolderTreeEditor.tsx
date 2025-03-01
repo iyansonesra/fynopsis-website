@@ -230,18 +230,30 @@ export const FolderTreeEditor: React.FC<FolderTreeEditorProps> = ({ onSchemaChan
   const renderTree = (items: TreeItem[], level: number = 0) => {
     return items.map(item => (
       <React.Fragment key={item.id}>
-        <TreeNode
-          item={item}
-          level={level}
-          onDelete={handleDelete}
-          onAdd={handleAdd}
-          onMove={handleMove}
-          onNameChange={handleNameChange}
-        />
-        {item.children && renderTree(item.children, level + 1)}
+        {/* Skip rendering the Root folder itself, but render its children */}
+        {item.id === '1' && item.name === 'Root' ? (
+          // Only render children of Root, not Root itself
+          item.children && renderTree(item.children, 0)
+        ) : (
+          // Render normally for all other nodes
+          <>
+            <TreeNode
+              item={item}
+              level={level}
+              onDelete={handleDelete}
+              onAdd={handleAdd}
+              onMove={handleMove}
+              onNameChange={handleNameChange}
+            />
+            {item.children && renderTree(item.children, level + 1)}
+          </>
+        )}
       </React.Fragment>
     ));
   };
+
+  // Get the root node
+  const rootNode = tree[0];
 
   return (
     <div className="p-4">
@@ -251,7 +263,7 @@ export const FolderTreeEditor: React.FC<FolderTreeEditorProps> = ({ onSchemaChan
         onClick={() => handleAdd('1', 'folder')}
       >
         <Plus className="h-4 w-4 mr-2 dark:text-gray-200 text-black" />
-        Add Root Folder
+        Add Folder
       </Button>
     </div>
   );
