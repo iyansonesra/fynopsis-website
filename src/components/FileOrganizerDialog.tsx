@@ -580,9 +580,9 @@ export const FileOrganizerDialog: React.FC<FileOrganizerDialogProps> = ({ bucket
       return (
         <div className="flex flex-col items-center justify-center space-y-4 p-8 dark:bg-darkbg">
           <Loader2 className="h-8 w-8 animate-spin dark:text-gray-200" />
-          <h3 className="text-lg font-semibold dark:text-gray-200">Loading Schema</h3>
+          <h3 className="text-lg font-semibold dark:text-gray-200">Loading</h3>
           <p className="text-sm text-gray-500 text-center">
-            Please wait while we load the current schema...
+            Please wait while we load...
           </p>
         </div>
       );
@@ -594,7 +594,7 @@ export const FileOrganizerDialog: React.FC<FileOrganizerDialogProps> = ({ bucket
           <Loader2 className="h-8 w-8 animate-spin dark:text-gray-200" />
           <h3 className="text-lg font-semibold dark:text-gray-200">Organizing Files</h3>
           <p className="text-sm text-gray-500 text-center">
-            This could take up to a few minutes. We&apos;ll notify you when it&apos;s ready.
+            This could take up to a few minutes. Come back later.
           </p>
         </div>
       );

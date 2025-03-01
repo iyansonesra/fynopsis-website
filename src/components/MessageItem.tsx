@@ -223,6 +223,8 @@ const GreenCircle = memo<GreenCircleProps>(({ number, fileKey, onSourceClick }) 
            prevProps.fileKey === nextProps.fileKey;
 });
 
+// Add display name to GreenCircle
+GreenCircle.displayName = 'GreenCircle';
 
 
 export const MessageItem = memo<MessageItemProps>(({
@@ -505,3 +507,6 @@ export const MessageItem = memo<MessageItemProps>(({
         </div>
     );
 });
+
+// Add display name to MessageItem
+MessageItem.displayName = 'MessageItem';
