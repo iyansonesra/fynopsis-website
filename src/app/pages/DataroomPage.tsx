@@ -4,7 +4,7 @@
 import logo from './../assets/fynopsis_noBG.png'
 import { useState, useEffect } from "react"
 import { useAuthenticator } from '@aws-amplify/ui-react';
-import { Clipboard, LucideIcon, Activity } from "lucide-react";
+import { Clipboard, LucideIcon, Activity, Table } from "lucide-react";
 import { fetchUserAttributes, FetchUserAttributesOutput } from 'aws-amplify/auth';
 import { CircularProgress } from "@mui/material";
 import React, { useRef } from 'react';
@@ -27,6 +27,7 @@ import { TagDisplay } from '@/components/TagsHover';
 import { AuditLogViewer } from '@/components/AuditLogViewer';
 import Link from 'next/link';
 import { useFileStore } from '@/components/HotkeyService';
+import TableViewer from '@/components/TableViewer';
 
 
 type IndicatorStyle = {
@@ -66,7 +67,8 @@ export default function Home() {
   const tabs: Tab[] = [
     { icon: Library, label: 'Library' },
     { icon: Users, label: 'Users' },
-    { icon: Activity, label: 'Activity' }, // Add new tab
+    { icon: Activity, label: 'Activity' },
+    { icon: Table, label: 'Extract' },
   ];
 
   function signIn(): void {
@@ -279,6 +281,8 @@ export default function Home() {
         return <UserManagement dataroomId={''} />;
       case "activity":
         return <AuditLogViewer bucketId={dataroomId} />;
+      case "extract":
+        return <TableViewer />;
       default:
         return <Files setSelectedTab={setSelectedTab} />;
     }

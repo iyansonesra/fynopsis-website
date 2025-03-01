@@ -334,166 +334,9 @@ const DetailSection: React.FC<DetailsSectionProps> = ({
         }
     };
 
-    // Helper function to format file size
-    const formatFileSize = (bytes: number): string => {
-        if (bytes === 0) return '0 B';
-        const units = ['B', 'KB', 'MB', 'GB', 'TB'];
-        const k = 1024;
-        const i = Math.floor(Math.log(bytes) / Math.log(k));
-        return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + units[i];
-    };
-
-    const addOn = getUserPrefix();
-    const S3_BUCKET_NAME = `vdr-documents/${addOn}`;
-    const REGION = 'us-east-1';
-
-
-
-
-    const getS3Client = async () => {
-        try {
-            const { credentials } = await fetchAuthSession();
-
-            if (!credentials) {
-                throw new Error('No credentials available');
-            }
-
-            return new S3Client({
-                region: REGION,
-                credentials: {
-                    accessKeyId: credentials.accessKeyId,
-                    secretAccessKey: credentials.secretAccessKey,
-                    sessionToken: credentials.sessionToken
-                }
-            });
-        } catch (error) {
-            console.error('Error getting credentials:', error);
-            throw error;
-        }
-    };
-
-
-    const getPresignedUrl = async (s3Key: string) => {
-        try {
-
-            // console.log("Waiting on s3 client");
-
-            const s3Client = await getS3Client();
-
-            // console.log("Got the s3 client");
-            const command = new GetObjectCommand({
-                Bucket: S3_BUCKET_NAME,
-                Key: s3Key
-            });
-
-            return await getSignedUrl(s3Client, command, { expiresIn: 3600 });
-        } catch (error) {
-            // console.error('Error generating signed URL:', error);
-            throw error;
-        }
-    };
-
-
-    const handleOpenSource = async (sourceKey: string, sourceName: string) => {
-        try {
-            setLoadingSource(sourceKey);
-            const url = await getPresignedUrl(sourceKey);
-            // console.log('Presigned URL from details:', url);
-            onFileSelect({
-                id: `file-${sourceKey}`,
-                name: sourceName,
-                s3Url: url,
-                parentId: '',
-                uploadedBy: '',
-                type: '',
-                size: '',
-                isFolder: false,
-                createByEmail: '',
-                createByName: '',
-                lastModified: '',
-                tags: null,
-                summary: '',
-                status: ''
-            });
-        } catch (error) {
-            // console.error('Error getting presigned URL:', error);
-            setError('Failed to open source document. Please try again.');
-        } finally {
-            setLoadingSource(null);
-        }
-    };
-
-    const extractSourceInfo = (source: any): { key: string; name: string; descriptions?: string[] } | null => {
-        // Handle object with array of descriptions
-        if (typeof source === 'object' && !Array.isArray(source)) {
-            const [key, descriptions] = Object.entries(source)[0];
-            return {
-                key,
-                name: key.split('/').pop() || 'document',
-                descriptions: Array.isArray(descriptions) ? descriptions : undefined
-            };
-        }
-
-        // Fallback for simple string source
-        if (typeof source === 'string') {
-            return {
-                key: source,
-                name: source.split('/').pop() || 'document'
-            };
-        }
-
-        return null;
-    };
-
-    const renderSourceButton = (source: any) => {
-        const sourceInfo = extractSourceInfo(source);
-        if (!sourceInfo) return null;
-
-        return (
-            <Button
-                variant="outline"
-                size="sm"
-                className="mt-2 flex items-center gap-2"
-                onClick={() => handleOpenSource(sourceInfo.key, sourceInfo.name)}
-                onDoubleClick={() => null}
-                disabled={loadingSource === sourceInfo.key}
-            >
-                <FileText size={16} />
-                <span>
-                    {loadingSource === sourceInfo.key ? 'Opening...' : 'Open Source Document'}
-                </span>
-            </Button>
-        );
-    };
-
-
-
-    const AnimatedProgressText: React.FC<{ text: string }> = ({ text }) => {
-        return (
-            <div className="relative h-6 overflow-hidden w-full flex items-center justify-start">
-                <div
-                    key={text}
-                    className="w-full  flex justify-start "
-                >
-                    {text === "Thinking complete" ? (
-                        <span className="text-xs">
-                            {text}
-                        </span>
-                    ) : (
-                        <TextShimmer className="text-xs text-left">
-                            {text}
-                        </TextShimmer>
-                    )}
-
-                </div>
-            </div>
-        );
-    };
-
 
     const queryAllDocuments = async (searchTerm: string, withReasoning: boolean, selectedFiles: any[]) => {
         console.log("selected files!!!!!", selectedFiles);
-        console.log("BRLRLLELWFLLEFLW");
         setLastQuery(searchTerm); // Add this line at the start of the function
 
         try {
@@ -783,40 +626,8 @@ const DetailSection: React.FC<DetailsSectionProps> = ({
 
 
     const [inputValue, setInputValue] = useState('');
-    const [userSearch, setUserSearch] = useState('');
-
     interface InputChangeEvent extends React.ChangeEvent<HTMLTextAreaElement> { }
 
-    const handleInputChange = (e: InputChangeEvent) => {
-        const textarea = e.target;
-        setInputValue(e.target.value);
-
-        // Reset height to auto to get the correct scrollHeight
-        textarea.style.height = 'auto';
-        // Set new height based on scrollHeight
-        textarea.style.height = `${textarea.scrollHeight}px`;
-    }
-
-
-
-
-    // // Create throttled setMessages
-    // const setMessages = useCallback(
-    //     throttle((newMessages: Message[] | ((prev: Message[]) => Message[])) => {
-    //         setMessagesState(newMessages);
-    //     }, 100),
-    //     []
-    // );
-    const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-        if (e.key === 'Enter') {
-            setIsLoading(true);
-            const query = inputValue.trim();
-
-            // queryAllDocuments(query);
-            // // handleSearch(query);
-            setInputValue('');
-        }
-    };
 
 
     const [inThoughts, setInThoughts] = useState(true);
@@ -937,25 +748,6 @@ const DetailSection: React.FC<DetailsSectionProps> = ({
                 </div>
                 <div className="pr-12"> {/* Add padding to prevent text from going under the button */}
                     <Markdown
-                        // options={{
-                        //     overrides: {
-                        //         circle: {
-                        //             component: ({
-                        //                 "data-number": number,
-                        //                 "data-filekey": fileKey
-                        //             }: {
-                        //                 "data-number": string;
-                        //                 "data-filekey": string;
-                        //             }) => (
-                        //                 <GreenCircle
-                        //                     number={number}
-                        //                     fileKey={fileKey}
-                        //                     onSourceClick={handleSourceClick}
-                        //                 />
-                        //             ),
-                        //         },
-                        //     },
-                        // }}
                         className='dark:text-gray-200'
                     >
                         {transformedContent}
