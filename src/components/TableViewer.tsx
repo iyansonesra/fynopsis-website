@@ -51,6 +51,9 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { useFileStore } from './HotkeyService';
 import { useToast } from '@/components/ui/use-toast';
 
+// Import AWS Amplify for auth tokens
+import { fetchAuthSession } from 'aws-amplify/auth';
+
 // Add interfaces from HotkeyService.tsx that we need
 interface FileNode {
   parentId: string;
@@ -132,6 +135,8 @@ export const TableViewer: React.FC = () => {
   const [editValue, setEditValue] = useState('');
   const { toast } = useToast();
   const inputRef = useRef<HTMLInputElement>(null);
+  const [wsConnection, setWsConnection] = useState<WebSocket | null>(null);
+  const [processingStatus, setProcessingStatus] = useState<string>('');
   
   // Get all files from the fileStore - using the correct properties
   const { searchableFiles, getFile, setSelectedFile } = useFileStore();
@@ -158,6 +163,275 @@ export const TableViewer: React.FC = () => {
     
     setFiles(fileInfos);
   }, [searchableFiles]);
+
+  // Cleanup WebSocket connection on unmount
+  useEffect(() => {
+    return () => {
+      if (wsConnection) {
+        wsConnection.close();
+      }
+    };
+  }, [wsConnection]);
+
+  // Handle WebSocket messages
+  const handleWebSocketMessage = (event: MessageEvent) => {
+    try {
+      const message = JSON.parse(event.data);
+      console.log('WebSocket message:', message);
+      
+      // Handle different message types
+      if (message.type === 'cell_update') {
+        // Update a single cell
+        const { fileKey, columnId, content, sourceFileId, sourcePageNumber, status } = message;
+        
+        setTableData(prev => {
+          const newData = { ...prev };
+          if (!newData[fileKey]) {
+            newData[fileKey] = {};
+          }
+          
+          newData[fileKey][columnId] = {
+            content: content,
+            sourceFileId: sourceFileId,
+            sourcePageNumber: sourcePageNumber,
+            status: status
+          };
+          
+          return newData;
+        });
+      } 
+      else if (message.type === 'status') {
+        // Update processing status
+        setProcessingStatus(message.message || '');
+      }
+      else if (message.type === 'complete') {
+        // Processing complete
+        setProcessingStatus('Processing complete');
+        setIsLoading(false);
+        
+        toast({
+          title: "Analysis complete",
+          description: "The table has been populated with extracted information.",
+        });
+      }
+      else if (message.type === 'error' || message.error) {
+        // Handle error
+        const errorMessage = message.message || message.error || "An error occurred during processing";
+        setProcessingStatus('');
+        setIsLoading(false);
+        
+        console.error('WebSocket error message:', errorMessage);
+        
+        toast({
+          title: "Error analyzing documents",
+          description: errorMessage,
+          variant: "destructive"
+        });
+      }
+    } catch (error) {
+      console.error('Error parsing WebSocket message:', error);
+    }
+  };
+
+  // Connect to WebSocket
+  const connectWebSocket = async (dataroomId: string): Promise<WebSocket> => {
+    try {
+      const session = await fetchAuthSession();
+      const idToken = session.tokens?.idToken?.toString();
+      
+      if (!idToken) {
+        throw new Error('No ID token available');
+      }
+
+      // Replace with your WebSocket endpoint (using the table query lambda)
+      const websocketHost = `${process.env.NEXT_PUBLIC_SEARCH_API_CODE}.execute-api.${process.env.NEXT_PUBLIC_REGION}.amazonaws.com`;
+      
+      // Create URL parameters with both idToken and dataroomId
+      const params = new URLSearchParams();
+      params.append('idToken', idToken);
+      params.append('dataroomId', dataroomId); // Add dataroomId to URL params
+      
+      const wsUrl = `wss://${websocketHost}/prod?${params.toString()}`;
+      
+      console.log('WebSocket connecting with URL params:', Object.fromEntries(params.entries()));
+      
+      // Create a promise that resolves when the connection opens or rejects on error
+      return new Promise<WebSocket>((resolve, reject) => {
+        const ws = new WebSocket(wsUrl);
+
+        ws.onopen = () => {
+          console.log('WebSocket connected for table query');
+          setWsConnection(ws);
+          resolve(ws);
+        };
+
+        ws.onmessage = handleWebSocketMessage;
+
+        ws.onclose = (event) => {
+          console.log('WebSocket disconnected', event);
+          setWsConnection(null);
+        };
+
+        ws.onerror = (error) => {
+          console.error('WebSocket error:', error);
+          setWsConnection(null);
+          
+          toast({
+            title: "Connection Error",
+            description: "Could not connect to analysis service. Please try again.",
+            variant: "destructive"
+          });
+          
+          reject(error);
+        };
+      });
+    } catch (error) {
+      console.error('Error connecting to WebSocket:', error);
+      
+      // Display more specific error message
+      toast({
+        title: "Connection Error",
+        description: error instanceof Error ? error.message : "Failed to connect to the analysis service",
+        variant: "destructive"
+      });
+      
+      throw error;
+    }
+  };
+
+  const handleSendQuery = async () => {
+    setIsLoading(true);
+    
+    // Get selected files
+    const selectedFileIds = files
+      .filter(file => file.selected)
+      .map(file => file.id);
+      
+    if (selectedFileIds.length === 0) {
+      toast({
+        title: "No files selected",
+        description: "Please select at least one file to analyze.",
+        variant: "destructive"
+      });
+      setIsLoading(false);
+      return;
+    }
+    
+    if (!searchQuery.trim()) {
+      toast({
+        title: "No query provided",
+        description: "Please describe what information you're looking for.",
+        variant: "destructive"
+      });
+      setIsLoading(false);
+      return;
+    }
+    
+    // First, update all selected files with loading state cells
+    const initialTableData = { ...tableData };
+    
+    selectedFileIds.forEach(fileId => {
+      initialTableData[fileId] = {};
+      columns.forEach(col => {
+        initialTableData[fileId][col.id] = { 
+          content: '', 
+          status: 'loading'
+        };
+      });
+    });
+    
+    setTableData(initialTableData);
+    
+    try {
+      // Connect to WebSocket if not already connected
+      let ws = wsConnection;
+      if (!ws || ws.readyState !== WebSocket.OPEN) {
+        // Use the first file's bucket ID as the dataroom ID (collection_name)
+        const firstFile = searchableFiles.find(file => file.fileId === selectedFileIds[0]);
+        if (!firstFile) {
+          throw new Error('Could not determine collection name');
+        }
+        
+        const dataroomId = firstFile.parentFolderId;
+        
+        // Wait for the connection to be fully established
+        ws = await connectWebSocket(dataroomId);
+      }
+      
+      // WebSocket must be defined and open at this point
+      if (!ws || ws.readyState !== WebSocket.OPEN) {
+        throw new Error('WebSocket connection not open');
+      }
+      
+      // Format column data for the backend
+      const columnData = columns.map(col => ({
+        id: col.id,
+        title: col.title
+      }));
+        
+      // Get collection name from URL path parameter instead of from the first selected file
+      const pathname = window.location.pathname;
+      // Extract the collection name (bucket UUID) from the URL path
+      // Assuming URL structure like /dataroom/{bucketUuid}/...
+      const pathParts = pathname.split('/');
+      const collection_name_from_url = pathParts.length > 2 ? pathParts[2] : null;
+      
+      // Use the collection name from URL if available, otherwise fall back to the one from selected files
+      const collection_name = collection_name_from_url;
+      console.log('Collection name:', collection_name);
+
+      
+      console.log('Collection name from URL:', collection_name_from_url);
+      if (!collection_name) {
+        throw new Error('Could not determine collection name from selected files');
+      }
+      
+      // Send the query message
+      const message = {
+        action: 'table_query',
+        data: {
+          collection_name: collection_name,
+          query: searchQuery,
+          file_keys: selectedFileIds,
+          columns: columnData,
+          use_reasoning: true
+        }
+      };
+      
+      console.log('Sending table query:', message);
+      // At this point, ws should always be defined and open
+      if (ws && ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify(message));
+        setProcessingStatus('Initializing analysis...');
+      } else {
+        throw new Error('WebSocket connection not ready for sending');
+      }
+      
+    } catch (error) {
+      console.error("Error sending query:", error);
+      setIsLoading(false);
+      
+      toast({
+        title: "Error analyzing documents",
+        description: "There was a problem connecting to the analysis service. Please try again.",
+        variant: "destructive"
+      });
+      
+      // Reset loading states
+      const resetTableData = { ...tableData };
+      selectedFileIds.forEach(fileId => {
+        if (resetTableData[fileId]) {
+          columns.forEach(col => {
+            if (resetTableData[fileId][col.id]) {
+              resetTableData[fileId][col.id].status = 'empty';
+            }
+          });
+        }
+      });
+      
+      setTableData(resetTableData);
+    }
+  };
 
   const handleAddColumn = () => {
     const newColumnId = `col${columns.length + 1}`;
@@ -214,89 +488,6 @@ export const TableViewer: React.FC = () => {
 
   const handleFileSelectionConfirm = () => {
     setIsFileSelectOpen(false);
-  };
-
-  const handleSendQuery = async () => {
-    setIsLoading(true);
-    
-    // Get selected files
-    const selectedFileIds = files
-      .filter(file => file.selected)
-      .map(file => file.id);
-      
-    if (selectedFileIds.length === 0) {
-      toast({
-        title: "No files selected",
-        description: "Please select at least one file to analyze.",
-        variant: "destructive"
-      });
-      setIsLoading(false);
-      return;
-    }
-    
-    // First, update all selected files with loading state cells
-    const initialTableData = { ...tableData };
-    
-    selectedFileIds.forEach(fileId => {
-      initialTableData[fileId] = {};
-      columns.forEach(col => {
-        initialTableData[fileId][col.id] = { 
-          content: '', 
-          status: 'loading'
-        };
-      });
-    });
-    
-    setTableData(initialTableData);
-    
-    try {
-      // Mock async process - in real implementation, this would be an API call
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      // Update with result data
-      const mockResponse: TableData = {};
-      selectedFileIds.forEach(fileId => {
-        mockResponse[fileId] = {};
-        columns.forEach(col => {
-          mockResponse[fileId][col.id] = { 
-            content: `Result for ${col.title} from file ${files.find(f => f.id === fileId)?.name}`,
-            sourceFileId: fileId,
-            sourcePageNumber: Math.floor(Math.random() * 10) + 1,
-            status: 'complete'
-          };
-        });
-      });
-      
-      setTableData(mockResponse);
-      
-      toast({
-        title: "Analysis complete",
-        description: "The table has been populated with extracted information.",
-      });
-    } catch (error) {
-      console.error("Error fetching data:", error);
-      toast({
-        title: "Error analyzing documents",
-        description: "There was an error processing your request. Please try again.",
-        variant: "destructive"
-      });
-      
-      // Reset loading states on error
-      const resetTableData = { ...tableData };
-      selectedFileIds.forEach(fileId => {
-        if (resetTableData[fileId]) {
-          columns.forEach(col => {
-            if (resetTableData[fileId][col.id]) {
-              resetTableData[fileId][col.id].status = 'empty';
-            }
-          });
-        }
-      });
-      
-      setTableData(resetTableData);
-    } finally {
-      setIsLoading(false);
-    }
   };
 
   const handleCellClick = (fileId: string, columnId: string) => {
@@ -455,7 +646,7 @@ export const TableViewer: React.FC = () => {
             {isLoading ? (
               <>
                 <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent"></div>
-                Processing...
+                {processingStatus || 'Processing...'}
               </>
             ) : (
               <>
@@ -491,13 +682,24 @@ export const TableViewer: React.FC = () => {
                     <Info className="h-4 w-4" />
                   </Button>
                 </HoverCardTrigger>
-                <HoverCardContent className="w-80">
+                <HoverCardContent className="w-96">
                   <div className="space-y-2">
                     <h4 className="text-sm font-semibold">Analysis Query</h4>
                     <p className="text-sm text-muted-foreground">
-                      Describe what information you&apos;re looking for in these documents. 
-                      For example: &quot;Extract all parties mentioned in these agreements and 
-                      their respective roles and contact information.&quot;
+                      Describe what information you&apos;re looking for in these documents. The system will extract data
+                      for each column in the table.
+                    </p>
+                    <div className="rounded bg-muted p-2 text-sm">
+                      <p className="font-medium mb-1">Example queries:</p>
+                      <ul className="list-disc pl-4 space-y-1">
+                        <li>&quot;Extract all parties mentioned in these agreements and their roles and contact information.&quot;</li>
+                        <li>&quot;Identify key dates, payment terms, and contract values in these documents.&quot;</li>
+                        <li>&quot;Find all legal entities, their representatives, and their defined responsibilities.&quot;</li>
+                      </ul>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      For best results, set clear column names and provide a detailed query.
+                      Use the &quot;I don&apos;t know&quot; responses to identify missing information across documents.
                     </p>
                   </div>
                 </HoverCardContent>
