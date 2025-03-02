@@ -53,8 +53,8 @@ interface FileStore {
   setShowDetailsView: (show: boolean) => void;
   selectedFile: FileNode | null;
   setSelectedFile: (file: FileNode | null) => void;
-  
-  
+  pendingSelectFileId: string | null;
+  setPendingSelectFileId: (id: string | null) => void;
 }
 
 // Then update the store implementation
@@ -76,4 +76,6 @@ export const useFileStore = create<FileStore>((set, get) => ({
   setShowDetailsView: (show) => set({ showDetailsView: show }),
   selectedFile: null,
   setSelectedFile: (file) => set({ selectedFile: file }),
+  pendingSelectFileId: null,
+  setPendingSelectFileId: (id) => set({ pendingSelectFileId: id }),
 }));

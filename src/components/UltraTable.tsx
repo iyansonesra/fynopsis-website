@@ -1,4 +1,4 @@
-import React, { use, useRef, useState } from 'react';
+import React, { use, useRef, useState, useEffect } from 'react';
 import {
   DndContext,
   closestCenter,
@@ -19,7 +19,7 @@ import { CSS } from '@dnd-kit/utilities';
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { useS3Store, TreeNode } from "./fileService";
 import { usePathname } from 'next/navigation';
-import { ChevronDown, ChevronRight, Circle, FileIcon, FolderIcon, Plus, RefreshCcw, Upload } from 'lucide-react';
+import { ChevronDown, ChevronRight, Circle, FileIcon, FolderIcon, Plus, RefreshCcw, Upload, Search } from 'lucide-react';
 import { Input } from './ui/input';
 import DragDropOverlay from './DragDrop';
 import { v4 as uuidv4 } from 'uuid';
@@ -41,6 +41,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { useFileStore } from './HotkeyService';
 import { ContextMenu, ContextMenuCheckboxItem, ContextMenuContent, ContextMenuItem, ContextMenuLabel, ContextMenuRadioGroup, ContextMenuRadioItem, ContextMenuSeparator, ContextMenuShortcut, ContextMenuSub, ContextMenuSubContent, ContextMenuSubTrigger, ContextMenuTrigger } from "@/components/ui/context-menu";
 import { Download, Pencil, Trash } from 'lucide-react';
+import { useTabStore } from './tabStore';
 
 
 
@@ -132,6 +133,7 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
   const [currentUser, setCurrentUser] = React.useState<string>('');
   const [userInfo, setUserInfo] = React.useState<JWT | undefined>(undefined);
   const [activeId, setActiveId] = useState<string | null>(null);
+  const { tabs, setActiveTabId } = useTabStore();
 
   const [isLoading, setIsLoading] = React.useState(true);
   const [currentPath, setCurrentPath] = React.useState<string[]>([`${bucketUuid}`]);
@@ -154,9 +156,93 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
   const [selectedItemIds, setSelectedItemIds] = useState<string[]>([]);
   const [lastSelectedIndex, setLastSelectedIndex] = useState<number | null>(null);
   const [openDropdownId, setOpenDropdownId] = useState<string | null>(null);
+  const [searchQueryVisible, setSearchQueryVisible] = useState(false);
+  const router = useRouter();
+  const { searchableFiles, setSearchableFiles, pendingSelectFileId, setPendingSelectFileId } = useFileStore();
+  const searchDropdownRef = useRef<HTMLDivElement>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
 
+  // Check for pending file selection
+  useEffect(() => {
+    if (pendingSelectFileId && !isLoading) {
+      // Find the file in the current directory
+      const fileExists = tableData.some(item => item.id === pendingSelectFileId);
+      
+      if (fileExists) {
+        // Select the file
+        setSelectedItemIds([pendingSelectFileId]);
+        // Clear the pending selection
+        setPendingSelectFileId(null);
+      }
+    }
+  }, [pendingSelectFileId, tableData, isLoading, setPendingSelectFileId]);
 
+  // Close search dropdown when clicking outside
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (searchDropdownRef.current && !searchDropdownRef.current.contains(event.target as Node)) {
+        setSearchQueryVisible(false);
+      }
+    }
+    
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === 'Escape') {
+        setSearchQueryVisible(false);
+      }
+    }
+    
+    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('keydown', handleKeyDown);
+    
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, []);
 
+  // Handle keyboard shortcut for search (Ctrl+K or Cmd+K)
+  useEffect(() => {
+    function handleKeyboardShortcuts(e: KeyboardEvent) {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+        e.preventDefault();
+        searchInputRef.current?.focus();
+        setSearchQueryVisible(true);
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyboardShortcuts);
+    return () => window.removeEventListener('keydown', handleKeyboardShortcuts);
+  }, []);
+
+  // Load searchable files
+  useEffect(() => {
+    const loadSearchableFiles = async () => {
+      // Only fetch if we don't already have files
+      if (searchableFiles.length === 0) {
+        try {
+          const response = await get({
+            apiName: 'S3_API',
+            path: `/s3/${bucketUuid}/list-all-files`,
+            options: {
+              withCredentials: true
+            }
+          });
+          
+          const { body } = await response.response;
+          const responseText = await body.text();
+          const result = JSON.parse(responseText);
+          
+          if (result && Array.isArray(result.files)) {
+            setSearchableFiles(result.files);
+          }
+        } catch (error) {
+          console.error('Error loading searchable files:', error);
+        }
+      }
+    };
+    
+    loadSearchableFiles();
+  }, [bucketUuid, searchableFiles.length, setSearchableFiles]);
 
   React.useEffect(() => {
     const handleKeyboardShortcuts = async (e: KeyboardEvent) => {
@@ -673,7 +759,6 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
   });
   const [isResizing, setIsResizing] = useState(false);
   const [currentResizer, setCurrentResizer] = useState<string | null>(null);
-  const router = useRouter();
 
 
 
@@ -1129,11 +1214,6 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
               maxWidth: columnWidths.status
             }}>
               <div className="flex items-center justify-center h-full w-full ">
-                {/* {(!item.isFolder) ? {item.status === "PENDING" ? 
-                                 <Circle className="max-h-3 max-w-3 text-green-500" />}
-                                    <Circle className="max-h-3 max-w-3 text-green-500" /> : 
-                                } */}
-
                 {!item.isFolder ? (
                   <HoverCard openDelay={100} closeDelay={0}>
                     <HoverCardTrigger asChild>
@@ -1473,7 +1553,87 @@ th {
 
         </div>
         <div className="relative xl:w-[45%] flex">
-
+          <div className="w-full relative">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-500 dark:text-gray-400" />
+              <Input
+                ref={searchInputRef}
+                type="text"
+                placeholder="Search files across project... (Ctrl+K)"
+                className="w-full dark:bg-slate-800 dark:border-slate-700 h-9 dark:text-white pl-9"
+                onClick={() => setSearchQueryVisible(true)}
+                onChange={(e) => setSearchValue(e.target.value)}
+                value={searchValue}
+                onFocus={() => setSearchQueryVisible(true)}
+              />
+            </div>
+            {searchQueryVisible && (
+              <div 
+                ref={searchDropdownRef}
+                className="absolute top-full left-0 w-full z-50 mt-2 shadow-lg rounded-md"
+                style={{ maxHeight: '400px' }}
+              >
+                <div className="p-2 bg-white dark:bg-slate-800 rounded-md border dark:border-slate-700">
+                  <ScrollArea className="h-[350px]">
+                    {searchableFiles.length === 0 ? (
+                      <div className="p-4 text-center text-gray-500 dark:text-gray-400">
+                        Loading files...
+                      </div>
+                    ) : (
+                      <ul>
+                        {searchableFiles
+                          .filter(file => file.fileName.toLowerCase().includes(searchValue.toLowerCase()))
+                            .map((file) => (
+                              <li
+                                key={file.fileId}
+                                onClick={() => {
+                                  // Check if file is already open in a tab
+                                  const fileTab = tabs.find(tab => tab.title === file.fileName);
+                                  
+                                  if (fileTab) {
+                                    // If file is already open, just activate that tab
+                                    setActiveTabId(fileTab.id);
+                                    setSearchQueryVisible(false);
+                                  } else {
+                                    // Store the file ID to be selected after navigation
+                                    setPendingSelectFileId(file.fileId);
+                                    
+                                    // Navigate to the directory
+                                    const segments = pathname.split('/');
+                                    segments.pop(); // Remove the last segment
+                                    segments.push(file.parentFolderId === 'ROOT' ? 'home' : file.parentFolderId);
+                                    router.push(segments.join('/'));
+                                    
+                                    // Close the search dropdown
+                                    setSearchQueryVisible(false);
+                                  }
+                                }}
+                                className="px-4 py-2 text-sm bg-transparent cursor-pointer hover:bg-slate-200 dark:hover:bg-slate-700 dark:text-white flex items-center"
+                              >
+                                <FileIcon className="mr-2 h-4 w-4" />
+                                <div className="flex flex-col overflow-hidden">
+                                  <span className="truncate">
+                                    {highlightMatch(file.fileName, searchValue)}
+                                  </span>
+                                  <span className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                                    {file.parentFolderName === "Root" ? "Home" : file.parentFolderName}
+                                  </span>
+                                </div>
+                              </li>
+                            ))}
+                        {searchValue && 
+                          searchableFiles.filter(file => file.fileName.toLowerCase().includes(searchValue.toLowerCase())).length === 0 && (
+                          <div className="p-4 text-center text-gray-500 dark:text-gray-400">
+                            No matching files found
+                          </div>
+                        )}
+                      </ul>
+                    )}
+                  </ScrollArea>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       </div>
       <div className="flex flex-col flex-1 overflow-hidden">
@@ -1717,6 +1877,22 @@ th {
       )}
     </div>
 
+  );
+};
+
+const highlightMatch = (text: string, query: string): React.ReactNode => {
+  if (!query || query.trim() === '') return text;
+  
+  const parts = text.split(new RegExp(`(${query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi'));
+  
+  return (
+    <>
+      {parts.map((part, index) => 
+        part.toLowerCase() === query.toLowerCase() 
+          ? <span key={index} className="bg-yellow-200 dark:bg-yellow-700 font-medium">{part}</span> 
+          : part
+      )}
+    </>
   );
 };
 
