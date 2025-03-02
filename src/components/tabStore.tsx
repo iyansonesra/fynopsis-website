@@ -19,16 +19,26 @@ interface TabStore {
 
 export const useTabStore = create<TabStore>()(
   persist(
-    (set) => ({
+    (set, get) => ({
       tabs: [],
       activeTabId: '',
       setActiveTabId: (id) => set({ activeTabId: id }),
       setTabs: (tabs) => set({ tabs }),
-      addTab: (newTab) => 
-        set((state) => ({
-          tabs: [...state.tabs, newTab],
-          activeTabId: newTab.id,
-        })),
+      addTab: (newTab) => {
+        // Check if a tab with this ID already exists
+        const existingTabIndex = get().tabs.findIndex(tab => tab.id === newTab.id);
+        
+        if (existingTabIndex >= 0) {
+          // If tab exists, just activate it
+          set({ activeTabId: newTab.id });
+        } else {
+          // Add the new tab
+          set(state => ({
+            tabs: [...state.tabs, newTab],
+            activeTabId: newTab.id,
+          }));
+        }
+      },
       removeTab: (id) =>
         set((state) => {
           const newTabs = state.tabs.filter((tab) => tab.id !== id);

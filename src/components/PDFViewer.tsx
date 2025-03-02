@@ -58,7 +58,8 @@ const PDFViewer: React.FC<PDFViewerProps> = ({
   documentUrl, 
   containerId,
   maxRetries = 5,
-  checkInterval = 2000 
+  checkInterval = 2000,
+  tabId 
 }) => {
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [retryCount, setRetryCount] = useState(0);
@@ -136,13 +137,14 @@ const PDFViewer: React.FC<PDFViewerProps> = ({
   
 
   return (
-    <PDFContainer className='flex flex-grow  h-full w-inherit'>
+    <PDFContainer className='flex flex-grow h-full w-inherit' id={`pdf-container-${tabId}`}>
       {(isLoading && isOfficeFile) && <div className="loader">Loading document...</div>}
       <iframe
         ref={iframeRef}
         src={viewerUrl}
         onLoad={handleLoad}
         title="Document Viewer"
+        id={`pdf-iframe-${tabId}`}
       />
     </PDFContainer>
   );

@@ -156,24 +156,32 @@ export default function Files({ setSelectedTab }: { setSelectedTab: React.Dispat
         if (file.id && file.name && file.s3Url) {
             const newTabId = `file-${file.id}`;
             
-            // Use the store's methods directly
-            const existingTab = tabs.find(tab => tab.title === file.name);
+            // Log tab information for debugging
+            console.log('Existing tabs:', tabs);
+            console.log('Looking for tab with ID:', newTabId);
+            
+            // Check if a tab with this ID already exists
+            const existingTab = tabs.find(tab => tab.id === newTabId);
             
             if (existingTab) {
+                console.log('Found existing tab:', existingTab);
+                // Just activate the existing tab
                 setActiveTabId(existingTab.id);
-              } else {
+            } else {
+                console.log('Creating new tab with ID:', newTabId);
+                // Only add a new tab if one doesn't exist for this file
                 addTab({
-                  id: newTabId,
-                  title: file.name,
-                  content: (
-                    <PDFViewer 
-                      documentUrl={file.s3Url} 
-                      containerId={`pdf-viewer-${file.id}`}
-                      tabId={newTabId}  // Add this prop
-                    />
-                  )
+                    id: newTabId,
+                    title: file.name,
+                    content: (
+                        <PDFViewer 
+                            documentUrl={file.s3Url} 
+                            containerId={`pdf-viewer-${file.id}`}
+                            tabId={newTabId}
+                        />
+                    )
                 });
-              }
+            }
         }
     }
     
