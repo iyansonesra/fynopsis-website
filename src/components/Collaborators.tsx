@@ -76,6 +76,7 @@ const UserManagement: React.FC<UserManagementProps> = () => {
   const [inviteEmail, setInviteEmail] = useState('');
   const [inviteRole, setInviteRole] = useState<'READ' | 'WRITE' | 'ADMIN'>('READ');
   const [isInviting, setIsInviting] = useState(false);
+  const [inviteError, setInviteError] = useState<string | null>(null);
   const pathname = usePathname() || '';
   const pathArray = pathname.split('/');
   const bucketUuid = pathArray[2] || '';
@@ -372,6 +373,7 @@ const UserManagement: React.FC<UserManagementProps> = () => {
   const handleInviteUser = async () => {
     if (!inviteEmail.trim() || isInviting) return;
     setIsInviting(true);
+    setInviteError(null);
     try {
       const restOperation = post({
         apiName: 'S3_API',
@@ -388,13 +390,21 @@ const UserManagement: React.FC<UserManagementProps> = () => {
         },
       });
 
-      await restOperation.response;
+      const { statusCode, body } = await restOperation.response;
+      
+      if (statusCode >= 400) {
+        const responseText = await body.text();
+        const response = JSON.parse(responseText);
+        throw new Error(response.message || 'Failed to invite user');
+      }
+      
       setIsInviteDialogOpen(false);
       setInviteEmail('');
       setInviteRole('READ');
       await fetchUsers(); // Refresh the user list
     } catch (error) {
       console.error('Error inviting user:', error);
+      setInviteError(error instanceof Error ? error.message : 'Failed to invite user');
     } finally {
       setIsInviting(false);
     }
@@ -534,7 +544,14 @@ const UserManagement: React.FC<UserManagementProps> = () => {
       </div>
 
       {/* Add invite user dialog */}
-      <Dialog open={isInviteDialogOpen} onOpenChange={() => !isInviting && setIsInviteDialogOpen(false)}>
+      <Dialog open={isInviteDialogOpen} onOpenChange={(open) => {
+        if (!isInviting) {
+          setIsInviteDialogOpen(open);
+          if (!open) {
+            setInviteError(null);
+          }
+        }
+      }}>
         <DialogContent className="sm:max-w-[425px] dark:bg-darkbg">
           <DialogHeader>
             <DialogTitle className="text-xl font-semibold dark:text-white">Invite User</DialogTitle>
@@ -568,6 +585,11 @@ const UserManagement: React.FC<UserManagementProps> = () => {
                 </SelectContent>
               </Select>
             </div>
+            {inviteError && (
+              <div className="text-red-500 text-sm mt-2">
+                {inviteError}
+              </div>
+            )}
           </div>
           <DialogFooter>
             <Button

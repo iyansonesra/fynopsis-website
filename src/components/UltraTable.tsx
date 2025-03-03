@@ -706,48 +706,6 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
     }
   };
 
-  const handleUploadFile = async (file: File, parentId: string) => {
-    try {
-
-      // Get presigned URL from API with the full path
-      const getUrlResponse = await post({
-        apiName: 'S3_API',
-        path: `/s3/${bucketUuid}/upload-url`,
-        options: {
-          withCredentials: true,
-          body: JSON.stringify({
-            //    filePath: filePathOut,
-            //    contentType: file.type
-          })
-        }
-      });
-
-      const { body } = await getUrlResponse.response;
-      const responseText = await body.text();
-      const { signedUrl } = JSON.parse(responseText);
-
-      // Upload file using presigned URL
-      const uploadResponse = await fetch(signedUrl, {
-        method: 'PUT',
-        body: file,
-        headers: {
-          'Content-Type': file.type,
-          'Content-Length': file.size.toString(),
-        },
-      });
-
-      if (!uploadResponse.ok) {
-        const errorText = await uploadResponse.text();
-        throw new Error(`Upload failed: ${errorText}`);
-      }
-
-    } catch (error) {
-      console.error('Error uploading file:', error);
-
-    }
-  };
-
-
   const [columnWidths, setColumnWidths] = useState<{ [key in 'name' | 'owner' | 'lastModified' | 'fileSize' | 'tags' | 'actions' | 'status']: string }>({
     status: '3%',
     name: '32%',
@@ -1577,7 +1535,7 @@ th {
                   <ScrollArea className="h-[350px]">
                     {searchableFiles.length === 0 ? (
                       <div className="p-4 text-center text-gray-500 dark:text-gray-400">
-                        Loading files...
+                        No Documents Found.
                       </div>
                     ) : (
                       <ul>

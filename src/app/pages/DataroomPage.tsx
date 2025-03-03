@@ -69,6 +69,8 @@ export default function Home() {
   const [isShareDialogOpen, setIsShareDialogOpen] = useState(false);
   const [userEmail, setUserEmail] = useState('');
   const [permissionLevel, setPermissionLevel] = useState('READ');
+  const [isSharing, setIsSharing] = useState(false);
+  const [shareError, setShareError] = useState<string | null>(null);
   const pathname = usePathname();
   const pathArray = pathname?.split('/') ?? [];
   const bucketUuid = pathArray[2] || '';
@@ -239,6 +241,8 @@ export default function Home() {
 
   const handleShareDataroom = async () => {
     if (userEmail.trim()) {
+      setIsSharing(true);
+      setShareError(null);
       try {
         const restOperation = post({
           apiName: 'S3_API',
@@ -255,17 +259,22 @@ export default function Home() {
           },
         });
 
-        const { body } = await restOperation.response;
+        const { body, statusCode } = await restOperation.response;
         const responseText = await body.text();
         const response = JSON.parse(responseText);
-        // console.log('Share response:', response);
+        
+        if (statusCode >= 400) {
+          throw new Error(response.message || 'Failed to share dataroom');
+        }
 
         setIsShareDialogOpen(false);
         setUserEmail('');
         // Show success toast/message
       } catch (error) {
         console.error('Error sharing dataroom:', error);
-        // Show error toast/message
+        setShareError(error instanceof Error ? error.message : 'Failed to share dataroom');
+      } finally {
+        setIsSharing(false);
       }
     }
   };
@@ -373,7 +382,12 @@ export default function Home() {
 
 
 
-          <Dialog open={isShareDialogOpen} onOpenChange={setIsShareDialogOpen}>
+          <Dialog open={isShareDialogOpen} onOpenChange={(open) => {
+            setIsShareDialogOpen(open);
+            if (!open) {
+              setShareError(null);
+            }
+          }}>
             <DialogContent className="dark:bg-darkbg outline-none border-none">
               <DialogHeader>
                 <DialogTitle className='dark:text-white'>Share Dataroom</DialogTitle>
@@ -395,12 +409,38 @@ export default function Home() {
                   <option value="WRITE">Write</option>
                   <option value="ADMIN">Admin</option>
                 </select>
+                {shareError && (
+                  <div className="text-red-500 text-sm mt-2">
+                    {shareError}
+                  </div>
+                )}
               </div>
               <DialogFooter>
-                <Button variant="outline" onClick={() => setIsShareDialogOpen(false)}>
+                <Button 
+                  variant="outline" 
+                  onClick={() => setIsShareDialogOpen(false)}
+                  disabled={isSharing}
+                  className="dark:bg-transparent dark:text-white dark:hover:bg-slate-800"
+                >
                   Cancel
                 </Button>
-                <Button onClick={handleShareDataroom}>Share</Button>
+                <Button 
+                  onClick={handleShareDataroom}
+                  disabled={!userEmail.trim() || isSharing}
+                  className="bg-blue-600 hover:bg-blue-700 text-white"
+                >
+                  {isSharing ? (
+                    <span className="flex items-center gap-2">
+                      <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                      </svg>
+                      Sharing...
+                    </span>
+                  ) : (
+                    'Share'
+                  )}
+                </Button>
               </DialogFooter>
             </DialogContent>
           </Dialog>
