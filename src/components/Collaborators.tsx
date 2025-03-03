@@ -161,7 +161,7 @@ const UserManagement: React.FC<UserManagementProps> = () => {
           <SelectItem value="WRITE" className='dark:text-white text-sm'>Write</SelectItem>
           <SelectItem value="ADMIN" className='dark:text-white text-sm'>Admin</SelectItem>
           {currentUserRole === 'OWNER' && (
-            <SelectItem value="OWNER text-xs dark:text-white">Owner</SelectItem>
+            <SelectItem value="OWNER" className='dark:text-white text-sm'>Owner</SelectItem>
           )}
         </SelectContent>
       </Select>
