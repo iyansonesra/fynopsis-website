@@ -10,6 +10,7 @@ import { DndProvider } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
 import { Alert, AlertDescription, AlertTitle } from './ui/alert';
 import { toast } from './ui/use-toast';
+import { useRouter } from 'next/navigation';
 
 // Add new imports
 import { ScrollArea } from "./ui/scroll-area";
@@ -707,6 +708,7 @@ const InteractiveFileTree: React.FC<InteractiveFileTreeProps> = ({
 };
 
 export const FileOrganizerDialog: React.FC<FileOrganizerDialogProps> = ({ bucketId, onOrganize, open, onClose }) => {
+  const router = useRouter();
   const [schema, setSchema] = useState<string>('');
   const shouldRename = true;
   const shouldReorder = true;
@@ -992,6 +994,16 @@ export const FileOrganizerDialog: React.FC<FileOrganizerDialogProps> = ({ bucket
             newPath
           }))
         );
+        
+        // Reset URL to home to prevent being in a non-existent folder path
+        const currentPath = window.location.pathname;
+        const segments = currentPath.split('/');
+        // Keep dataroom and bucketId, but set the folder to home
+        if (segments.length >= 3) {
+          segments.length = 3; // Truncate to ["/dataroom", "{bucketId}"]
+          segments.push('home'); // Add home
+          router.push(segments.join('/'));
+        }
         
         onClose();
       }
