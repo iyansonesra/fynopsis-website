@@ -548,12 +548,21 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
         }
       });
 
-      const { body } = await restOperation.response;
+      const { body, statusCode } = await restOperation.response;
       const responseText = await body.text();
       const response = JSON.parse(responseText);
+      
+      // Check for folder not found error response
+      if (statusCode === 404 || (response.statusCode === 404 && response.message === 'Folder not found')) {
+        console.error("Folder not found, navigating to home directory");
+        // Reset to home directory
+        const segments = pathname.split('/');
+        segments.pop(); // Remove the last segment
+        segments.push('home'); // Add 'home' as the folder ID
+        router.push(segments.join('/'));
+      }
 
       console.log("itemsitems:", response);
-
 
       const mappedData = response.items.map((item: any) => ({
         id: item.id,
@@ -572,12 +581,25 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
       }));
       setTableData(sortTableData(mappedData));
 
-
       console.log("response", response);
 
       setIsLoading(false);
     } catch (error) {
       console.error('Error listing S3 objects:', error);
+      
+      // Handle errors, including 404 errors that might be thrown as exceptions
+      const err = error as any; // Type assertion for the error object
+      if (
+        (err?.statusCode === 404) || 
+        (err?.response?.statusCode === 404) ||
+        (typeof err?.message === 'string' && err.message.includes('not found'))
+      ) {
+        // Reset to home directory
+        const segments = pathname.split('/');
+        segments.pop(); // Remove the last segment
+        segments.push('home'); // Add 'home' as the folder ID
+        router.push(segments.join('/'));
+      }
     } finally {
       // setIsLoading(false);
     }
