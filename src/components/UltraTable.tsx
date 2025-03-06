@@ -31,7 +31,7 @@ import { Folder, File } from 'lucide-react';
 import { TagDisplay } from './TagsHover';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { HoverCard, HoverCardContent, HoverCardTrigger } from './ui/hover-card';
-import { wsManager, FileUpdateMessage } from '@/lib/websocketManager';
+import websocketManager, { FileUpdateMessage } from '@/lib/websocketManager';
 import { FileOrganizerDialog, FileChange } from './FileOrganizerDialog';
 import SnackbarContent from '@mui/material';
 import Snackbar from '@mui/material/Snackbar';
@@ -42,6 +42,7 @@ import { useFileStore } from './HotkeyService';
 import { ContextMenu, ContextMenuCheckboxItem, ContextMenuContent, ContextMenuItem, ContextMenuLabel, ContextMenuRadioGroup, ContextMenuRadioItem, ContextMenuSeparator, ContextMenuShortcut, ContextMenuSub, ContextMenuSubContent, ContextMenuSubTrigger, ContextMenuTrigger } from "@/components/ui/context-menu";
 import { Download, Pencil, Trash } from 'lucide-react';
 import { useTabStore } from './tabStore';
+import { useToast } from "@/components/ui/use-toast";
 
 
 
@@ -161,6 +162,12 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
   const { searchableFiles, setSearchableFiles, pendingSelectFileId, setPendingSelectFileId } = useFileStore();
   const searchDropdownRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
+
+  // Add toast
+  const { toast } = useToast();
+
+  // Get dataroom ID from the URL path
+  const dataroomId = pathname.split('/').length > 2 ? pathname.split('/')[2] : null;
 
   // Check for pending file selection
   useEffect(() => {
@@ -1396,7 +1403,66 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
     handleRefresh();
   };
 
-
+  // Connect to WebSocket when component mounts with the current dataroom
+  useEffect(() => {
+    if (!dataroomId) return;
+    
+    // Connect to the WebSocket for this dataroom
+    websocketManager.connect(dataroomId);
+    
+    // Handler for file updates
+    const handleFileUpdate = (message: FileUpdateMessage) => {
+      console.log('File update received:', message);
+      
+      // Display a toast notification for the update
+      let toastMessage = '';
+      let shouldRefresh = true;
+      
+      switch (message.type) {
+        case 'FILE_UPLOADED':
+          toastMessage = `File "${message.data.fileName}" uploaded by ${message.data.uploadedBy || 'a user'}`;
+          break;
+        case 'FILE_DELETED':
+          toastMessage = `File "${message.data.fileName}" deleted by ${message.data.uploadedBy || 'a user'}`;
+          break;
+        case 'FILE_MOVED':
+          toastMessage = `File "${message.data.fileName}" moved by ${message.data.uploadedBy || 'a user'}`;
+          break;
+        case 'FILE_RENAMED':
+          toastMessage = `File renamed to "${message.data.fileName}" by ${message.data.uploadedBy || 'a user'}`;
+          break;
+        case 'FILE_TAG_UPDATED':
+          toastMessage = `Tags updated for "${message.data.fileName}" by ${message.data.uploadedBy || 'a user'}`;
+          break;
+        case 'pong':
+          // Don't display toast or refresh for pong messages (WebSocket keepalive)
+          shouldRefresh = false;
+          break;
+        default:
+          toastMessage = `File update: ${message.type}`;
+      }
+      
+      if (toastMessage && shouldRefresh) {
+        toast({
+          title: "File Update",
+          description: toastMessage,
+          duration: 4000,
+        });
+        
+        // Refresh the file list when changes are detected
+        handleRefresh();
+      }
+    };
+    
+    // Register the event handler
+    websocketManager.addMessageHandler(handleFileUpdate);
+    
+    // Cleanup
+    return () => {
+      websocketManager.removeMessageHandler(handleFileUpdate);
+      websocketManager.disconnect();
+    };
+  }, [dataroomId]);
 
   return (
     <div className="select-none w-full dark:bg-darkbg pt-4 h-full flex flex-col overflow-hidden">

@@ -35,7 +35,7 @@ export const TagDisplay: React.FC<TagDisplayProps> = ({ tags }) => {
                     <span className="inline-flex items-center gap-1 px-2 py-1 text-xs rounded-md bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300">
                         {tags.document_type}
                     </span>
-                    + {tags.key_topics.length}
+                    + {tags.key_topics?.length || 0}
                     {/* <span className="inline-flex items-center gap-1 px-2 py-1 text-xs rounded-md bg-purple-100 dark:bg-purple-900 text-purple-700 dark:text-purple-300">
             {tags.deal_phase}
           </span> */}
@@ -63,14 +63,14 @@ export const TagDisplay: React.FC<TagDisplayProps> = ({ tags }) => {
                                 Involved Parties
                             </h4>
                             <div className="flex flex-wrap gap-1">
-                                {tags.involved_parties.map((party, index) => (
+                                {tags.involved_parties?.length > 0 ? tags.involved_parties.map((party, index) => (
                                     <span
                                         key={index}
                                         className="px-2 py-1 text-xs rounded-md bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300"
                                     >
                                         {party}
                                     </span>
-                                ))}
+                                )) : <span className="text-gray-400 dark:text-gray-500">No parties</span>}
                             </div>
                         </div>
 
@@ -95,14 +95,14 @@ export const TagDisplay: React.FC<TagDisplayProps> = ({ tags }) => {
                                 Key Topics
                             </h4>
                             <div className="flex flex-wrap gap-1">
-                                {tags.key_topics.map((topic, index) => (
+                                {tags.key_topics?.length > 0 ? tags.key_topics.map((topic, index) => (
                                     <span
                                         key={index}
                                         className="px-2 py-1 text-xs rounded-md bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300"
                                     >
                                         {topic}
                                     </span>
-                                ))}
+                                )) : <span className="text-gray-400 dark:text-gray-500">No topics</span>}
                             </div>
                         </div>
 
@@ -113,7 +113,7 @@ export const TagDisplay: React.FC<TagDisplayProps> = ({ tags }) => {
                                 Important Dates
                             </h4>
                             <div className="space-y-2 w-full">
-                                {tags.dates.map((dateInfo, index) => (
+                                {tags.dates?.length > 0 ? tags.dates.map((dateInfo, index) => (
                                     <div key={index} className="text-xs flex items-start gap-2 w-full flex-wrap">
                                         <span className="font-medium dark:text-gray-200 w-[80px] shrink-0">
                                             {new Date(dateInfo.date).toLocaleDateString()}
@@ -122,7 +122,7 @@ export const TagDisplay: React.FC<TagDisplayProps> = ({ tags }) => {
                                             {dateInfo.description}
                                         </span>
                                     </div>
-                                ))}
+                                )) : <span className="text-gray-400 dark:text-gray-500">No dates</span>}
                             </div>
                         </div>
                     </div>
