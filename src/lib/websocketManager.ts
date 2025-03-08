@@ -27,6 +27,11 @@ class WebSocketManager {
   private currentDataroomId: string | null = null;
 
   async connect(dataroomId: string) {
+    // Temporarily disabled WebSocket connection
+    console.log('WebSocket connection disabled');
+    this.currentDataroomId = dataroomId;
+    
+    /*
     try {
       // Save the dataroom ID for reconnect attempts
       this.currentDataroomId = dataroomId;
@@ -84,6 +89,7 @@ class WebSocketManager {
     } catch (error) {
       console.error('Error connecting to WebSocket:', error);
     }
+    */
   }
 
   private setupPingInterval() {
@@ -108,6 +114,9 @@ class WebSocketManager {
   }
 
   private attemptReconnect() {
+    // Temporarily disabled WebSocket reconnection
+    console.log('WebSocket reconnection disabled');
+    /*
     if (this.reconnectAttempts >= this.maxReconnectAttempts || !this.currentDataroomId) {
       console.log('Max reconnect attempts reached, giving up');
       return;
@@ -121,6 +130,7 @@ class WebSocketManager {
       console.log(`Reconnecting (attempt ${this.reconnectAttempts})...`);
       this.connect(this.currentDataroomId!);
     }, delay);
+    */
   }
 
   addMessageHandler(handler: (message: FileUpdateMessage) => void) {
