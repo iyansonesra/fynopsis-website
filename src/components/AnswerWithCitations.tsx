@@ -81,6 +81,7 @@ const GreenCircle = memo<GreenCircleProps>(({ number, fileKey, onSourceClick }) 
     return prevProps.number === nextProps.number &&
         prevProps.fileKey === nextProps.fileKey;
 });
+GreenCircle.displayName = 'GreenCircle';
 
 
 
@@ -119,7 +120,7 @@ export const AnswerWithCitations = memo<AnswerWithCitationsProps>(({ content, ci
     }
 
     const CircleComponentWrapper = useMemo(() => {
-        return React.memo((props: CircleComponentProps) => {
+        const MemoComponent = React.memo((props: CircleComponentProps) => {
             const key = `${props["data-number"]}-${props["data-filekey"]}`;
             
             // Return cached component if it exists
@@ -139,6 +140,9 @@ export const AnswerWithCitations = memo<AnswerWithCitationsProps>(({ content, ci
         }, 
         // Always return true to prevent re-rendering
         () => true);
+        
+        MemoComponent.displayName = 'CircleComponent';
+        return MemoComponent;
     }, [handleSourceClick])
     const markdownOptions = useMemo(() => ({
         overrides: {
@@ -194,3 +198,4 @@ export const AnswerWithCitations = memo<AnswerWithCitationsProps>(({ content, ci
     
     return true;
 });
+AnswerWithCitations.displayName = 'AnswerWithCitations';
