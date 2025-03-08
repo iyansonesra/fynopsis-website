@@ -229,7 +229,7 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
         try {
           const response = await get({
             apiName: 'S3_API',
-            path: `/s3/${bucketUuid}/list-all-files`,
+            path: `/s3/${bucketUuid}/list-all-searchable-files`,
             options: {
               withCredentials: true
             }

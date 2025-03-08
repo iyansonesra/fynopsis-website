@@ -21,7 +21,6 @@ import { Share } from "lucide-react";
 import UserManagement from "@/components/Collaborators";
 import ExcelViewer from '@/components/ExcelViewer';
 import DarkModeToggle from '@/components/DarkModeToggle';
-import { FileSystem } from '@/components/ElevatedTable';
 import { Separator } from '@radix-ui/react-separator';
 import { TagDisplay } from '@/components/TagsHover';
 import { AuditLogViewer } from '@/components/AuditLogViewer';
