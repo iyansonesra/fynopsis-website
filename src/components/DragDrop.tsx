@@ -162,7 +162,6 @@ const [showZipPreview, setShowZipPreview] = useState(false);
       // Process each file path
       for (const [path, file] of Object.entries(zipContent.files)) {
         if (path === '') continue;
-        console.log("Processing path:", path);
         
         const parts = path.split('/').filter(part => part !== '');
         let currentPath = '';
@@ -175,11 +174,9 @@ const [showZipPreview, setShowZipPreview] = useState(false);
         for (const part of partsToProcess) {
           currentPath = currentPath ? `${currentPath}/${part}` : part;
 
-          console.log("currentPath:", currentPath);
           
           // Check if we've already created this folder
           if (!folderIds[currentPath]) {
-            console.log(`Creating folder: ${part} in parent: ${parentFolderId}`);
             const newFolderId = await createFolder(part, parentFolderId, bucketUuid);
             folderIds[currentPath] = newFolderId;
             
@@ -200,7 +197,6 @@ const [showZipPreview, setShowZipPreview] = useState(false);
         // If this is a file, process it
         if (!file.dir) {
           const fileName = parts[parts.length - 1];
-          console.log(`Processing file: ${fileName} in folder: ${parentFolderId}`);
           
           const fileContent = await createFileFromZip(file, path);
           
@@ -279,7 +275,6 @@ const [showZipPreview, setShowZipPreview] = useState(false);
   
   // Helper function to create a folder
   const createFolder = async (name: string, parentFolderId: string, bucketUuid: string): Promise<string> => {
-    console.log("createFolder", name, parentFolderId, bucketUuid);
     
     try {
       const response = await post({
@@ -361,7 +356,6 @@ const [showZipPreview, setShowZipPreview] = useState(false);
 
   const isValidFileName = (fileName: string): boolean => {
     // Regex to check for special characters and slashes
-    console.log('fileName:', fileName);
     const validFileNameRegex = /^[a-zA-Z0-9\s._()-]+$/;
     return validFileNameRegex.test(fileName);
   };

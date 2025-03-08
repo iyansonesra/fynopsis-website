@@ -33,8 +33,6 @@ const FileSelector: React.FC<FileSelectorProps> = ({ onFileSelect }) => {
   }, [searchQuery, searchableFiles]);
 
   useEffect(() => {
-    console.log('searchableFiles:', searchableFiles);
-
       if (selectedFile && !filteredFiles.find((file) => file.fileId === selectedFile)) {
           setSelectedFile(null);
       }

@@ -106,11 +106,6 @@ export default function Files({ setSelectedTab }: { setSelectedTab: React.Dispat
         }
     }, []);
 
-    // Add debug log for table data updates
-    useEffect(() => {
-        console.log('Files component - Table data updated:', tableData);
-    }, [tableData]);
-
     useEffect(() => {
         if (!showFolderTree && !showDetailsView) {
             setFolderViewWidth('100%');
@@ -121,53 +116,24 @@ export default function Files({ setSelectedTab }: { setSelectedTab: React.Dispat
         }
     }, [showFolderTree, showDetailsView]);
 
-    // const addOrActivateTab = (newTab: { id: string; title: string; content: JSX.Element }) => {
-    //     setCurrentTabs(prevTabs => {
-    //         const existingTab = prevTabs.find(tab => tab.title === newTab.title);
-    //         if (existingTab) {
-    //             // If tab exists, just activate it
-    //             setActiveTabId(existingTab.id);
-    //             return prevTabs;
-    //         } else {
-    //             // If it's a new tab, add it and activate it
-    //             setActiveTabId(newTab.id);  // Set active tab ID for the new tab
-    //             return [...prevTabs, newTab];
-    //         }
-    //     });
-    // };
-
-    useEffect(() => {
-        console.log("showDetailsView changed:", showDetailsView);
-    }, [showDetailsView]);
     
        // Remove the addOrActivateTab function and update handleFileSelect:
        function handleFileSelect(file: FileSelectProps) {
-        console.log('Files component - File selected:', file);
         setSelectedFile(file);
         if(file.type && file.type.length > 0){
-            console.log("WE IN\n");
             setShowDetailsView(true);
-
-            console.log("showDetailsView after set:", true);
-
         }
         
         if (file.id && file.name && file.s3Url) {
             const newTabId = `file-${file.id}`;
             
-            // Log tab information for debugging
-            console.log('Existing tabs:', tabs);
-            console.log('Looking for tab with ID:', newTabId);
-            
             // Check if a tab with this ID already exists
             const existingTab = tabs.find(tab => tab.id === newTabId);
             
             if (existingTab) {
-                console.log('Found existing tab:', existingTab);
                 // Just activate the existing tab
                 setActiveTabId(existingTab.id);
             } else {
-                console.log('Creating new tab with ID:', newTabId);
                 // Only add a new tab if one doesn't exist for this file
                 addTab({
                     id: newTabId,

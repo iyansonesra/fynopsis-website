@@ -224,7 +224,6 @@ const InteractiveFileTree: React.FC<InteractiveFileTreeProps> = ({
     // Function to debug tree paths
     const logTreeStructure = (node: TreeNode, level = 0) => {
       const indent = ' '.repeat(level * 2);
-      console.log(`${indent}${node.name} (${node.type}) - Path: ${node.path}`);
       node.children.forEach(child => logTreeStructure(child, level + 1));
     };
     
@@ -249,10 +248,6 @@ const InteractiveFileTree: React.FC<InteractiveFileTreeProps> = ({
         allPaths.add(currentPath);
       }
     });
-    
-    // Log all detected paths for debugging
-    console.log("All folder paths detected:", Array.from(allPaths));
-    
     // Create all folders first to ensure complete structure
     Array.from(allPaths).sort((a, b) => {
       // Sort by depth to ensure parent folders are created first
@@ -369,8 +364,6 @@ const InteractiveFileTree: React.FC<InteractiveFileTreeProps> = ({
       });
     });
 
-    // Debug log
-    console.log("Complete tree structure:");
     logTreeStructure(root);
 
     return root;
@@ -381,9 +374,6 @@ const InteractiveFileTree: React.FC<InteractiveFileTreeProps> = ({
     // Make sure we're rendering the tree when assignments change
     const tree = buildTreeStructure();
     setTreeData(tree);
-    
-    // Log the assignments for debugging
-    console.log("File assignments:", fileAssignments);
     
     // Check how many levels of folders are in the paths
     const folderLevels = new Set<number>();
@@ -399,7 +389,6 @@ const InteractiveFileTree: React.FC<InteractiveFileTreeProps> = ({
       folderLevels.add(Math.max(0, levels));
     });
     
-    console.log("Folder levels in paths:", Array.from(folderLevels));
   }, [fileAssignments, buildTreeStructure]);
 
   // Toggle folder expansion
@@ -736,8 +725,6 @@ export const FileOrganizerDialog: React.FC<FileOrganizerDialogProps> = ({ bucket
       }).response;
 
       const data = (await response.body.json() as unknown) as SchemaResponse;
-
-      console.log('data', data);
       
       // Find the active schema (one with IN_PROGRESS, COMPLETED, or FAILED status)
       const activeSchema = data.schemas.find(schema => 
@@ -746,7 +733,6 @@ export const FileOrganizerDialog: React.FC<FileOrganizerDialogProps> = ({ bucket
 
       if (activeSchema) {
         setSchemaStatus(activeSchema.status);
-        console.log("activeSchema", activeSchema.status);
 
         if (activeSchema.status === 'FAILED') {
           setSchemaError(activeSchema.error);
@@ -797,7 +783,6 @@ export const FileOrganizerDialog: React.FC<FileOrganizerDialogProps> = ({ bucket
         }).response;
 
         const data = (await response.body.json() as unknown) as SchemaResponse;
-        console.log('Current schemas:', data);
         
         // Find the completed schema and undo backup schema
         const completedSchema = data.schemas.find(schema => schema.status === 'COMPLETED');
@@ -806,11 +791,8 @@ export const FileOrganizerDialog: React.FC<FileOrganizerDialogProps> = ({ bucket
         );
         const undoBackupSchema = data.schemas.find(schema => schema.status === 'UNDO_BACKUP');
 
-        // console.log('completedSchema', completedSchema);
-        // console.log('activeSchema', activeSchema);
         if (activeSchema) {
           setSchemaStatus(activeSchema.status);
-          console.log("activeSchema", activeSchema.status);
         }
         
         if (completedSchema?.schemaId) {
@@ -863,7 +845,6 @@ export const FileOrganizerDialog: React.FC<FileOrganizerDialogProps> = ({ bucket
         throw new Error('Failed to start organization preview');
       }
 
-      console.log('Preview data:', data);
       if (data && data.schemas[0].schemaId) {
         setSchemaId(data.schemas[0].schemaId);
         setIsPolling(true);
@@ -959,7 +940,6 @@ export const FileOrganizerDialog: React.FC<FileOrganizerDialogProps> = ({ bucket
         file_assignments[sourceKey] = ensureRootPrefix(newPath);
       });
 
-      console.log("Applying changes with:", file_assignments);
 
       const response = await post({
         apiName: 'S3_API',
@@ -1022,9 +1002,7 @@ export const FileOrganizerDialog: React.FC<FileOrganizerDialogProps> = ({ bucket
   const handleCancel = async () => {
     setIsCancelling(true);
     try {
-      console.log('trying to cancel organization');
       if (!schemaId) {
-        console.log('no schema id');
         setSchemaStatus('NO_SCHEMA');
         setOrganizationResults(null);
         return;

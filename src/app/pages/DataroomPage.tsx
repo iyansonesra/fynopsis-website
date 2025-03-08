@@ -116,7 +116,6 @@ export default function Home() {
   }, [searchParams, tabs]);
 
   useEffect(() => {
-    // console.log("checking for tab color!");
     if (activeTab !== null && tabRefs.current[activeTab]) {
       const tabElement = tabRefs.current[activeTab];
       if (tabElement) {
@@ -167,10 +166,8 @@ export default function Home() {
       // await restOperation.response; // Wait for response to confirm permissions
 
       const { body } = await restOperation.response;
-      // console.log('Body:', body);
       const responseText = await body.text();
       const response = JSON.parse(responseText);
-     console.log('Files response:', response);
       interface FileResponse {
         fileId?: string;
         fileName?: string;
@@ -189,7 +186,6 @@ export default function Home() {
         size: file.size || ''
       })) : [];
 
-      console.log("formattedFiles", formattedFiles);
       setSearchableFiles(formattedFiles);
 
     } catch (error) {
@@ -199,8 +195,6 @@ export default function Home() {
   }
 
   const fetchPermissionLevel = async () => {
-    console.log("bucketuid", bucketUuid);
-
     try {
       const restOperation = get({
         apiName: 'S3_API',
@@ -212,21 +206,14 @@ export default function Home() {
       // await restOperation.response; // Wait for response to confirm permissions
 
       const { body } = await restOperation.response;
-      // console.log('Body:', body);
       const responseText = await body.text();
       const response = JSON.parse(responseText);
-      console.log('Users response:', response);
 
       setHasPermission(true);
     } catch (error) {
       setHasPermission(false);
     }
   };
-
-  const handleMickey = () => {
-    console.log('Mickey clicked');
-    // router?.replace('/ooga', undefined, { shallow: true });
-  }
 
   const toggleDarkMode = () => {
     setIsDarkMode(!isDarkMode);
@@ -288,12 +275,10 @@ export default function Home() {
   async function handleFetchUserAttributes() {
     try {
       const attributes = await fetchUserAttributes();
-      console.log('User attributes:', attributes);
       setUserAttributes(attributes);
       setFamilyName(attributes.family_name || '');
       setGivenName(attributes.given_name || '');
     } catch (error) {
-      console.log("error");
     }
   }
   const renderSelectedScreen = () => {

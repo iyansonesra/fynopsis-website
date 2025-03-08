@@ -159,8 +159,6 @@ export default function GeneralDashboard() {
                 const responseText = await body.text();
                 const response = JSON.parse(responseText);
 
-                console.log('Response:', response);
-
                 const newDataroom: DataRoom = {
                     bucketName: newDataroomNameExist,
                     uuid: response.uuid,
@@ -206,8 +204,6 @@ export default function GeneralDashboard() {
             const responseText = await body.text();
             const response = JSON.parse(responseText);
 
-            console.log('Response:', response);
-
 
             // Update data rooms from the response
             const newDataRooms = response.buckets.map((room: DataRoom) => ({
@@ -251,7 +247,6 @@ export default function GeneralDashboard() {
     }
 
     useEffect(() => {
-        console.log("checking for tab color!");
         if (activeTab !== null && tabRefs.current[activeTab]) {
             const tabElement = tabRefs.current[activeTab];
             if (tabElement) {

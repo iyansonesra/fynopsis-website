@@ -196,16 +196,6 @@ export const TableViewer: React.FC = () => {
         // Get the file name from the ID using the hotkey service
         let fileName = useFileStore.getState().getFileName(fileId);
         
-        // Special handling for the example ID mentioned by the user
-        if (fileId === "eXou2IJIt0PUkDyhmYcKtQ") {
-          // Try to get the name from hotkey service first
-          if (!fileName) {
-            // If not available, set a default name
-            console.log("Found the specific file ID mentioned by the user: eXou2IJIt0PUkDyhmYcKtQ");
-            fileName = "Important Document.pdf";
-          }
-        }
-        
         // Use file name as the key if available, otherwise use ID
         const displayKey = fileName || fileId;
         

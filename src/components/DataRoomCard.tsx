@@ -35,7 +35,6 @@ const DataRoomCard: React.FC<DataRoomCardProps> = ({ id, title, lastOpened, onCl
   const handleDelete = async () => {
     if (isDeleting) return;
     setIsDeleting(true);
-    console.log('Deleting dataroom:', id);
     try {
       const restOperation = del({
         apiName: 'S3_API',

@@ -171,8 +171,6 @@ interface GreenCircleProps {
 // Helper function to get file name - you need to implement this or pass it
 // Updated GreenCircle component with more efficient memoization
 const GreenCircle = memo<GreenCircleProps>(({ number, fileKey, onSourceClick }) => {
-    // console.log("GreenCircle rendered with number:", number);
-    
     const getFileName = useFileStore(state => state.getFileName);
     const fileName = useMemo(() => {
         if (!fileKey) return '';
@@ -181,13 +179,10 @@ const GreenCircle = memo<GreenCircleProps>(({ number, fileKey, onSourceClick }) 
     }, [fileKey, getFileName]);
 
     useEffect(() => {
-        console.log(`GreenCircle effect: number=${number} re-rendered`);
-        
         // You can also measure render performance
         const startTime = performance.now();
         return () => {
             const duration = performance.now() - startTime;
-            console.log(`GreenCircle ${number} render duration: ${duration.toFixed(2)}ms`);
         };
     });
 

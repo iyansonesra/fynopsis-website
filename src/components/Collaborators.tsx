@@ -269,7 +269,6 @@ const UserManagement: React.FC<UserManagementProps> = () => {
         sharedBy: response.sharedBy,
         addedAt: response.addedAt
       };
-      console.log('Permissions retrieved:', permissions);
       setUsers(response);
      
     } catch (error) {
@@ -301,8 +300,6 @@ const UserManagement: React.FC<UserManagementProps> = () => {
     setIsLoading(true);
     setError(null);
 
-    console.log("bucketUuid", bucketUuid);
-
     try {
       const restOperation = get({
         apiName: 'S3_API',
@@ -316,10 +313,8 @@ const UserManagement: React.FC<UserManagementProps> = () => {
       });
 
       const { body } = await restOperation.response;
-      console.log('Body:', body);
       const responseText = await body.text();
       const response = JSON.parse(responseText);
-      console.log('Users response:', response);
 
       // Transform the users data to include invitation status
       const transformedUsers = response.users.map((user: any) => ({

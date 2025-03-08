@@ -206,8 +206,6 @@ export const FolderTreeEditor: React.FC<FolderTreeEditorProps> = ({ onSchemaChan
 
   const handleMove = (dragId: string, hoverId: string) => {
     // Implement drag and drop logic here
-    // This is a placeholder for the actual implementation
-    console.log('Move', dragId, 'to', hoverId);
   };
 
   const handleNameChange = (id: string, newName: string) => {

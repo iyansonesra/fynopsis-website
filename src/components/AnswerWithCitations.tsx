@@ -29,9 +29,6 @@ interface GreenCircleProps {
 // Helper function to get file name - you need to implement this or pass it
 const GreenCircle = memo<GreenCircleProps>(({ number, fileKey, onSourceClick }) => {
     const getFileName = useFileStore(state => state.getFileName);
-    
-    // Remove the console.log that can cause unnecessary re-renders
-    // console.log('GreenCircle rendering 2');
 
     // Use useMemo to avoid recalculating the file name on every render
     const fileName = useMemo(() => {
@@ -40,13 +37,11 @@ const GreenCircle = memo<GreenCircleProps>(({ number, fileKey, onSourceClick }) 
     }, [fileKey, getFileName]);
 
         useEffect(() => {
-            console.log(`GreenCircle effect: number=${number} re-rendered`);
             
             // You can also measure render performance
             const startTime = performance.now();
             return () => {
                 const duration = performance.now() - startTime;
-                console.log(`GreenCircle ${number} render duration: ${duration.toFixed(2)}ms`);
             };
         });
 

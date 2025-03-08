@@ -90,8 +90,6 @@ export const ChatHistoryPanel: React.FC<ChatHistoryPanelProps> = ({
       if (!messages || !Array.isArray(messages)) {
         throw new Error('Invalid response format: messages array is missing');
       }
-
-      console.log("messages", messages);
   
       if (onThreadSelect) {
         onThreadSelect(messages);

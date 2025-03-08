@@ -256,9 +256,7 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
       if (e.ctrlKey || e.metaKey) {  // metaKey for Mac support
         if (e.key === 'x' && selectedItemIds) {
           // Handle cut
-          console.log("selected item ids:", selectedItemIds);
           const selectedItems = tableData.filter(item => selectedItemIds.includes(item.id));
-          console.log("selected item:", selectedItems);
           if (selectedItems) {
 
             setCutFiles(selectedItems);
@@ -274,8 +272,6 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
         } else if (e.key === 'v' && cutFiles) {
           // Handle paste (you might need to modify this to handle multiple files)
           try {
-            console.log("passing in ids:", selectedItemIds);
-
             const fileIds = cutFiles.map(file => file.id);
 
             await moveFile(fileIds, pathArray[3] === "home" ? "ROOT" : pathArray[3]);
@@ -316,21 +312,10 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
     try {
       const userInfo = await getCurrentUser();
       const session = await fetchAuthSession();
-
-      console.log("userinfo:", userInfo);
-      console.log("signin details:", userInfo.signInDetails);
-      // console.log("login id:", userInfo.signInDetails.loginId);
-
-      console.log("SET EMAIL TO:", userInfo.signInDetails?.loginId || '');
       const email = userInfo.signInDetails?.loginId || '';
-      // setUserEmail(email);
       emailRef.current = email;
 
-
-
-
       const idToken = session.tokens?.idToken;
-      console.log('idToken:', idToken);
       setUserInfo(idToken);
 
       return userInfo.username;
@@ -367,7 +352,6 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
   };
 
   const moveFile = async (ids: string[], folderId: string) => {
-    console.log("ids:", ids);
     try {
       const response = await post({
         apiName: 'S3_API',
@@ -383,8 +367,6 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
 
       const { body } = await response.response;
       const result = await body.json();
-
-      // console.log('File moved successfully:', result);
       return result;
 
     } catch (error) {
@@ -488,8 +470,6 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
           })));
         }
 
-
-        console.log("response:", response);
       } catch (error) {
         console.error('Error generating breadcrumbs:', error);
       }
@@ -539,9 +519,6 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
 
 
   const handleSetTableData = async (id: string) => {
-    console.log("bucketUuid:", bucketUuid);
-    console.log("id:", id);
-
     try {
       // await getS3Client();
       const restOperation = post({
@@ -569,8 +546,6 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
         router.push(segments.join('/'));
       }
 
-      console.log("itemsitems:", response);
-
       const mappedData = response.items.map((item: any) => ({
         id: item.id,
         name: item.name,
@@ -587,8 +562,6 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
         parentId: item.parentFolderId,
       }));
       setTableData(sortTableData(mappedData));
-
-      console.log("response", response);
 
       setIsLoading(false);
     } catch (error) {
@@ -643,8 +616,6 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
       const { body } = await response.response;
       const result = await body.json() as { newName: string };
 
-      console.log('result:', result);
-
       if (result && result.newName) {
         setTableData(prevData => prevData.map(item =>
           item.id === id
@@ -689,9 +660,6 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
 
     setTableData(prevData => sortTableData([...prevData, newFolder]));
 
-    console.log("patharray:", pathArray);
-
-
     try {
       const response = await post({
         apiName: 'S3_API',
@@ -707,11 +675,8 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
 
       const { body } = await response.response;
       const result = await body.json();
-
-      console.log('result:', result);
       if (result) {
         const response = result as { folderId: string };
-        console.log('response:', response);
         setTableData(prev =>
           prev.map(item =>
             item.id === "temp-id"
@@ -719,8 +684,6 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
               : item
           )
         );
-
-        console.log('Changed item:', tableData);
       }
 
 
@@ -924,7 +887,6 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
           const { body } = await downloadResponse.response;
           const responseText = await body.text();
           const { signedUrl } = JSON.parse(responseText);
-          console.log("double clicked item:", item);
           onFileSelect({
             ...item,
             s3Url: signedUrl,
@@ -1340,8 +1302,6 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
   }
 
   const handleFilesUploaded = async (files: File[], fileHashes: FileHashMapping) => {
-    console.log('Uploaded files:', files);
-    console.log('File hashes:', fileHashes);
     const uploadPromises = files.map(async (file) => {
       try {
         // const s3Key = await uploadToS3(file);
@@ -1385,7 +1345,6 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
     const newFiles = (await Promise.all(uploadPromises)).filter((item): item is FileNode => item !== null);
     // console.log("new files:", newFiles);
     setTableData(prevData => sortTableData([...prevData, ...newFiles]));
-    console.log("tableData:", tableData);
     setShowUploadOverlay(false);
 
   };
@@ -1412,8 +1371,6 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
     
     // Handler for file updates
     const handleFileUpdate = (message: FileUpdateMessage) => {
-      console.log('File update received:', message);
-      
       // Display a toast notification for the update
       let toastMessage = '';
       let shouldRefresh = true;

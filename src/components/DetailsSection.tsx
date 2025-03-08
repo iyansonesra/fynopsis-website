@@ -206,7 +206,6 @@ const getUserPrefix = async () => {
         if (!identityId) {
             throw new Error('No identity ID available');
         }
-        // console.log("The identity id:", identityId);
         return `${identityId}/`;
     } catch (error) {
         console.error('Error getting user prefix:', error);
@@ -222,7 +221,6 @@ const DetailSection: React.FC<DetailsSectionProps> = ({
     tableData }) => {
     // Add debug logging for props
     useEffect(() => {
-        // console.log('DetailSection - Received table data:', tableData);
     }, [tableData]);
     const {
         showDetailsView,
@@ -267,30 +265,19 @@ const DetailSection: React.FC<DetailsSectionProps> = ({
         }
     }, []);
 
-
-
-
-
-    useEffect(() => {
-        console.log("DetailSection mounted with showDetailsView:", showDetailsView);
-    }, []);
     // Add selector for S3Store
     const s3Objects = useS3Store(state => state.objects);
 
     const handleSourceCardClick = async (sourceUrl: string) => {
-        // console.log('DetailSection - Source clicked:', sourceUrl);
         const bucketUuid = window.location.pathname.split('/')[2] || '';
         if (isClickProcessing) return;
         setIsClickProcessing(true);
-        console.log("click processing", sourceUrl);
 
         try {
             // First check if file exists in s3Objects
-            // console.log('DetailSection - Found S3 object:', s3Object);
 
             // Get the signed URL
             const id = sourceUrl.split('/').pop();
-            console.log("selected files!!!!!", sourceUrl);
             const downloadResponse = await get({
                 apiName: 'S3_API',
                 path: `/s3/${bucketUuid}/view-url`,
@@ -336,7 +323,6 @@ const DetailSection: React.FC<DetailsSectionProps> = ({
 
 
     const queryAllDocuments = async (searchTerm: string, withReasoning: boolean, selectedFiles: any[]) => {
-        console.log("selected files!!!!!", selectedFiles);
         setLastQuery(searchTerm); // Add this line at the start of the function
 
         try {
@@ -367,13 +353,6 @@ const DetailSection: React.FC<DetailsSectionProps> = ({
 
             const websocketUrl = `wss://${websocketHost}/prod?${params.toString()}`;
 
-            // Debug URL
-            // console.log('WebSocket URL components:', {
-            // host: websocketHost,
-            // params: Object.fromEntries(params.entries()),
-            // fullUrl: websocketUrl
-            // });
-
             const ws = new WebSocket(websocketUrl);
 
             let result = '';
@@ -389,12 +368,6 @@ const DetailSection: React.FC<DetailsSectionProps> = ({
 
             return new Promise((resolve, reject) => {
                 ws.onopen = () => {
-                    console.log('WebSocket connected successfully');
-                    // Send query once connected
-
-
-
-
                     if (currentThreadId) {
                         ws.send(JSON.stringify({
                             action: 'query',
@@ -541,18 +514,11 @@ const DetailSection: React.FC<DetailsSectionProps> = ({
                 ws.onclose = (event) => {
                     setIsWebSocketActive(false);
                     setIsLoading(false);
-                    // console.log('WebSocket closed:', {
-                    // code: event.code,
-                    // reason: event.reason,
-                    // wasClean: event.wasClean
-                    // });
                 };
             });
 
         } catch (err) {
             setIsWebSocketActive(false);
-            console.log("selected files!!!!!", selectedFiles);
-            console.log("BRLRLLELWFLLEFLW");
 
             console.error('Error querying collection:', err);
             setError('Failed to fetch search results. Please try again.');
@@ -1247,7 +1213,6 @@ const DetailSection: React.FC<DetailsSectionProps> = ({
                     <AIInputWithSearch
                         onSubmit={queryAllDocuments}
                         onFileSelect={(file) => {
-                            // console.log('Selected file:', file);
                         }}
                         disabled={isLoading}
                     />
