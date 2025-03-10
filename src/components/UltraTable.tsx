@@ -43,6 +43,8 @@ import { ContextMenu, ContextMenuCheckboxItem, ContextMenuContent, ContextMenuIt
 import { Download, Pencil, Trash } from 'lucide-react';
 import { useTabStore } from './tabStore';
 import { useToast } from "@/components/ui/use-toast";
+import { Button } from '@/components/ui/button';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 
 
 
@@ -210,16 +212,38 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
   // Handle keyboard shortcut for search (Ctrl+K or Cmd+K)
   useEffect(() => {
     function handleKeyboardShortcuts(e: KeyboardEvent) {
+      // Dont capture events when in input or textarea
+      if (
+        document.activeElement?.tagName === 'INPUT' ||
+        document.activeElement?.tagName === 'TEXTAREA'
+      ) {
+        return;
+      }
+
+      // Handle Ctrl+K for search
       if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
         e.preventDefault();
         searchInputRef.current?.focus();
+        setSearchQueryVisible(true);
+        return;
+      }
+
+      // Handle backspace key for deletion when items are selected
+      if (e.key === 'Backspace' && selectedItemIds.length > 0) {
+        e.preventDefault();
+        setShowDeleteConfirmation(true);
+        return;
+      }
+
+      if (e.key === '/') {
+        e.preventDefault();
         setSearchQueryVisible(true);
       }
     }
 
     window.addEventListener('keydown', handleKeyboardShortcuts);
     return () => window.removeEventListener('keydown', handleKeyboardShortcuts);
-  }, []);
+  }, [selectedItemIds]);
 
   // Load searchable files
   useEffect(() => {
@@ -1268,6 +1292,66 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
     }
   };
 
+  // Add mass delete function to delete all selected items
+  const handleMassDelete = async () => {
+    if (selectedItemIds.length === 0) return;
+    
+    // Mark selected items as GRAY while deleting
+    setTableData(prev =>
+      prev.map(row =>
+        selectedItemIds.includes(row.id)
+          ? { ...row, status: 'GRAY' }
+          : row
+      )
+    );
+
+    try {
+      // Make API call to delete multiple files/folders
+      const response = await post({
+        apiName: 'S3_API',
+        path: `/s3/${bucketUuid}/delete-url`,
+        options: {
+          withCredentials: true,
+          body: {
+            fileIds: selectedItemIds
+          }
+        }
+      });
+
+      const { body } = await response.response;
+      const result = await body.json();
+      
+      // Remove deleted items from the table
+      setTableData(prev => prev.filter(row => !selectedItemIds.includes(row.id)));
+      
+      // Clear selection after deletion
+      setSelectedItemIds([]);
+      
+      toast({
+        title: "Success",
+        description: `${selectedItemIds.length} item${selectedItemIds.length > 1 ? 's' : ''} deleted successfully`,
+        variant: "default"
+      });
+    } catch (error) {
+      console.error('Error deleting items:', error);
+      
+      // Revert status for items that failed to delete
+      setTableData(prev =>
+        prev.map(row =>
+          selectedItemIds.includes(row.id)
+            ? { ...row, status: 'COMPLETED' }
+            : row
+        )
+      );
+      
+      toast({
+        title: "Error",
+        description: "Failed to delete selected items",
+        variant: "destructive"
+      });
+    }
+  };
+
   const DragPreview = React.memo<{ item: FileNode }>(({ item }) => {
     const selectedCount = selectedItemIds.length;
 
@@ -1420,6 +1504,8 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
       websocketManager.disconnect();
     };
   }, [dataroomId]);
+
+  const [showDeleteConfirmation, setShowDeleteConfirmation] = useState<boolean>(false);
 
   return (
     <div className="select-none w-full dark:bg-darkbg pt-4 h-full flex flex-col overflow-hidden">
@@ -1641,19 +1727,11 @@ th {
       </div>
       <div className="flex flex-col flex-1 overflow-hidden">
 
-        {/* <ContextMenu>
-          <ContextMenuTrigger className="flex flex-grow"> */}
         <ScrollArea data-drop-zone className="relative w-full flex-1">
           <ContextMenu>
             <ContextMenuTrigger className="flex flex-grow">
-              <div
-                className="absolute bottom-4 right-4 z-50"
-                style={{
-                  maxWidth: '90%',
-                  pointerEvents: 'none'
-                }}
-              >
-              </div><div className="flex flex-grow ">
+              
+              <div className="flex flex-grow">
 
                 <DndContext
                   sensors={sensors}
@@ -1788,18 +1866,6 @@ th {
 
           <ScrollBar orientation="horizontal" />
         </ScrollArea>
-        {/* </ContextMenuTrigger>
-          <ContextMenuContent>
-            <ContextMenuItem onClick={() => setShowFolderModal(true)}>
-              <Plus className="mr-2 h-4 w-4" />
-              Create Folder
-            </ContextMenuItem>
-            <ContextMenuItem onClick={() => setShowUploadOverlay(true)}>
-              <Upload className="mr-2 h-4 w-4" />
-              Upload File
-            </ContextMenuItem>
-          </ContextMenuContent>
-        </ContextMenu> */}
 
       </div>
 
@@ -1878,6 +1944,24 @@ th {
           </div>
         </div>
       )}
+
+      {/* Delete confirmation dialog */}
+      <AlertDialog open={showDeleteConfirmation} onOpenChange={setShowDeleteConfirmation}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirm Deletion</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete {selectedItemIds.length} selected item{selectedItemIds.length > 1 ? 's' : ''}? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleMassDelete} className="bg-red-600 hover:bg-red-700">
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
 
   );

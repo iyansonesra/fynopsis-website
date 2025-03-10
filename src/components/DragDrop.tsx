@@ -562,7 +562,7 @@ const [showZipPreview, setShowZipPreview] = useState(false);
         <span>{fileName}</span>
         <span className="flex items-center">
           {upload.status === 'completed' ? (
-            <span className="text-green-600">Uploaded</span>
+            <span className="text-green-600">Ready to Upload</span>
           ) : (
             <HoverCard>
               <HoverCardTrigger asChild>
@@ -581,7 +581,7 @@ const [showZipPreview, setShowZipPreview] = useState(false);
               {upload.status === 'invalid file type' && (
                 <HoverCardContent className="w-80">
                   <h4 className="font-semibold mb-2">Supported file types:</h4>
-                  <div className="text-sm space-y-2">
+                  <div className="text-sm space-y-2">b
                     <p><span className="font-medium">Documents:</span> PDF, DOCX, DOC, RTF, ODT</p>
                     <p><span className="font-medium">Spreadsheets:</span> XLSX, XLS, XLSM, CSV, ODS</p>
                     <p><span className="font-medium">Presentations:</span> PPTX, PPT, ODP</p>
