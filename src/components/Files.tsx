@@ -23,7 +23,6 @@ import FileViewer from './FileViewer';
 import PDFViewer from './PDFViewer';
 import { ThemeProvider } from '../lib/ThemeContext';
 import SpreadsheetApp from './ExcelViewer';
-import { DataTable } from './newFilesTable';
 import { FileSystem } from './UltraTable';
 import { useTabStore } from './tabStore';
 import { useFileStore } from './HotkeyService';
@@ -184,7 +183,7 @@ export default function Files({ setSelectedTab }: { setSelectedTab: React.Dispat
             }
             }
         }
-    }
+    
 
 
     return (
