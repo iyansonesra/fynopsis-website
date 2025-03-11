@@ -1,22 +1,24 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from './ui/dialog';
 import { Button } from './ui/button';
 import { Checkbox } from './ui/checkbox';
 import { Label } from './ui/label';
 import { post, get } from 'aws-amplify/api';
-import { Loader2 } from 'lucide-react';
+import { Loader2, RotateCcw } from 'lucide-react';
 import { FolderTreeEditor } from './FolderTreeEditor';
 import { DndProvider } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
 import { Alert, AlertDescription, AlertTitle } from './ui/alert';
 import { toast } from './ui/use-toast';
+import { useRouter } from 'next/navigation';
 
 // Add new imports
 import { ScrollArea } from "./ui/scroll-area";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "./ui/accordion";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "./ui/table";
-import { FolderIcon, ChevronRightIcon, FileIcon, ArrowRight } from 'lucide-react';
+import { FolderIcon, ChevronRightIcon, ChevronDownIcon, FileIcon, ArrowRight, Pencil, Check, X, Trash2 } from 'lucide-react';
 import { useFileStore } from './HotkeyService';
+import { Input } from './ui/input';
 
 interface FileOrganizerDialogProps {
   bucketId: string;
@@ -76,6 +78,26 @@ interface TreeViewProps {
   schema: string;
   fileAssignments: Record<string, string>;
   newNames: Record<string, string>;
+}
+
+interface InteractiveFileTreeProps {
+  fileAssignments: Record<string, string>;
+  newNames: Record<string, string>;
+  onUpdateAssignments: (fileAssignments: Record<string, string>) => void;
+  onUpdateNames: (newNames: Record<string, string>) => void;
+}
+
+interface TreeNode {
+  id: string;
+  name: string;
+  type: 'folder' | 'file';
+  children: TreeNode[];
+  path: string;
+  sourceFile?: string;
+  originalName?: string;
+  newName?: string;
+  isExpanded?: boolean;
+  isEditing?: boolean;
 }
 
 const TreeView: React.FC<TreeViewProps> = ({ schema, fileAssignments, newNames }) => {
@@ -142,105 +164,543 @@ const TreeView: React.FC<TreeViewProps> = ({ schema, fileAssignments, newNames }
   );
 };
 
-interface FileMovementTreeProps {
-  fileAssignments: Record<string, string>;
-  newNames: Record<string, string>;
+const InteractiveFileTree: React.FC<InteractiveFileTreeProps> = ({ 
+  fileAssignments, 
+  newNames, 
+  onUpdateAssignments,
+  onUpdateNames
+}) => {
+  const getFileName = useFileStore(state => state.getFileName);
+  const searchableFiles = useFileStore(state => state.searchableFiles);
+  const [treeData, setTreeData] = useState<TreeNode>({ 
+    id: 'root', 
+    name: 'Root', 
+    type: 'folder', 
+    children: [],
+    path: '',
+    isExpanded: true
+  });
 
-}
+  // Function to get the real file name from the searchable files by ID
+  const getFileNameById = useCallback((fileId: string): string => {
+    // Try to find the file in searchableFiles
+    const file = searchableFiles.find(f => f.fileId === fileId);
+    
+    // If found and fileName is not empty, return it
+    if (file && file.fileName) {
+      return file.fileName;
+    }
+    
+    // Otherwise return the fileId as fallback
+    return fileId;
+  }, [searchableFiles]);
 
-const FileMovementTree: React.FC<FileMovementTreeProps> = ({ fileAssignments, newNames }) => {
-      const getFileName = useFileStore(state => state.getFileName);
-  
-  const buildTreeStructure = () => {
-    const tree: Record<string, any> = {
-      id: 'root',
-      name: 'Root',
-      type: 'folder',
-      children: {}
+  // Build tree structure from file assignments
+  const buildTreeStructure = useCallback(() => {
+    const root: TreeNode = { 
+      id: 'root', 
+      name: 'Root', 
+      type: 'folder', 
+      children: [],
+      path: '',
+      isExpanded: true
     };
 
-    // Build tree from destination paths
-    Object.entries(fileAssignments).forEach(([source, dest]) => {
-      const parts = dest.split('/').filter(Boolean);
-      let currentNode = tree;
+    // Helper function to remove 'Root/' from the beginning of paths
+    const removeRootPrefix = (path: string): string => {
+      if (path.startsWith('Root/')) {
+        return path.substring(5); // Remove 'Root/'
+      }
+      return path;
+    };
 
-      // Build folder structure
-      parts.forEach((part, index) => {
-        if (index === parts.length - 1) return; // Skip the last part (file name)
-
-        if (!currentNode.children[part]) {
-          currentNode.children[part] = {
-            id: Math.random().toString(36).substr(2, 9),
-            name: part,
-            type: 'folder',
-            children: {}
-          };
-        }
-        currentNode = currentNode.children[part];
-      });
-
-      // Add file with its source info
-      const fileName = source.split('/').pop() || '';
-      const newName = newNames[source];
-
-      currentNode.children[fileName] = {
-        id: Math.random().toString(36).substr(2, 9),
-        name: fileName,
-        type: 'file',
-        newName: newName,
-        sourceFile: source
-      };
+    // Sort paths to ensure parent folders are created first
+    const sortedEntries = Object.entries(fileAssignments).sort(([, destA], [, destB]) => {
+      const depthA = destA.split('/').length;
+      const depthB = destB.split('/').length;
+      return depthA - depthB;
     });
 
-    return tree;
+    // Function to debug tree paths
+    const logTreeStructure = (node: TreeNode, level = 0) => {
+      const indent = ' '.repeat(level * 2);
+      node.children.forEach(child => logTreeStructure(child, level + 1));
+    };
+    
+    // First, create a map of all unique paths to ensure we create all folder levels
+    const allPaths = new Set<string>();
+    
+    // Collect all folder paths from file assignments
+    sortedEntries.forEach(([source, dest]) => {
+      const cleanDest = removeRootPrefix(dest);
+      
+      // Handle paths that might end with a slash
+      const pathWithoutTrailingSlash = cleanDest.endsWith('/') 
+        ? cleanDest.slice(0, -1) 
+        : cleanDest;
+      
+      const parts = pathWithoutTrailingSlash.split('/').filter(Boolean);
+      
+      // Add all subfolder paths to the set
+      let currentPath = '';
+      for (let i = 0; i < parts.length; i++) {
+        currentPath = currentPath ? `${currentPath}/${parts[i]}` : parts[i];
+        allPaths.add(currentPath);
+      }
+    });
+    // Create all folders first to ensure complete structure
+    Array.from(allPaths).sort((a, b) => {
+      // Sort by depth to ensure parent folders are created first
+      return a.split('/').length - b.split('/').length;
+    }).forEach(path => {
+      const parts = path.split('/');
+      let currentNode = root;
+      let currentPath = '';
+      
+      for (let i = 0; i < parts.length; i++) {
+        const part = parts[i];
+        currentPath = currentPath ? `${currentPath}/${part}` : part;
+        
+        let found = currentNode.children.find(child => child.name === part && child.type === 'folder');
+        
+        if (!found) {
+          const newFolder: TreeNode = {
+            id: `folder-${Math.random().toString(36).substr(2, 9)}`,
+            name: part,
+            type: 'folder',
+            children: [],
+            path: currentPath,
+            isExpanded: true
+          };
+          currentNode.children.push(newFolder);
+          found = newFolder;
+        } else {
+          // Ensure all folders are expanded
+          found.isExpanded = true;
+        }
+        
+        currentNode = found;
+      }
+    });
+    
+    // Now add files to their appropriate folders
+    sortedEntries.forEach(([source, dest]) => {
+      const cleanDest = removeRootPrefix(dest);
+      
+      // Handle paths that might end with a slash
+      const pathWithoutTrailingSlash = cleanDest.endsWith('/') 
+        ? cleanDest.slice(0, -1) 
+        : cleanDest;
+      
+      const parts = pathWithoutTrailingSlash.split('/').filter(Boolean);
+      
+      // If the path ends with a slash, it means it's a folder path without a filename
+      // In this case, the file should be placed in that folder with its original name
+      const isDestFolderOnly = cleanDest.endsWith('/');
+      
+      // The file name is the last part of the path ONLY if the path doesn't end with a slash
+      const fileName = !isDestFolderOnly && parts.length > 0 ? parts[parts.length - 1] : '';
+      
+      // If dest ends with a slash or has no parts, use all parts as folder path
+      // Otherwise, use all parts except the last one as folder path
+      const folderParts = isDestFolderOnly || parts.length === 0 ? parts : parts.slice(0, -1);
+      
+      // Find the parent folder for this file
+      let currentNode = root;
+      if (folderParts.length > 0) {
+        let parentFolderPath = '';
+        
+        for (const part of folderParts) {
+          parentFolderPath = parentFolderPath ? `${parentFolderPath}/${part}` : part;
+          
+          const found = currentNode.children.find(child => 
+            child.name === part && child.type === 'folder'
+          );
+          
+          if (!found) {
+            console.error(`Missing folder '${part}' in path: ${cleanDest}`);
+            break;
+          }
+          
+          currentNode = found;
+        }
+      }
+      
+      // Get original file name
+      const sourceFileId = source.split('/').pop() || '';
+      let originalName = getFileNameById(sourceFileId);
+      
+      if (!originalName || originalName === sourceFileId) {
+        const fallbackName = getFileName(sourceFileId);
+        if (fallbackName) {
+          originalName = fallbackName;
+        }
+      }
+      
+      // Determine the file name to display:
+      // 1. If path ends with slash, use original name
+      // 2. If newNames has entry, use that
+      // 3. Otherwise use last part of path
+      // 4. Fallback to original name
+      let fileDisplayName;
+      if (newNames[source]) {
+        fileDisplayName = newNames[source];
+      } else if (!isDestFolderOnly && fileName) {
+        fileDisplayName = fileName;
+      } else {
+        fileDisplayName = originalName;
+      }
+      
+      // Add the file to its parent folder
+      currentNode.children.push({
+        id: `file-${Math.random().toString(36).substr(2, 9)}`,
+        name: fileDisplayName,
+        type: 'file',
+        children: [],
+        path: pathWithoutTrailingSlash,
+        sourceFile: source,
+        originalName: originalName,
+        newName: fileDisplayName
+      });
+    });
+
+    logTreeStructure(root);
+
+    return root;
+  }, [fileAssignments, newNames, getFileName, getFileNameById]);
+
+  // Initialize tree when file assignments change
+  useEffect(() => {
+    // Make sure we're rendering the tree when assignments change
+    const tree = buildTreeStructure();
+    setTreeData(tree);
+    
+    // Check how many levels of folders are in the paths
+    const folderLevels = new Set<number>();
+    Object.values(fileAssignments).forEach(path => {
+      // Count folder levels (excluding Root and the filename)
+      const parts = path.split('/').filter(Boolean);
+      if (parts[0] === 'Root') {
+        parts.shift(); // Remove 'Root'
+      }
+      // Subtract 1 for the filename at the end if the path doesn't end with a slash
+      const isFolder = path.endsWith('/');
+      const levels = isFolder ? parts.length : parts.length - 1;
+      folderLevels.add(Math.max(0, levels));
+    });
+    
+  }, [fileAssignments, buildTreeStructure]);
+
+  // Toggle folder expansion
+  const toggleExpand = (nodeId: string) => {
+    setTreeData(prevTree => {
+      const updateNode = (node: TreeNode): TreeNode => {
+        if (node.id === nodeId) {
+          return { ...node, isExpanded: !node.isExpanded };
+        }
+        
+        if (node.children.length > 0) {
+          return {
+            ...node,
+            children: node.children.map(updateNode)
+          };
+        }
+        
+        return node;
+      };
+      
+      return updateNode(prevTree);
+    });
   };
 
-  const renderTreeNode = (node: any, level = 0) => {
-    const style = {
-      marginLeft: `${level * 20}px`,
-    };
+  // Enable editing mode for a file name
+  const startEditing = (nodeId: string) => {
+    setTreeData(prevTree => {
+      const updateNode = (node: TreeNode): TreeNode => {
+        if (node.id === nodeId) {
+          return { ...node, isEditing: true };
+        }
+        
+        if (node.children.length > 0) {
+          return {
+            ...node,
+            children: node.children.map(updateNode)
+          };
+        }
+        
+        return node;
+      };
+      
+      return updateNode(prevTree);
+    });
+  };
 
-    return (
-      <div key={node.id}>
-        <div className="flex items-center gap-2 py-1" style={style}>
-          {node.type === 'folder' ? (
+  // Update file name and stop editing
+  const updateFileName = (nodeId: string, newFileName: string) => {
+    setTreeData(prevTree => {
+      const updateNode = (node: TreeNode): TreeNode => {
+        if (node.id === nodeId) {
+          const updatedNode = { 
+            ...node, 
+            name: newFileName, 
+            isEditing: false 
+          };
+          
+          // Update file assignments and new names
+          if (node.type === 'file' && node.sourceFile) {
+            const parentPath = node.path.split('/').slice(0, -1).join('/');
+            const newPath = parentPath ? `${parentPath}/${newFileName}` : newFileName;
+            
+            // Update assignments
+            const updatedAssignments = { ...fileAssignments };
+            updatedAssignments[node.sourceFile] = newPath;
+            onUpdateAssignments(updatedAssignments);
+            
+            // Update new names
+            const updatedNames = { ...newNames };
+            updatedNames[node.sourceFile] = newFileName;
+            onUpdateNames(updatedNames);
+            
+            // Update node path
+            updatedNode.path = newPath;
+            updatedNode.newName = newFileName;
+          }
+          
+          return updatedNode;
+        }
+        
+        if (node.children.length > 0) {
+          return {
+            ...node,
+            children: node.children.map(updateNode)
+          };
+        }
+        
+        return node;
+      };
+      
+      return updateNode(prevTree);
+    });
+  };
+
+  // Cancel editing without saving changes
+  const cancelEditing = (nodeId: string) => {
+    setTreeData(prevTree => {
+      const updateNode = (node: TreeNode): TreeNode => {
+        if (node.id === nodeId) {
+          return { ...node, isEditing: false };
+        }
+        
+        if (node.children.length > 0) {
+          return {
+            ...node,
+            children: node.children.map(updateNode)
+          };
+        }
+        
+        return node;
+      };
+      
+      return updateNode(prevTree);
+    });
+  };
+
+  // Move a file to a different folder
+  const moveFile = (fileId: string, targetFolderId: string) => {
+    let sourceFile: string | undefined;
+    let fileName: string | undefined;
+    
+    // Find the file node
+    const findFile = (node: TreeNode): TreeNode | null => {
+      if (node.id === fileId) return node;
+      
+      for (const child of node.children) {
+        const found = findFile(child);
+        if (found) return found;
+      }
+      
+      return null;
+    };
+    
+    // Find the target folder node
+    const findFolder = (node: TreeNode): TreeNode | null => {
+      if (node.id === targetFolderId) return node;
+      
+      for (const child of node.children) {
+        if (child.type === 'folder') {
+          const found = findFolder(child);
+          if (found) return found;
+        }
+      }
+      
+      return null;
+    };
+    
+    const fileNode = findFile(treeData);
+    const targetFolder = findFolder(treeData);
+    
+    if (fileNode && targetFolder && fileNode.sourceFile) {
+      // Update file assignments
+      const updatedAssignments = { ...fileAssignments };
+      const newPath = targetFolder.path 
+        ? `${targetFolder.path}/${fileNode.name}` 
+        : fileNode.name;
+      
+      updatedAssignments[fileNode.sourceFile] = newPath;
+      onUpdateAssignments(updatedAssignments);
+      
+      // Rebuild tree with updated assignments
+      setTreeData(buildTreeStructure());
+    }
+  };
+
+  // Render a tree node recursively
+  const renderTreeNode = (node: TreeNode) => {
+    if (node.type === 'folder') {
+      return (
+        <div key={node.id} className="text-sm">
+          {/* Don't render the Root folder UI, but render its children directly */}
+          {node.id === 'root' ? (
+            // Directly render children of root without showing "Root" folder
             <>
-              <FolderIcon className="h-4 w-4 text-yellow-500" />
-              <span className="font-medium">{node.name}</span>
+              {node.children.length === 0 ? (
+                <div className="text-gray-500 text-xs py-1 italic">No files to organize</div>
+              ) : (
+                node.children
+                  .sort((a, b) => {
+                    // Folders first, then files
+                    if (a.type !== b.type) {
+                      return a.type === 'folder' ? -1 : 1;
+                    }
+                    // Alphabetical within the same type
+                    return a.name.localeCompare(b.name);
+                  })
+                  .map(child => renderTreeNode(child))
+              )}
             </>
           ) : (
-            <div className="flex items-center gap-2 text-sm">
-              <FileIcon className="h-4 w-4 text-gray-500" />
-              <span>{getFileName(node.name)}</span>
-              {node.newName && (
-                <>
-                  <ArrowRight className="h-4 w-4 text-gray-400" />
-                  <span className="text-blue-500">{node.newName}</span>
-                </>
+            // Normal folder rendering for non-root folders
+            <>
+              <div 
+                className="flex items-center gap-2 py-1 hover:bg-gray-100 dark:hover:bg-gray-800 rounded px-2 cursor-pointer group"
+                onClick={() => toggleExpand(node.id)}
+              >
+                {node.isExpanded 
+                  ? <ChevronDownIcon className="h-4 w-4 text-gray-500" /> 
+                  : <ChevronRightIcon className="h-4 w-4 text-gray-500" />
+                }
+                <FolderIcon className="h-4 w-4 text-yellow-500" />
+                <span className="font-medium">{node.name}</span>
+              </div>
+              
+              {node.isExpanded && (
+                <div className="ml-6 border-l dark:border-gray-700 pl-2 mt-1">
+                  {node.children.length === 0 ? (
+                    <div className="text-gray-500 text-xs py-1 italic">Empty folder</div>
+                  ) : (
+                    node.children
+                      .sort((a, b) => {
+                        // Folders first, then files
+                        if (a.type !== b.type) {
+                          return a.type === 'folder' ? -1 : 1;
+                        }
+                        // Alphabetical within the same type
+                        return a.name.localeCompare(b.name);
+                      })
+                      .map(child => renderTreeNode(child))
+                  )}
+                </div>
               )}
-            </div>
+            </>
           )}
         </div>
-        {node.children && Object.values(node.children).map((child: any) =>
-          renderTreeNode(child, level + 1)
-        )}
-      </div>
-    );
+      );
+    } else { // File node
+      return (
+        <div key={node.id} 
+          className="flex items-center gap-2 py-1 hover:bg-gray-100 dark:hover:bg-gray-800 rounded px-2 group"
+        >
+          <div className="w-4"></div> {/* Spacing for alignment */}
+          <FileIcon className="h-4 w-4 text-gray-500" />
+          
+          {node.isEditing ? (
+            <div className="flex items-center gap-1 flex-grow">
+              <Input 
+                id={`${node.id}-input`}
+                className="h-6 py-0 text-sm"
+                defaultValue={node.name}
+                autoFocus
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    updateFileName(node.id, e.currentTarget.value);
+                  } else if (e.key === 'Escape') {
+                    cancelEditing(node.id);
+                  }
+                }}
+              />
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="h-5 w-5 p-0"
+                onClick={() => updateFileName(node.id, document.querySelector<HTMLInputElement>(`[id="${node.id}-input"]`)?.value || node.name)}
+              >
+                <Check className="h-4 w-4 text-green-500" />
+              </Button>
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="h-5 w-5 p-0"
+                onClick={() => cancelEditing(node.id)}
+              >
+                <X className="h-4 w-4 text-red-500" />
+              </Button>
+            </div>
+          ) : (
+            <>
+              <div className="flex flex-col">
+                <span>{node.name}</span>
+                {node.originalName && node.originalName !== node.name && (
+                  <span className="text-xs text-gray-500">
+                    (was: {node.originalName})
+                  </span>
+                )}
+              </div>
+              
+              <div className="ml-auto opacity-0 group-hover:opacity-100 flex gap-1">
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  className="h-6 px-2"
+                  onClick={() => startEditing(node.id)}
+                >
+                  <Pencil className="h-3 w-3" />
+                </Button>
+              </div>
+            </>
+          )}
+        </div>
+      );
+    }
   };
 
-  const tree = buildTreeStructure();
-
   return (
-      <div className="space-y-2">
-        {renderTreeNode(tree)}
+    <div className="space-y-2 px-2">
+      <div className="text-sm mb-2 text-gray-500 dark:text-gray-400">
+        Click on folder icons to expand/collapse. Hover over a file to rename it.
       </div>
+      <div className="text-sm mb-2 text-gray-500 dark:text-gray-400">
+        File paths shown: {Object.keys(fileAssignments).length}
+      </div>
+      {renderTreeNode(treeData)}
+    </div>
   );
 };
 
 export const FileOrganizerDialog: React.FC<FileOrganizerDialogProps> = ({ bucketId, onOrganize, open, onClose }) => {
+  const router = useRouter();
   const [schema, setSchema] = useState<string>('');
-  const [shouldRename, setShouldRename] = useState(true);
-  const [shouldReorder, setShouldReorder] = useState(true);
+  const shouldRename = true;
+  const shouldReorder = true;
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const [schemaStatus, setSchemaStatus] = useState<SchemaStatus>('NO_SCHEMA');
   const [schemaError, setSchemaError] = useState<string>();
@@ -253,6 +713,8 @@ export const FileOrganizerDialog: React.FC<FileOrganizerDialogProps> = ({ bucket
   const [isUndoing, setIsUndoing] = useState(false);
   const [undoSchemaId, setUndoSchemaId] = useState<string>();
   const [isInitialLoading, setIsInitialLoading] = useState(true);
+  const [fileAssignments, setFileAssignments] = useState<Record<string, string>>({});
+  const [fileNewNames, setFileNewNames] = useState<Record<string, string>>({});
 
   // Function to check schema status
   const checkSchemaStatus = async () => {
@@ -263,8 +725,6 @@ export const FileOrganizerDialog: React.FC<FileOrganizerDialogProps> = ({ bucket
       }).response;
 
       const data = (await response.body.json() as unknown) as SchemaResponse;
-
-      console.log('data', data);
       
       // Find the active schema (one with IN_PROGRESS, COMPLETED, or FAILED status)
       const activeSchema = data.schemas.find(schema => 
@@ -273,7 +733,6 @@ export const FileOrganizerDialog: React.FC<FileOrganizerDialogProps> = ({ bucket
 
       if (activeSchema) {
         setSchemaStatus(activeSchema.status);
-        console.log("activeSchema", activeSchema.status);
 
         if (activeSchema.status === 'FAILED') {
           setSchemaError(activeSchema.error);
@@ -324,7 +783,6 @@ export const FileOrganizerDialog: React.FC<FileOrganizerDialogProps> = ({ bucket
         }).response;
 
         const data = (await response.body.json() as unknown) as SchemaResponse;
-        console.log('Current schemas:', data);
         
         // Find the completed schema and undo backup schema
         const completedSchema = data.schemas.find(schema => schema.status === 'COMPLETED');
@@ -333,11 +791,8 @@ export const FileOrganizerDialog: React.FC<FileOrganizerDialogProps> = ({ bucket
         );
         const undoBackupSchema = data.schemas.find(schema => schema.status === 'UNDO_BACKUP');
 
-        // console.log('completedSchema', completedSchema);
-        // console.log('activeSchema', activeSchema);
         if (activeSchema) {
           setSchemaStatus(activeSchema.status);
-          console.log("activeSchema", activeSchema.status);
         }
         
         if (completedSchema?.schemaId) {
@@ -390,7 +845,6 @@ export const FileOrganizerDialog: React.FC<FileOrganizerDialogProps> = ({ bucket
         throw new Error('Failed to start organization preview');
       }
 
-      console.log('Preview data:', data);
       if (data && data.schemas[0].schemaId) {
         setSchemaId(data.schemas[0].schemaId);
         setIsPolling(true);
@@ -408,6 +862,36 @@ export const FileOrganizerDialog: React.FC<FileOrganizerDialogProps> = ({ bucket
     }
   };
 
+  const handleUpdateAssignments = (updatedAssignments: Record<string, string>) => {
+    setFileAssignments(updatedAssignments);
+    // Update organization results
+    if (organizationResults) {
+      setOrganizationResults({
+        ...organizationResults,
+        file_assignments: updatedAssignments
+      });
+    }
+  };
+
+  const handleUpdateNames = (updatedNames: Record<string, string>) => {
+    setFileNewNames(updatedNames);
+    // Update organization results
+    if (organizationResults) {
+      setOrganizationResults({
+        ...organizationResults,
+        new_names: updatedNames
+      });
+    }
+  };
+
+  // When organization results are loaded, update the file assignments and names states
+  useEffect(() => {
+    if (organizationResults) {
+      setFileAssignments(organizationResults.file_assignments || {});
+      setFileNewNames(organizationResults.new_names || {});
+    }
+  }, [organizationResults]);
+
   const handleApplyChanges = async () => {
     setIsApplying(true);
     try {
@@ -415,22 +899,47 @@ export const FileOrganizerDialog: React.FC<FileOrganizerDialogProps> = ({ bucket
         throw new Error('Missing schema ID or organization results');
       }
 
+      // Helper function to remove 'Root/' from the beginning of paths
+      const removeRootPrefix = (path: string): string => {
+        if (path.startsWith('Root/')) {
+          return path.substring(5); // Remove 'Root/'
+        }
+        return path;
+      };
+
+      // Helper function to add 'Root/' prefix if it doesn't exist
+      const ensureRootPrefix = (path: string): string => {
+        // Don't add Root/ to empty paths
+        if (!path) return path;
+        
+        // If path doesn't start with Root/, add it
+        if (!path.startsWith('Root/')) {
+          return `Root/${path}`;
+        }
+        return path;
+      };
+
       // Create file assignments with new names
       const file_assignments: Record<string, string> = {};
-      Object.entries(organizationResults.file_assignments).forEach(([sourceKey, destPath]) => {
+      Object.entries(fileAssignments).forEach(([sourceKey, destPath]) => {
         const sourceFileName = sourceKey.split('/').pop() || '';
-        // TODO fix this if they don't want to rename the file need to access the id stored
-        const newFileName = organizationResults.new_names[sourceKey] || sourceFileName;
-        const destFolder = destPath as string;
+        const newFileName = fileNewNames[sourceKey] || sourceFileName;
+        
+        // For UI display, we've removed Root/ prefix from paths
+        // When preparing for API call, we keep the original logic for getting the destination folder
+        const cleanDestPath = removeRootPrefix(destPath);
+        const destFolder = cleanDestPath.split('/').slice(0, -1).join('/');
 
         // Ensure destFolder ends with '/' if it's not empty
-        const formattedDestFolder = destFolder && !destFolder.endsWith('/') ? destFolder + '/' : destFolder;
+        const formattedDestFolder = destFolder ? destFolder + '/' : '';
 
         // Combine destination path with new filename
-        file_assignments[sourceKey] = formattedDestFolder + newFileName;
+        const newPath = formattedDestFolder + newFileName;
+        
+        // Add Root/ prefix back to paths for the API call
+        file_assignments[sourceKey] = ensureRootPrefix(newPath);
       });
 
-      console.log(file_assignments);
 
       const response = await post({
         apiName: 'S3_API',
@@ -443,7 +952,7 @@ export const FileOrganizerDialog: React.FC<FileOrganizerDialogProps> = ({ bucket
             schemaId,
             changes: {
               file_assignments,
-              new_names: organizationResults.new_names,
+              new_names: fileNewNames,
               reasoning: organizationResults.reasoning
             }
           }
@@ -459,12 +968,24 @@ export const FileOrganizerDialog: React.FC<FileOrganizerDialogProps> = ({ bucket
           description: "Files have been reorganized successfully",
         });
 
-        onOrganize(Object.entries(organizationResults.file_assignments || {})
+        onOrganize(Object.entries(file_assignments)
           .map(([originalPath, newPath]) => ({
             originalPath,
-            newPath: newPath as string
+            newPath
           }))
         );
+        
+        // Reset URL to home to prevent being in a non-existent folder path
+        const currentPath = window.location.pathname;
+        const segments = currentPath.split('/');
+        // Keep dataroom and bucketId, but set the folder to home
+        if (segments.length >= 3) {
+          segments.length = 3; // Truncate to ["/dataroom", "{bucketId}"]
+          segments.push('home'); // Add home
+          router.push(segments.join('/'));
+        }
+        
+        onClose();
       }
     } catch (error) {
       console.error('Error applying organization:', error);
@@ -481,9 +1002,7 @@ export const FileOrganizerDialog: React.FC<FileOrganizerDialogProps> = ({ bucket
   const handleCancel = async () => {
     setIsCancelling(true);
     try {
-      console.log('trying to cancel organization');
       if (!schemaId) {
-        console.log('no schema id');
         setSchemaStatus('NO_SCHEMA');
         setOrganizationResults(null);
         return;
@@ -580,9 +1099,9 @@ export const FileOrganizerDialog: React.FC<FileOrganizerDialogProps> = ({ bucket
       return (
         <div className="flex flex-col items-center justify-center space-y-4 p-8 dark:bg-darkbg">
           <Loader2 className="h-8 w-8 animate-spin dark:text-gray-200" />
-          <h3 className="text-lg font-semibold dark:text-gray-200">Loading Schema</h3>
+          <h3 className="text-lg font-semibold dark:text-gray-200">Loading</h3>
           <p className="text-sm text-gray-500 text-center">
-            Please wait while we load the current schema...
+            Please wait while we load...
           </p>
         </div>
       );
@@ -594,7 +1113,7 @@ export const FileOrganizerDialog: React.FC<FileOrganizerDialogProps> = ({ bucket
           <Loader2 className="h-8 w-8 animate-spin dark:text-gray-200" />
           <h3 className="text-lg font-semibold dark:text-gray-200">Organizing Files</h3>
           <p className="text-sm text-gray-500 text-center">
-            This could take up to a few minutes. We&apos;ll notify you when it&apos;s ready.
+            This could take up to a few minutes. Come back later.
           </p>
         </div>
       );
@@ -612,24 +1131,6 @@ export const FileOrganizerDialog: React.FC<FileOrganizerDialogProps> = ({ bucket
               <FolderTreeEditor onSchemaChange={setSchema} />
             </DndProvider>
           </div>
-          <div className="flex items-center space-x-4">
-            <div className="flex items-center space-x-2">
-              <Checkbox
-                id="rename"
-                checked={shouldRename}
-                onCheckedChange={(checked: boolean | 'indeterminate') => setShouldRename(checked as boolean)}
-              />
-              <Label htmlFor="rename">Rename Files</Label>
-            </div>
-            <div className="flex items-center space-x-2">
-              <Checkbox
-                id="reorder"
-                checked={shouldReorder}
-                onCheckedChange={(checked) => setShouldReorder(checked as boolean)}
-              />
-              <Label htmlFor="reorder">Reorder Files</Label>
-            </div>
-          </div>
           <Button onClick={handlePreview}>Try Again</Button>
         </div>
       );
@@ -642,18 +1143,7 @@ export const FileOrganizerDialog: React.FC<FileOrganizerDialogProps> = ({ bucket
           <div className="absolute inset-0 bottom-[64px]">
             <ScrollArea className="h-full">
               <div className="space-y-4 p-4">
-                <Accordion type="single" collapsible className="w-full dark:text-gray-200">
-                  {/* <AccordionItem value="schema">
-                    <AccordionTrigger>Folder Structure</AccordionTrigger>
-                    <AccordionContent>
-                      <TreeView
-                        schema={schema}
-                        fileAssignments={organizationResults?.file_assignments || {}}
-                        newNames={organizationResults?.new_names || {}}
-                      />
-                    </AccordionContent>
-                  </AccordionItem>
-     */}
+                <Accordion type="single" collapsible className="w-full dark:text-gray-200" defaultValue="fileTree">
                   <AccordionItem value="reasoning">
                     <AccordionTrigger>Organization Reasoning</AccordionTrigger>
                     <AccordionContent>
@@ -662,13 +1152,15 @@ export const FileOrganizerDialog: React.FC<FileOrganizerDialogProps> = ({ bucket
                       </p>
                     </AccordionContent>
                   </AccordionItem>
-    
+  
                   <AccordionItem value="fileTree">
-                    <AccordionTrigger>File Movement Tree</AccordionTrigger>
+                    <AccordionTrigger>Files Organization</AccordionTrigger>
                     <AccordionContent>
-                      <FileMovementTree
-                        fileAssignments={organizationResults?.file_assignments || {}}
-                        newNames={organizationResults?.new_names || {}}
+                      <InteractiveFileTree
+                        fileAssignments={fileAssignments}
+                        newNames={fileNewNames}
+                        onUpdateAssignments={handleUpdateAssignments}
+                        onUpdateNames={handleUpdateNames}
                       />
                     </AccordionContent>
                   </AccordionItem>
@@ -678,34 +1170,58 @@ export const FileOrganizerDialog: React.FC<FileOrganizerDialogProps> = ({ bucket
           </div>
     
           {/* Fixed button area at bottom */}
-          <div className="absolute bottom-0 left-0 right-0 h-[64px] bg-white dark:bg-darkbg flex justify-end items-center gap-2 px-4">
-            <Button
-              variant="outline"
-              onClick={handleCancel}
-              disabled={isCancelling || isApplying || isUndoing}
-            >
-              {isCancelling ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Cancelling...
-                </>
-              ) : (
-                'Cancel'
+          <div className="absolute bottom-0 left-0 right-0 h-[64px] bg-white dark:bg-darkbg flex justify-between items-center gap-2 px-4">
+            <div>
+              {undoSchemaId && (
+                <Button
+                  variant="outline"
+                  onClick={handleUndo}
+                  disabled={isUndoing || isApplying || isCancelling}
+                >
+                  {isUndoing ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Undoing...
+                    </>
+                  ) : (
+                    <>
+                      <RotateCcw className="mr-2 h-4 w-4" />
+                      Undo Last Organization
+                    </>
+                  )}
+                </Button>
               )}
-            </Button>
-            <Button
-              onClick={handleApplyChanges}
-              disabled={!organizationResults || isApplying || isCancelling || isUndoing}
-            >
-              {isApplying ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Applying Changes...
-                </>
-              ) : (
-                'Apply Changes'
-              )}
-            </Button>
+            </div>
+            
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                onClick={handleCancel}
+                disabled={isCancelling || isApplying || isUndoing}
+              >
+                {isCancelling ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Cancelling...
+                  </>
+                ) : (
+                  'Cancel'
+                )}
+              </Button>
+              <Button
+                onClick={handleApplyChanges}
+                disabled={!organizationResults || isApplying || isCancelling || isUndoing}
+              >
+                {isApplying ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Applying Changes...
+                  </>
+                ) : (
+                  'Apply Changes'
+                )}
+              </Button>
+            </div>
           </div>
         </div>
       );
@@ -719,26 +1235,9 @@ export const FileOrganizerDialog: React.FC<FileOrganizerDialogProps> = ({ bucket
             <FolderTreeEditor onSchemaChange={setSchema} />
           </DndProvider>
         </div>
-        <div className="flex items-center justify-between space-x-4">
-          <div className = "flex flex-row gap-4">
-            <div className="flex items-center space-x-2">
-              <Checkbox
-                id="rename"
-                checked={shouldRename}
-                onCheckedChange={(checked: boolean | 'indeterminate') => setShouldRename(checked as boolean)}
-              />
-              <Label htmlFor="rename dark:text-gray-200" className='dark:text-gray-200'>Rename Files</Label>
-            </div>
-            <div className="flex items-center space-x-2">
-              <Checkbox
-                id="reorder"
-                checked={shouldReorder}
-                onCheckedChange={(checked) => setShouldReorder(checked as boolean)}
-              />
-              <Label htmlFor="reorder dark:text-gray-200" className='dark:text-gray-200'>Reorder Files</Label>
-            </div>
-          </div>
-          {undoSchemaId && (
+        <div className="flex items-center justify-between space-x-4 px-4">
+          <div>
+            {undoSchemaId && (
               <Button
                 variant="outline"
                 onClick={handleUndo}
@@ -750,11 +1249,15 @@ export const FileOrganizerDialog: React.FC<FileOrganizerDialogProps> = ({ bucket
                     Undoing...
                   </>
                 ) : (
-                  'Undo Last Organization'
+                  <>
+                    <RotateCcw className="mr-2 h-4 w-4" />
+                    Undo Last Organization
+                  </>
                 )}
               </Button>
             )}
-
+          </div>
+          
           <Button onClick={handlePreview} disabled={isLoading}>
             {isLoading ? (
               <>

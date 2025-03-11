@@ -159,8 +159,6 @@ export default function GeneralDashboard() {
                 const responseText = await body.text();
                 const response = JSON.parse(responseText);
 
-                console.log('Response:', response);
-
                 const newDataroom: DataRoom = {
                     bucketName: newDataroomNameExist,
                     uuid: response.uuid,
@@ -206,8 +204,6 @@ export default function GeneralDashboard() {
             const responseText = await body.text();
             const response = JSON.parse(responseText);
 
-            console.log('Response:', response);
-
 
             // Update data rooms from the response
             const newDataRooms = response.buckets.map((room: DataRoom) => ({
@@ -251,7 +247,6 @@ export default function GeneralDashboard() {
     }
 
     useEffect(() => {
-        console.log("checking for tab color!");
         if (activeTab !== null && tabRefs.current[activeTab]) {
             const tabElement = tabRefs.current[activeTab];
             if (tabElement) {
@@ -597,50 +592,7 @@ export default function GeneralDashboard() {
                             )}
 
                         </div>
-
-
                     </div>
-                    {/* <div className="w-64 p-4 overflow-y-auto">
-                        <h2 className="font-semibold text-lg mb-4 dark:text-white">Pending Invites</h2>
-                        {isInvitesLoading ? (
-                            <>
-                                <SkeletonInvite />
-                                <SkeletonInvite />
-                            </>
-                        ) : invitedDatarooms.length > 0 ? (
-                            invitedDatarooms.map((room) => (
-                                <div
-                                    key={room.bucketId}
-                                    className="bg-white  dark:bg-gray-800 rounded-lg shadow p-4 mb-3 border border-gray-100 dark:border-none"
-                                >
-                                    <h3 className="font-medium text-sm dark:text-white">{room.bucketName}</h3>
-                                    <p className="text-xs text-gray-500 mt-1 dark:text-slate-300">
-                                        Shared by: {room.sharedBy}
-                                    </p>
-                                    <div className="flex gap-2 mt-3">
-                                        <button
-                                            onClick={() => handleAcceptInvite(room.bucketId)}
-                                            className="flex items-center justify-center p-1 rounded-full bg-green-100 text-green-600 hover:bg-green-200 transition-colors"
-                                        >
-                                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                                                <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                                            </svg>
-                                        </button>
-                                        <button
-                                            onClick={() => handleDeclineInvite(room.bucketId)}
-                                            className="flex items-center justify-center p-1 rounded-full bg-red-100 text-red-600 hover:bg-red-200 transition-colors"
-                                        >
-                                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                                                <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
-                                            </svg>
-                                        </button>
-                                    </div>
-                                </div>
-                            ))
-                        ) : (
-                            <p className="text-sm text-gray-500 dark:text-white">No pending invites</p>
-                        )}
-                    </div> */}
                 </div>
             </div > :
             <div className="grid h-screen place-items-center dark:bg-darkbg">

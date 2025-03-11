@@ -4,11 +4,11 @@
 import logo from './../assets/fynopsis_noBG.png'
 import { useState, useEffect } from "react"
 import { useAuthenticator } from '@aws-amplify/ui-react';
-import { Clipboard, LucideIcon, Activity } from "lucide-react";
+import { Clipboard, LucideIcon, Activity, Table, Database } from "lucide-react";
 import { fetchUserAttributes, FetchUserAttributesOutput } from 'aws-amplify/auth';
 import { CircularProgress } from "@mui/material";
 import React, { useRef } from 'react';
-import { useParams, usePathname } from 'next/navigation';
+import { useParams, usePathname, useSearchParams } from 'next/navigation';
 import { useRouter } from 'next/navigation';
 import { Library, Users, LogOut } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -21,13 +21,13 @@ import { Share } from "lucide-react";
 import UserManagement from "@/components/Collaborators";
 import ExcelViewer from '@/components/ExcelViewer';
 import DarkModeToggle from '@/components/DarkModeToggle';
-import { FileSystem } from '@/components/ElevatedTable';
 import { Separator } from '@radix-ui/react-separator';
 import { TagDisplay } from '@/components/TagsHover';
 import { AuditLogViewer } from '@/components/AuditLogViewer';
 import Link from 'next/link';
 import { useFileStore } from '@/components/HotkeyService';
-import BasicPDFViewer from '@/components/PDFTest';
+import TableViewer from '@/components/TableViewer';
+import DeepResearchViewer from '@/components/DeepResearchViewer';
 
 
 type IndicatorStyle = {
@@ -41,16 +41,35 @@ type Tab = {
 };
 
 export default function Home() {
-  const [selectedTab, setSelectedTab] = useState("library");
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  
+  // Define tabs first so we can use it in initialTabIndex calculation
+  const tabs: Tab[] = [
+    { icon: Library, label: 'Library' },
+    { icon: Users, label: 'Users' },
+    { icon: Activity, label: 'Activity' },
+    { icon: Table, label: 'Extract' },
+    { icon: Database, label: 'Deep Research' },
+  ];
+  
+  // Get the active tab from URL query parameters or default to "library"
+  const defaultTab = searchParams.get('tab')?.toLowerCase() || "library";
+  const [selectedTab, setSelectedTab] = useState(defaultTab);
   const { user, signOut } = useAuthenticator((context) => [context.user]);
   const [userAttributes, setUserAttributes] = useState<FetchUserAttributesOutput | null>(null);
-  const router = useRouter();
-  const [activeTab, setActiveTab] = useState<number | null>(0);
+  
+  // Initialize activeTab based on the default tab from URL
+  const initialTabIndex = tabs.findIndex(tab => tab.label.toLowerCase() === defaultTab);
+  const [activeTab, setActiveTab] = useState<number | null>(initialTabIndex >= 0 ? initialTabIndex : 0);
+  
   const [indicatorStyle, setIndicatorStyle] = useState<IndicatorStyle>({} as IndicatorStyle);
   const tabRefs = useRef<(HTMLDivElement | null)[]>([]);
   const [isShareDialogOpen, setIsShareDialogOpen] = useState(false);
   const [userEmail, setUserEmail] = useState('');
   const [permissionLevel, setPermissionLevel] = useState('READ');
+  const [isSharing, setIsSharing] = useState(false);
+  const [shareError, setShareError] = useState<string | null>(null);
   const pathname = usePathname();
   const pathArray = pathname?.split('/') ?? [];
   const bucketUuid = pathArray[2] || '';
@@ -61,36 +80,41 @@ export default function Home() {
   const [familyName, setFamilyName] = useState('');
   const [givenName, setGivenName] = useState('');
 
-
-
-
-  const tabs: Tab[] = [
-    { icon: Library, label: 'Library' },
-    { icon: Users, label: 'Users' },
-    { icon: Activity, label: 'Activity' }, // Add new tab
-    { icon: Activity, label: 'Viewer' }, // Add new tab
-
-  ];
-
   function signIn(): void {
     router.push('/signin');
   }
 
-
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [newDataroomName, setNewDataroomName] = useState('');
 
-
-
-
-
   function handleTabClick(index: number): void {
+    const tabName = tabs[index].label.toLowerCase();
     setActiveTab(index);
-    setSelectedTab(tabs[index].label.toLowerCase());
+    setSelectedTab(tabName);
+    
+    // Update URL query parameter without full page navigation
+    const params = new URLSearchParams(searchParams.toString());
+    params.set('tab', tabName);
+    
+    // Use the router to update the URL
+    const pathname = window.location.pathname;
+    const newUrl = `${pathname}?${params.toString()}`;
+    window.history.pushState({}, '', newUrl);
   }
 
+  // If URL query parameter changes externally, update the selected tab
   useEffect(() => {
-    // console.log("checking for tab color!");
+    const tabParam = searchParams.get('tab')?.toLowerCase();
+    if (tabParam) {
+      const tabIndex = tabs.findIndex(tab => tab.label.toLowerCase() === tabParam);
+      if (tabIndex >= 0) {
+        setActiveTab(tabIndex);
+        setSelectedTab(tabParam);
+      }
+    }
+  }, [searchParams, tabs]);
+
+  useEffect(() => {
     if (activeTab !== null && tabRefs.current[activeTab]) {
       const tabElement = tabRefs.current[activeTab];
       if (tabElement) {
@@ -102,18 +126,11 @@ export default function Home() {
     }
   }, [activeTab]);
 
-
-
-
-
-
   useEffect(() => {
     if (user) {
       handleFetchUserAttributes();
     }
   }, [user]);
-
-
 
   const [isDarkMode, setIsDarkMode] = useState(() => {
     if (typeof window !== 'undefined') {
@@ -148,10 +165,8 @@ export default function Home() {
       // await restOperation.response; // Wait for response to confirm permissions
 
       const { body } = await restOperation.response;
-      // console.log('Body:', body);
       const responseText = await body.text();
       const response = JSON.parse(responseText);
-     console.log('Files response:', response);
       interface FileResponse {
         fileId?: string;
         fileName?: string;
@@ -170,7 +185,6 @@ export default function Home() {
         size: file.size || ''
       })) : [];
 
-      console.log("formattedFiles", formattedFiles);
       setSearchableFiles(formattedFiles);
 
     } catch (error) {
@@ -180,8 +194,6 @@ export default function Home() {
   }
 
   const fetchPermissionLevel = async () => {
-    console.log("bucketuid", bucketUuid);
-
     try {
       const restOperation = get({
         apiName: 'S3_API',
@@ -193,21 +205,14 @@ export default function Home() {
       // await restOperation.response; // Wait for response to confirm permissions
 
       const { body } = await restOperation.response;
-      // console.log('Body:', body);
       const responseText = await body.text();
       const response = JSON.parse(responseText);
-      console.log('Users response:', response);
 
       setHasPermission(true);
     } catch (error) {
       setHasPermission(false);
     }
   };
-
-  const handleMickey = () => {
-    console.log('Mickey clicked');
-    // router?.replace('/ooga', undefined, { shallow: true });
-  }
 
   const toggleDarkMode = () => {
     setIsDarkMode(!isDarkMode);
@@ -222,6 +227,8 @@ export default function Home() {
 
   const handleShareDataroom = async () => {
     if (userEmail.trim()) {
+      setIsSharing(true);
+      setShareError(null);
       try {
         const restOperation = post({
           apiName: 'S3_API',
@@ -238,22 +245,25 @@ export default function Home() {
           },
         });
 
-        const { body } = await restOperation.response;
+        const { body, statusCode } = await restOperation.response;
         const responseText = await body.text();
         const response = JSON.parse(responseText);
-        // console.log('Share response:', response);
+        
+        if (statusCode >= 400) {
+          throw new Error(response.message || 'Failed to share dataroom');
+        }
 
         setIsShareDialogOpen(false);
         setUserEmail('');
         // Show success toast/message
       } catch (error) {
         console.error('Error sharing dataroom:', error);
-        // Show error toast/message
+        setShareError(error instanceof Error ? error.message : 'Failed to share dataroom');
+      } finally {
+        setIsSharing(false);
       }
     }
   };
-
-
 
   useEffect(() => {
     if (user) {
@@ -264,12 +274,10 @@ export default function Home() {
   async function handleFetchUserAttributes() {
     try {
       const attributes = await fetchUserAttributes();
-      console.log('User attributes:', attributes);
       setUserAttributes(attributes);
       setFamilyName(attributes.family_name || '');
       setGivenName(attributes.given_name || '');
     } catch (error) {
-      console.log("error");
     }
   }
   const renderSelectedScreen = () => {
@@ -282,13 +290,14 @@ export default function Home() {
         return <UserManagement dataroomId={''} />;
       case "activity":
         return <AuditLogViewer bucketId={dataroomId} />;
-      // case "viewer":
-      //   return <BasicPDFViewer url= "https://arxiv.org/pdf/1708.08021" name="test"/>;
+      case "extract":
+        return <TableViewer />;
+      case "deep research":
+        return <DeepResearchViewer />;
       default:
         return <Files setSelectedTab={setSelectedTab} />;
     }
   };
-
 
   useEffect(() => {
     if (isDarkMode) {
@@ -314,8 +323,6 @@ export default function Home() {
       </div>
     );
   }
-
-
 
   return (
  
@@ -359,7 +366,12 @@ export default function Home() {
 
 
 
-          <Dialog open={isShareDialogOpen} onOpenChange={setIsShareDialogOpen}>
+          <Dialog open={isShareDialogOpen} onOpenChange={(open) => {
+            setIsShareDialogOpen(open);
+            if (!open) {
+              setShareError(null);
+            }
+          }}>
             <DialogContent className="dark:bg-darkbg outline-none border-none">
               <DialogHeader>
                 <DialogTitle className='dark:text-white'>Share Dataroom</DialogTitle>
@@ -381,12 +393,38 @@ export default function Home() {
                   <option value="WRITE">Write</option>
                   <option value="ADMIN">Admin</option>
                 </select>
+                {shareError && (
+                  <div className="text-red-500 text-sm mt-2">
+                    {shareError}
+                  </div>
+                )}
               </div>
               <DialogFooter>
-                <Button variant="outline" onClick={() => setIsShareDialogOpen(false)}>
+                <Button 
+                  variant="outline" 
+                  onClick={() => setIsShareDialogOpen(false)}
+                  disabled={isSharing}
+                  className="dark:bg-transparent dark:text-white dark:hover:bg-slate-800"
+                >
                   Cancel
                 </Button>
-                <Button onClick={handleShareDataroom}>Share</Button>
+                <Button 
+                  onClick={handleShareDataroom}
+                  disabled={!userEmail.trim() || isSharing}
+                  className="bg-blue-600 hover:bg-blue-700 text-white"
+                >
+                  {isSharing ? (
+                    <span className="flex items-center gap-2">
+                      <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                      </svg>
+                      Sharing...
+                    </span>
+                  ) : (
+                    'Share'
+                  )}
+                </Button>
               </DialogFooter>
             </DialogContent>
           </Dialog>

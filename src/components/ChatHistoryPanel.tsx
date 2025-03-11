@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { ScrollArea } from './ui/scroll-area';
 import { Card } from './ui/card';
-import { MessageSquare, Clock, ArrowLeft } from 'lucide-react';
+import { MessageSquare, Clock, ArrowLeft, Loader2 } from 'lucide-react';
 import { get, post } from 'aws-amplify/api';
 import { formatDistanceToNow } from 'date-fns';
 import { Button } from './ui/button';
@@ -33,6 +33,7 @@ export const ChatHistoryPanel: React.FC<ChatHistoryPanelProps> = ({
 }) => {
   const [chatHistories, setChatHistories] = useState<ChatHistory[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isThreadLoading, setIsThreadLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selectedThreadId, setSelectedThreadId] = useState<string | null>(null);
 
@@ -65,6 +66,7 @@ export const ChatHistoryPanel: React.FC<ChatHistoryPanelProps> = ({
 
   const fetchChatThread = async (threadId: string) => {
     try {
+      setIsThreadLoading(true);
       setSelectedThreadId(threadId);
       const chatResponse = await post({
         apiName: 'S3_API',
@@ -90,8 +92,6 @@ export const ChatHistoryPanel: React.FC<ChatHistoryPanelProps> = ({
       if (!messages || !Array.isArray(messages)) {
         throw new Error('Invalid response format: messages array is missing');
       }
-
-      console.log("messages", messages);
   
       if (onThreadSelect) {
         onThreadSelect(messages);
@@ -104,6 +104,8 @@ export const ChatHistoryPanel: React.FC<ChatHistoryPanelProps> = ({
       if (onThreadSelect) {
         onThreadSelect([]);
       }
+    } finally {
+      setIsThreadLoading(false);
     }
   };
 
@@ -142,6 +144,7 @@ export const ChatHistoryPanel: React.FC<ChatHistoryPanelProps> = ({
             size="sm"
             onClick={onBack}
             className="hover:bg-gray-100 dark:hover:bg-gray-800 dark:text-slate-200 dark:bg-darkbg"
+            disabled={isThreadLoading}
           >
             <ArrowLeft className="h-4 w-4 mr-2 dark:text-slate-200" />
             Back to Search
@@ -156,15 +159,22 @@ export const ChatHistoryPanel: React.FC<ChatHistoryPanelProps> = ({
             <Card
               key={chat.threadId}
               className={`p-4 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 dark:bg-slate-800 dark:text-gray-200 border-none dark:hover:bg-slate-900 transition-colors ${
-                selectedThreadId === chat.threadId ? 'border-blue-500' : ''
+                selectedThreadId === chat.threadId ? 'border-blue-500 dark:border-blue-400' : ''
+              } ${isThreadLoading ? 'pointer-events-none opacity-50' : ''} ${
+                selectedThreadId === chat.threadId && isThreadLoading ? 'opacity-100' : ''
               }`}
-              onClick={() => fetchChatThread(chat.threadId)}
+              onClick={() => !isThreadLoading && fetchChatThread(chat.threadId)}
             >
-              <div className="flex items-center gap-2">
-                <MessageSquare className="h-4 w-4 text-gray-500" />
-                <span className="text-sm font-medium dark:text-white">
-                {chat.initialQuery}
-                </span>
+              <div className="flex items-center gap-2 justify-between">
+                <div className="flex items-center gap-2">
+                  <MessageSquare className="h-4 w-4 text-gray-500" />
+                  <span className="text-sm font-medium dark:text-white truncate">
+                    {chat.initialQuery}
+                  </span>
+                </div>
+                {isThreadLoading && selectedThreadId === chat.threadId && (
+                  <Loader2 className="h-4 w-4 animate-spin text-blue-500" />
+                )}
               </div>
               <div className="mt-2 flex items-center gap-2 text-xs text-gray-500">
                 <Clock className="h-3 w-3" />

@@ -50,49 +50,6 @@ const TabSystem: React.FC<TabSystemProps> = ({ tabs, setTabs }) => {
     return str;
   }
 
-  // const closeTab = (tabId: string) => {
-  //   const newTabs = tabs.filter(tab => tab.id !== tabId);
-  //   setTabs(newTabs);
-
-  //   if (activeTabId === tabId) {
-  //     setActiveTabId(newTabs[0]?.id || '');
-  //   }
-  // };
-
-  // // Updated function to add or activate a tab
-  // const addOrActivateTab = (newTab: Tab) => {
-  //   const existingTab = tabs.find(tab => tab.id === newTab.id);
-  //   if (existingTab) {
-  //     // If the tab already exists, just activate it
-  //     setActiveTabId(existingTab.id);
-  //   } else {
-  //     // If it's a new tab, add it and activate it
-  //     setTabs([...tabs, newTab]);
-  //     setActiveTabId(newTab.id);
-  //   }
-  // };
-
-  const findTabByTitle = (tabs: Tab[], title: string): Tab | undefined => {
-    return tabs.find(tab => tab.title === title);
-  };
-
-  // useEffect(() => {
-  //   useTabStore.getState().setCurrentTabs(tabs);
-  // }, [tabs]);
-
-  // Update the addOrActivateTab function
-  const addOrActivateTab = (newTab: Tab) => {
-    const existingTab = findTabByTitle(tabs, newTab.title);
-    if (existingTab) {
-      // If a tab with the same title exists, just activate it
-      setActiveTabId(existingTab.id);
-    } else {
-      // If no tab with this title exists, add it and activate it
-      setTabs([...tabs, newTab]);
-      setActiveTabId(newTab.id);
-    }
-  };
-
   useEffect(() => {
     const activeTab = document.querySelector(`[data-tab-id="${activeTabId}"]`);
     if (activeTab) {
@@ -160,7 +117,6 @@ const TabSystem: React.FC<TabSystemProps> = ({ tabs, setTabs }) => {
           <div
             key={tab.id}
             ref={tab.id === activeTabId ? contentRef : null}
-            // tabIndex={tab.id === activeTabId ? 0 : -1}
             aria-hidden={tab.id !== activeTabId}
             style={{
               visibility: tab.id === activeTabId ? 'visible' : 'hidden',

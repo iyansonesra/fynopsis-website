@@ -328,8 +328,6 @@ export const AuditLogViewer: React.FC<AuditLogViewerProps> = ({ bucketId }) => {
     const [nextToken, setNextToken] = useState<string | null>(null);
 
     const fetchAuditLogs = async (reset = false) => {
-        console.log("yoooooooooooo");
-
         try {
             const params: Record<string, string> = {
                 ...(startDate && { startDate: startDate.toISOString() }),
@@ -346,10 +344,7 @@ export const AuditLogViewer: React.FC<AuditLogViewerProps> = ({ bucketId }) => {
                 options: { withCredentials: true }
             }).response;
 
-            console.log("response", response);
-
             const data = (await response.body.json() as unknown) as AuditLogResponse;
-            console.log("data", data);
 
             if (reset) {
                 setEvents(data?.events || []);
@@ -365,18 +360,8 @@ export const AuditLogViewer: React.FC<AuditLogViewerProps> = ({ bucketId }) => {
     };
 
     useEffect(() => {
-        console.log("why no work\n");
-        console.log("[DEBUG] AuditLogViewer - about to fetch", new Date().toISOString());
         fetchAuditLogs(true);
     }, [bucketId, startDate, endDate, filterType, searchTerm]);
-
-    useEffect(() => {
-        console.log("why no work\n");
-
-        console.log("[DEBUG] AuditLogViewer - events updated", events);
-    })
-
-
 
     const handleExport = async () => {
         try {
@@ -434,12 +419,7 @@ export const AuditLogViewer: React.FC<AuditLogViewerProps> = ({ bucketId }) => {
         };
 
         if (event.action === "FILE_MOVE") {
-            console.log("event", event);
-
-
-            // return nameOfObject;
-
-            console.log("current event", event);
+            // return event.details.itemName;
         }
 
         return actions[event.action] || event.action;

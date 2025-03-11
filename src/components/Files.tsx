@@ -109,11 +109,6 @@ export default function Files({ setSelectedTab }: { setSelectedTab: React.Dispat
         }
     }, []);
 
-    // Add debug log for table data updates
-    useEffect(() => {
-        console.log('Files component - Table data updated:', tableData);
-    }, [tableData]);
-
     useEffect(() => {
         if (!showFolderTree && !showDetailsView) {
             setFolderViewWidth('100%');
@@ -150,9 +145,6 @@ export default function Files({ setSelectedTab }: { setSelectedTab: React.Dispat
         if (file.type && file.type.length > 0) {
             console.log("WE IN\n");
             setShowDetailsView(true);
-
-            console.log("showDetailsView after set:", true);
-
         }
 
         if (file.id && file.name && file.s3Url) {
@@ -164,6 +156,7 @@ export default function Files({ setSelectedTab }: { setSelectedTab: React.Dispat
             console.log("file url", file.s3Url);
 
             if (existingTab) {
+                // Just activate the existing tab
                 setActiveTabId(existingTab.id);
             } else {
                 addTab({
@@ -188,6 +181,7 @@ export default function Files({ setSelectedTab }: { setSelectedTab: React.Dispat
 
                     )
                 });
+            }
             }
         }
     }

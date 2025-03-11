@@ -159,64 +159,83 @@ const [showZipPreview, setShowZipPreview] = useState(false);
     try {
       const zipContent = await zip.loadAsync(zipFile);
       
-      // Process each file path
+      // First, create all the necessary folders to avoid race conditions
+      // Process each file path to ensure folder structure is created
+      const filePaths: {path: string, file: JSZip.JSZipObject}[] = [];
+      
       for (const [path, file] of Object.entries(zipContent.files)) {
         if (path === '') continue;
-        console.log("Processing path:", path);
         
-        const parts = path.split('/').filter(part => part !== '');
-        let currentPath = '';
-        let parentFolderId = 'ROOT';
+        // Skip __MACOSX directories and macOS metadata files
+        if (path.includes('__MACOSX') || path.startsWith('._') || path.includes('.DS_Store')) continue;
         
-        // Process each part of the path except the last one if it's a file
-        const partsToProcess = file.dir ? parts : parts.slice(0, -1);
+        filePaths.push({path, file});
         
-        // Create or verify each folder in the path
-        for (const part of partsToProcess) {
-          currentPath = currentPath ? `${currentPath}/${part}` : part;
-
-          console.log("currentPath:", currentPath);
+        if (!file.dir) {
+          const parts = path.split('/').filter(part => part !== '');
+          let currentPath = '';
+          let parentFolderId = 'ROOT';
           
-          // Check if we've already created this folder
-          if (!folderIds[currentPath]) {
-            console.log(`Creating folder: ${part} in parent: ${parentFolderId}`);
-            const newFolderId = await createFolder(part, parentFolderId, bucketUuid);
-            folderIds[currentPath] = newFolderId;
+          // Process each folder in the path
+          const folderParts = parts.slice(0, -1); // All parts except the filename
+          
+          for (const part of folderParts) {
+            currentPath = currentPath ? `${currentPath}/${part}` : part;
+            
+            // Check if we've already created this folder
+            if (!folderIds[currentPath]) {
+              const newFolderId = await createFolder(part, parentFolderId, bucketUuid);
+              folderIds[currentPath] = newFolderId;
+              
+              // Add to extracted items
+              extractedItems.push({
+                path: currentPath,
+                file: new File([], currentPath),
+                isDirectory: true,
+                level: currentPath.split('/').length,
+                parentPath: currentPath.split('/').slice(0, -1).join('/') || '/'
+              });
+            }
+            
+            // Update parent folder ID for next iteration
+            parentFolderId = folderIds[currentPath];
+          }
+        }
+      }
+      
+      // Now process and upload all the files in parallel
+      const fileUploadPromises = filePaths
+        .filter(({file}) => !file.dir) // Only process files, not directories
+        .map(async ({path, file}) => {
+          const parts = path.split('/').filter(part => part !== '');
+          const fileName = parts[parts.length - 1];
+          const parentPath = parts.slice(0, -1).join('/') || '/';
+          const parentFolderId = folderIds[parentPath] || 'ROOT';
+          
+          try {
+            const fileContent = await createFileFromZip(file, path);
+            
+            // Upload the file to the correct folder
+            await uploadFile(fileContent, parentFolderId, bucketUuid);
             
             // Add to extracted items
             extractedItems.push({
-              path: currentPath,
-              file: new File([], currentPath),
-              isDirectory: true,
-              level: currentPath.split('/').length,
-              parentPath: currentPath.split('/').slice(0, -1).join('/') || '/'
+              path,
+              file: fileContent,
+              isDirectory: false,
+              level: parts.length,
+              parentPath: parentPath
             });
+            
+            return true;
+          } catch (error) {
+            console.error(`Error processing ZIP file item ${path}:`, error);
+            return false;
           }
-          
-          // Update parent folder ID for next iteration
-          parentFolderId = folderIds[currentPath];
-        }
-        
-        // If this is a file, process it
-        if (!file.dir) {
-          const fileName = parts[parts.length - 1];
-          console.log(`Processing file: ${fileName} in folder: ${parentFolderId}`);
-          
-          const fileContent = await createFileFromZip(file, path);
-          
-          // Upload the file to the correct folder
-          await uploadFile(fileContent, parentFolderId, bucketUuid);
-          
-          // Add to extracted items
-          extractedItems.push({
-            path,
-            file: fileContent,
-            isDirectory: false,
-            level: parts.length,
-            parentPath: parts.slice(0, -1).join('/') || '/'
-          });
-        }
-      }
+        });
+      
+      // Wait for all file uploads to complete
+      await Promise.all(fileUploadPromises);
       
       return extractedItems;
     } catch (error) {
@@ -279,7 +298,6 @@ const [showZipPreview, setShowZipPreview] = useState(false);
   
   // Helper function to create a folder
   const createFolder = async (name: string, parentFolderId: string, bucketUuid: string): Promise<string> => {
-    console.log("createFolder", name, parentFolderId, bucketUuid);
     
     try {
       const response = await post({
@@ -305,14 +323,6 @@ const [showZipPreview, setShowZipPreview] = useState(false);
       console.error('Error creating folder:', error);
       throw error;
     }
-  };
-
-  const getFullPath = (fileName: string) => {
-    if (currentPath.length === 0) {
-      return fileName;
-    }
-    // Join current path with filename, ensuring proper formatting
-    return `${currentPath.join('/')}/${fileName}`;
   };
 
   const uploadFile = async (file: File, parentFolderId: string, bucketUuid: string) => {
@@ -361,7 +371,6 @@ const [showZipPreview, setShowZipPreview] = useState(false);
 
   const isValidFileName = (fileName: string): boolean => {
     // Regex to check for special characters and slashes
-    console.log('fileName:', fileName);
     const validFileNameRegex = /^[a-zA-Z0-9\s._()-]+$/;
     return validFileNameRegex.test(fileName);
   };
@@ -381,19 +390,29 @@ const [showZipPreview, setShowZipPreview] = useState(false);
           try {
             const zip = new JSZip();
             const zipContent = await zip.loadAsync(file);
-            const items: ProcessedItem[] = [];
             
-            for (const [path, zipEntry] of Object.entries(zipContent.files)) {
-              if (path === '') continue;
-              
-              items.push({
+            // Get all the valid entries first
+            const validEntries = Object.entries(zipContent.files)
+              .filter(([path, _]) => {
+                if (path === '') return false;
+                // Skip __MACOSX directories and macOS metadata files
+                if (path.includes('__MACOSX') || path.startsWith('._') || path.includes('.DS_Store')) return false;
+                return true;
+              });
+            
+            // Process all entries in parallel
+            const itemPromises = validEntries.map(async ([path, zipEntry]) => {
+              return {
                 path,
                 file: await createFileFromZip(zipEntry, path),
                 isDirectory: zipEntry.dir,
                 level: path.split('/').length,
                 parentPath: path.split('/').slice(0, -1).join('/') || '/'
-              });
-            }
+              };
+            });
+            
+            // Wait for all file processing to complete
+            const items = await Promise.all(itemPromises);
             
             setZipPreviewItems(items);
             setShowZipPreview(true);
@@ -468,8 +487,8 @@ const [showZipPreview, setShowZipPreview] = useState(false);
         return updated;
       });
   
-      // Upload all pending files
-      for (const file of pendingFiles) {
+      // Create an array of upload promises to handle all uploads in parallel
+      const uploadPromises = pendingFiles.map(async (file) => {
         const updateProgress = (progress: number) => {
           setFileUploads(prev => ({
             ...prev,
@@ -480,21 +499,40 @@ const [showZipPreview, setShowZipPreview] = useState(false);
           }));
         };
   
-        updateProgress(20);
-        
-        // Use the provided folderId or 'ROOT' as default
-        await uploadFile(file, folderId || 'ROOT', bucketUuid);
-        
-        updateProgress(100);
-        
-        setFileUploads(prev => ({
-          ...prev,
-          [file.name]: {
-            ...prev[file.name],
-            status: 'completed'
-          }
-        }));
-      }
+        try {
+          updateProgress(20);
+          
+          // Use the provided folderId or 'ROOT' as default
+          await uploadFile(file, folderId || 'ROOT', bucketUuid);
+          
+          updateProgress(100);
+          
+          setFileUploads(prev => ({
+            ...prev,
+            [file.name]: {
+              ...prev[file.name],
+              status: 'completed'
+            }
+          }));
+          
+          return { success: true, file };
+        } catch (error) {
+          console.error(`Error uploading file ${file.name}:`, error);
+          
+          setFileUploads(prev => ({
+            ...prev,
+            [file.name]: {
+              ...prev[file.name],
+              status: 'error'
+            }
+          }));
+          
+          return { success: false, file };
+        }
+      });
+      
+      // Wait for all upload promises to complete
+      await Promise.all(uploadPromises);
   
       const uploadedFiles = Object.values(fileUploads)
         .filter(upload => upload.status === 'completed')
@@ -543,7 +581,7 @@ const [showZipPreview, setShowZipPreview] = useState(false);
               {upload.status === 'invalid file type' && (
                 <HoverCardContent className="w-80">
                   <h4 className="font-semibold mb-2">Supported file types:</h4>
-                  <div className="text-sm space-y-2">
+                  <div className="text-sm space-y-2">b
                     <p><span className="font-medium">Documents:</span> PDF, DOCX, DOC, RTF, ODT</p>
                     <p><span className="font-medium">Spreadsheets:</span> XLSX, XLS, XLSM, CSV, ODS</p>
                     <p><span className="font-medium">Presentations:</span> PPTX, PPT, ODP</p>

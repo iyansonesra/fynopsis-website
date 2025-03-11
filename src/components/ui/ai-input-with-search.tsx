@@ -44,11 +44,9 @@ export const AIInputWithSearch: React.FC<AIInputWithSearchProps> = ({
 
 
   const handleSubmit = () => {
-    console.log("hiii!");
     if (value.trim()) {
       // Extract fileId from selectedFiles
       const fileKeys = selectedFiles.map(file => file.fileId);
-      console.log("selecteFiles", selectedFiles);
       onSubmit?.(value, showSearch, fileKeys);
       setValue("");
       setSelectedFiles([]);
@@ -166,7 +164,6 @@ export const AIInputWithSearch: React.FC<AIInputWithSearchProps> = ({
                       setSelectedFiles((prev) => [...prev, file]);
                       // Call the parent callback so the AI input hears about the file
                       onFileSelect?.(file);
-                      console.log("file selected", file);
                       // Close the popover after selecting a file
                       setIsPopoverOpen(false);
                     }}
