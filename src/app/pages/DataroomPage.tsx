@@ -27,6 +27,7 @@ import { TagDisplay } from '@/components/TagsHover';
 import { AuditLogViewer } from '@/components/AuditLogViewer';
 import Link from 'next/link';
 import { useFileStore } from '@/components/HotkeyService';
+import BasicPDFViewer from '@/components/PDFTest';
 
 
 type IndicatorStyle = {
@@ -67,6 +68,8 @@ export default function Home() {
     { icon: Library, label: 'Library' },
     { icon: Users, label: 'Users' },
     { icon: Activity, label: 'Activity' }, // Add new tab
+    { icon: Activity, label: 'Viewer' }, // Add new tab
+
   ];
 
   function signIn(): void {
@@ -279,6 +282,8 @@ export default function Home() {
         return <UserManagement dataroomId={''} />;
       case "activity":
         return <AuditLogViewer bucketId={dataroomId} />;
+      // case "viewer":
+      //   return <BasicPDFViewer url= "https://arxiv.org/pdf/1708.08021" name="test"/>;
       default:
         return <Files setSelectedTab={setSelectedTab} />;
     }

@@ -1,10 +1,16 @@
 import React, { useEffect, useRef, useState } from 'react';
 import styled from 'styled-components';
+import PDFHighlighterComponent from './PDFHighlight';
+import BasicPDFViewer from './PDFTest';
+import PDFHighlighterViewer from './PDFHighlight';
 
 const PDFContainer = styled.div`
-  // width: 100%;
-  // height: 94vh;
+  display: flex;
+  flex-grow: 1;
+  height: 100%;
+  width: 100%;
   position: relative;
+
   
   iframe {
     border: none;
@@ -22,12 +28,27 @@ const PDFContainer = styled.div`
   }
 `;
 
+// Specific container for PDF files
+const PDFViewerContainer = styled.div`
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: 100%;
+  height: 100%;
+  display: flex; /* Add this */
+  overflow: hidden;
+  background-color:rgb(212, 36, 36);
+`;
+
 interface PDFViewerProps {
   documentUrl: string;
   containerId?: string;
   maxRetries?: number;
   checkInterval?: number;
   tabId: string;
+  name: string;
 }
 
 const getFileType = (url: string): string => {
@@ -38,8 +59,8 @@ const getFileType = (url: string): string => {
 const getViewerUrl = (documentUrl: string): string => {
   const fileType = getFileType(documentUrl);
   const encodedUrl = encodeURIComponent(documentUrl);
-  
-  switch(fileType) {
+
+  switch (fileType) {
     case 'xlsx':
     case 'xls':
     case 'csv':
@@ -48,28 +69,40 @@ const getViewerUrl = (documentUrl: string): string => {
     case 'docx':
     case 'ppt':
     case 'pptx':
-    case 'pdf':
+      return `https://docs.google.com/viewer?url=${encodedUrl}&embedded=true`;
     default:
       return `https://docs.google.com/viewer?url=${encodedUrl}&embedded=true`;
   }
 };
 
-const PDFViewer: React.FC<PDFViewerProps> = ({ 
-  documentUrl, 
+const PDFViewer: React.FC<PDFViewerProps> = ({
+  documentUrl,
   containerId,
   maxRetries = 5,
-  checkInterval = 2000 
+  checkInterval = 2000,
+  tabId,
+  name
 }) => {
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [retryCount, setRetryCount] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
-  
-  const fileType = getFileType(documentUrl);
+
+  const fileType = getFileType(name);
   const viewerUrl = getViewerUrl(documentUrl);
   const isOfficeFile = ['xlsx', 'xls', 'csv'].includes(fileType);
-
+  const isPdfFile = documentUrl.includes('pdf');
 
   useEffect(() => {
+    // Skip iframe loading checks for PDF files as they're handled by PDFHighlighter
+    console.log("documenturl", documentUrl);
+    console.log("doc name", name);
+    console.log('PDFViewer useEffect', fileType);
+    console.log('PDFViewer isPDF', isPdfFile);
+    if (isPdfFile) {
+      setIsLoading(false);
+      return;
+    }
+
     let checkTimer: NodeJS.Timeout;
     let mounted = true;
 
@@ -84,9 +117,9 @@ const PDFViewer: React.FC<PDFViewerProps> = ({
       }
 
       try {
-        const iframeDoc = iframeRef.current.contentDocument || 
-                         iframeRef.current.contentWindow?.document;
-        
+        const iframeDoc = iframeRef.current.contentDocument ||
+          iframeRef.current.contentWindow?.document;
+
         if (!iframeDoc || iframeDoc.body.children.length === 0) {
           if (retryCount < maxRetries) {
             console.log('Reloading document...');
@@ -111,7 +144,7 @@ const PDFViewer: React.FC<PDFViewerProps> = ({
       mounted = false;
       clearInterval(checkTimer);
     };
-  }, [viewerUrl, retryCount, maxRetries, checkInterval, isOfficeFile]);
+  }, [viewerUrl, retryCount, maxRetries, checkInterval, isOfficeFile, isPdfFile]);
 
   const handleLoad = () => {
     // For Office files, clear loading state immediately on load
@@ -122,8 +155,8 @@ const PDFViewer: React.FC<PDFViewerProps> = ({
 
     if (iframeRef.current) {
       try {
-        const iframeDoc = iframeRef.current.contentDocument || 
-                         iframeRef.current.contentWindow?.document;
+        const iframeDoc = iframeRef.current.contentDocument ||
+          iframeRef.current.contentWindow?.document;
         if (iframeDoc && iframeDoc.body.children.length > 0) {
           setIsLoading(false);
         }
@@ -132,18 +165,25 @@ const PDFViewer: React.FC<PDFViewerProps> = ({
       }
     }
   };
-
-  
-
   return (
-    <PDFContainer className='flex flex-grow  h-full w-inherit'>
-      {(isLoading && isOfficeFile) && <div className="loader">Loading document...</div>}
-      <iframe
-        ref={iframeRef}
-        src={viewerUrl}
-        onLoad={handleLoad}
-        title="Document Viewer"
-      />
+    <PDFContainer>
+      {isPdfFile ? (
+        <PDFViewerContainer>
+          <PDFHighlighterComponent documentUrl={documentUrl} />
+
+        </PDFViewerContainer>
+
+      ) : (
+        <>
+          {(isLoading && isOfficeFile) && <div className="loader">Loading document...</div>}
+          <iframe
+            ref={iframeRef}
+            src={viewerUrl}
+            onLoad={handleLoad}
+            title="Document Viewer"
+          />
+        </>
+      )}
     </PDFContainer>
   );
 };

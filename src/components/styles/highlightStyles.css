@@ -1,0 +1,33 @@
+.highlight-popup {
+    background-color: #3d464d;
+    border-radius: 3px;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+    color: white;
+    padding: 10px;
+    font-size: 14px;
+  }
+  
+  .PdfHighlighter__highlight-layer {
+    position: absolute;
+    z-index: 1;
+  }
+  
+  .Highlight {
+    cursor: pointer;
+  }
+  
+  .Highlight__parts {
+    opacity: 0.4;
+  }
+  
+  .Highlight__part {
+    cursor: pointer;
+    position: absolute;
+    background: #ff6b6b;
+    transition: background 0.3s;
+  }
+  
+  .Highlight--selected .Highlight__part {
+    background: #ff6b6b;
+    opacity: 0.8;
+  }

@@ -24,10 +24,12 @@ import PDFViewer from './PDFViewer';
 import { ThemeProvider } from '../lib/ThemeContext';
 import SpreadsheetApp from './ExcelViewer';
 import { DataTable } from './newFilesTable';
-import {FileSystem} from './UltraTable';
+import { FileSystem } from './UltraTable';
 import { useTabStore } from './tabStore';
 import { useFileStore } from './HotkeyService';
-
+import BasicPDFViewer from './PDFTest';
+import PDFHighlighterViewer from './PDFHighlight';
+import PDFHighlighterComponent from './PDFHighlight';
 interface Tab {
     id: string;
     title: string;
@@ -70,9 +72,9 @@ interface DateInfo {
     date: string;
     type: string;
     description: string;
-  }
-  
-  interface DocumentTags {
+}
+
+interface DocumentTags {
     document_type: string;
     relevant_project: string;
     involved_parties: string[];
@@ -80,17 +82,17 @@ interface DateInfo {
     dates: DateInfo[];
     deal_phase: string;
     confidentiality: string;
-  }
+}
 
 export default function Files({ setSelectedTab }: { setSelectedTab: React.Dispatch<React.SetStateAction<string>> }) {
     const [showFolderTree, setShowFolderTree] = useState(true);
     const [folderViewWidth, setFolderViewWidth] = useState('54%');
 
-    const { 
-        showDetailsView, 
-        setShowDetailsView, 
-        selectedFile, 
-        setSelectedFile 
+    const {
+        showDetailsView,
+        setShowDetailsView,
+        selectedFile,
+        setSelectedFile
     } = useFileStore();
     const { tabs, activeTabId, setActiveTabId, addTab } = useTabStore();
 
@@ -140,43 +142,56 @@ export default function Files({ setSelectedTab }: { setSelectedTab: React.Dispat
     useEffect(() => {
         console.log("showDetailsView changed:", showDetailsView);
     }, [showDetailsView]);
-    
-       // Remove the addOrActivateTab function and update handleFileSelect:
-       function handleFileSelect(file: FileSelectProps) {
+
+    // Remove the addOrActivateTab function and update handleFileSelect:
+    function handleFileSelect(file: FileSelectProps) {
         console.log('Files component - File selected:', file);
         setSelectedFile(file);
-        if(file.type && file.type.length > 0){
+        if (file.type && file.type.length > 0) {
             console.log("WE IN\n");
             setShowDetailsView(true);
 
             console.log("showDetailsView after set:", true);
 
         }
-        
+
         if (file.id && file.name && file.s3Url) {
             const newTabId = `file-${file.id}`;
-            
+
             // Use the store's methods directly
             const existingTab = tabs.find(tab => tab.title === file.name);
-            
+
+            console.log("file url", file.s3Url);
+
             if (existingTab) {
                 setActiveTabId(existingTab.id);
-              } else {
+            } else {
                 addTab({
-                  id: newTabId,
-                  title: file.name,
-                  content: (
-                    <PDFViewer 
-                      documentUrl={file.s3Url} 
-                      containerId={`pdf-viewer-${file.id}`}
-                      tabId={newTabId}  // Add this prop
-                    />
-                  )
+                    id: newTabId,
+                    title: file.name,
+                    content: (
+                        // <PDFViewer 
+                        //   documentUrl={file.s3Url} 
+                        //   containerId={`pdf-viewer-${file.id}`}
+                        //   tabId={newTabId}  // Add this prop
+                        //   name={file.name}
+                        // />
+                        // <PDFHighlighterComponent
+                        //     documentUrl={file.s3Url}
+                        // />
+                        <PDFViewer
+                            documentUrl={file.s3Url}
+                            containerId={`pdf-viewer-${file.id}`}
+                            tabId={newTabId}  // Use the actual tab ID
+                            name={file.name}  // Make sure name is explicitly passed
+                        />
+
+                    )
                 });
-              }
+            }
         }
     }
-    
+
 
     return (
         <ThemeProvider>
@@ -186,25 +201,25 @@ export default function Files({ setSelectedTab }: { setSelectedTab: React.Dispat
             >
 
                 <ResizablePanel defaultSize={75} minSize={40}>
-                <TabSystem
-                    tabs={tabs}
-                    activeTabId={activeTabId}
-                    setActiveTabId={setActiveTabId}
-                    setTabs={(newTabs) => {
-                        if (typeof newTabs === 'function') {
-                            const updatedTabs = newTabs(tabs);
-                            useTabStore.getState().setTabs(updatedTabs);
-                        } else {
-                            useTabStore.getState().setTabs(newTabs);
-                        }
-                    }}
-                />
+                    <TabSystem
+                        tabs={tabs}
+                        activeTabId={activeTabId}
+                        setActiveTabId={setActiveTabId}
+                        setTabs={(newTabs) => {
+                            if (typeof newTabs === 'function') {
+                                const updatedTabs = newTabs(tabs);
+                                useTabStore.getState().setTabs(updatedTabs);
+                            } else {
+                                useTabStore.getState().setTabs(newTabs);
+                            }
+                        }}
+                    />
                     {/* <DataTable 
                         onFileSelect={handleFileSelect} 
                         setTableData={setTableData}  // Pass setTableData to DataTable
                     /> */}
                 </ResizablePanel>
-                <ResizableHandle withHandle className='dark:bg-slate-900'/>
+                <ResizableHandle withHandle className='dark:bg-slate-900' />
                 <ResizablePanel defaultSize={25} minSize={20} collapsible={true} collapsedSize={0}>
                     <DetailSection
                         key={`detail-section-${showDetailsView}`}
