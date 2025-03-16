@@ -1,4 +1,4 @@
-import { post } from 'aws-amplify/api';
+import { post, API } from 'aws-amplify';
 
 // Service for fetching and processing metrics data for the diligence dashboard
 // In a real implementation, this would call the backend which would use AI to generate the data
@@ -15,6 +15,33 @@ export interface MetricData {
   timestamp: string;
   source?: string;
   confidence?: number;
+}
+
+export interface Widget {
+  id: string;
+  type: string;
+  title: string;
+  metricId?: string;
+  metricName?: string;
+  customMetric?: string;
+  metricDetails?: string;
+  width: number;
+  height: number;
+  x: number;
+  y: number;
+  data?: any;
+  settings?: any;
+  expanded?: boolean;
+}
+
+export interface DashboardTemplate {
+  id: string;
+  name: string;
+  description: string;
+  widgets: Widget[];
+  dataroomId: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 /**
@@ -469,4 +496,85 @@ export function getCompatibleMetrics(chartType: string): Metric[] {
   // For demo purposes, all metrics work with all chart types
   // In a real implementation, you would filter based on compatibility
   return allMetrics;
+}
+
+export class MetricsService {
+  // Save dashboard state
+  static async saveDashboardState(bucketId: string, widgets: Widget[]): Promise<Widget[]> {
+    try {
+      const response = await API.post('S3_API', `/metrics/${bucketId}/dashboard-state`, {
+        body: { widgets }
+      });
+      return response.widgets;
+    } catch (error) {
+      console.error('Error saving dashboard state:', error);
+      throw error;
+    }
+  }
+
+  // Get dashboard state
+  static async getDashboardState(bucketId: string): Promise<Widget[]> {
+    try {
+      const response = await API.get('S3_API', `/metrics/${bucketId}/dashboard-state`, {});
+      return response.widgets;
+    } catch (error) {
+      console.error('Error getting dashboard state:', error);
+      throw error;
+    }
+  }
+
+  // Save dashboard template
+  static async saveDashboardTemplate(
+    name: string,
+    description: string,
+    widgets: Widget[],
+    dataroomId: string
+  ): Promise<string> {
+    try {
+      const response = await API.post('S3_API', '/metrics/templates', {
+        body: {
+          name,
+          description,
+          widgets,
+          dataroomId
+        }
+      });
+      return response.templateId;
+    } catch (error) {
+      console.error('Error saving dashboard template:', error);
+      throw error;
+    }
+  }
+
+  // List dashboard templates
+  static async listDashboardTemplates(): Promise<DashboardTemplate[]> {
+    try {
+      const response = await API.get('S3_API', '/metrics/templates', {});
+      return response.templates;
+    } catch (error) {
+      console.error('Error listing dashboard templates:', error);
+      throw error;
+    }
+  }
+
+  // Get dashboard template
+  static async getDashboardTemplate(templateId: string): Promise<DashboardTemplate> {
+    try {
+      const response = await API.get('S3_API', `/metrics/templates/${templateId}`, {});
+      return response.template;
+    } catch (error) {
+      console.error('Error getting dashboard template:', error);
+      throw error;
+    }
+  }
+
+  // Delete dashboard template
+  static async deleteDashboardTemplate(templateId: string): Promise<void> {
+    try {
+      await API.del('S3_API', `/metrics/templates/${templateId}`, {});
+    } catch (error) {
+      console.error('Error deleting dashboard template:', error);
+      throw error;
+    }
+  }
 } 

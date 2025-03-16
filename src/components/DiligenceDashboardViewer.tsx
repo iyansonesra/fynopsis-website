@@ -8,55 +8,31 @@ import { Card } from '@/components/ui/card';
 import { AlertCircle, BarChart2, ChevronDown, Circle, PieChart, PlusCircle, Settings, X, Save, FolderOpen, Maximize, Minimize } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { v4 as uuidv4 } from 'uuid';
-import { fetchMetricData, getAvailableMetrics } from './services/metricsService';
+import { fetchMetricData, getAvailableMetrics, MetricsService, Widget, DashboardTemplate } from './services/metricsService';
 import { DndContext, DragEndEvent, useDraggable, useDroppable } from '@dnd-kit/core';
 import { CSS } from '@dnd-kit/utilities';
+import { Label as UILabel } from '@/components/ui/label';
+import { Select as UISelect, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Textarea } from '@/components/ui/textarea';
+import { toast } from '@/components/ui/use-toast';
 
 // Chart types that can be added to the dashboard
 const CHART_TYPES = {
   AUTO: 'auto',
-  PIE_CHART: 'pieChart',
-  BAR_CHART: 'barChart',
-  LINE_CHART: 'lineChart',
-  SINGLE_METRIC: 'singleMetric',
+  PIE_CHART: 'pie',
+  BAR_CHART: 'bar',
+  LINE_CHART: 'line',
+  SINGLE_METRIC: 'single',
   TEXT: 'text'
 };
 
 // Available metrics for selection
 const AVAILABLE_METRICS = getAvailableMetrics();
 
-// Widget for representing a chart in the dashboard
-interface Widget {
-  id: string;
-  type: string;
-  title: string;
-  metricId?: string;
-  metricName?: string;
-  customMetric?: string; // Custom metric input by the user
-  metricDetails?: string; // Additional details about the metric
-  width: number;
-  height: number;
-  x: number;
-  y: number;
-  data?: any;
-  settings?: any;
-  expanded?: boolean; // Track expanded state
-}
-
-// Dashboard Template interface
-interface DashboardTemplate {
-  id: string;
-  name: string;
-  description: string;
-  widgets: Widget[];
-  createdAt: string;
-  updatedAt: string;
-}
-
 // Dashboard component
 export default function DiligenceDashboardViewer() {
   const params = useParams();
-  const dataroomId = Array.isArray(params?.id) ? params.id[0] : params?.id ?? '';
+  const bucketId = Array.isArray(params?.id) ? params.id[0] : params?.id ?? '';
   
   // State for dashboard widgets and layout
   const [widgets, setWidgets] = useState<Widget[]>([]);
@@ -80,94 +56,43 @@ export default function DiligenceDashboardViewer() {
   
   // Load dashboard data on component mount
   useEffect(() => {
-    fetchDashboardData();
-  }, [dataroomId]);
+    loadDashboardState();
+  }, [bucketId]);
   
-  // Fetch dashboard data from backend
-  const fetchDashboardData = async () => {
-    setIsLoading(true);
+  // Load dashboard state
+  const loadDashboardState = async () => {
     try {
-      const restOperation = get({
-        apiName: 'S3_API',
-        path: `/dashboard/${dataroomId}/get-dashboard`,
-      });
-      
-      const { body } = await restOperation.response;
-      const responseText = await body.text();
-      const response = JSON.parse(responseText);
-      
-      if (response.widgets) {
-        setWidgets(response.widgets);
-      } else {
-        // Create a default dashboard if none exists
-        setWidgets([
-          {
-            id: uuidv4(),
-            type: CHART_TYPES.SINGLE_METRIC,
-            title: 'Total Revenue',
-            metricId: 'revenue',
-            metricName: 'Revenue',
-            width: 1,
-            height: 1,
-            x: 0,
-            y: 0,
-            data: {
-              value: '$10.5M',
-              change: '+12%',
-              isPositive: true
-            }
-          },
-          {
-            id: uuidv4(),
-            type: CHART_TYPES.PIE_CHART,
-            title: 'Revenue Breakdown',
-            metricId: 'revenueBreakdown',
-            metricName: 'Revenue Breakdown',
-            width: 2,
-            height: 2,
-            x: 1,
-            y: 0,
-            data: {
-              segments: [
-                { label: 'Product A', value: 45 },
-                { label: 'Product B', value: 30 },
-                { label: 'Product C', value: 25 }
-              ]
-            }
-          }
-        ]);
-      }
+      setIsLoading(true);
+      const loadedWidgets = await MetricsService.getDashboardState(bucketId);
+      setWidgets(loadedWidgets);
     } catch (error) {
-      console.error('Error fetching dashboard data:', error);
-      // Load empty dashboard on error
-      setWidgets([]);
+      console.error('Error loading dashboard state:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load dashboard state",
+        variant: "destructive"
+      });
     } finally {
       setIsLoading(false);
     }
   };
   
-  // Save dashboard to backend
+  // Save dashboard state
   const saveDashboard = async () => {
     try {
-      const restOperation = post({
-        apiName: 'S3_API',
-        path: `/dashboard/${dataroomId}/save-dashboard`,
-        options: {
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            widgets: widgets
-          })
-        }
-      });
-      
-      await restOperation.response;
-      
-      // Exit edit mode after saving
+      await MetricsService.saveDashboardState(bucketId, widgets);
       setIsEditing(false);
+      toast({
+        title: "Success",
+        description: "Dashboard saved successfully"
+      });
     } catch (error) {
       console.error('Error saving dashboard:', error);
+      toast({
+        title: "Error",
+        description: "Failed to save dashboard",
+        variant: "destructive"
+      });
     }
   };
   
@@ -252,7 +177,7 @@ export default function DiligenceDashboardViewer() {
       if (widget.customMetric) {
         // Use our metrics service to fetch AI-generated data based on custom metric
         data = await fetchMetricData(
-          dataroomId, 
+          bucketId, 
           widget.metricId || 'custom', 
           widget.type,
           widget.customMetric,
@@ -260,7 +185,7 @@ export default function DiligenceDashboardViewer() {
         );
       } else if (widget.metricId) {
         // Fallback to standard metrics
-        data = await fetchMetricData(dataroomId, widget.metricId, widget.type);
+        data = await fetchMetricData(bucketId, widget.metricId, widget.type);
       } else {
         return;
       }
@@ -545,182 +470,87 @@ export default function DiligenceDashboardViewer() {
     );
   };
   
-  // Save the current dashboard as a template
-  const saveAsTemplate = async (e?: React.MouseEvent) => {
-    if (e) e.stopPropagation();
-    
+  // Load templates
+  const loadTemplates = async () => {
+    try {
+      const templates = await MetricsService.listDashboardTemplates();
+      setAvailableTemplates(templates);
+    } catch (error) {
+      console.error('Error loading templates:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load templates",
+        variant: "destructive"
+      });
+    }
+  };
+  
+  // Save as template
+  const saveAsTemplate = async () => {
     if (!templateName) return;
     
     try {
-      const restOperation = post({
-        apiName: 'S3_API',
-        path: `/dashboard/templates/save`,
-        options: {
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            name: templateName,
-            description: templateDescription,
-            widgets: widgets,
-            dataroomId: dataroomId
-          })
-        }
-      });
-      
-      await restOperation.response;
-      
-      // Close the dialog
+      await MetricsService.saveDashboardTemplate(
+        templateName,
+        templateDescription,
+        widgets,
+        bucketId
+      );
       setIsSaveTemplateOpen(false);
       setTemplateName('');
       setTemplateDescription('');
-      
-      // Show success message or notification (would implement with a toast system)
+      toast({
+        title: "Success",
+        description: "Template saved successfully"
+      });
     } catch (error) {
-      console.error('Error saving dashboard template:', error);
-      // Show error message
+      console.error('Error saving template:', error);
+      toast({
+        title: "Error",
+        description: "Failed to save template",
+        variant: "destructive"
+      });
     }
   };
   
-  // Load available dashboard templates
-  const loadTemplates = async () => {
-    setIsLoadingTemplates(true);
-    
+  // Apply template
+  const applyTemplate = async (templateId: string) => {
     try {
-      const restOperation = get({
-        apiName: 'S3_API',
-        path: `/dashboard/templates/list`,
+      const template = await MetricsService.getDashboardTemplate(templateId);
+      setWidgets(template.widgets);
+      setIsLoadTemplateOpen(false);
+      toast({
+        title: "Success",
+        description: "Template applied successfully"
       });
-      
-      const { body } = await restOperation.response;
-      const responseText = await body.text();
-      const response = JSON.parse(responseText);
-      
-      if (response.templates) {
-        setAvailableTemplates(response.templates);
-      } else {
-        // Mock templates for demonstration
-        setAvailableTemplates([
-          {
-            id: '1',
-            name: 'Financial Overview',
-            description: 'Key financial metrics in a simple layout',
-            widgets: [],
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString()
-          },
-          {
-            id: '2',
-            name: 'Growth Metrics',
-            description: 'Focus on customer and revenue growth',
-            widgets: [],
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString()
-          },
-          {
-            id: '3',
-            name: 'Operational Dashboard',
-            description: 'Headcount and operational efficiency',
-            widgets: [],
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString()
-          }
-        ]);
-      }
-    } catch (error) {
-      console.error('Error loading templates:', error);
-      // Mock templates for demonstration
-      setAvailableTemplates([
-        {
-          id: '1',
-          name: 'Financial Overview',
-          description: 'Key financial metrics in a simple layout',
-          widgets: [],
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString()
-        },
-        {
-          id: '2',
-          name: 'Growth Metrics',
-          description: 'Focus on customer and revenue growth',
-          widgets: [],
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString()
-        }
-      ]);
-    } finally {
-      setIsLoadingTemplates(false);
-    }
-  };
-  
-  // Apply a template to the current dashboard
-  const applyTemplate = async (templateId: string, e?: React.MouseEvent) => {
-    if (e) e.stopPropagation();
-    
-    try {
-      const restOperation = get({
-        apiName: 'S3_API',
-        path: `/dashboard/templates/${templateId}`,
-      });
-      
-      const { body } = await restOperation.response;
-      const responseText = await body.text();
-      const response = JSON.parse(responseText);
-      
-      if (response.template && response.template.widgets) {
-        // Confirm with the user before replacing current dashboard
-        if (widgets.length > 0) {
-          if (!confirm('This will replace your current dashboard. Continue?')) {
-            return;
-          }
-        }
-        
-        // Apply the template
-        setWidgets(response.template.widgets);
-        setIsLoadTemplateOpen(false);
-        
-        // Fetch data for all widgets
-        response.template.widgets.forEach((widget: Widget) => {
-          fetchWidgetData(widget);
-        });
-      }
     } catch (error) {
       console.error('Error applying template:', error);
-      // Show error message
+      toast({
+        title: "Error",
+        description: "Failed to apply template",
+        variant: "destructive"
+      });
     }
   };
   
-  // Handler functions with stopPropagation to ensure button clicks work
-  const handleSaveAsTemplate = useCallback((e: React.MouseEvent) => {
-    e.stopPropagation();
-    e.preventDefault(); // Prevent any default behavior
-    setIsSaveTemplateOpen(true);
-  }, []);
-
-  const handleCancelEditing = useCallback((e: React.MouseEvent) => {
-    e.stopPropagation();
-    e.preventDefault();
-    setIsEditing(false);
-  }, []);
-
-  const handleSaveDashboard = useCallback((e: React.MouseEvent) => {
-    e.stopPropagation();
-    e.preventDefault();
-    saveDashboard();
-  }, [widgets]); // Depend on widgets array to ensure we save the latest state
-
-  const handleStartEditing = useCallback((e: React.MouseEvent) => {
-    e.stopPropagation();
-    e.preventDefault();
-    setIsEditing(true);
-  }, []);
-
-  const handleLoadTemplates = useCallback((e: React.MouseEvent) => {
-    e.stopPropagation();
-    e.preventDefault();
-    loadTemplates();
-    setIsLoadTemplateOpen(true);
-  }, []);
+  // Delete template
+  const deleteTemplate = async (templateId: string) => {
+    try {
+      await MetricsService.deleteDashboardTemplate(templateId);
+      loadTemplates(); // Refresh template list
+      toast({
+        title: "Success",
+        description: "Template deleted successfully"
+      });
+    } catch (error) {
+      console.error('Error deleting template:', error);
+      toast({
+        title: "Error",
+        description: "Failed to delete template",
+        variant: "destructive"
+      });
+    }
+  };
   
   return (
     <div className="flex-1 p-4 overflow-auto h-full" onClick={(e) => e.stopPropagation()}>
@@ -729,7 +559,10 @@ export default function DiligenceDashboardViewer() {
         <div className="flex gap-2" style={{ position: 'relative', zIndex: 40 }}>
           <Button 
             variant="outline" 
-            onClick={handleLoadTemplates}
+            onClick={() => {
+              loadTemplates();
+              setIsLoadTemplateOpen(true);
+            }}
             className="flex items-center gap-2 relative"
             style={{ zIndex: 40, pointerEvents: 'auto' }}
           >
@@ -741,7 +574,7 @@ export default function DiligenceDashboardViewer() {
             <>
               <Button 
                 variant="outline" 
-                onClick={handleSaveAsTemplate}
+                onClick={() => setIsSaveTemplateOpen(true)}
                 className="flex items-center gap-2 relative"
                 style={{ zIndex: 40, pointerEvents: 'auto' }}
               >
@@ -750,14 +583,14 @@ export default function DiligenceDashboardViewer() {
               </Button>
               <Button 
                 variant="outline" 
-                onClick={handleCancelEditing}
+                onClick={() => setIsEditing(false)}
                 className="relative"
                 style={{ zIndex: 40, pointerEvents: 'auto' }}
               >
                 Cancel
               </Button>
               <Button 
-                onClick={handleSaveDashboard}
+                onClick={saveDashboard}
                 className="bg-blue-600 hover:bg-blue-700 text-white relative"
                 style={{ zIndex: 40, pointerEvents: 'auto' }}
               >
@@ -766,7 +599,7 @@ export default function DiligenceDashboardViewer() {
             </>
           ) : (
             <Button 
-              onClick={handleStartEditing}
+              onClick={() => setIsEditing(true)}
               className="bg-blue-600 hover:bg-blue-700 text-white relative"
               style={{ zIndex: 40, pointerEvents: 'auto' }}
             >
@@ -1010,44 +843,35 @@ export default function DiligenceDashboardViewer() {
       </Dialog>
       
       {/* Save Template Dialog */}
-      <Dialog open={isSaveTemplateOpen} onOpenChange={(open) => {
-        if (!open) {
-          setTemplateName('');
-          setTemplateDescription('');
-        }
-        setIsSaveTemplateOpen(open);
-      }}>
+      <Dialog open={isSaveTemplateOpen} onOpenChange={setIsSaveTemplateOpen}>
         <DialogContent className="dark:bg-darkbg sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="dark:text-white">Save Dashboard Template</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-4">
-            <div>
-              <label className="text-sm font-medium mb-1 block dark:text-white">Template Name</label>
+            <div className="space-y-2">
+              <UILabel htmlFor="templateName">Template Name</UILabel>
               <Input
+                id="templateName"
                 value={templateName}
                 onChange={(e) => setTemplateName(e.target.value)}
                 placeholder="Enter template name"
-                className="dark:bg-darkbg dark:text-white"
               />
             </div>
-            <div>
-              <label className="text-sm font-medium mb-1 block dark:text-white">Description (Optional)</label>
-              <Input
+            <div className="space-y-2">
+              <UILabel htmlFor="templateDescription">Description (Optional)</UILabel>
+              <Textarea
+                id="templateDescription"
                 value={templateDescription}
                 onChange={(e) => setTemplateDescription(e.target.value)}
                 placeholder="Enter template description"
-                className="dark:bg-darkbg dark:text-white"
               />
             </div>
           </div>
           <DialogFooter>
             <Button 
               variant="outline" 
-              onClick={(e) => {
-                e.stopPropagation();
-                setIsSaveTemplateOpen(false);
-              }}
+              onClick={() => setIsSaveTemplateOpen(false)}
               className="dark:bg-transparent dark:text-white dark:hover:bg-gray-800 z-10"
             >
               Cancel
@@ -1064,42 +888,61 @@ export default function DiligenceDashboardViewer() {
       </Dialog>
       
       {/* Load Template Dialog */}
-      <Dialog open={isLoadTemplateOpen} onOpenChange={(open) => {
-        setIsLoadTemplateOpen(open);
-      }}>
+      <Dialog open={isLoadTemplateOpen} onOpenChange={setIsLoadTemplateOpen}>
         <DialogContent className="dark:bg-darkbg sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="dark:text-white">Load Dashboard Template</DialogTitle>
           </DialogHeader>
           <div className="py-4">
-            {isLoadingTemplates ? (
-              <div className="flex items-center justify-center py-8">
-                <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500"></div>
-              </div>
+            {availableTemplates.length === 0 ? (
+              <p className="text-center text-gray-500 dark:text-gray-400">No templates available</p>
             ) : (
               <div className="space-y-3">
-                {availableTemplates.length === 0 ? (
-                  <p className="text-center text-gray-500 dark:text-gray-400">No templates available</p>
-                ) : (
-                  availableTemplates.map((template) => (
-                    <Card 
-                      key={template.id} 
-                      className="p-3 hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer" 
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        applyTemplate(template.id);
-                      }}
-                    >
-                      <div className="font-medium">{template.name}</div>
-                      {template.description && (
-                        <div className="text-sm text-gray-500 dark:text-gray-400">{template.description}</div>
-                      )}
-                      <div className="text-xs text-gray-400 mt-1">
-                        Last updated: {new Date(template.updatedAt).toLocaleDateString()}
+                {availableTemplates.map((template) => (
+                  <Card 
+                    key={template.id} 
+                    className="p-3 hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer" 
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      applyTemplate(template.id);
+                    }}
+                  >
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <div className="font-medium">{template.name}</div>
+                        {template.description && (
+                          <div className="text-sm text-gray-500 dark:text-gray-400">{template.description}</div>
+                        )}
+                        <div className="text-xs text-gray-400 mt-1">
+                          Last updated: {new Date(template.updatedAt).toLocaleDateString()}
+                        </div>
                       </div>
-                    </Card>
-                  ))
-                )}
+                      <div className="flex gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            applyTemplate(template.id);
+                          }}
+                        >
+                          Apply
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            deleteTemplate(template.id);
+                          }}
+                          className="text-red-500 hover:text-red-600"
+                        >
+                          Delete
+                        </Button>
+                      </div>
+                    </div>
+                  </Card>
+                ))}
               </div>
             )}
           </div>
