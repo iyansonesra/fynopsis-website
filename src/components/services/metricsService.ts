@@ -1,5 +1,4 @@
-import { post, API } from 'aws-amplify';
-
+import { post, get, del } from 'aws-amplify/api';
 // Service for fetching and processing metrics data for the diligence dashboard
 // In a real implementation, this would call the backend which would use AI to generate the data
 
@@ -502,9 +501,16 @@ export class MetricsService {
   // Save dashboard state
   static async saveDashboardState(bucketId: string, widgets: Widget[]): Promise<Widget[]> {
     try {
-      const response = await API.post('S3_API', `/metrics/${bucketId}/dashboard-state`, {
-        body: { widgets }
+      const restOperation = post({
+        apiName: 'S3_API',
+        path: `/metrics/${bucketId}/dashboard-state`,
+        options: {
+          body: JSON.stringify({ widgets })
+        }
       });
+      const { body } = await restOperation.response;
+      const responseText = await body.text();
+      const response = JSON.parse(responseText);
       return response.widgets;
     } catch (error) {
       console.error('Error saving dashboard state:', error);
@@ -515,7 +521,13 @@ export class MetricsService {
   // Get dashboard state
   static async getDashboardState(bucketId: string): Promise<Widget[]> {
     try {
-      const response = await API.get('S3_API', `/metrics/${bucketId}/dashboard-state`, {});
+      const restOperation = get({
+        apiName: 'S3_API',
+        path: `/metrics/${bucketId}/dashboard-state`
+      });
+      const { body } = await restOperation.response;
+      const responseText = await body.text();
+      const response = JSON.parse(responseText);
       return response.widgets;
     } catch (error) {
       console.error('Error getting dashboard state:', error);
@@ -531,14 +543,21 @@ export class MetricsService {
     dataroomId: string
   ): Promise<string> {
     try {
-      const response = await API.post('S3_API', '/metrics/templates', {
-        body: {
-          name,
-          description,
-          widgets,
-          dataroomId
+      const restOperation = post({
+        apiName: 'S3_API',
+        path: '/metrics/templates',
+        options: {
+          body: JSON.stringify({
+            name,
+            description,
+            widgets,
+            dataroomId
+          })
         }
       });
+      const { body } = await restOperation.response;
+      const responseText = await body.text();
+      const response = JSON.parse(responseText);
       return response.templateId;
     } catch (error) {
       console.error('Error saving dashboard template:', error);
@@ -549,7 +568,13 @@ export class MetricsService {
   // List dashboard templates
   static async listDashboardTemplates(): Promise<DashboardTemplate[]> {
     try {
-      const response = await API.get('S3_API', '/metrics/templates', {});
+      const restOperation = get({
+        apiName: 'S3_API',
+        path: '/metrics/templates'
+      });
+      const { body } = await restOperation.response;
+      const responseText = await body.text();
+      const response = JSON.parse(responseText);
       return response.templates;
     } catch (error) {
       console.error('Error listing dashboard templates:', error);
@@ -560,7 +585,13 @@ export class MetricsService {
   // Get dashboard template
   static async getDashboardTemplate(templateId: string): Promise<DashboardTemplate> {
     try {
-      const response = await API.get('S3_API', `/metrics/templates/${templateId}`, {});
+      const restOperation = get({
+        apiName: 'S3_API',
+        path: `/metrics/templates/${templateId}`
+      });
+      const { body } = await restOperation.response;
+      const responseText = await body.text();
+      const response = JSON.parse(responseText);
       return response.template;
     } catch (error) {
       console.error('Error getting dashboard template:', error);
@@ -571,7 +602,11 @@ export class MetricsService {
   // Delete dashboard template
   static async deleteDashboardTemplate(templateId: string): Promise<void> {
     try {
-      await API.del('S3_API', `/metrics/templates/${templateId}`, {});
+      const restOperation = del({
+        apiName: 'S3_API',
+        path: `/metrics/templates/${templateId}`
+      });
+      await restOperation.response;
     } catch (error) {
       console.error('Error deleting dashboard template:', error);
       throw error;
