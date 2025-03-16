@@ -505,7 +505,12 @@ export class MetricsService {
         apiName: 'S3_API',
         path: `/metrics/${bucketId}/dashboard-state`,
         options: {
-          body: JSON.stringify({ widgets })
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            widgets
+          })
         }
       });
       const { body } = await restOperation.response;
