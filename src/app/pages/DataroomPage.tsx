@@ -4,7 +4,7 @@
 import logo from './../assets/fynopsis_noBG.png'
 import { useState, useEffect } from "react"
 import { useAuthenticator } from '@aws-amplify/ui-react';
-import { Clipboard, LucideIcon, Activity, Table, Database } from "lucide-react";
+import { Clipboard, LucideIcon, Activity, Table, Database, ChartPie } from "lucide-react";
 import { fetchUserAttributes, FetchUserAttributesOutput } from 'aws-amplify/auth';
 import { CircularProgress } from "@mui/material";
 import React, { useRef } from 'react';
@@ -28,6 +28,7 @@ import Link from 'next/link';
 import { useFileStore } from '@/components/HotkeyService';
 import TableViewer from '@/components/TableViewer';
 import DeepResearchViewer from '@/components/DeepResearchViewer';
+import DiligenceDashboardViewer from '@/components/DiligenceDashboardViewer';
 
 
 type IndicatorStyle = {
@@ -51,6 +52,7 @@ export default function Home() {
     { icon: Activity, label: 'Activity' },
     { icon: Table, label: 'Extract' },
     { icon: Database, label: 'Deep Research' },
+    { icon: ChartPie, label: 'Diligence' },
   ];
   
   // Get the active tab from URL query parameters or default to "library"
@@ -294,6 +296,8 @@ export default function Home() {
         return <TableViewer />;
       case "deep research":
         return <DeepResearchViewer />;
+      case "diligence":
+        return <DiligenceDashboardViewer />;
       default:
         return <Files setSelectedTab={setSelectedTab} />;
     }
