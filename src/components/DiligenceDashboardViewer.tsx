@@ -23,7 +23,8 @@ const CHART_TYPES = {
   BAR_CHART: 'bar',
   LINE_CHART: 'line',
   SINGLE_METRIC: 'single',
-  TEXT: 'text'
+  TEXT: 'text',
+  TABLE: 'table'
 };
 
 // Available metrics for selection
@@ -124,6 +125,11 @@ export default function DiligenceDashboardViewer() {
       isExpanded = true;
     } else if (selectedWidgetType === CHART_TYPES.BAR_CHART || selectedWidgetType === CHART_TYPES.LINE_CHART) {
       // Bar and line charts are wider
+      widgetWidth = 3;
+      widgetHeight = 2;
+      isExpanded = true;
+    } else if (selectedWidgetType === CHART_TYPES.TABLE) {
+      // Tables need more space
       widgetWidth = 3;
       widgetHeight = 2;
       isExpanded = true;
@@ -282,6 +288,8 @@ export default function DiligenceDashboardViewer() {
         return <SingleMetricWidget widget={widget} />;
       case CHART_TYPES.TEXT:
         return <TextWidget widget={widget} />;
+      case CHART_TYPES.TABLE:
+        return <TableWidget widget={widget} />;
       default:
         return <div>Unsupported widget type</div>;
     }
@@ -391,6 +399,43 @@ export default function DiligenceDashboardViewer() {
     return (
       <div className="p-2 h-full overflow-auto py-2">
         {widget.data?.text || "Loading content..."}
+      </div>
+    );
+  };
+
+  // Component for displaying a data table
+  const TableWidget = ({ widget }: { widget: Widget }) => {
+    return (
+      <div className="p-2 h-full overflow-auto">
+        {!widget.data || !widget.data.rows ? (
+          <div className="flex items-center justify-center h-full">Loading data...</div>
+        ) : (
+          <table className="w-full border-collapse">
+            <thead>
+              <tr className="bg-gray-100 dark:bg-gray-800">
+                {widget.data.headers.map((header: string, index: number) => (
+                  <th key={index} className="p-2 text-left border border-gray-200 dark:border-gray-700">
+                    {header}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {widget.data.rows.map((row: any[], rowIndex: number) => (
+                <tr 
+                  key={rowIndex} 
+                  className={rowIndex % 2 === 0 ? 'bg-white dark:bg-gray-950' : 'bg-gray-50 dark:bg-gray-900'}
+                >
+                  {row.map((cell, cellIndex) => (
+                    <td key={cellIndex} className="p-2 border border-gray-200 dark:border-gray-700">
+                      {cell}
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
       </div>
     );
   };
@@ -691,6 +736,15 @@ export default function DiligenceDashboardViewer() {
                         <line x1="3" y1="6" x2="3.01" y2="6" />
                         <line x1="3" y1="12" x2="3.01" y2="12" />
                         <line x1="3" y1="18" x2="3.01" y2="18" />
+                      </svg>
+                    )}
+                    {key === 'TABLE' && (
+                      <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+                        <line x1="3" y1="9" x2="21" y2="9" />
+                        <line x1="3" y1="15" x2="21" y2="15" />
+                        <line x1="9" y1="3" x2="9" y2="21" />
+                        <line x1="15" y1="3" x2="15" y2="21" />
                       </svg>
                     )}
                     {key.replace(/_/g, ' ')}

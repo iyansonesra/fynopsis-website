@@ -108,6 +108,8 @@ function getMockMetricData(metricId: string, format: string, customMetric?: stri
         format = 'lineChart';
       } else if (lowerMetric.includes('comparison') || lowerMetric.includes('by') || lowerMetric.includes('across')) {
         format = 'barChart';
+      } else if (lowerMetric.includes('table') || lowerMetric.includes('report') || lowerMetric.includes('list')) {
+        format = 'table';
       } else {
         format = 'singleMetric'; // Default to single metric for unknown metrics
       }
@@ -158,6 +160,13 @@ function getMockMetricData(metricId: string, format: string, customMetric?: stri
           unit: customMetric.toLowerCase().includes('revenue') ? '$M' : 
                 customMetric.toLowerCase().includes('percentage') ? '%' : ''
         },
+        confidence: 0.75 + Math.random() * 0.2
+      };
+    } else if (format === 'table') {
+      return {
+        id: metricId,
+        timestamp: now,
+        value: generateMockTableData(customMetric),
         confidence: 0.75 + Math.random() * 0.2
       };
     }
@@ -467,6 +476,66 @@ function generateMockLineData(): number[] {
   }
   
   return result;
+}
+
+/**
+ * Generate mock table data based on the custom metric
+ */
+function generateMockTableData(customMetric: string): { headers: string[], rows: any[][] } {
+  const lower = customMetric.toLowerCase();
+  let headers: string[] = [];
+  let rows: any[][] = [];
+  
+  if (lower.includes('revenue') || lower.includes('sales')) {
+    headers = ['Product', 'Q1', 'Q2', 'Q3', 'Q4', 'Total'];
+    rows = [
+      ['Product A', '$245K', '$278K', '$312K', '$356K', '$1.19M'],
+      ['Product B', '$182K', '$196K', '$210K', '$228K', '$816K'],
+      ['Product C', '$95K', '$120K', '$132K', '$145K', '$492K'],
+      ['Services', '$87K', '$94K', '$102K', '$110K', '$393K'],
+      ['Total', '$609K', '$688K', '$756K', '$839K', '$2.89M']
+    ];
+  } else if (lower.includes('customer') || lower.includes('client')) {
+    headers = ['Segment', 'Count', 'Revenue', 'Avg. Deal Size', 'Churn'];
+    rows = [
+      ['Enterprise', '26', '$1.45M', '$55.8K', '2.1%'],
+      ['Mid-market', '142', '$2.13M', '$15K', '3.8%'],
+      ['SMB', '875', '$3.28M', '$3.75K', '5.2%'],
+      ['Individual', '3,241', '$1.62M', '$500', '8.4%'],
+      ['Total', '4,284', '$8.48M', '-', '4.9%']
+    ];
+  } else if (lower.includes('employee') || lower.includes('headcount')) {
+    headers = ['Department', 'Headcount', 'Open Positions', 'Attrition', 'Avg. Tenure'];
+    rows = [
+      ['Engineering', '85', '12', '4.2%', '2.8 years'],
+      ['Sales', '67', '8', '8.5%', '1.9 years'],
+      ['Marketing', '42', '5', '6.1%', '2.2 years'],
+      ['Finance', '18', '2', '2.8%', '3.5 years'],
+      ['HR', '14', '3', '3.2%', '2.7 years'],
+      ['Total', '226', '30', '5.3%', '2.4 years']
+    ];
+  } else {
+    // Default generic table
+    headers = ['Category', 'Value 1', 'Value 2', 'Value 3', 'Total'];
+    rows = [];
+    for (let i = 0; i < 5; i++) {
+      rows.push([
+        `Category ${String.fromCharCode(65 + i)}`, // A, B, C, etc.
+        Math.floor(Math.random() * 100),
+        Math.floor(Math.random() * 100),
+        Math.floor(Math.random() * 100),
+        '-' // Total will be calculated
+      ]);
+    }
+    
+    // Calculate totals for generic data
+    rows.forEach(row => {
+      const total = Number(row[1]) + Number(row[2]) + Number(row[3]);
+      row[4] = total;
+    });
+  }
+  
+  return { headers, rows };
 }
 
 /**
