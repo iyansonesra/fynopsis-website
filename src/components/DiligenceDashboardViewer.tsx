@@ -23,15 +23,30 @@ const FORMAT_TYPES = {
   GRAPH: 'graph'
 };
 
-// Chart subtypes for when chart format is selected
-const CHART_SUBTYPES = {
-  PIE: 'pie',
-  BAR: 'bar',
-  LINE: 'line'
-};
-
 // Available metrics for selection
 const AVAILABLE_METRICS = getAvailableMetrics();
+
+// Define types for graph data
+interface GraphNode {
+  id: string;
+  label: string;
+  category: string;
+  attributes?: Record<string, any>;
+  sources?: string;
+  x?: number;
+  y?: number;
+  size?: number;
+  color?: string;
+}
+
+interface GraphEdge {
+  source: string;
+  target: string;
+  relationship: string;
+  directed: boolean;
+  attributes?: Record<string, any>;
+  sources?: string;
+}
 
 // Dashboard component
 export default function DiligenceDashboardViewer() {
@@ -39,12 +54,11 @@ export default function DiligenceDashboardViewer() {
   const bucketId = Array.isArray(params?.id) ? params.id[0] : params?.id ?? '';
   
   // State for dashboard widgets and layout
-  const [widgets, setWidgets] = useState<Widget[]>([]);
+  const [widgets, setWidgets] = useState<Record<string, Widget>>({});
   const [isLoading, setIsLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
   const [isAddWidgetOpen, setIsAddWidgetOpen] = useState(false);
   const [selectedFormatType, setSelectedFormatType] = useState<string | null>(null);
-  const [selectedChartSubtype, setSelectedChartSubtype] = useState<string | null>(null);
   const [selectedMetric, setSelectedMetric] = useState<string | null>(null);
   const [widgetTitle, setWidgetTitle] = useState('');
   const [customMetric, setCustomMetric] = useState('');
@@ -60,6 +74,7 @@ export default function DiligenceDashboardViewer() {
   const [isLoadingTemplates, setIsLoadingTemplates] = useState(false);
   const [pollingInterval, setPollingInterval] = useState<NodeJS.Timeout | null>(null);
   const [loadingWidgetIds, setLoadingWidgetIds] = useState<string[]>([]);
+  const [graphLayout, setGraphLayout] = useState<{nodes: GraphNode[], links: GraphEdge[]}>({ nodes: [], links: [] });
   
   // Load dashboard data on component mount
   useEffect(() => {
@@ -70,9 +85,9 @@ export default function DiligenceDashboardViewer() {
   const loadDashboardState = async () => {
     try {
       setIsLoading(true);
-      const loadedWidgets = await MetricsService.getDashboardState(bucketId);
-      setWidgets(loadedWidgets);
-      checkForLoadingWidgets(loadedWidgets);
+      const loadedWidgetsMap = await MetricsService.getDashboardState(bucketId);
+      setWidgets(loadedWidgetsMap);
+      checkForLoadingWidgets(loadedWidgetsMap);
     } catch (error) {
       console.error('Error loading dashboard state:', error);
       toast({
@@ -86,8 +101,8 @@ export default function DiligenceDashboardViewer() {
   };
   
   // Check if any widget is in loading state and start/stop polling as needed
-  const checkForLoadingWidgets = (currentWidgets: Widget[]) => {
-    const loadingWidgets = currentWidgets.filter(widget => {
+  const checkForLoadingWidgets = (widgetsMap: Record<string, Widget>) => {
+    const loadingWidgets = Object.values(widgetsMap).filter(widget => {
       if (!widget.data) return true;
       
       // Check if data is a string that needs parsing
@@ -142,59 +157,54 @@ export default function DiligenceDashboardViewer() {
       const { body } = await response.response;
       const responseText = await body.text();
       const data = JSON.parse(responseText);
-      const updatedWidgets = data.widgets;
+      const updatedWidgetsMap = data.widgets;
       
       // Only update widgets that were loading and have new data
       let hasChanges = false;
-      const newWidgets = widgets.map(existingWidget => {
-        // Skip widgets that weren't loading
-        if (!loadingWidgetIds.includes(existingWidget.id)) {
-          return existingWidget;
-        }
-        
-        // Find the updated version of this widget
-        const updatedWidget = updatedWidgets.find((w: Widget) => w.id === existingWidget.id);
-        if (!updatedWidget) return existingWidget;
+      const newWidgetsMap = { ...widgets };
+      
+      loadingWidgetIds.forEach(widgetId => {
+        // Skip if widget doesn't exist in either map
+        if (!newWidgetsMap[widgetId] || !updatedWidgetsMap[widgetId]) return;
         
         // Check if the data has changed
-        const currentDataStr = JSON.stringify(existingWidget.data);
-        const newDataStr = JSON.stringify(updatedWidget.data);
+        const currentDataStr = JSON.stringify(newWidgetsMap[widgetId].data);
+        const newDataStr = JSON.stringify(updatedWidgetsMap[widgetId].data);
         
         if (currentDataStr !== newDataStr) {
-          console.log(`Widget ${existingWidget.id} has updated data`);
+          console.log(`Widget ${widgetId} has updated data`);
+          newWidgetsMap[widgetId] = updatedWidgetsMap[widgetId];
           hasChanges = true;
-          return updatedWidget;
         }
-        
-        return existingWidget;
       });
       
       // Only update state if we have actual changes
       if (hasChanges) {
         console.log('Updating widgets with new data');
-        setWidgets(newWidgets);
+        setWidgets(newWidgetsMap);
       } else {
         console.log('No changes in widget data');
       }
       
       // Re-check for loading widgets
-      const stillLoadingWidgets = newWidgets.filter(widget => {
-        if (!widget.data) return true;
-        
-        if (typeof widget.data === 'string') {
-          try {
-            const parsed = JSON.parse(widget.data);
-            return parsed?.status === 'loading';
-          } catch {
-            return true;
+      const stillLoadingWidgets = Object.values(newWidgetsMap)
+        .filter(widget => {
+          if (!widget.data) return true;
+          
+          if (typeof widget.data === 'string') {
+            try {
+              const parsed = JSON.parse(widget.data);
+              return parsed?.status === 'loading';
+            } catch {
+              return true;
+            }
           }
-        }
-        
-        return widget.data?.status === 'loading';
-      });
+          
+          return widget.data?.status === 'loading';
+        });
       
       // Update loading widget IDs
-      setLoadingWidgetIds(stillLoadingWidgets.map((w: Widget) => w.id));
+      setLoadingWidgetIds(stillLoadingWidgets.map(w => w.id));
       
       // If no widgets are still loading, stop polling
       if (stillLoadingWidgets.length === 0) {
@@ -271,21 +281,12 @@ export default function DiligenceDashboardViewer() {
     let isExpanded = false; // Default is not expanded
     let widgetType = selectedFormatType;
     
-    // Handle chart subtype if chart is selected
-    if (selectedFormatType === FORMAT_TYPES.CHART && selectedChartSubtype) {
-      widgetType = selectedChartSubtype;
-      
-      if (selectedChartSubtype === CHART_SUBTYPES.PIE) {
-        // Pie charts start as medium (2x2)
-        widgetWidth = 2;
-        widgetHeight = 2;
-        isExpanded = true;
-      } else if (selectedChartSubtype === CHART_SUBTYPES.BAR || selectedChartSubtype === CHART_SUBTYPES.LINE) {
-        // Bar and line charts are wider
-        widgetWidth = 3;
-        widgetHeight = 2;
-        isExpanded = true;
-      }
+    // Set size based on format type
+    if (selectedFormatType === FORMAT_TYPES.CHART) {
+      // Charts are medium sized
+      widgetWidth = 2;
+      widgetHeight = 2;
+      isExpanded = true;
     } else if (selectedFormatType === FORMAT_TYPES.TABLE) {
       // Tables need more space
       widgetWidth = 3;
@@ -298,26 +299,35 @@ export default function DiligenceDashboardViewer() {
       isExpanded = true;
     }
     
+    // Calculate y position for the new widget
+    const maxY = Object.values(widgets).length > 0 
+      ? Math.max(...Object.values(widgets).map(w => w.positionData?.y + w.positionData?.height || 0)) 
+      : 0;
+    
+    const newWidgetId = uuidv4();
     const newWidget: Widget = {
-      id: uuidv4(),
+      id: newWidgetId,
       type: widgetType,
       title: widgetTitle || customMetric, // Use custom metric as title if not provided
-      metricId: metricId,
-      metricName: metricName,
-      customMetric: customMetric,
-      metricDetails: metricDetails,
-      width: widgetWidth,
-      height: widgetHeight,
-      expanded: isExpanded,
-      x: 0,
-      y: widgets.length > 0 ? Math.max(...widgets.map(w => w.y + w.height)) : 0,
+      metricName: metricName || customMetric,
+      extraDetails: metricDetails,
+      positionData: {
+        width: widgetWidth,
+        height: widgetHeight,
+        expanded: isExpanded,
+        x: 0,
+        y: maxY
+      },
       data: { status: 'loading' }
     };
     
-    setWidgets([...widgets, newWidget]);
+    setWidgets(prevWidgets => ({
+      ...prevWidgets,
+      [newWidgetId]: newWidget
+    }));
+    
     setIsAddWidgetOpen(false);
     setSelectedFormatType(null);
-    setSelectedChartSubtype(null);
     setSelectedMetric(null);
     setWidgetTitle('');
     setCustomMetric('');
@@ -329,7 +339,11 @@ export default function DiligenceDashboardViewer() {
   
   // Remove a widget from the dashboard
   const removeWidget = (widgetId: string) => {
-    setWidgets(widgets.filter(w => w.id !== widgetId));
+    setWidgets(prevWidgets => {
+      const newWidgets = { ...prevWidgets };
+      delete newWidgets[widgetId];
+      return newWidgets;
+    });
   };
   
   // Fetch data for a specific widget
@@ -337,28 +351,23 @@ export default function DiligenceDashboardViewer() {
     try {
       let data;
       
-      if (widget.customMetric) {
-        // Use our metrics service to fetch AI-generated data based on custom metric
-        data = await fetchMetricData(
-          bucketId, 
-          widget.metricId || 'custom', 
-          widget.type,
-          widget.customMetric,
-          widget.metricDetails
-        );
-      } else if (widget.metricId) {
-        // Fallback to standard metrics
-        data = await fetchMetricData(bucketId, widget.metricId, widget.type);
-      } else {
-        return;
-      }
+      // Use metricName as the query
+      data = await fetchMetricData(
+        bucketId, 
+        widget.id, 
+        widget.type,
+        widget.metricName,
+        widget.extraDetails
+      );
       
       if (data) {
-        setWidgets(prevWidgets => 
-          prevWidgets.map(w => 
-            w.id === widget.id ? { ...w, data: data.value } : w
-          )
-        );
+        setWidgets(prevWidgets => ({
+          ...prevWidgets,
+          [widget.id]: {
+            ...prevWidgets[widget.id],
+            data: data.value
+          }
+        }));
       }
     } catch (error) {
       console.error(`Error fetching data for widget ${widget.id}:`, error);
@@ -379,9 +388,14 @@ export default function DiligenceDashboardViewer() {
     setTimeout(() => {
       setEditingWidget(widget);
       setWidgetTitle(widget.title);
-      setSelectedMetric(widget.metricId || null);
-      setCustomMetric(widget.customMetric || '');
-      setMetricDetails(widget.metricDetails || '');
+      
+      // Find if widget's metricName matches any available metric
+      const matchingMetric = AVAILABLE_METRICS.find(m => m.name === widget.metricName);
+      setSelectedMetric(matchingMetric?.id || null);
+      
+      // Use metricName as the custom metric text
+      setCustomMetric(widget.metricName || '');
+      setMetricDetails(widget.extraDetails || '');
     }, 10);
   };
   
@@ -394,35 +408,28 @@ export default function DiligenceDashboardViewer() {
     
     const metricId = selectedMetric || '';
     const metricName = selectedMetric ? 
-      AVAILABLE_METRICS.find(m => m.id === selectedMetric)?.name : 
-      '';
+      AVAILABLE_METRICS.find(m => m.id === selectedMetric)?.name || customMetric : 
+      customMetric;
     
-    setWidgets(prevWidgets => 
-      prevWidgets.map(w => 
-        w.id === editingWidget.id 
-          ? { 
-              ...w, 
-              title: widgetTitle || customMetric,
-              metricId: metricId,
-              metricName: metricName,
-              customMetric: customMetric,
-              metricDetails: metricDetails
-            } 
-          : w
-      )
-    );
+    setWidgets(prevWidgets => ({
+      ...prevWidgets,
+      [editingWidget.id]: {
+        ...prevWidgets[editingWidget.id],
+        title: widgetTitle || customMetric,
+        metricName: metricName,
+        extraDetails: metricDetails
+      }
+    }));
     
     setEditingWidget(null);
     
     // Fetch updated data for the widget
-    const updatedWidget = widgets.find(w => w.id === editingWidget.id);
+    const updatedWidget = widgets[editingWidget.id];
     if (updatedWidget) {
       fetchWidgetData({
         ...updatedWidget,
-        metricId: metricId,
         metricName: metricName,
-        customMetric: customMetric,
-        metricDetails: metricDetails
+        extraDetails: metricDetails
       });
     }
   };
@@ -434,13 +441,9 @@ export default function DiligenceDashboardViewer() {
   
   // Render a specific widget based on its type
   const renderWidget = (widget: Widget) => {
-    // For charts, use the specific chart components based on the type
-    if (widget.type === CHART_SUBTYPES.PIE) {
-      return <PieChartWidget widget={widget} />;
-    } else if (widget.type === CHART_SUBTYPES.BAR) {
-      return <BarChartWidget widget={widget} />;
-    } else if (widget.type === CHART_SUBTYPES.LINE) {
-      return <LineChartWidget widget={widget} />;
+    // Render the appropriate widget based on type
+    if (widget.type === FORMAT_TYPES.CHART) {
+      return <ChartWidget widget={widget} />;
     } else if (widget.type === FORMAT_TYPES.TABLE) {
       return <TableWidget widget={widget} />;
     } else if (widget.type === FORMAT_TYPES.GRAPH) {
@@ -454,83 +457,215 @@ export default function DiligenceDashboardViewer() {
     }
   };
   
-  // Component for displaying a pie chart
-  const PieChartWidget = ({ widget }: { widget: Widget }) => {
-    // This would normally use a chart library like recharts, chart.js, etc.
+  // Component for displaying a chart
+  const ChartWidget = ({ widget }: { widget: Widget }) => {
+    // Check if the widget data is loading or empty
+    if (!widget.data || widget.data.status === 'loading') {
+      return (
+        <div className="flex items-center justify-center h-full">Loading chart data...</div>
+      );
+    }
+
+    // Handle bar chart type
+    if (widget.data.chart_type === 'bar') {
+      // Extract relevant data
+      const { title, description, labels, datasets, xAxis, yAxis } = widget.data;
+      
+      // Calculate the max value for scaling with some padding
+      const allValues = datasets.flatMap((ds: { label: string; data: (number | null)[] }) => 
+        ds.data.filter((val): val is number => val !== null && val !== undefined)
+      );
+      const maxValue = Math.max(...allValues) * 1.1; // Add 10% padding at the top
+      
+      // Format large numbers with abbreviations
+      const formatValue = (value: number) => {
+        if (value >= 1000000) return `${(value / 1000000).toFixed(1)}M`;
+        if (value >= 1000) return `${(value / 1000).toFixed(0)}K`;
+        return value.toString();
+      };
+      
+      // Define colors with better contrast
+      const datasetColors = [
+        { bg: 'bg-blue-500', border: 'border-blue-600', text: 'text-blue-600', hover: 'hover:bg-blue-400' },
+        { bg: 'bg-green-500', border: 'border-green-600', text: 'text-green-600', hover: 'hover:bg-green-400' },
+        { bg: 'bg-purple-500', border: 'border-purple-600', text: 'text-purple-600', hover: 'hover:bg-purple-400' },
+        { bg: 'bg-amber-500', border: 'border-amber-600', text: 'text-amber-600', hover: 'hover:bg-amber-400' },
+        { bg: 'bg-rose-500', border: 'border-rose-600', text: 'text-rose-600', hover: 'hover:bg-rose-400' }
+      ];
+
+      // Generate Y-axis scale labels
+      const yAxisSteps = 5;
+      const yAxisLabels = Array.from({ length: yAxisSteps + 1 }, (_, i) => {
+        const value = Math.round(maxValue * (1 - i / yAxisSteps));
+        return formatValue(value);
+      });
+      
+      // Calculate layout values
+      const barGroupWidth = 100 / (labels.length || 1);
+      // Determine bar width based on dataset count
+      const maxBarsPerCategory = datasets.length;
+      // Adjust spacing based on number of datasets
+      const barWidthPercentage = maxBarsPerCategory <= 2 ? 0.7 : (maxBarsPerCategory <= 3 ? 0.6 : 0.5);
+      const barWidth = barGroupWidth * barWidthPercentage / maxBarsPerCategory;
+      
+      return (
+        <div className="flex flex-col h-full w-full p-2 overflow-hidden">
+          {/* Title and description */}
+          {title && <h3 className="font-semibold text-sm">{title}</h3>}
+          {description && <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">{description}</p>}
+          
+          <div className="flex flex-1 mt-1 min-h-[180px]">
+            {/* Y-axis */}
+            <div className="w-16 flex flex-col justify-between pr-2 text-right text-xs text-gray-500">
+              {yAxisLabels.map((label, index) => (
+                <div key={index} className="whitespace-nowrap">{label}</div>
+              ))}
+            </div>
+            
+            {/* Main chart area */}
+            <div className="flex-1 flex flex-col">
+              {/* Chart grid and bars */}
+              <div className="flex-1 relative border-b border-l border-gray-300 dark:border-gray-700">
+                {/* Horizontal grid lines */}
+                {yAxisLabels.map((_, index) => (
+                  <div 
+                    key={index} 
+                    className="absolute w-full border-t border-gray-200 dark:border-gray-800" 
+                    style={{ top: `${index * (100 / yAxisSteps)}%`, left: 0, right: 0 }}
+                  />
+                ))}
+                
+                {/* Bars container */}
+                <div className="absolute inset-0 flex">
+                  {labels.map((label: string, labelIndex: number) => (
+                    <div 
+                      key={labelIndex} 
+                      className="flex items-end justify-center" 
+                      style={{ 
+                        width: `${barGroupWidth}%`,
+                        height: '100%'
+                      }}
+                    >
+                      {/* Group of bars for this label */}
+                      <div className="flex items-end h-full pb-6 pt-1">
+                        {datasets.map((dataset: { label: string; data: (number | null)[]; sources?: string }, datasetIndex: number) => {
+                          // Skip null or undefined values
+                          if (dataset.data[labelIndex] === null || dataset.data[labelIndex] === undefined) {
+                            return <div key={datasetIndex} style={{ width: `${barWidth}%` }} className="mx-0.5"></div>;
+                          }
+                          
+                          const value = dataset.data[labelIndex] as number;
+                          const heightPercent = (value / maxValue) * 100;
+                          const color = datasetColors[datasetIndex % datasetColors.length];
+                          
+                          // Only render if there's a visible height
+                          if (heightPercent <= 0) {
+                            return <div key={datasetIndex} style={{ width: `${barWidth}%` }} className="mx-0.5"></div>;
+                          }
+                          
+                          return (
+                            <div
+                              key={datasetIndex}
+                              className="relative group mx-0.5"
+                              style={{ 
+                                width: `${barWidth}%`,
+                                minWidth: '6px',
+                                maxWidth: '24px'
+                              }}
+                            >
+                              {/* The bar */}
+                              <div 
+                                className={`w-full ${color.bg} ${color.hover} rounded-t transition-all duration-150`}
+                                style={{ 
+                                  height: `${heightPercent}%`, 
+                                  minHeight: '2px',
+                                  transformOrigin: 'bottom',
+                                }}
+                              ></div>
+                              
+                              {/* Enhanced tooltip - only way to see values now */}
+                              <div className="absolute invisible group-hover:visible opacity-0 group-hover:opacity-100 bottom-full left-1/2 transform -translate-x-1/2 bg-gray-900 text-white text-xs rounded py-1 px-2 mb-1 whitespace-nowrap z-30 shadow-lg pointer-events-none transition-opacity duration-200">
+                                <div className="font-semibold">{dataset.label}</div>
+                                <div>{label}: {value.toLocaleString()}</div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              
+              {/* X-axis labels */}
+              <div className="flex mt-1 mb-2">
+                {labels.map((label: string, index: number) => (
+                  <div 
+                    key={index} 
+                    className="flex justify-center"
+                    style={{ width: `${barGroupWidth}%` }}
+                  >
+                    <div className="text-xs text-gray-700 dark:text-gray-300 font-medium px-1 text-center" title={label}>
+                      {label}
+                    </div>
+                  </div>
+                ))}
+              </div>
+              
+              {/* X-Axis Title */}
+              {xAxis?.title && (
+                <div className="text-center text-xs text-gray-500 mt-1 font-medium">
+                  {xAxis.title}
+                </div>
+              )}
+              
+              {/* Legend - with better spacing and clear labels */}
+              <div className="flex flex-wrap justify-center mt-3 mb-1 gap-x-4 gap-y-2">
+                {datasets.map((dataset: { label: string; data: (number | null)[] }, index: number) => {
+                  const color = datasetColors[index % datasetColors.length];
+                  const shortLabel = dataset.label.replace(' Revenue (in millions)', '')
+                                                  .replace(' (Revenue Range)', '');
+                  
+                  return (
+                    <div key={index} className="flex items-center">
+                      <div className={`w-3 h-3 rounded-full ${color.bg}`}></div>
+                      <span className="ml-1.5 text-xs font-medium">{shortLabel}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+            
+            {/* Y-Axis Title */}
+            {yAxis?.title && (
+              <div className="flex items-center w-8 ml-1">
+                <div className="transform -rotate-90 text-xs text-gray-500 font-medium whitespace-nowrap origin-center">
+                  {yAxis.title}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      );
+    }
+    
+    // Default pie chart rendering (from existing code)
     return (
       <div className="flex flex-col items-center justify-center h-full py-2">
-        <PieChart className={`${widget.expanded ? 'w-36 h-36' : 'w-24 h-24'} mb-2 text-blue-500 transition-all duration-300`} />
+        <PieChart className={`${widget.positionData?.expanded ? 'w-36 h-36' : 'w-24 h-24'} mb-2 text-blue-500 transition-all duration-300`} />
         <div className="text-sm text-center">
           {!widget.data || !widget.data.segments ? (
             "Loading data..."
           ) : (
-            <div className={`grid ${widget.expanded ? 'grid-cols-3' : 'grid-cols-2'} gap-2 mt-2 transition-all duration-300`}>
+            <div className={`grid ${widget.positionData?.expanded ? 'grid-cols-3' : 'grid-cols-2'} gap-2 mt-2 transition-all duration-300`}>
               {widget.data.segments.map((segment: any, index: number) => (
-                <div key={index} className={`flex items-center ${widget.expanded ? 'text-sm' : 'text-xs'} transition-all duration-300`}>
+                <div key={index} className={`flex items-center ${widget.positionData?.expanded ? 'text-sm' : 'text-xs'} transition-all duration-300`}>
                   <div className={`w-3 h-3 rounded-full mr-1 bg-blue-${300 + (index * 100)}`}></div>
                   <span>{segment.label}: {segment.value}%</span>
                 </div>
               ))}
             </div>
           )}
-        </div>
-      </div>
-    );
-  };
-  
-  // Component for displaying a bar chart
-  const BarChartWidget = ({ widget }: { widget: Widget }) => {
-    return (
-      <div className="flex flex-col items-center justify-center h-full py-2">
-        <BarChart2 className={`${widget.expanded ? 'w-36 h-36' : 'w-24 h-24'} mb-2 text-green-500 transition-all duration-300`} />
-        <div className={`${widget.expanded ? 'text-sm' : 'text-xs'} w-full px-2 transition-all duration-300`}>
-          {!widget.data || !widget.data.bars ? (
-            "Loading data..."
-          ) : (
-            <div className="space-y-2 w-full mt-2">
-              {widget.data.bars.map((bar: any, index: number) => (
-                <div key={index}>
-                  <div className="flex justify-between mb-1">
-                    <span>{bar.label}</span>
-                    <span>{bar.value}</span>
-                  </div>
-                  <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
-                    <div 
-                      className="bg-green-500 h-2 rounded-full transition-all duration-500" 
-                      style={{ width: `${bar.percentage}%` }}
-                    ></div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      </div>
-    );
-  };
-  
-  // Component for displaying a line chart
-  const LineChartWidget = ({ widget }: { widget: Widget }) => {
-    return (
-      <div className="flex flex-col items-center justify-center h-full py-2">
-        <svg className={`${widget.expanded ? 'w-72 h-48' : 'w-40 h-24'} transition-all duration-300`} viewBox="0 0 100 50">
-          {/* Simplified line chart representation */}
-          <polyline
-            points="0,50 20,30 40,35 60,15 80,25 100,10"
-            fill="none"
-            stroke="rgb(59, 130, 246)"
-            strokeWidth="2"
-          />
-          {/* Add points at each vertex to enhance visualization */}
-          <circle cx="0" cy="50" r="2" fill="rgb(59, 130, 246)" />
-          <circle cx="20" cy="30" r="2" fill="rgb(59, 130, 246)" />
-          <circle cx="40" cy="35" r="2" fill="rgb(59, 130, 246)" />
-          <circle cx="60" cy="15" r="2" fill="rgb(59, 130, 246)" />
-          <circle cx="80" cy="25" r="2" fill="rgb(59, 130, 246)" />
-          <circle cx="100" cy="10" r="2" fill="rgb(59, 130, 246)" />
-        </svg>
-        <div className={`${widget.expanded ? 'text-sm' : 'text-xs'} text-center mt-2 transition-all duration-300`}>
-          {!widget.data ? "Loading data..." : "Data from the last 6 months"}
         </div>
       </div>
     );
@@ -553,9 +688,9 @@ export default function DiligenceDashboardViewer() {
       }
       
       // Check for new format (JSON string inside a property)
-      if (widget.metricId && typeof widget.data[widget.metricId] === 'string') {
+      if (typeof widget.data[widget.id] === 'string') {
         try {
-          return JSON.parse(widget.data[widget.metricId]);
+          return JSON.parse(widget.data[widget.id]);
         } catch (error) {
           console.error('Error parsing nested table data:', error);
           return null;
@@ -656,58 +791,299 @@ export default function DiligenceDashboardViewer() {
   
   // Component for displaying a graph (network graph visualization)
   const GraphWidget = ({ widget }: { widget: Widget }) => {
+    // Process and layout the graph data when widget changes
+    useEffect(() => {
+      if (!widget.data || widget.data.status === 'loading') return;
+      
+      const { nodes, edges } = widget.data;
+      if (!nodes || !edges) return;
+      
+      // Set up hierarchical layout
+      const processedNodes = calculateHierarchicalLayout(nodes as GraphNode[], edges as GraphEdge[]);
+      const processedLinks = edges.map((edge: GraphEdge) => ({
+        source: edge.source,
+        target: edge.target,
+        relationship: edge.relationship,
+        directed: edge.directed
+      }));
+      
+      setGraphLayout({ nodes: processedNodes, links: processedLinks });
+    }, [widget.data]);
+    
+    // Calculate hierarchical positions for nodes
+    const calculateHierarchicalLayout = (nodes: GraphNode[], edges: GraphEdge[]): GraphNode[] => {
+      // Define levels based on node categories
+      const categoryLevels: {[key: string]: number} = {
+        'Company': 0,
+        'Revenue Stream': 1,
+        'Industry Application': 2
+      };
+      
+      // Group nodes by level
+      const nodesByLevel: {[key: number]: GraphNode[]} = {};
+      nodes.forEach(node => {
+        const level = categoryLevels[node.category] || 0;
+        if (!nodesByLevel[level]) nodesByLevel[level] = [];
+        nodesByLevel[level].push(node);
+      });
+      
+      // Calculate node positions level by level
+      const processedNodes: GraphNode[] = [];
+      const levelCount = Object.keys(nodesByLevel).length;
+      const maxNodesInLevel = Math.max(...Object.values(nodesByLevel).map(n => n.length));
+      
+      for (let level = 0; level < levelCount; level++) {
+        const nodesInLevel = nodesByLevel[level] || [];
+        const levelWidth = nodesInLevel.length;
+        
+        nodesInLevel.forEach((node, index) => {
+          // Calculate revenue value for node sizing if available
+          let revenue = 0;
+          if (node.attributes) {
+            const revenueStr = node.attributes.fiscal_year_2024_revenue || 
+                              node.attributes.q4_fiscal_2024_revenue || '';
+            
+            // Extract numeric value from string like "$33.196 billion" or "$899 million"
+            if (revenueStr) {
+              const match = revenueStr.match(/\$?([\d,.]+)\s*(billion|million)?/i);
+              if (match) {
+                const value = parseFloat(match[1].replace(/,/g, ''));
+                const unit = match[2]?.toLowerCase();
+                revenue = unit === 'billion' ? value * 1000 : (unit === 'million' ? value : value);
+              }
+            }
+          }
+          
+          // Scale node size based on revenue (with min and max size)
+          const nodeSize = revenue ? Math.max(25, Math.min(50, 25 + (revenue / 10000) * 25)) : 30;
+          
+          // Assign colors based on category
+          let nodeColor = '#3B82F6'; // default blue
+          if (node.category === 'Revenue Stream') nodeColor = '#10B981'; // green
+          if (node.category === 'Industry Application') nodeColor = '#8B5CF6'; // purple
+          
+          processedNodes.push({
+            ...node,
+            x: (index + 1) * (100 / (levelWidth + 1)), // Horizontal position as percentage
+            y: (level + 1) * (100 / (levelCount + 1)), // Vertical position as percentage
+            size: nodeSize,
+            color: nodeColor
+          });
+        });
+      }
+      
+      return processedNodes;
+    };
+    
+    // Render loading state
+    if (!widget.data || widget.data.status === 'loading') {
+      return <div className="flex items-center justify-center h-full">Loading graph data...</div>;
+    }
+    
+    // Extract title and description
+    const { title, description } = widget.data;
+    
+    // Calculate SVG dimensions based on container size
+    // Using a 16:9 aspect ratio
+    const svgWidth = 100;
+    const svgHeight = 60;
+    
     return (
-      <div className="flex flex-col items-center justify-center h-full p-4">
-        {!widget.data || widget.data.status === 'loading' ? (
-          <div className="flex items-center justify-center h-full">Loading graph data...</div>
-        ) : (
-          <div className="w-full h-full flex flex-col">
-            <div className="flex-1 bg-gray-100 dark:bg-gray-800 rounded-lg flex items-center justify-center">
-              <svg className="w-full h-full max-h-64" viewBox="0 0 200 200">
-                {/* Sample graph visualization */}
-                <circle cx="100" cy="100" r="30" fill="rgba(59, 130, 246, 0.5)" />
-                <circle cx="50" cy="50" r="20" fill="rgba(16, 185, 129, 0.5)" />
-                <circle cx="150" cy="50" r="20" fill="rgba(16, 185, 129, 0.5)" />
-                <circle cx="50" cy="150" r="20" fill="rgba(16, 185, 129, 0.5)" />
-                <circle cx="150" cy="150" r="20" fill="rgba(16, 185, 129, 0.5)" />
-                
-                <line x1="100" y1="100" x2="50" y2="50" stroke="rgba(75, 85, 99, 0.5)" strokeWidth="2" />
-                <line x1="100" y1="100" x2="150" y2="50" stroke="rgba(75, 85, 99, 0.5)" strokeWidth="2" />
-                <line x1="100" y1="100" x2="50" y2="150" stroke="rgba(75, 85, 99, 0.5)" strokeWidth="2" />
-                <line x1="100" y1="100" x2="150" y2="150" stroke="rgba(75, 85, 99, 0.5)" strokeWidth="2" />
-              </svg>
-            </div>
-            <div className="mt-2 text-sm text-center text-gray-500 dark:text-gray-400">
-              {widget.data.description || "Graph visualization"}
-            </div>
+      <div className="flex flex-col h-full p-4 overflow-hidden">
+        {title && <h3 className="font-semibold text-sm">{title}</h3>}
+        {description && <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">{description}</p>}
+        
+        <div className="flex-1 bg-gray-50 dark:bg-gray-800 rounded-lg overflow-hidden shadow-inner">
+          <svg 
+            viewBox={`0 0 ${svgWidth} ${svgHeight}`} 
+            className="w-full h-full" 
+            style={{ maxHeight: "250px" }}
+          >
+            {/* Draw edges first (so they're underneath nodes) */}
+            {graphLayout.links.map((link, index) => {
+              // Find connected nodes
+              const sourceNode = graphLayout.nodes.find(n => n.id === link.source);
+              const targetNode = graphLayout.nodes.find(n => n.id === link.target);
+              
+              if (!sourceNode || !targetNode) return null;
+              
+              // Ensure nodes have coordinates (use defaults if undefined)
+              const x1 = (sourceNode.x || 50) * svgWidth / 100;
+              const y1 = (sourceNode.y || 50) * svgHeight / 100;
+              const x2 = (targetNode.x || 50) * svgWidth / 100;
+              const y2 = (targetNode.y || 50) * svgHeight / 100;
+              
+              return (
+                <g key={`edge-${index}`}>
+                  <line 
+                    x1={x1} 
+                    y1={y1} 
+                    x2={x2} 
+                    y2={y2} 
+                    stroke="rgba(156, 163, 175, 0.6)" 
+                    strokeWidth="1.5" 
+                    className="transition-all duration-300"
+                  />
+                  
+                  {/* Add arrow for directed edges */}
+                  {link.directed && (
+                    <polygon 
+                      points={calculateArrowPoints(x1, y1, x2, y2, (targetNode.size || 30)/3)}
+                      fill="rgba(156, 163, 175, 0.6)"
+                      className="transition-all duration-300"
+                    />
+                  )}
+                  
+                  {/* Edge label for relationship type */}
+                  {link.relationship && (
+                    <text 
+                      x={(x1 + x2) / 2} 
+                      y={(y1 + y2) / 2 - 2} 
+                      fontSize="2.5" 
+                      textAnchor="middle" 
+                      fill="rgba(107, 114, 128, 0.8)"
+                      className="pointer-events-none"
+                    >
+                      {link.relationship}
+                    </text>
+                  )}
+                </g>
+              );
+            })}
+            
+            {/* Draw nodes */}
+            {graphLayout.nodes.map((node, index) => {
+              // Convert percentage positions to SVG coordinates (with defaults)
+              const cx = (node.x || 50) * svgWidth / 100;
+              const cy = (node.y || 50) * svgHeight / 100;
+              const nodeSize = node.size || 30;
+              
+              return (
+                <g 
+                  key={`node-${index}`} 
+                  className="cursor-pointer transition-all duration-300 hover:opacity-80"
+                  style={{ opacity: 0.9 }}
+                >
+                  {/* Node circle */}
+                  <circle 
+                    cx={cx} 
+                    cy={cy} 
+                    r={nodeSize / 10} 
+                    fill={node.color || '#3B82F6'} 
+                    stroke="white"
+                    strokeWidth="0.5"
+                  >
+                    {/* Tooltip */}
+                    <title>
+                      {node.label}
+                      {node.attributes && Object.entries(node.attributes).map(([key, value]) => 
+                        `\n${key}: ${value}`
+                      ).join('')}
+                    </title>
+                  </circle>
+                  
+                  {/* Node label */}
+                  <text 
+                    x={cx} 
+                    y={cy + nodeSize/8 + 1} 
+                    fontSize="2.5" 
+                    textAnchor="middle" 
+                    fill="#4B5563"
+                    className="pointer-events-none font-medium"
+                  >
+                    {node.label}
+                  </text>
+                </g>
+              );
+            })}
+          </svg>
+        </div>
+        
+        {/* Legend */}
+        <div className="flex flex-wrap justify-center mt-3 gap-3">
+          <div className="flex items-center">
+            <div className="w-3 h-3 rounded-full bg-blue-500 mr-1.5"></div>
+            <span className="text-xs">Company</span>
           </div>
-        )}
+          <div className="flex items-center">
+            <div className="w-3 h-3 rounded-full bg-green-500 mr-1.5"></div>
+            <span className="text-xs">Revenue Stream</span>
+          </div>
+          <div className="flex items-center">
+            <div className="w-3 h-3 rounded-full bg-purple-500 mr-1.5"></div>
+            <span className="text-xs">Industry Application</span>
+          </div>
+        </div>
       </div>
     );
   };
+  
+  // Helper function to calculate arrow points for directed edges
+  function calculateArrowPoints(x1: number, y1: number, x2: number, y2: number, size: number) {
+    // Calculate angle of the edge
+    const angle = Math.atan2(y2 - y1, x2 - x1);
+    
+    // Calculate endpoint (adjusted to not overlap the target node)
+    const endX = x2 - (size/5) * Math.cos(angle);
+    const endY = y2 - (size/5) * Math.sin(angle);
+    
+    // Calculate the arrow points
+    const arrowSize = size / 10;
+    const arrowAngle = Math.PI / 6; // 30 degrees
+    
+    const x3 = endX - arrowSize * Math.cos(angle - arrowAngle);
+    const y3 = endY - arrowSize * Math.sin(angle - arrowAngle);
+    
+    const x4 = endX - arrowSize * Math.cos(angle + arrowAngle);
+    const y4 = endY - arrowSize * Math.sin(angle + arrowAngle);
+    
+    return `${endX},${endY} ${x3},${y3} ${x4},${y4}`;
+  }
   
   // Handle the end of a drag event
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
     
     if (over && active.id !== over.id) {
-      // Find the positions of the dragged widget and the drop target
-      const draggedIndex = widgets.findIndex(w => w.id === active.id);
-      const dropIndex = widgets.findIndex(w => w.id === over.id);
+      // Get the widget IDs
+      const activeId = String(active.id);
+      const overId = String(over.id);
       
-      if (draggedIndex !== -1 && dropIndex !== -1) {
-        // Create a new array with the widgets in the new order
-        const newWidgets = [...widgets];
-        const draggedWidget = newWidgets[draggedIndex];
+      // Get the widgets that are being dragged and dropped on
+      const draggedWidget = widgets[activeId];
+      const dropWidget = widgets[overId];
+      
+      if (draggedWidget && dropWidget && draggedWidget.positionData && dropWidget.positionData) {
+        // Swap their positions (this is a simplified approach)
+        // For a more complex grid layout, you might need a more sophisticated positioning algorithm
+        const draggedPos = { 
+          x: draggedWidget.positionData.x || 0, 
+          y: draggedWidget.positionData.y || 0 
+        };
+        const dropPos = { 
+          x: dropWidget.positionData.x || 0, 
+          y: dropWidget.positionData.y || 0 
+        };
         
-        // Remove the dragged widget
-        newWidgets.splice(draggedIndex, 1);
-        
-        // Insert it at the drop position
-        newWidgets.splice(dropIndex, 0, draggedWidget);
-        
-        // Update the widgets array with the new order
-        setWidgets(newWidgets);
+        setWidgets(prevWidgets => ({
+          ...prevWidgets,
+          [activeId]: {
+            ...prevWidgets[activeId],
+            positionData: {
+              ...prevWidgets[activeId].positionData,
+              x: dropPos.x,
+              y: dropPos.y
+            }
+          },
+          [overId]: {
+            ...prevWidgets[overId],
+            positionData: {
+              ...prevWidgets[overId].positionData,
+              x: draggedPos.x,
+              y: draggedPos.y
+            }
+          }
+        }));
       }
     }
     
@@ -716,70 +1092,76 @@ export default function DiligenceDashboardViewer() {
   
   // Expand or collapse a widget with multiple size options
   const toggleWidgetSize = (widget: Widget) => {
-    // If the widget parameter is an object with width and height properties,
+    // If the widget parameter has specific positionData properties,
     // this is a resize operation and we should directly update those dimensions
-    if (typeof widget.width === 'number' && typeof widget.height === 'number') {
-      setWidgets(prevWidgets => 
-        prevWidgets.map(w => {
-          if (w.id === widget.id) {
-            return {
-              ...w,
-              width: widget.width,
-              height: widget.height,
-              // When manually resized, always consider it "expanded"
-              expanded: widget.expanded
-            };
+    if (widget.positionData && typeof widget.positionData.width === 'number' && typeof widget.positionData.height === 'number') {
+      setWidgets(prevWidgets => ({
+        ...prevWidgets,
+        [widget.id]: {
+          ...prevWidgets[widget.id],
+          positionData: {
+            ...prevWidgets[widget.id].positionData,
+            width: widget.positionData.width,
+            height: widget.positionData.height,
+            expanded: widget.positionData.expanded
           }
-          return w;
-        })
-      );
+        }
+      }));
       return;
     }
     
     // Otherwise, this is a toggle operation from the button
-    setWidgets(prevWidgets => 
-      prevWidgets.map(w => {
-        if (w.id === widget.id) {
-          const isCurrentlyExpanded = !!w.expanded;
-          
-          // Toggle between states: small -> medium -> large -> small
-          if (w.width >= 3 && w.height >= 2) {
-            // Large -> Small
-            return {
-              ...w,
-              width: 2,
-              height: 1,
-              expanded: false
-            };
-          } else if (w.width === 2 && w.height === 2) {
-            // Medium -> Large
-            return {
-              ...w,
-              width: 3,
-              height: 2,
-              expanded: true
-            };
-          } else if (w.width === 2 && w.height === 1) {
-            // Small -> Medium
-            return {
-              ...w,
-              width: 2, 
-              height: 2,
-              expanded: true
-            };
-          } else {
-            // Default/any other case -> Small
-            return {
-              ...w,
-              width: 2,
-              height: 1,
-              expanded: false
-            };
+    setWidgets(prevWidgets => {
+      const currentWidget = prevWidgets[widget.id];
+      if (!currentWidget || !currentWidget.positionData) return prevWidgets;
+      
+      const { width, height, expanded } = currentWidget.positionData;
+      
+      // Default values if positionData properties are missing
+      const currentWidth = width || 2;
+      const currentHeight = height || 1;
+      const isCurrentlyExpanded = !!expanded;
+      
+      // Toggle between states: small -> medium -> large -> small
+      let newWidth = currentWidth;
+      let newHeight = currentHeight;
+      let newExpanded = expanded;
+      
+      if (currentWidth >= 3 && currentHeight >= 2) {
+        // Large -> Small
+        newWidth = 2;
+        newHeight = 1;
+        newExpanded = false;
+      } else if (currentWidth === 2 && currentHeight === 2) {
+        // Medium -> Large
+        newWidth = 3;
+        newHeight = 2;
+        newExpanded = true;
+      } else if (currentWidth === 2 && currentHeight === 1) {
+        // Small -> Medium
+        newWidth = 2; 
+        newHeight = 2;
+        newExpanded = true;
+      } else {
+        // Default/any other case -> Small
+        newWidth = 2;
+        newHeight = 1;
+        newExpanded = false;
+      }
+      
+      return {
+        ...prevWidgets,
+        [widget.id]: {
+          ...currentWidget,
+          positionData: {
+            ...currentWidget.positionData,
+            width: newWidth,
+            height: newHeight,
+            expanded: newExpanded
           }
         }
-        return w;
-      })
-    );
+      };
+    });
   };
   
   // Load templates
@@ -805,7 +1187,7 @@ export default function DiligenceDashboardViewer() {
       await MetricsService.saveDashboardTemplate(
         templateName,
         templateDescription,
-        widgets,
+        Object.values(widgets),
         bucketId
       );
       setIsSaveTemplateOpen(false);
@@ -829,7 +1211,14 @@ export default function DiligenceDashboardViewer() {
   const applyTemplate = async (templateId: string) => {
     try {
       const template = await MetricsService.getDashboardTemplate(templateId);
-      setWidgets(template.widgets);
+      
+      // Convert template's widget array to a map
+      const widgetsMap: Record<string, Widget> = {};
+      template.widgets.forEach(widget => {
+        widgetsMap[widget.id] = widget;
+      });
+      
+      setWidgets(widgetsMap);
       setIsLoadTemplateOpen(false);
       toast({
         title: "Success",
@@ -928,7 +1317,7 @@ export default function DiligenceDashboardViewer() {
       ) : (
         <DndContext onDragEnd={handleDragEnd}>
           <div className="grid grid-cols-6 gap-4 auto-rows-minmax(220px, auto) pb-16 relative">
-            {widgets.map((widget) => (
+            {Object.values(widgets).map((widget) => (
               <DraggableWidget 
                 key={widget.id} 
                 widget={widget}
@@ -964,7 +1353,6 @@ export default function DiligenceDashboardViewer() {
         if (!open) {
           // Clear form when closing
           setSelectedFormatType(null);
-          setSelectedChartSubtype(null);
           setSelectedMetric(null);
           setWidgetTitle('');
           setCustomMetric('');
@@ -978,7 +1366,7 @@ export default function DiligenceDashboardViewer() {
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div>
-              <label className="text-sm font-medium mb-1 block dark:text-white">Format Type</label>
+              <label className="text-sm font-medium mb-1 block dark:text-white">Widget Type</label>
               <div className="grid grid-cols-3 gap-2">
                 {Object.entries(FORMAT_TYPES).map(([key, value]) => (
                   <Button
@@ -986,10 +1374,6 @@ export default function DiligenceDashboardViewer() {
                     variant={selectedFormatType === value ? "default" : "outline"}
                     onClick={() => {
                       setSelectedFormatType(value);
-                      // Reset chart subtype if not selecting chart
-                      if (value !== FORMAT_TYPES.CHART) {
-                        setSelectedChartSubtype(null);
-                      }
                     }}
                     className="justify-start"
                   >
@@ -1021,32 +1405,6 @@ export default function DiligenceDashboardViewer() {
                 ))}
               </div>
             </div>
-            
-            {/* Show chart subtypes only when Chart is selected */}
-            {selectedFormatType === FORMAT_TYPES.CHART && (
-              <div>
-                <label className="text-sm font-medium mb-1 block dark:text-white">Chart Type</label>
-                <div className="grid grid-cols-3 gap-2">
-                  {Object.entries(CHART_SUBTYPES).map(([key, value]) => (
-                    <Button
-                      key={key}
-                      variant={selectedChartSubtype === value ? "default" : "outline"}
-                      onClick={() => setSelectedChartSubtype(value)}
-                      className="justify-start"
-                    >
-                      {key === 'PIE' && <PieChart className="mr-2 h-4 w-4" />}
-                      {key === 'BAR' && <BarChart2 className="mr-2 h-4 w-4" />}
-                      {key === 'LINE' && (
-                        <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                          <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
-                        </svg>
-                      )}
-                      {key}
-                    </Button>
-                  ))}
-                </div>
-              </div>
-            )}
             
             <div>
               <div className="flex items-center justify-between">
@@ -1103,11 +1461,7 @@ export default function DiligenceDashboardViewer() {
             </Button>
             <Button 
               onClick={addWidget}
-              disabled={
-                !selectedFormatType || 
-                (selectedFormatType === FORMAT_TYPES.CHART && !selectedChartSubtype) || 
-                !customMetric.trim()
-              }
+              disabled={!selectedFormatType || !customMetric.trim()}
               className="bg-blue-600 hover:bg-blue-700 text-white z-10"
             >
               Add Widget
@@ -1342,8 +1696,8 @@ function DraggableWidget({ widget, isEditing, onRemove, onEdit, onToggleSize, ch
   const [isResizing, setIsResizing] = useState(false);
   const [startX, setStartX] = useState(0);
   const [startY, setStartY] = useState(0);
-  const [startWidth, setStartWidth] = useState(widget.width);
-  const [startHeight, setStartHeight] = useState(widget.height);
+  const [startWidth, setStartWidth] = useState(widget.positionData?.width || 2);
+  const [startHeight, setStartHeight] = useState(widget.positionData?.height || 1);
   
   // Combine both refs for the main widget container
   const setRefs = (element: HTMLElement | null) => {
@@ -1392,8 +1746,8 @@ function DraggableWidget({ widget, isEditing, onRemove, onEdit, onToggleSize, ch
     setIsResizing(true);
     setStartX(e.clientX);
     setStartY(e.clientY);
-    setStartWidth(widget.width);
-    setStartHeight(widget.height);
+    setStartWidth(widget.positionData?.width || 2);
+    setStartHeight(widget.positionData?.height || 1);
     
     // Add document-level event listeners for mouse move and up
     document.addEventListener('mousemove', handleResize);
@@ -1424,13 +1778,15 @@ function DraggableWidget({ widget, isEditing, onRemove, onEdit, onToggleSize, ch
     newHeight = Math.max(1, Math.min(4, newHeight));
     
     // Update the widget size in the parent component
-    if (newWidth !== widget.width || newHeight !== widget.height) {
+    if (newWidth !== widget.positionData?.width || newHeight !== widget.positionData?.height) {
       const updatedWidget = {
         ...widget,
-        width: newWidth,
-        height: newHeight,
-        // When manually resized, always consider it "expanded"
-        expanded: newWidth > 2 || newHeight > 1
+        positionData: {
+          ...widget.positionData,
+          width: newWidth,
+          height: newHeight,
+          expanded: newWidth > 2 || newHeight > 1
+        }
       };
       
       // Update the widget in parent component
@@ -1464,9 +1820,9 @@ function DraggableWidget({ widget, isEditing, onRemove, onEdit, onToggleSize, ch
       ref={setRefs}
       style={style}
       className={`p-0 shadow-md relative transition-all duration-300 ease-in-out
-        ${widget.width > 1 ? `col-span-${widget.width}` : ''} 
-        ${widget.height > 1 ? `row-span-${widget.height}` : ''}
-        ${widget.expanded ? 'border-2 border-blue-300 dark:border-blue-700' : 'border border-gray-200 dark:border-gray-800'}
+        ${widget.positionData?.width > 1 ? `col-span-${widget.positionData.width}` : ''} 
+        ${widget.positionData?.height > 1 ? `row-span-${widget.positionData.height}` : ''}
+        ${widget.positionData?.expanded ? 'border-2 border-blue-300 dark:border-blue-700' : 'border border-gray-200 dark:border-gray-800'}
         overflow-hidden
         ${isResizing ? 'pointer-events-none' : ''}
       `}
@@ -1487,9 +1843,9 @@ function DraggableWidget({ widget, isEditing, onRemove, onEdit, onToggleSize, ch
             onClick={handleToggleSize}
             className="h-8 w-8 hover:bg-blue-100 dark:hover:bg-blue-900 relative"
             style={{ zIndex: 50, pointerEvents: 'auto' }}
-            title={widget.expanded ? "Collapse" : "Expand"}
+            title={widget.positionData?.expanded ? "Collapse" : "Expand"}
           >
-            {widget.expanded ? (
+            {widget.positionData?.expanded ? (
               <Minimize className="h-4 w-4" />
             ) : (
               <Maximize className="h-4 w-4" />
@@ -1523,7 +1879,7 @@ function DraggableWidget({ widget, isEditing, onRemove, onEdit, onToggleSize, ch
 
       {/* Content area that doesn't participate in drag events */}
       <div 
-        className={`p-3 pb-6 transition-all duration-300 ease-in-out ${widget.expanded ? 'scale-105 transform-origin-center' : ''}`}
+        className={`p-3 pb-6 transition-all duration-300 ease-in-out ${widget.positionData?.expanded ? 'scale-105 transform-origin-center' : ''}`}
         style={{ pointerEvents: isEditing ? 'none' : 'auto' }} // Disable interactions with content in edit mode
       >
         {children}
