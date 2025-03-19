@@ -5,54 +5,168 @@ import { ChevronLeft, MessageCircle } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { ScrollArea } from '../../ui/scroll-area'
-import { issuesData } from './IssueData'  // Make sure to export issuesData from your other file
+import { issuesData } from './IssueData'  // Fallback data
+import { qaService } from '../../services/QAService'
+import { Textarea } from '@/components/ui/textarea'
+import { useToast } from '@/components/ui/use-toast'
+import { useParams } from 'next/navigation'
 
 interface Comment {
-    id: number
-    author: string
-    authorImage: string
+    id: number | string
+    author?: string
+    authorImage?: string
     content: string
-    createdAt: string
-    isOriginalPoster: boolean
+    createdAt?: string
+    timestamp?: string
+    createdByUserId?: string
+    createdByUserName?: string
+    isOriginalPoster?: boolean
 }
 
-export function IssueDetail({ issueId, onBack }: { issueId: number, onBack: () => void }) {
+export function IssueDetail({ issueId, onBack }: { issueId: number | string, onBack: () => void }) {
     const [issue, setIssue] = useState<any>(null)
     const [comments, setComments] = useState<Comment[]>([])
     const [isLoading, setIsLoading] = useState(true)
+    const [answerContent, setAnswerContent] = useState('')
+    const [isSubmitting, setIsSubmitting] = useState(false)
+    const { toast } = useToast()
+    const { id: dataroomId } = useParams()
 
     useEffect(() => {
-        // In a real app, you'd fetch from an API
-        // For this example, we'll use the mock data
-        const foundIssue = issuesData.find(i => i.number === issueId)
-        setIssue(foundIssue)
-        
-        // Mock comments data
-        const mockComments = [
-            {
-                id: 1,
-                author: foundIssue?.author || 'Unknown',
-                authorImage: 'https://github.com/identicons/app/oauth_app/1234',
-                content: 'I encountered this issue when trying to use the latest version. Here are the steps to reproduce...',
-                createdAt: foundIssue?.createdAt || 'some time ago',
-                isOriginalPoster: true
+        // Fetch the issue from the API
+        const fetchIssue = async () => {
+            try {
+                setIsLoading(true)
+                
+                if (dataroomId) {
+                    // Try to fetch from API
+                    try {
+                        const apiIssue = await qaService.getIssue(dataroomId as string, issueId.toString())
+                        setIssue(apiIssue)
+                        
+                        // Set answers as comments
+                        if (apiIssue.answers && apiIssue.answers.length > 0) {
+                            setComments(apiIssue.answers.map((answer: any) => ({
+                                id: answer.id,
+                                content: answer.content,
+                                createdByUserName: answer.createdByUserName,
+                                createdByUserId: answer.createdByUserId,
+                                timestamp: answer.timestamp,
+                                isOriginalPoster: answer.createdByUserId === apiIssue.createdByUserId
+                            })))
+                        }
+                        
+                        setIsLoading(false)
+                        return
+                    } catch (error) {
+                        console.error('Error fetching issue from API:', error)
+                        // Fall back to mock data if API fails
+                    }
+                }
+                
+                // Fallback to mock data
+                const foundIssue = issuesData.find(i => i.id === issueId)
+                setIssue(foundIssue)
+                
+                // Mock comments data
+                const mockComments = [
+                    {
+                        id: 1,
+                        author: foundIssue?.author || 'Unknown',
+                        content: 'I encountered this issue when trying to use the latest version. Here are the steps to reproduce...',
+                        createdAt: foundIssue?.createdAt || 'some time ago',
+                        isOriginalPoster: true
+                    }
+                ]
+                
+                if ((foundIssue?.comments ?? 0) > 1) {
+                    mockComments.push({
+                        id: 2,
+                        author: 'reactTeamMember',
+                        content: 'Thanks for reporting this issue. We are looking into it and will provide an update soon.',
+                        createdAt: '3 days ago',
+                        isOriginalPoster: false
+                    })
+                }
+                
+                setComments(mockComments)
+                setIsLoading(false)
+            } catch (error) {
+                console.error('Error fetching issue:', error)
+                setIsLoading(false)
             }
-        ]
-        
-        if ((foundIssue?.comments ?? 0) > 1) {
-            mockComments.push({
-                id: 2,
-                author: 'reactTeamMember',
-                authorImage: 'https://github.com/identicons/app/oauth_app/5678',
-                content: 'Thanks for reporting this issue. We are looking into it and will provide an update soon.',
-                createdAt: '3 days ago',
-                isOriginalPoster: false
-            })
         }
         
-        setComments(mockComments)
-        setIsLoading(false)
-    }, [issueId])
+        fetchIssue()
+    }, [issueId, dataroomId])
+
+    const handleSubmitAnswer = async () => {
+        if (!answerContent.trim() || !dataroomId) return
+        
+        try {
+            setIsSubmitting(true)
+            
+            const answer = await qaService.addAnswer(
+                dataroomId as string,
+                issueId.toString(),
+                { answer: answerContent }
+            )
+            
+            // Add the new answer to the comments list
+            setComments(prevComments => [...prevComments, {
+                id: answer.id,
+                content: answer.content || answer.answer || '',
+                createdByUserName: answer.createdByUserName,
+                timestamp: answer.timestamp,
+                isOriginalPoster: false
+            }])
+            
+            // Clear the input
+            setAnswerContent('')
+            
+            toast({
+                title: 'Success',
+                description: 'Your answer has been submitted',
+            })
+        } catch (error) {
+            console.error('Error submitting answer:', error)
+            toast({
+                title: 'Error',
+                description: 'Failed to submit your answer',
+                variant: 'destructive'
+            })
+        } finally {
+            setIsSubmitting(false)
+        }
+    }
+
+    const toggleIssueStatus = async () => {
+        if (!issue || !dataroomId) return
+        
+        try {
+            const newStatus = issue.status === 'open' ? 'closed' : 'open'
+            
+            const updatedIssue = await qaService.updateIssueStatus(
+                dataroomId as string,
+                issueId.toString(),
+                { status: newStatus }
+            )
+            
+            setIssue(updatedIssue)
+            
+            toast({
+                title: 'Success',
+                description: `Question marked as ${newStatus}`,
+            })
+        } catch (error) {
+            console.error('Error updating issue status:', error)
+            toast({
+                title: 'Error',
+                description: 'Failed to update question status',
+                variant: 'destructive'
+            })
+        }
+    }
 
     const getTagColor = (tag: string) => {
         if (tag.includes('Component:')) {
@@ -99,8 +213,7 @@ export function IssueDetail({ issueId, onBack }: { issueId: number, onBack: () =
                     <div className="flex items-center mb-2">
                         <div className="mr-3">
                             {issue.status === 'open' ? (
-                                           <div className="h-4 w-4 rounded-full bg-slate-300 mr-1"></div>
-
+                                <div className="h-4 w-4 rounded-full bg-slate-300 mr-1"></div>
                             ) : (
                                 <svg className="h-6 w-6 github-issue-closed" viewBox="0 0 16 16">
                                     <path d="M11.28 6.78a.75.75 0 0 0-1.06-1.06L7.25 8.69 5.78 7.22a.75.75 0 0 0-1.06 1.06l2 2a.75.75 0 0 0 1.06 0l3.5-3.5Z"></path>
@@ -109,14 +222,14 @@ export function IssueDetail({ issueId, onBack }: { issueId: number, onBack: () =
                             )}
                         </div>
                         <h1 className="text-2xl font-bold">{issue.title}</h1>
-                        <span className="text-gray-500 ml-3">#{issue.number}</span>
+                        <span className="text-gray-500 ml-3">#{issue.number || issue.id}</span>
                     </div>
                     
                     <div className="flex items-center text-sm text-[#57606a]">
                         <span className="font-medium mr-1">
                             {issue.status === 'open' ? 'Open' : 'Closed'}
                         </span>
-                        <span>• {issue.author} opened this issue {issue.createdAt.replace('opened ', '')} • {issue.comments} comments</span>
+                        <span>• {issue.createdByUserName || issue.author} opened this issue {issue.timestamp ? new Date(issue.timestamp).toLocaleString() : issue.createdAt?.replace('opened ', '')} • {comments.length} comments</span>
                     </div>
                     
                     {/* Issue description */}
@@ -125,6 +238,17 @@ export function IssueDetail({ issueId, onBack }: { issueId: number, onBack: () =
                             <p className="text-sm">{issue.description}</p>
                         </div>
                     )}
+                </div>
+                
+                {/* Status toggle button */}
+                <div className="mb-6">
+                    <Button 
+                        onClick={toggleIssueStatus}
+                        variant="outline"
+                        className={issue.status === 'closed' ? 'bg-green-100' : 'bg-red-100'}
+                    >
+                        {issue.status === 'open' ? 'Close question' : 'Reopen question'}
+                    </Button>
                 </div>
                 
                 {/* Issue tags */}
@@ -153,12 +277,12 @@ export function IssueDetail({ issueId, onBack }: { issueId: number, onBack: () =
                             <div className="bg-[#f6f8fa] p-3 border-b github-border flex items-center">
                                 <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center mr-2">
                                     <span className="text-sm font-medium text-gray-700">
-                                        {comment.author.split(' ').map((n) => n[0]).join('')}
+                                        {(comment.createdByUserName || comment.author || 'Unknown').split(' ').map((n) => n[0]).join('')}
                                     </span>
                                 </div>
                                 <div className="flex-1">
-                                    <a href="#" className="github-link font-semibold">{comment.author}</a>
-                                    <span className="text-[#57606a] text-sm ml-2">commented {comment.createdAt}</span>
+                                    <a href="#" className="github-link font-semibold">{comment.createdByUserName || comment.author}</a>
+                                    <span className="text-[#57606a] text-sm ml-2">commented {comment.timestamp ? new Date(comment.timestamp).toLocaleString() : comment.createdAt}</span>
                                 </div>
                                 {comment.isOriginalPoster && (
                                     <Badge className="bg-[#0969da] text-white">Author</Badge>
@@ -176,13 +300,19 @@ export function IssueDetail({ issueId, onBack }: { issueId: number, onBack: () =
                             <h4 className="text-sm font-medium">Add a comment</h4>
                         </div>
                         <div className="p-4">
-                            <textarea 
+                            <Textarea 
                                 className="w-full border github-border rounded-md p-3 text-sm min-h-[100px]" 
                                 placeholder="Leave a comment..."
+                                value={answerContent}
+                                onChange={(e) => setAnswerContent(e.target.value)}
                             />
                             <div className="mt-3 flex justify-end">
-                                <Button className="bg-blue-500 hover:bg-blue-800">
-                                    Comment
+                                <Button 
+                                    className="bg-blue-500 hover:bg-blue-800"
+                                    onClick={handleSubmitAnswer}
+                                    disabled={isSubmitting || !answerContent.trim()}
+                                >
+                                    {isSubmitting ? 'Submitting...' : 'Comment'}
                                 </Button>
                             </div>
                         </div>

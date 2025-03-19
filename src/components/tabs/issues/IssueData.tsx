@@ -1,16 +1,21 @@
 export interface Issue {
-    id: number
-    title: string
-    status: 'open' | 'closed'
-    author: string
-    number: number
-    createdAt: string
-    tags: string[]
-    comments: number
-    description?: string
+    id: number | string;
+    title: string;
+    status: 'open' | 'closed';
+    author?: string;
+    createdByUserId?: string;
+    createdByUserName?: string;
+    number?: number;
+    createdAt?: string;
+    timestamp?: string;
+    tags: string[];
+    comments?: number;
+    answers?: any[];
+    description?: string;
+    lastUpdated?: string;
   }
   
-  // Sample issues data
+  // Sample issues data - used for demo/fallback purposes
   export const issuesData: Issue[] = [
     {
       id: 1,

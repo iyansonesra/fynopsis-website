@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { Issue } from './IssueData'
+import { FrontendIssue } from '../../services/QAService'
 import { Badge } from '@/components/ui/badge'
 import { X } from 'lucide-react'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
@@ -12,7 +12,7 @@ import { Label } from '@/components/ui/label'
 interface CreateIssueFormProps {
   isOpen: boolean
   onClose: () => void
-  onSubmit: (issue: Omit<Issue, 'id' | 'number' | 'createdAt'>) => void
+  onSubmit: (issue: Omit<FrontendIssue, 'id' | 'number' | 'createdAt'>) => void
 }
 
 export function CreateIssueForm({ isOpen, onClose, onSubmit }: CreateIssueFormProps) {
@@ -36,7 +36,8 @@ export function CreateIssueForm({ isOpen, onClose, onSubmit }: CreateIssueFormPr
       author: 'Current User', // In a real app, get the current user
       tags: selectedTags,
       comments: 0,
-      description
+      description,
+      createdAt: `opened ${new Date().toLocaleString()}`
     }
 
     onSubmit(newIssue)

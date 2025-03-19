@@ -77,8 +77,8 @@ interface FileStore {
 
   activeTab: number; // Change from string to number
   setActiveTab: (tab: number) => void; 
-  activeIssueId: number | null;
-  setActiveIssueId: (issueId: number | null) => void;
+  activeIssueId: number | string | null;
+  setActiveIssueId: (issueId: number | string | null) => void;
 }
 
 // Then update the store implementation
