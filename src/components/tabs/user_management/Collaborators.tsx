@@ -6,7 +6,7 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from './ui/select';
+} from '../../ui/select';
 import { usePathname } from 'next/navigation';
 import { fetchUserAttributes } from 'aws-amplify/auth';
 import { Trash2, UserPlus } from 'lucide-react';

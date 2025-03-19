@@ -1,11 +1,11 @@
 import React, { useEffect, useState } from 'react';
-import { ScrollArea } from './ui/scroll-area';
-import { Card } from './ui/card';
+import { ScrollArea } from '../../../ui/scroll-area';
+import { Card } from '../../../ui/card';
 import { MessageSquare, Clock, ArrowLeft, Loader2 } from 'lucide-react';
 import { get, post } from 'aws-amplify/api';
 import { formatDistanceToNow } from 'date-fns';
-import { Button } from './ui/button';
-import { Skeleton } from './ui/skeleton';
+import { Button } from '../../../ui/button';
+import { Skeleton } from '../../../ui/skeleton';
 
 interface ChatHistory {
   threadId: string;

@@ -3,12 +3,12 @@ import { useDropzone } from 'react-dropzone';
 import { Upload as UploadIcon, X, Info, HelpCircle, Archive } from 'lucide-react';
 import { post } from 'aws-amplify/api';
 import { usePathname } from 'next/navigation';
-import { useS3Store, TreeNode } from "./fileService";
+import { useS3Store, TreeNode } from "../../../services/fileService";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
 import { TbChevronsDownLeft } from 'react-icons/tb';
 import JSZip from 'jszip';
-import { Alert, AlertDescription } from './ui/alert';
+import { Alert, AlertDescription } from '../../../ui/alert';
 import ZipPreview from './ZipPreview';
 import ZipUploadProgress from './ZipUploadProgress';
 

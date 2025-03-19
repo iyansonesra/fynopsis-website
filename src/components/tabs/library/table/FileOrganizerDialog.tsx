@@ -1,24 +1,24 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from './ui/dialog';
-import { Button } from './ui/button';
-import { Checkbox } from './ui/checkbox';
-import { Label } from './ui/label';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '../../../ui/dialog';
+import { Button } from '../../../ui/button';
+import { Checkbox } from '../../../ui/checkbox';
+import { Label } from '../../../ui/label';
 import { post, get } from 'aws-amplify/api';
 import { Loader2, RotateCcw } from 'lucide-react';
-import { FolderTreeEditor } from './FolderTreeEditor';
+import { FolderTreeEditor } from '../../misc/FolderTreeEditor';
 import { DndProvider } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
-import { Alert, AlertDescription, AlertTitle } from './ui/alert';
-import { toast } from './ui/use-toast';
+import { Alert, AlertDescription, AlertTitle } from '../../../ui/alert';
+import { toast } from '../../../ui/use-toast';
 import { useRouter } from 'next/navigation';
 
 // Add new imports
-import { ScrollArea } from "./ui/scroll-area";
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "./ui/accordion";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "./ui/table";
+import { ScrollArea } from "../../../ui/scroll-area";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "../../../ui/accordion";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../../../ui/table";
 import { FolderIcon, ChevronRightIcon, ChevronDownIcon, FileIcon, ArrowRight, Pencil, Check, X, Trash2 } from 'lucide-react';
-import { useFileStore } from './HotkeyService';
-import { Input } from './ui/input';
+import { useFileStore } from '../../../services/HotkeyService';
+import { Input } from '../../../ui/input';
 
 interface FileOrganizerDialogProps {
   bucketId: string;

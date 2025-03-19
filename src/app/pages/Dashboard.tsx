@@ -25,7 +25,7 @@ import { useRouter } from 'next/navigation';
 import { LogOut, DoorOpen, Clipboard } from 'lucide-react';
 import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/hover-card';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import DataRoomCard from "@/components/DataRoomCard";
+import DataRoomCard from "@/components/tabs/misc/DataRoomCard";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { post, get, del } from 'aws-amplify/api';

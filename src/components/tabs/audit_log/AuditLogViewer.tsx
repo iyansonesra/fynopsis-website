@@ -1,17 +1,17 @@
 import React, { useState, useEffect, ReactNode } from 'react';
 import { get } from 'aws-amplify/api';
-import { Input } from './ui/input';
-import { Button } from './ui/button';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
-import { ScrollArea } from './ui/scroll-area';
+import { Input } from '../../ui/input';
+import { Button } from '../../ui/button';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../ui/select';
+import { ScrollArea } from '../../ui/scroll-area';
 import { Calendar } from '@/components/ui/calendar';
-import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
+import { Popover, PopoverContent, PopoverTrigger } from '../../ui/popover';
 import { format } from 'date-fns';
 import { ArrowRight, BookKey, Calendar as CalendarIcon, Download, FileDown, FileIcon, FileOutput, FilePen, FileUp, FileX, FileX2, FolderIcon, FolderPen, FolderUp, FolderX, UserPlus, UserRoundX } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import DetailSection from './DetailsSection';
+import DetailSection from '../library/querying/DetailsSection';
 import { Skeleton } from '@mui/material';
-import { HoverCard, HoverCardContent, HoverCardTrigger } from './ui/hover-card';
+import { HoverCard, HoverCardContent, HoverCardTrigger } from '../../ui/hover-card';
 
 interface AuditEvent {
     eventId: string;

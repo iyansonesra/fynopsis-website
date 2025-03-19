@@ -1,11 +1,11 @@
 import React, { useCallback, useEffect, useRef, useState, useMemo, memo } from 'react';
 import { ArrowLeft, ArrowUp, BadgeInfo, FileText, Footprints, Plus, PlusCircle, Search, MessageSquare, ReceiptText, SearchIcon, Database, User, Tags, AlignLeft, History, Copy } from 'lucide-react';
 import { Input, Skeleton } from '@mui/material';
-import { Button } from './ui/button';
+import { Button } from '../../../ui/button';
 import { post, get } from 'aws-amplify/api';
-import { ScrollArea, ScrollBar } from './ui/scroll-area';
+import { ScrollArea, ScrollBar } from '../../../ui/scroll-area';
 import { fetchAuthSession } from 'aws-amplify/auth';
-import { Card, CardContent } from './ui/card';
+import { Card, CardContent } from '../../../ui/card';
 import { GetObjectCommand, S3Client } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import ReactMarkdown from 'react-markdown';
@@ -18,10 +18,10 @@ import { SignatureV4 } from '@aws-sdk/signature-v4';
 import { Credentials } from '@aws-sdk/types';
 import { TbH1 } from 'react-icons/tb';
 import logo from './../app/assets/fynopsis_noBG.png'
-import '../components/temp.css';
-import loadingAnimation from './../app/assets/fynopsis_animated.svg'
-import staticImage from './../app/assets/fynopsis_static.svg'
-import { Separator } from './ui/separator';
+import '../../../../components/temp.css';
+import loadingAnimation from './../../../../app/assets/fynopsis_animated.svg'
+import staticImage from './../../../../app/assets/fynopsis_static.svg'
+import { Separator } from '../../../ui/separator';
 import { usePathname } from 'next/navigation';
 import {
     Accordion,
@@ -29,12 +29,12 @@ import {
     AccordionItem,
     AccordionTrigger,
 } from "@/components/ui/accordion";
-import { TextShimmer } from './ui/text-shimmer';
-import { AIInputWithSearch } from './ui/ai-input-with-search';
-import { useS3Store } from './fileService';
-import { useFileStore } from './HotkeyService';
+import { TextShimmer } from '../../../ui/text-shimmer';
+import { AIInputWithSearch } from '../../../ui/ai-input-with-search';
+import { useS3Store } from '../../../services/fileService';
+import { useFileStore } from '../../../services/HotkeyService';
 import { ChatHistoryPanel } from './ChatHistoryPanel';
-import { TagDisplay } from './TagsHover';
+import { TagDisplay } from '../table/TagsHover';
 import reactStringReplace from "react-string-replace";
 import { AnswerWithCitations } from './AnswerWithCitations';
 
@@ -43,7 +43,7 @@ import {
     HoverCardContent,
     HoverCardTrigger,
 } from "@/components/ui/hover-card";
-import { ContainerScroll } from './ui/container-scroll-animation';
+import { ContainerScroll } from '../../../ui/container-scroll-animation';
 import { HoverCardPortal } from '@radix-ui/react-hover-card';
 
 interface ThoughtStep {

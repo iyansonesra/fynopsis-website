@@ -1,5 +1,5 @@
 import React from 'react';
-import { HoverCard, HoverCardContent, HoverCardTrigger } from './ui/hover-card';
+import { HoverCard, HoverCardContent, HoverCardTrigger } from '../../../ui/hover-card';
 import { FileText, Calendar, Users, Tags, Shield } from 'lucide-react';
 
 interface DateInfo {

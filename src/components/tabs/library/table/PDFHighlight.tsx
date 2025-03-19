@@ -9,7 +9,7 @@ import {
 } from "react-pdf-highlighter";
 import type { IHighlight, NewHighlight, ScaledPosition, Content } from "react-pdf-highlighter";
 import styled from 'styled-components';
-import '../components/styles/highlightStyles.css';
+import '../../../../components/styles/highlightStyles.css';
 import "react-pdf-highlighter/dist/style.css";
 
 // Keep the container absolutely positioned as required by the library

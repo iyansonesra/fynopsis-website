@@ -1,9 +1,9 @@
 import React, { useState, useMemo, useEffect } from "react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Input } from "@/components/ui/input";
-import { useS3Store, TreeNode } from "./fileService";
+import { useS3Store, TreeNode } from "../../../services/fileService";
 import { FileIcon } from "lucide-react";
-import { useFileStore } from '@/components/HotkeyService';
+import { useFileStore } from '@/components/services/HotkeyService';
 
 
 interface FileSelectorProps {

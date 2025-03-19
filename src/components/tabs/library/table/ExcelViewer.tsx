@@ -8,7 +8,7 @@ import {
     CellEditEventArgs,
     BeforePasteEventArgs
 } from '@syncfusion/ej2-react-spreadsheet';
-import './spreadsheet.css';
+import '../../../../components/spreadsheet.css'
 import { registerLicense } from '@syncfusion/ej2-base';
 
 

@@ -48,7 +48,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { useFileStore } from './HotkeyService';
+import { useFileStore } from '../../../services/HotkeyService';
 import { useToast } from '@/components/ui/use-toast';
 
 // Import AWS Amplify for auth tokens

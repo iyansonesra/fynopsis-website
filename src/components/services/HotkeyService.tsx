@@ -74,6 +74,11 @@ interface FileStore {
   setDocumentBounds: (id: string, bounds: DocumentBounds) => void;
   getDocumentBounds: (id: string) => DocumentBounds | null;
   addMultipleDocumentBounds: (boundsMap: Record<string, any>) => void;
+
+  activeTab: number; // Change from string to number
+  setActiveTab: (tab: number) => void; 
+  activeIssueId: number | null;
+  setActiveIssueId: (issueId: number | null) => void;
 }
 
 // Then update the store implementation
@@ -111,5 +116,9 @@ export const useFileStore = create<FileStore>((set, get) => ({
       ...state.documentBounds,
       ...boundsMap
     }
-  }))
+  })),
+  activeTab: 0, // Default to first tab (library) instead of 'library'
+  setActiveTab: (tab) => set({ activeTab: tab }),
+  activeIssueId: null,
+  setActiveIssueId: (issueId) => set({ activeIssueId: issueId }),
 }));

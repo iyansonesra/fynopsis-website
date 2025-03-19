@@ -1,7 +1,7 @@
 import React, { useRef, useEffect } from 'react';
 import { DragDropContext, Droppable, Draggable } from 'react-beautiful-dnd';
 import { X } from 'lucide-react';
-import { useTabStore } from './tabStore';
+import { useTabStore } from '../../../tabStore';
 
 
 interface Tab {

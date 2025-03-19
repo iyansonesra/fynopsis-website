@@ -8,7 +8,7 @@ import { S3Client } from "@aws-sdk/client-s3";
 import { usePathname } from 'next/navigation';
 import { get, post } from "aws-amplify/api";
 import { ScrollArea } from "../ui/scroll-area";
-import { useS3Store } from "../fileService";
+import { useS3Store } from "../services/fileService";
 import { TreeApi } from "react-arborist";
 
 

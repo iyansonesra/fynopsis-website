@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useRef } from 'react';
 import { FolderIcon, FileIcon, GripVertical, X, Plus } from 'lucide-react';
 import { useDrag, useDrop } from 'react-dnd';
-import { Button } from './ui/button';
+import { Button } from '../../ui/button';
 
 interface TreeItem {
   id: string;

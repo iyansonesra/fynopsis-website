@@ -8,7 +8,7 @@ import { Card } from '@/components/ui/card';
 import { AlertCircle, BarChart2, ChevronDown, Circle, PieChart, PlusCircle, Settings, X, Save, FolderOpen, Maximize, Minimize } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { v4 as uuidv4 } from 'uuid';
-import { fetchMetricData, getAvailableMetrics, MetricsService, Widget, DashboardTemplate } from './services/metricsService';
+import { fetchMetricData, getAvailableMetrics, MetricsService, Widget, DashboardTemplate } from '../../services/metricsService';
 import { DndContext, DragEndEvent, useDraggable, useDroppable } from '@dnd-kit/core';
 import { CSS } from '@dnd-kit/utilities';
 import { Label as UILabel } from '@/components/ui/label';

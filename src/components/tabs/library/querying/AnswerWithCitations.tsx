@@ -1,10 +1,10 @@
 import React, { memo, useEffect, useMemo, useRef } from 'react';
 import Markdown from 'markdown-to-jsx';
 import { Copy, FileText } from 'lucide-react';
-import { Button } from './ui/button';
-import { HoverCard, HoverCardContent, HoverCardTrigger } from './ui/hover-card';
+import { Button } from '../../../ui/button';
+import { HoverCard, HoverCardContent, HoverCardTrigger } from '../../../ui/hover-card';
 import { HoverCardPortal } from '@radix-ui/react-hover-card';
-import { useFileStore } from './HotkeyService';
+import { useFileStore } from '../../../services/HotkeyService';
 
 interface Citation {
     id: string;

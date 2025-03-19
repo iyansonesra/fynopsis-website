@@ -4,8 +4,8 @@ import { useState, useEffect } from 'react'
 import { ChevronLeft, MessageCircle } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { ScrollArea } from './ui/scroll-area'
-import { issuesData } from './QuestionAndAnswer'  // Make sure to export issuesData from your other file
+import { ScrollArea } from '../../ui/scroll-area'
+import { issuesData } from './IssueData'  // Make sure to export issuesData from your other file
 
 interface Comment {
     id: number

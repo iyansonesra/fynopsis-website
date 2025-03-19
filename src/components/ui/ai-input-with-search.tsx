@@ -8,7 +8,7 @@ import { cn } from "@/lib/utils";
 import { useAutoResizeTextarea } from "@/hooks/use-auto-resize-textarea";
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import FileSelector from "../FileSearchInput";
+import FileSelector from "../tabs/library/querying/FileSearchInput";
 import { ScrollArea, ScrollBar } from "./scroll-area";
 
 

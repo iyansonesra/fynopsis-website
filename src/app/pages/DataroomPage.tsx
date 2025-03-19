@@ -13,24 +13,25 @@ import { useParams, usePathname, useSearchParams } from 'next/navigation';
 import { useRouter } from 'next/navigation';
 import { Library, Users, LogOut, MessagesSquare } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import Files from "@/components/Files";
+import Files from "@/components/tabs/library/table/Files";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { get, post } from 'aws-amplify/api';
 import { Share } from "lucide-react";
-import UserManagement from "@/components/Collaborators";
-import ExcelViewer from '@/components/ExcelViewer';
-import DarkModeToggle from '@/components/DarkModeToggle';
+import UserManagement from "@/components/tabs/user_management/Collaborators";
+import ExcelViewer from '@/components/tabs/library/table/ExcelViewer';
+import DarkModeToggle from '@/components/tabs/misc/DarkModeToggle';
 import { Separator } from '@radix-ui/react-separator';
-import { TagDisplay } from '@/components/TagsHover';
-import { AuditLogViewer } from '@/components/AuditLogViewer';
+import { TagDisplay } from '@/components/tabs/library/table/TagsHover';
+import { AuditLogViewer } from '@/components/tabs/audit_log/AuditLogViewer';
 import Link from 'next/link';
-import { useFileStore } from '@/components/HotkeyService';
-import TableViewer from '@/components/TableViewer';
-import DeepResearchViewer from '@/components/DeepResearchViewer';
-import DiligenceDashboardViewer from '@/components/DiligenceDashboardViewer';
-import { Issues } from '@/components/QuestionAndAnswer';
+import { useFileStore } from '@/components/services/HotkeyService';
+import TableViewer from '@/components/tabs/library/table/TableViewer';
+import DeepResearchViewer from '@/components/tabs/deep_research/DeepResearchViewer';
+import DiligenceDashboardViewer from '@/components/tabs/diligence_dashboard/DiligenceDashboardViewer';
+import { Issues } from '@/components/tabs/issues/QuestionAndAnswer';
+import { IssueDetail } from '@/components/tabs/issues/issueDetail';
 
 
 type IndicatorStyle = {
@@ -46,7 +47,7 @@ type Tab = {
 export default function Home() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  
+
   // Define tabs first so we can use it in initialTabIndex calculation
   const tabs: Tab[] = [
     { icon: Library, label: 'Library' },
@@ -57,17 +58,17 @@ export default function Home() {
     { icon: ChartPie, label: 'Diligence' },
     { icon: MessagesSquare, label: 'Issues' }, // New tab for Issues
   ];
-  
+
   // Get the active tab from URL query parameters or default to "library"
   const defaultTab = searchParams.get('tab')?.toLowerCase() || "library";
   const [selectedTab, setSelectedTab] = useState(defaultTab);
   const { user, signOut } = useAuthenticator((context) => [context.user]);
   const [userAttributes, setUserAttributes] = useState<FetchUserAttributesOutput | null>(null);
-  
+
   // Initialize activeTab based on the default tab from URL
   const initialTabIndex = tabs.findIndex(tab => tab.label.toLowerCase() === defaultTab);
-  const [activeTab, setActiveTab] = useState<number | null>(initialTabIndex >= 0 ? initialTabIndex : 0);
-  
+  const { activeTab, setActiveTab, activeIssueId, setActiveIssueId } = useFileStore();
+
   const [indicatorStyle, setIndicatorStyle] = useState<IndicatorStyle>({} as IndicatorStyle);
   const tabRefs = useRef<(HTMLDivElement | null)[]>([]);
   const [isShareDialogOpen, setIsShareDialogOpen] = useState(false);
@@ -84,6 +85,7 @@ export default function Home() {
   const { setSearchableFiles } = useFileStore();
   const [familyName, setFamilyName] = useState('');
   const [givenName, setGivenName] = useState('');
+  const [shouldAnimate, setShouldAnimate] = useState(false);
 
   function signIn(): void {
     router.push('/signin');
@@ -91,45 +93,112 @@ export default function Home() {
 
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [newDataroomName, setNewDataroomName] = useState('');
-
   function handleTabClick(index: number): void {
-    const tabName = tabs[index].label.toLowerCase();
-    setActiveTab(index);
-    setSelectedTab(tabName);
-    
-    // Update URL query parameter without full page navigation
-    const params = new URLSearchParams(searchParams.toString());
-    params.set('tab', tabName);
-    
-    // Use the router to update the URL
-    const pathname = window.location.pathname;
-    const newUrl = `${pathname}?${params.toString()}`;
-    window.history.pushState({}, '', newUrl);
+    // Only update if we're changing tabs
+    if (activeTab !== index) {
+      const tabName = tabs[index].label.toLowerCase();
+      
+      // Enable animations now that user is clicking
+      if (!shouldAnimate) {
+        setShouldAnimate(true);
+      }
+      
+      setActiveTab(index);
+      setSelectedTab(tabName);
+
+      // Update URL query parameter without full page navigation
+      const params = new URLSearchParams(searchParams.toString());
+      params.set('tab', tabName);
+
+      // Use the router to update the URL
+      const pathname = window.location.pathname;
+      const newUrl = `${pathname}?${params.toString()}`;
+      window.history.pushState({}, '', newUrl);
+    }
   }
 
-  // If URL query parameter changes externally, update the selected tab
-  useEffect(() => {
+
+  // Replace both effects with this single one
+  // Replace both effects with this single one
+ // Replace the current useEffect logic that checks URL paths
+useEffect(() => {
+  // Check URL path for issues first
+  const pathArray = pathname?.split('/') ?? [];
+
+  // Find if "issues" appears in the path and if there's something after it
+  const issuesIndex = pathArray.indexOf('issues');
+  const hasIssueInPath = issuesIndex !== -1 && pathArray.length > issuesIndex + 1;
+
+  // We need to avoid the infinite loop by only updating when needed
+  if (hasIssueInPath) {
+    // Handle issue ID in URL
+    const issueIdFromUrl = parseInt(pathArray[issuesIndex + 1]);
+    
+    if (!isNaN(issueIdFromUrl) && activeIssueId !== issueIdFromUrl) {
+      setActiveIssueId(issueIdFromUrl);
+      
+      // Set the issues tab if needed
+      const issuesTabIndex = tabs.findIndex(tab => tab.label.toLowerCase() === 'issues');
+      if (issuesTabIndex >= 0) {
+        if (activeTab !== issuesTabIndex) {
+          setActiveTab(issuesTabIndex);
+        }
+        if (selectedTab !== 'issues') {
+          setSelectedTab('issues');
+        }
+      }
+    }
+  } else if (activeIssueId !== null && !hasIssueInPath) {
+    // Only clear the issue ID if we're not on an issue path and we currently have an active issue
+    setActiveIssueId(null);
+    
+    // Now check tab query parameter
     const tabParam = searchParams.get('tab')?.toLowerCase();
-    if (tabParam) {
-      const tabIndex = tabs.findIndex(tab => tab.label.toLowerCase() === tabParam);
+    if (tabParam === 'issues') {
+      // This is important - if we're on the issues tab with no specific issue, make sure UI reflects that
+      const tabIndex = tabs.findIndex(tab => tab.label.toLowerCase() === 'issues');
       if (tabIndex >= 0) {
         setActiveTab(tabIndex);
-        setSelectedTab(tabParam);
+        setSelectedTab('issues');
       }
     }
-  }, [searchParams, tabs]);
+  }
+  // Only include pathname and searchParams in dependency array to avoid infinite loops
+  // but still respond to URL changes
+}, [pathname, searchParams, tabs, activeIssueId, activeTab, selectedTab]);
 
-  useEffect(() => {
-    if (activeTab !== null && tabRefs.current[activeTab]) {
-      const tabElement = tabRefs.current[activeTab];
-      if (tabElement) {
-        setIndicatorStyle({
-          top: `${tabElement.offsetTop}px`,
-          height: `${tabElement.offsetHeight}px`,
-        });
-      }
+// Modify handleBackFromIssue to use history API directly
+const handleBackFromIssue = () => {
+  const { id, subId } = params;
+  // Use history API to update URL without triggering a full navigation
+  const newUrl = `/dataroom/${id}/${subId}?tab=issues`;
+  window.history.pushState({}, '', newUrl);
+  
+  // Manually set the active issue to null AFTER updating URL
+  setActiveIssueId(null);
+};
+
+
+
+
+
+useEffect(() => {
+  // Only update the indicator if activeTab is valid and the ref exists
+  if (activeTab !== null &&
+    activeTab >= 0 &&
+    activeTab < tabs.length &&
+    tabRefs.current &&
+    tabRefs.current[activeTab]) {
+
+    const tabElement = tabRefs.current[activeTab];
+    if (tabElement) {
+      setIndicatorStyle({
+        top: `${tabElement.offsetTop}px`,
+        height: `${tabElement.offsetHeight}px`,
+      });
     }
-  }, [activeTab]);
+  }
+}, [activeTab, tabs.length]);
 
   useEffect(() => {
     if (user) {
@@ -253,7 +322,7 @@ export default function Home() {
         const { body, statusCode } = await restOperation.response;
         const responseText = await body.text();
         const response = JSON.parse(responseText);
-        
+
         if (statusCode >= 400) {
           throw new Error(response.message || 'Failed to share dataroom');
         }
@@ -286,6 +355,14 @@ export default function Home() {
     }
   }
   const renderSelectedScreen = () => {
+    // If we have an active issue ID and we're on the issues tab, show the issue detail
+
+    console.log("activeissuedid: ", activeIssueId);
+    console.log("selectedTab: ", selectedTab);
+    if (activeIssueId !== null && selectedTab.toLowerCase() === 'issues') {
+      return <IssueDetail issueId={activeIssueId} onBack={handleBackFromIssue} />;
+    }
+
     switch (selectedTab.toLowerCase()) {
       case "library":
         return <Files setSelectedTab={setSelectedTab} />;
@@ -302,7 +379,7 @@ export default function Home() {
       case "diligence":
         return <DiligenceDashboardViewer />;
       case "issues":
-        return <Issues />; // Add this case
+        return <Issues />; // Regular issues list
       default:
         return <Files setSelectedTab={setSelectedTab} />;
     }
@@ -334,147 +411,147 @@ export default function Home() {
   }
 
   return (
- 
-      <div className="relative h-screen w-full flex flex-row sans-serif">
-        <div className="w-20 bg-slate-900 h-full flex flex-col items-center justify-between pt-4 pb-6">
-          <div className="flex items-center flex-col">
-            <img
-              src={logo.src}
-              alt="logo"
-              className="h-14 w-auto mb-8 cursor-pointer"
-              onClick={() => router.push('/dashboard')}
-            />
-            <div className="relative flex flex-col items-center">
 
-              {activeTab !== null && (
-                <div
-                  className="absolute left-0 w-full bg-blue-300 rounded-xl transition-all duration-300 ease-in-out z-20"
-                  style={{
-                    top: `${tabRefs.current[activeTab]?.offsetTop || 0}px`,
-                    height: `${tabRefs.current[activeTab]?.offsetHeight || 0}px`
-                  }}
-                />
-              )}
-              {tabs.map((tab, index) => (
-                <div
-                  key={tab.label}
-                  ref={(el) => { tabRefs.current[index] = el }}
-                  className={`relative z-30 p-2 mb-4 cursor-pointer ${activeTab === index ? 'text-slate-900' : 'text-white'
-                    }`}
-                  onClick={() => handleTabClick(index)}
-                >
-                  <tab.icon size={24} />
-                </div>
-              ))}
-            </div>
+    <div className="relative h-screen w-full flex flex-row sans-serif">
+      <div className="w-20 bg-slate-900 h-full flex flex-col items-center justify-between pt-4 pb-6">
+        <div className="flex items-center flex-col">
+          <img
+            src={logo.src}
+            alt="logo"
+            className="h-14 w-auto mb-8 cursor-pointer"
+            onClick={() => router.push('/dashboard')}
+          />
+          <div className="relative flex flex-col items-center">
 
-
-            {/* <TagDisplay tags={['lol', 'wow', 'cool']} /> */}
-
-          </div>
-
-
-
-          <Dialog open={isShareDialogOpen} onOpenChange={(open) => {
-            setIsShareDialogOpen(open);
-            if (!open) {
-              setShareError(null);
-            }
-          }}>
-            <DialogContent className="dark:bg-darkbg outline-none border-none">
-              <DialogHeader>
-                <DialogTitle className='dark:text-white'>Share Dataroom</DialogTitle>
-              </DialogHeader>
-              <div className="space-y-4 py-4">
-                <Input
-                  value={userEmail}
-                  onChange={(e) => setUserEmail(e.target.value)}
-                  placeholder="Enter user email"
-                  type="email"
-                  className='outline-none select-none dark:bg-darkbg dark:text-white'
-                />
-                <select
-                  value={permissionLevel}
-                  onChange={(e) => setPermissionLevel(e.target.value)}
-                  className="w-full p-2 border rounded"
-                >
-                  <option value="READ">Read</option>
-                  <option value="WRITE">Write</option>
-                  <option value="ADMIN">Admin</option>
-                </select>
-                {shareError && (
-                  <div className="text-red-500 text-sm mt-2">
-                    {shareError}
-                  </div>
-                )}
+          {activeTab !== null && (
+              <div
+                className={`absolute left-0 w-full bg-blue-300 rounded-xl ${shouldAnimate ? 'transition-all duration-300 ease-in-out' : 'transition-none'} z-20`}
+                style={{
+                  top: `${tabRefs.current[activeTab]?.offsetTop || 0}px`,
+                  height: `${tabRefs.current[activeTab]?.offsetHeight || 0}px`
+                }}
+              />
+            )}
+            {tabs.map((tab, index) => (
+              <div
+                key={tab.label}
+                ref={(el) => { tabRefs.current[index] = el }}
+                className={`relative z-30 p-2 mb-4 cursor-pointer ${activeTab === index ? 'text-slate-900' : 'text-white'
+                  }`}
+                onClick={() => handleTabClick(index)}
+              >
+                <tab.icon size={24} />
               </div>
-              <DialogFooter>
-                <Button 
-                  variant="outline" 
-                  onClick={() => setIsShareDialogOpen(false)}
-                  disabled={isSharing}
-                  className="dark:bg-transparent dark:text-white dark:hover:bg-slate-800"
-                >
-                  Cancel
-                </Button>
-                <Button 
-                  onClick={handleShareDataroom}
-                  disabled={!userEmail.trim() || isSharing}
-                  className="bg-blue-600 hover:bg-blue-700 text-white"
-                >
-                  {isSharing ? (
-                    <span className="flex items-center gap-2">
-                      <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                      </svg>
-                      Sharing...
-                    </span>
-                  ) : (
-                    'Share'
-                  )}
-                </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
-          <div className="flex items-center flex-col gap-3">
-            <Button onClick={() => setIsShareDialogOpen(true)} className="flex justify-center items-center">
-              <Share size={24} />
-            </Button>
-            <Popover>
-                <PopoverTrigger className='bg-sky-600 h-10 aspect-square rounded-full flex items-center justify-center text-white'>
-                {userAttributes?.given_name && userAttributes?.family_name 
-                  ? (givenName[0]+familyName[0]).toUpperCase()
-                  : 'U'}
-                </PopoverTrigger>
-              <PopoverContent className="w-auto p-0">
-                <button
-                  onClick={signOut}
-                  className="flex items-center space-x-2 px-4 py-2 text-red-500 hover:bg-gray-100 w-full text-sm"
-                >
-                  <LogOut size={14} />
-                  <span>Logout</span>
-                </button>
-                <Separator orientation="horizontal" />
-                <button
-                  onClick={toggleDarkMode}
-                  className="flex items-center space-x-2 px-4 py-2 text-red-500 hover:bg-gray-100 w-full text-sm gap-2"
-                >
-                  {isDarkMode ? '🌙' : '☀️'}
-                  {isDarkMode ? <span className="text-black">Dark</span> : <span className="text-black">Light</span>}
-                </button>
-
-
-              </PopoverContent>
-
-            </Popover>
+            ))}
           </div>
 
+
+          {/* <TagDisplay tags={['lol', 'wow', 'cool']} /> */}
+
         </div>
 
-        <div className="flex-1 overflow-hidden flex h-full dark:bg-darkbg">
-          {renderSelectedScreen()}
+
+
+        <Dialog open={isShareDialogOpen} onOpenChange={(open) => {
+          setIsShareDialogOpen(open);
+          if (!open) {
+            setShareError(null);
+          }
+        }}>
+          <DialogContent className="dark:bg-darkbg outline-none border-none">
+            <DialogHeader>
+              <DialogTitle className='dark:text-white'>Share Dataroom</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <Input
+                value={userEmail}
+                onChange={(e) => setUserEmail(e.target.value)}
+                placeholder="Enter user email"
+                type="email"
+                className='outline-none select-none dark:bg-darkbg dark:text-white'
+              />
+              <select
+                value={permissionLevel}
+                onChange={(e) => setPermissionLevel(e.target.value)}
+                className="w-full p-2 border rounded"
+              >
+                <option value="READ">Read</option>
+                <option value="WRITE">Write</option>
+                <option value="ADMIN">Admin</option>
+              </select>
+              {shareError && (
+                <div className="text-red-500 text-sm mt-2">
+                  {shareError}
+                </div>
+              )}
+            </div>
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => setIsShareDialogOpen(false)}
+                disabled={isSharing}
+                className="dark:bg-transparent dark:text-white dark:hover:bg-slate-800"
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleShareDataroom}
+                disabled={!userEmail.trim() || isSharing}
+                className="bg-blue-600 hover:bg-blue-700 text-white"
+              >
+                {isSharing ? (
+                  <span className="flex items-center gap-2">
+                    <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                    </svg>
+                    Sharing...
+                  </span>
+                ) : (
+                  'Share'
+                )}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+        <div className="flex items-center flex-col gap-3">
+          <Button onClick={() => setIsShareDialogOpen(true)} className="flex justify-center items-center">
+            <Share size={24} />
+          </Button>
+          <Popover>
+            <PopoverTrigger className='bg-sky-600 h-10 aspect-square rounded-full flex items-center justify-center text-white'>
+              {userAttributes?.given_name && userAttributes?.family_name
+                ? (givenName[0] + familyName[0]).toUpperCase()
+                : 'U'}
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0">
+              <button
+                onClick={signOut}
+                className="flex items-center space-x-2 px-4 py-2 text-red-500 hover:bg-gray-100 w-full text-sm"
+              >
+                <LogOut size={14} />
+                <span>Logout</span>
+              </button>
+              <Separator orientation="horizontal" />
+              <button
+                onClick={toggleDarkMode}
+                className="flex items-center space-x-2 px-4 py-2 text-red-500 hover:bg-gray-100 w-full text-sm gap-2"
+              >
+                {isDarkMode ? '🌙' : '☀️'}
+                {isDarkMode ? <span className="text-black">Dark</span> : <span className="text-black">Light</span>}
+              </button>
+
+
+            </PopoverContent>
+
+          </Popover>
         </div>
-      </div> 
+
+      </div>
+
+      <div className="flex-1 overflow-hidden flex h-full dark:bg-darkbg">
+        {renderSelectedScreen()}
+      </div>
+    </div>
   );
 }

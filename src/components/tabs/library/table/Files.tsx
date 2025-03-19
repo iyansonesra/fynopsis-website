@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import logo from '../app/assets/fynopsis_noBG.png'
 import { ScrollArea } from '@radix-ui/react-scroll-area';
-import TreeFolder from './Folder/Tree';
+import TreeFolder from '../../../Folder/Tree';
 import {
     Select,
     SelectContent,
@@ -16,16 +16,15 @@ import {
     ResizablePanelGroup,
 } from "@/components/ui/resizable"
 
-import "./Folder/styles.css";
-import DetailSection from './DetailsSection';
+import "./../../../../components/Folder/styles.css";
+import DetailSection from '../querying/DetailsSection';
 import TabSystem from './TabSystem';
-import FileViewer from './FileViewer';
 import PDFViewer from './PDFViewer';
-import { ThemeProvider } from '../lib/ThemeContext';
+import { ThemeProvider } from '../../../../lib/ThemeContext';
 import SpreadsheetApp from './ExcelViewer';
 import { FileSystem } from './UltraTable';
-import { useTabStore } from './tabStore';
-import { useFileStore } from './HotkeyService';
+import { useTabStore } from '../../../tabStore';
+import { useFileStore } from '../../../services/HotkeyService';
 import BasicPDFViewer from './PDFTest';
 import PDFHighlighterViewer from './PDFHighlight';
 import PDFHighlighterComponent from './PDFHighlight';

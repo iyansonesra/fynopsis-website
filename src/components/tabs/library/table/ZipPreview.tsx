@@ -1,7 +1,7 @@
 import React from 'react';
 import { ChevronRight, ChevronDown, Folder, File } from 'lucide-react';
-import Particles from './ui/particles';
-import { ScrollArea } from './ui/scroll-area';
+import Particles from '../../../ui/particles';
+import { ScrollArea } from '../../../ui/scroll-area';
 
 interface ZipPreviewProps {
     items: ProcessedItem[];
