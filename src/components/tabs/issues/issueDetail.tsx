@@ -174,7 +174,7 @@ export function IssueDetail({ issueId, onBack }: { issueId: number, onBack: () =
                                 placeholder="Leave a comment..."
                             />
                             <div className="mt-3 flex justify-end">
-                                <Button className="bg-[#2da44e] hover:bg-[#2c974b]">
+                                <Button className="bg-blue-500 hover:bg-blue-800">
                                     Comment
                                 </Button>
                             </div>
