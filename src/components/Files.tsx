@@ -145,7 +145,7 @@ export default function Files({ setSelectedTab }: { setSelectedTab: React.Dispat
             },
             comment: {
                 text: chunkTitle || "",
-                emoji: "🔍"
+                emoji: ""
             },
             position: {
                 boundingRect: {
@@ -155,7 +155,7 @@ export default function Files({ setSelectedTab }: { setSelectedTab: React.Dispat
                     y2: bounds.y1,
                     width,
                     height,
-                    pageNumber: bounds.page
+                    pageNumber: bounds.page_num || 0 + 1
                 },
                 rects: [{
                     x1: bounds.x0,
@@ -164,9 +164,9 @@ export default function Files({ setSelectedTab }: { setSelectedTab: React.Dispat
                     y2: bounds.y1,
                     width,
                     height,
-                    pageNumber: bounds.page
+                    pageNumber: bounds.page_num || 0 + 1
                 }],
-                pageNumber: bounds.page
+                pageNumber: bounds.page_num || 0
             }
         };
     };
@@ -188,29 +188,29 @@ export default function Files({ setSelectedTab }: { setSelectedTab: React.Dispat
                 },
                 comment: {
                     text: "",
-                    emoji: "🔍"
+                    emoji: ""
                 },
                 position: {
                     boundingRect: {
-                        x1: 0,
-                        y1: 0,
-                        x2: 0,
-                        y2: 0,
-                        width: 0,
-                        height: 0,
-                        pageNumber: 1
+                      x1: 0,
+                      y1: 0,
+                      x2: 0,
+                      y2: 0,
+                      width: 0,
+                      height: 0,
                     },
-                    rects: [{
+                    rects: [
+                      {
                         x1: 0,
                         y1: 0,
                         x2: 0,
                         y2: 0,
                         width: 0,
                         height: 0,
-                        pageNumber: 1
-                    }],
-                    pageNumber: 1
-                }
+                      },
+                    ],
+                    pageNumber: 1,
+                  },
             };
         };
 

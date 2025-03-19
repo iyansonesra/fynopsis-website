@@ -5,12 +5,13 @@ import logo from './../assets/fynopsis_noBG.png'
 import { useState, useEffect } from "react"
 import { useAuthenticator } from '@aws-amplify/ui-react';
 import { Clipboard, LucideIcon, Activity, Table, Database, ChartPie } from "lucide-react";
+
 import { fetchUserAttributes, FetchUserAttributesOutput } from 'aws-amplify/auth';
 import { CircularProgress } from "@mui/material";
 import React, { useRef } from 'react';
 import { useParams, usePathname, useSearchParams } from 'next/navigation';
 import { useRouter } from 'next/navigation';
-import { Library, Users, LogOut } from 'lucide-react';
+import { Library, Users, LogOut, MessagesSquare } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import Files from "@/components/Files";
 import { Button } from "@/components/ui/button";
@@ -29,6 +30,7 @@ import { useFileStore } from '@/components/HotkeyService';
 import TableViewer from '@/components/TableViewer';
 import DeepResearchViewer from '@/components/DeepResearchViewer';
 import DiligenceDashboardViewer from '@/components/DiligenceDashboardViewer';
+import { Issues } from '@/components/QuestionAndAnswer';
 
 
 type IndicatorStyle = {
@@ -53,6 +55,7 @@ export default function Home() {
     { icon: Table, label: 'Extract' },
     { icon: Database, label: 'Deep Research' },
     { icon: ChartPie, label: 'Diligence' },
+    { icon: MessagesSquare, label: 'Issues' }, // New tab for Issues
   ];
   
   // Get the active tab from URL query parameters or default to "library"
@@ -298,6 +301,8 @@ export default function Home() {
         return <DeepResearchViewer />;
       case "diligence":
         return <DiligenceDashboardViewer />;
+      case "issues":
+        return <Issues />; // Add this case
       default:
         return <Files setSelectedTab={setSelectedTab} />;
     }
