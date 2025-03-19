@@ -7,6 +7,7 @@ export interface Issue {
     createdAt: string
     tags: string[]
     comments: number
+    description?: string
   }
   
   // Sample issues data
@@ -21,5 +22,25 @@ export interface Issue {
       tags: ['Urgent', 'Status: Unconfirmed', 'Type: General Question'],
       comments: 0
     },
-    // ...other issues
+    {
+      id: 2,
+      number: 2,
+      title: "What has your company done to address climate change risks?",
+      status: 'open',
+      author: 'Sarah Miller',
+      createdAt: 'opened 2 days ago',
+      tags: ['Status: Unconfirmed', 'Type: General Question'],
+      comments: 2
+    },
+    {
+      id: 3,
+      number: 3,
+      title: "Please confirm the executive compensation breakdown",
+      status: 'closed',
+      author: 'Michael Chen',
+      createdAt: 'opened 5 days ago',
+      tags: ['Documentation', 'Status: Confirmed'],
+      comments: 3,
+      description: "We need a breakdown of executive compensation including salary, bonuses, and equity for the last fiscal year."
+    }
   ]

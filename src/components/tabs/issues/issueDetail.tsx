@@ -118,6 +118,13 @@ export function IssueDetail({ issueId, onBack }: { issueId: number, onBack: () =
                         </span>
                         <span>• {issue.author} opened this issue {issue.createdAt.replace('opened ', '')} • {issue.comments} comments</span>
                     </div>
+                    
+                    {/* Issue description */}
+                    {issue.description && (
+                        <div className="mt-4 border github-border rounded-md p-4">
+                            <p className="text-sm">{issue.description}</p>
+                        </div>
+                    )}
                 </div>
                 
                 {/* Issue tags */}

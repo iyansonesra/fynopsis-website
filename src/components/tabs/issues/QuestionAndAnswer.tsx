@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { Button } from '@/components/ui/button'
 import { BookMarked, Plus, Tag } from 'lucide-react'
 import { ScrollArea } from '@/components/ui/scroll-area'
@@ -11,6 +11,7 @@ import { FilterDialog } from './FilterDialog'
 import { IssueListHeader } from './IssueListHeader'
 import { IssueItem } from './issueItem'
 import { issuesData, Issue } from './IssueData' // Move the data to separate file
+import { CreateIssueForm } from './CreateIssueForm'
 
 export function Issues() {
   const router = useRouter()
@@ -19,6 +20,23 @@ export function Issues() {
   const params = useParams();
   const [activeTab, setActiveTab] = useState('open')
   const { setActiveIssueId } = useFileStore();
+  const [isCreateIssueOpen, setIsCreateIssueOpen] = useState(false)
+
+  // Filter issues based on activeTab
+  const filteredIssues = useMemo(() => {
+    return issues.filter(issue => 
+      activeTab === 'open' ? issue.status === 'open' : issue.status === 'closed'
+    );
+  }, [issues, activeTab]);
+
+  // Count issues by status
+  const openIssuesCount = useMemo(() => {
+    return issues.filter(issue => issue.status === 'open').length;
+  }, [issues]);
+  
+  const closedIssuesCount = useMemo(() => {
+    return issues.filter(issue => issue.status === 'closed').length;
+  }, [issues]);
 
   const getTagColor = (tag: string) => {
     if (tag.includes('Component:')) {
@@ -40,6 +58,21 @@ export function Issues() {
     router.push(`/dataroom/${id}/${subId}/issues/${issueId}`);
   };
 
+  const handleCreateIssue = (newIssue: Omit<Issue, 'id' | 'number' | 'createdAt'>) => {
+    // In a real app, you would send this to an API and get back the created issue
+    const maxId = Math.max(...issues.map(issue => issue.id), 0)
+    const maxNumber = Math.max(...issues.map(issue => issue.number), 0)
+    
+    const createdIssue: Issue = {
+      ...newIssue,
+      id: maxId + 1,
+      number: maxNumber + 1,
+      createdAt: 'opened just now'
+    }
+    
+    setIssues([createdIssue, ...issues])
+  }
+
   return (
     <ScrollArea className="w-full h-full">
       <div className="w-full px-6 mx-auto py-6">
@@ -56,7 +89,10 @@ export function Issues() {
               items={['Bug', 'Documentation', 'Enhancement', 'Good First Issue', 'Help Wanted', 'Question']}
             />
 
-            <Button className="bg-blue-500 hover:bg-blue-800 h-9">
+            <Button 
+              className="bg-blue-500 hover:bg-blue-800 h-9"
+              onClick={() => setIsCreateIssueOpen(true)}
+            >
               <Plus className="h-4 w-4 mr-2" />
               <span>New issue</span>
             </Button>
@@ -65,11 +101,16 @@ export function Issues() {
 
         {/* Issues list */}
         <div className="border github-border rounded-md overflow-hidden">
-          <IssueListHeader activeTab={activeTab} setActiveTab={setActiveTab} />
+          <IssueListHeader 
+            activeTab={activeTab} 
+            setActiveTab={setActiveTab} 
+            openCount={openIssuesCount}
+            closedCount={closedIssuesCount}
+          />
 
           {/* Issues list */}
           <div className="w-full overflow-x-auto">
-            {issues.map((issue, index) => (
+            {filteredIssues.map((issue, index) => (
               <IssueItem 
                 key={issue.id}
                 issue={issue}
@@ -80,6 +121,13 @@ export function Issues() {
           </div>
         </div>
       </div>
+
+      {/* Create Issue Dialog */}
+      <CreateIssueForm 
+        isOpen={isCreateIssueOpen}
+        onClose={() => setIsCreateIssueOpen(false)}
+        onSubmit={handleCreateIssue}
+      />
     </ScrollArea>
   )
 }

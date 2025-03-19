@@ -3,9 +3,11 @@ import { IssueFilters } from './FilterControls'
 interface IssueListHeaderProps {
   activeTab: string
   setActiveTab: (tab: string) => void
+  openCount: number
+  closedCount: number
 }
 
-export function IssueListHeader({ activeTab, setActiveTab }: IssueListHeaderProps) {
+export function IssueListHeader({ activeTab, setActiveTab, openCount, closedCount }: IssueListHeaderProps) {
   return (
     <div className="bg-[#f6f8fa] border-b github-border flex flex-col md:flex-row md:items-center p-4 gap-2">
       <div className="flex gap-4 text-sm">
@@ -16,6 +18,9 @@ export function IssueListHeader({ activeTab, setActiveTab }: IssueListHeaderProp
           <div className="h-4 w-4 rounded-full bg-slate-300 mr-1"></div>
           <span className={activeTab === 'open' ? 'github-issue-open' : ''}>
             Open
+          </span>
+          <span className="ml-1 px-2 py-0.5 text-xs bg-gray-200 text-gray-700 rounded-full">
+            {openCount}
           </span>
         </button>
         <button
@@ -28,6 +33,9 @@ export function IssueListHeader({ activeTab, setActiveTab }: IssueListHeaderProp
           </svg>
           <span className={activeTab === 'closed' ? 'github-issue-closed' : ''}>
             Closed
+          </span>
+          <span className="ml-1 px-2 py-0.5 text-xs bg-gray-200 text-gray-700 rounded-full">
+            {closedCount}
           </span>
         </button>
       </div>
