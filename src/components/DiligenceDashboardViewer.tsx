@@ -16,15 +16,18 @@ import { Select as UISelect, SelectContent, SelectItem, SelectTrigger, SelectVal
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from '@/components/ui/use-toast';
 
-// Chart types that can be added to the dashboard
-const CHART_TYPES = {
-  AUTO: 'auto',
-  PIE_CHART: 'pie',
-  BAR_CHART: 'bar',
-  LINE_CHART: 'line',
-  SINGLE_METRIC: 'single',
-  TEXT: 'text',
-  TABLE: 'table'
+// Update the chart types to focus on the three main supported formats
+const FORMAT_TYPES = {
+  CHART: 'chart',
+  TABLE: 'table',
+  GRAPH: 'graph'
+};
+
+// Chart subtypes for when chart format is selected
+const CHART_SUBTYPES = {
+  PIE: 'pie',
+  BAR: 'bar',
+  LINE: 'line'
 };
 
 // Available metrics for selection
@@ -40,7 +43,8 @@ export default function DiligenceDashboardViewer() {
   const [isLoading, setIsLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
   const [isAddWidgetOpen, setIsAddWidgetOpen] = useState(false);
-  const [selectedWidgetType, setSelectedWidgetType] = useState<string | null>(null);
+  const [selectedFormatType, setSelectedFormatType] = useState<string | null>(null);
+  const [selectedChartSubtype, setSelectedChartSubtype] = useState<string | null>(null);
   const [selectedMetric, setSelectedMetric] = useState<string | null>(null);
   const [widgetTitle, setWidgetTitle] = useState('');
   const [customMetric, setCustomMetric] = useState('');
@@ -55,6 +59,7 @@ export default function DiligenceDashboardViewer() {
   const [availableTemplates, setAvailableTemplates] = useState<DashboardTemplate[]>([]);
   const [isLoadingTemplates, setIsLoadingTemplates] = useState(false);
   const [pollingInterval, setPollingInterval] = useState<NodeJS.Timeout | null>(null);
+  const [loadingWidgetIds, setLoadingWidgetIds] = useState<string[]>([]);
   
   // Load dashboard data on component mount
   useEffect(() => {
@@ -82,7 +87,7 @@ export default function DiligenceDashboardViewer() {
   
   // Check if any widget is in loading state and start/stop polling as needed
   const checkForLoadingWidgets = (currentWidgets: Widget[]) => {
-    const hasLoadingWidget = currentWidgets.some(widget => {
+    const loadingWidgets = currentWidgets.filter(widget => {
       if (!widget.data) return true;
       
       // Check if data is a string that needs parsing
@@ -99,6 +104,10 @@ export default function DiligenceDashboardViewer() {
       return widget.data?.status === 'loading';
     });
 
+    // Store IDs of loading widgets
+    const newLoadingIds = loadingWidgets.map(widget => widget.id);
+    setLoadingWidgetIds(newLoadingIds);
+
     // Clear any existing interval
     if (pollingInterval) {
       clearInterval(pollingInterval);
@@ -106,16 +115,97 @@ export default function DiligenceDashboardViewer() {
     }
 
     // Start new polling if we have loading widgets
-    if (hasLoadingWidget) {
-      console.log('Some widgets are still loading, starting polling');
+    if (loadingWidgets.length > 0) {
+      console.log(`${loadingWidgets.length} widgets are still loading, starting polling`);
       const interval = setInterval(() => {
-        console.log('Polling for dashboard updates');
-        loadDashboardState();
+        console.log('Polling for loading widget updates');
+        checkLoadingWidgetsData();
       }, 20000); // 20 seconds
       
       setPollingInterval(interval);
     } else {
       console.log('All widgets loaded, polling stopped');
+    }
+  };
+
+  // Only check specific loading widgets instead of refreshing everything
+  const checkLoadingWidgetsData = async () => {
+    if (loadingWidgetIds.length === 0) return;
+    
+    try {
+      // Get only the widget data without refreshing the entire state
+      const response = await get({
+        apiName: 'S3_API',
+        path: `/metrics/${bucketId}/dashboard-state`
+      });
+      
+      const { body } = await response.response;
+      const responseText = await body.text();
+      const data = JSON.parse(responseText);
+      const updatedWidgets = data.widgets;
+      
+      // Only update widgets that were loading and have new data
+      let hasChanges = false;
+      const newWidgets = widgets.map(existingWidget => {
+        // Skip widgets that weren't loading
+        if (!loadingWidgetIds.includes(existingWidget.id)) {
+          return existingWidget;
+        }
+        
+        // Find the updated version of this widget
+        const updatedWidget = updatedWidgets.find((w: Widget) => w.id === existingWidget.id);
+        if (!updatedWidget) return existingWidget;
+        
+        // Check if the data has changed
+        const currentDataStr = JSON.stringify(existingWidget.data);
+        const newDataStr = JSON.stringify(updatedWidget.data);
+        
+        if (currentDataStr !== newDataStr) {
+          console.log(`Widget ${existingWidget.id} has updated data`);
+          hasChanges = true;
+          return updatedWidget;
+        }
+        
+        return existingWidget;
+      });
+      
+      // Only update state if we have actual changes
+      if (hasChanges) {
+        console.log('Updating widgets with new data');
+        setWidgets(newWidgets);
+      } else {
+        console.log('No changes in widget data');
+      }
+      
+      // Re-check for loading widgets
+      const stillLoadingWidgets = newWidgets.filter(widget => {
+        if (!widget.data) return true;
+        
+        if (typeof widget.data === 'string') {
+          try {
+            const parsed = JSON.parse(widget.data);
+            return parsed?.status === 'loading';
+          } catch {
+            return true;
+          }
+        }
+        
+        return widget.data?.status === 'loading';
+      });
+      
+      // Update loading widget IDs
+      setLoadingWidgetIds(stillLoadingWidgets.map((w: Widget) => w.id));
+      
+      // If no widgets are still loading, stop polling
+      if (stillLoadingWidgets.length === 0) {
+        if (pollingInterval) {
+          console.log('All widgets loaded, stopping polling');
+          clearInterval(pollingInterval);
+          setPollingInterval(null);
+        }
+      }
+    } catch (error) {
+      console.error('Error checking loading widgets:', error);
     }
   };
 
@@ -167,7 +257,7 @@ export default function DiligenceDashboardViewer() {
   const addWidget = (e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
     
-    if (!selectedWidgetType) return;
+    if (!selectedFormatType) return;
     if (!customMetric.trim()) return;
     
     const metricId = selectedMetric || '';
@@ -175,42 +265,42 @@ export default function DiligenceDashboardViewer() {
       AVAILABLE_METRICS.find(m => m.id === selectedMetric)?.name : 
       '';
     
-    // Determine appropriate widget size based on type
+    // Determine appropriate widget size and type based on format
     let widgetWidth = 2;    // Default width is 2 columns (small)
     let widgetHeight = 1;   // Default height is 1 row (small)
     let isExpanded = false; // Default is not expanded
+    let widgetType = selectedFormatType;
     
-    if (selectedWidgetType === CHART_TYPES.SINGLE_METRIC || selectedWidgetType === CHART_TYPES.TEXT) {
-      // Single metrics and text are small (2x1)
-      widgetWidth = 2;
-      widgetHeight = 1;
-    } else if (selectedWidgetType === CHART_TYPES.PIE_CHART) {
-      // Pie charts start as medium (2x2)
-      widgetWidth = 2;
-      widgetHeight = 2;
-      isExpanded = true;
-    } else if (selectedWidgetType === CHART_TYPES.BAR_CHART || selectedWidgetType === CHART_TYPES.LINE_CHART) {
-      // Bar and line charts are wider
-      widgetWidth = 3;
-      widgetHeight = 2;
-      isExpanded = true;
-    } else if (selectedWidgetType === CHART_TYPES.TABLE) {
+    // Handle chart subtype if chart is selected
+    if (selectedFormatType === FORMAT_TYPES.CHART && selectedChartSubtype) {
+      widgetType = selectedChartSubtype;
+      
+      if (selectedChartSubtype === CHART_SUBTYPES.PIE) {
+        // Pie charts start as medium (2x2)
+        widgetWidth = 2;
+        widgetHeight = 2;
+        isExpanded = true;
+      } else if (selectedChartSubtype === CHART_SUBTYPES.BAR || selectedChartSubtype === CHART_SUBTYPES.LINE) {
+        // Bar and line charts are wider
+        widgetWidth = 3;
+        widgetHeight = 2;
+        isExpanded = true;
+      }
+    } else if (selectedFormatType === FORMAT_TYPES.TABLE) {
       // Tables need more space
       widgetWidth = 3;
       widgetHeight = 2;
       isExpanded = true;
-    }
-    
-    // Auto type starts as medium (2x2)
-    if (selectedWidgetType === CHART_TYPES.AUTO) {
-      widgetWidth = 2;
-      widgetHeight = 2;
+    } else if (selectedFormatType === FORMAT_TYPES.GRAPH) {
+      // Graphs need a lot of space
+      widgetWidth = 4;
+      widgetHeight = 3;
       isExpanded = true;
     }
     
     const newWidget: Widget = {
       id: uuidv4(),
-      type: selectedWidgetType,
+      type: widgetType,
       title: widgetTitle || customMetric, // Use custom metric as title if not provided
       metricId: metricId,
       metricName: metricName,
@@ -221,12 +311,13 @@ export default function DiligenceDashboardViewer() {
       expanded: isExpanded,
       x: 0,
       y: widgets.length > 0 ? Math.max(...widgets.map(w => w.y + w.height)) : 0,
-      data: {}
+      data: { status: 'loading' }
     };
     
     setWidgets([...widgets, newWidget]);
     setIsAddWidgetOpen(false);
-    setSelectedWidgetType(null);
+    setSelectedFormatType(null);
+    setSelectedChartSubtype(null);
     setSelectedMetric(null);
     setWidgetTitle('');
     setCustomMetric('');
@@ -343,21 +434,23 @@ export default function DiligenceDashboardViewer() {
   
   // Render a specific widget based on its type
   const renderWidget = (widget: Widget) => {
-    switch(widget.type) {
-      case CHART_TYPES.PIE_CHART:
-        return <PieChartWidget widget={widget} />;
-      case CHART_TYPES.BAR_CHART:
-        return <BarChartWidget widget={widget} />;
-      case CHART_TYPES.LINE_CHART:
-        return <LineChartWidget widget={widget} />;
-      case CHART_TYPES.SINGLE_METRIC:
-        return <SingleMetricWidget widget={widget} />;
-      case CHART_TYPES.TEXT:
-        return <TextWidget widget={widget} />;
-      case CHART_TYPES.TABLE:
-        return <TableWidget widget={widget} />;
-      default:
-        return <div>Unsupported widget type</div>;
+    // For charts, use the specific chart components based on the type
+    if (widget.type === CHART_SUBTYPES.PIE) {
+      return <PieChartWidget widget={widget} />;
+    } else if (widget.type === CHART_SUBTYPES.BAR) {
+      return <BarChartWidget widget={widget} />;
+    } else if (widget.type === CHART_SUBTYPES.LINE) {
+      return <LineChartWidget widget={widget} />;
+    } else if (widget.type === FORMAT_TYPES.TABLE) {
+      return <TableWidget widget={widget} />;
+    } else if (widget.type === FORMAT_TYPES.GRAPH) {
+      return <GraphWidget widget={widget} />;
+    } else {
+      return <div className="flex items-center justify-center h-full p-4">
+        <div className="text-gray-500">
+          Unsupported widget type: {widget.type}
+        </div>
+      </div>;
     }
   };
   
@@ -443,32 +536,6 @@ export default function DiligenceDashboardViewer() {
     );
   };
   
-  // Component for displaying a single metric
-  const SingleMetricWidget = ({ widget }: { widget: Widget }) => {
-    const data = widget.data || {};
-    return (
-      <div className="flex flex-col items-center justify-center h-full text-center py-2">
-        <div className={`${widget.expanded ? 'text-4xl' : 'text-2xl'} font-bold transition-all duration-300`}>
-          {data.value || "Loading..."}
-        </div>
-        {data.change && (
-          <div className={`${widget.expanded ? 'text-lg' : 'text-sm'} ${data.isPositive ? 'text-green-500' : 'text-red-500'} transition-all duration-300`}>
-            {data.change}
-          </div>
-        )}
-      </div>
-    );
-  };
-  
-  // Component for displaying text
-  const TextWidget = ({ widget }: { widget: Widget }) => {
-    return (
-      <div className="p-2 h-full overflow-auto py-2">
-        {widget.data?.text || "Loading content..."}
-      </div>
-    );
-  };
-
   // Component for displaying a data table
   const TableWidget = ({ widget }: { widget: Widget }) => {
     // Parse the data if it's a string
@@ -587,6 +654,38 @@ export default function DiligenceDashboardViewer() {
     return <div className="flex items-center justify-center h-full">Invalid table data format</div>;
   };
   
+  // Component for displaying a graph (network graph visualization)
+  const GraphWidget = ({ widget }: { widget: Widget }) => {
+    return (
+      <div className="flex flex-col items-center justify-center h-full p-4">
+        {!widget.data || widget.data.status === 'loading' ? (
+          <div className="flex items-center justify-center h-full">Loading graph data...</div>
+        ) : (
+          <div className="w-full h-full flex flex-col">
+            <div className="flex-1 bg-gray-100 dark:bg-gray-800 rounded-lg flex items-center justify-center">
+              <svg className="w-full h-full max-h-64" viewBox="0 0 200 200">
+                {/* Sample graph visualization */}
+                <circle cx="100" cy="100" r="30" fill="rgba(59, 130, 246, 0.5)" />
+                <circle cx="50" cy="50" r="20" fill="rgba(16, 185, 129, 0.5)" />
+                <circle cx="150" cy="50" r="20" fill="rgba(16, 185, 129, 0.5)" />
+                <circle cx="50" cy="150" r="20" fill="rgba(16, 185, 129, 0.5)" />
+                <circle cx="150" cy="150" r="20" fill="rgba(16, 185, 129, 0.5)" />
+                
+                <line x1="100" y1="100" x2="50" y2="50" stroke="rgba(75, 85, 99, 0.5)" strokeWidth="2" />
+                <line x1="100" y1="100" x2="150" y2="50" stroke="rgba(75, 85, 99, 0.5)" strokeWidth="2" />
+                <line x1="100" y1="100" x2="50" y2="150" stroke="rgba(75, 85, 99, 0.5)" strokeWidth="2" />
+                <line x1="100" y1="100" x2="150" y2="150" stroke="rgba(75, 85, 99, 0.5)" strokeWidth="2" />
+              </svg>
+            </div>
+            <div className="mt-2 text-sm text-center text-gray-500 dark:text-gray-400">
+              {widget.data.description || "Graph visualization"}
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
+  
   // Handle the end of a drag event
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
@@ -617,6 +716,27 @@ export default function DiligenceDashboardViewer() {
   
   // Expand or collapse a widget with multiple size options
   const toggleWidgetSize = (widget: Widget) => {
+    // If the widget parameter is an object with width and height properties,
+    // this is a resize operation and we should directly update those dimensions
+    if (typeof widget.width === 'number' && typeof widget.height === 'number') {
+      setWidgets(prevWidgets => 
+        prevWidgets.map(w => {
+          if (w.id === widget.id) {
+            return {
+              ...w,
+              width: widget.width,
+              height: widget.height,
+              // When manually resized, always consider it "expanded"
+              expanded: widget.expanded
+            };
+          }
+          return w;
+        })
+      );
+      return;
+    }
+    
+    // Otherwise, this is a toggle operation from the button
     setWidgets(prevWidgets => 
       prevWidgets.map(w => {
         if (w.id === widget.id) {
@@ -843,7 +963,8 @@ export default function DiligenceDashboardViewer() {
       <Dialog open={isAddWidgetOpen} onOpenChange={(open) => {
         if (!open) {
           // Clear form when closing
-          setSelectedWidgetType(null);
+          setSelectedFormatType(null);
+          setSelectedChartSubtype(null);
           setSelectedMetric(null);
           setWidgetTitle('');
           setCustomMetric('');
@@ -857,34 +978,22 @@ export default function DiligenceDashboardViewer() {
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div>
-              <label className="text-sm font-medium mb-1 block dark:text-white">Widget Type</label>
-              <div className="grid grid-cols-2 gap-2">
-                {Object.entries(CHART_TYPES).map(([key, value]) => (
+              <label className="text-sm font-medium mb-1 block dark:text-white">Format Type</label>
+              <div className="grid grid-cols-3 gap-2">
+                {Object.entries(FORMAT_TYPES).map(([key, value]) => (
                   <Button
                     key={key}
-                    variant={selectedWidgetType === value ? "default" : "outline"}
-                    onClick={() => setSelectedWidgetType(value)}
+                    variant={selectedFormatType === value ? "default" : "outline"}
+                    onClick={() => {
+                      setSelectedFormatType(value);
+                      // Reset chart subtype if not selecting chart
+                      if (value !== FORMAT_TYPES.CHART) {
+                        setSelectedChartSubtype(null);
+                      }
+                    }}
                     className="justify-start"
                   >
-                    {key === 'AUTO' && <Circle className="mr-2 h-4 w-4" />}
-                    {key === 'PIE_CHART' && <PieChart className="mr-2 h-4 w-4" />}
-                    {key === 'BAR_CHART' && <BarChart2 className="mr-2 h-4 w-4" />}
-                    {key === 'LINE_CHART' && (
-                      <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
-                      </svg>
-                    )}
-                    {key === 'SINGLE_METRIC' && <Circle className="mr-2 h-4 w-4" />}
-                    {key === 'TEXT' && (
-                      <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <line x1="8" y1="6" x2="21" y2="6" />
-                        <line x1="8" y1="12" x2="21" y2="12" />
-                        <line x1="8" y1="18" x2="21" y2="18" />
-                        <line x1="3" y1="6" x2="3.01" y2="6" />
-                        <line x1="3" y1="12" x2="3.01" y2="12" />
-                        <line x1="3" y1="18" x2="3.01" y2="18" />
-                      </svg>
-                    )}
+                    {key === 'CHART' && <PieChart className="mr-2 h-4 w-4" />}
                     {key === 'TABLE' && (
                       <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                         <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
@@ -894,15 +1003,54 @@ export default function DiligenceDashboardViewer() {
                         <line x1="15" y1="3" x2="15" y2="21" />
                       </svg>
                     )}
-                    {key.replace(/_/g, ' ')}
+                    {key === 'GRAPH' && (
+                      <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <circle cx="12" cy="12" r="3" />
+                        <circle cx="6" cy="6" r="2" />
+                        <circle cx="18" cy="6" r="2" />
+                        <circle cx="6" cy="18" r="2" />
+                        <circle cx="18" cy="18" r="2" />
+                        <line x1="12" y1="12" x2="6" y2="6" />
+                        <line x1="12" y1="12" x2="18" y2="6" />
+                        <line x1="12" y1="12" x2="6" y2="18" />
+                        <line x1="12" y1="12" x2="18" y2="18" />
+                      </svg>
+                    )}
+                    {key}
                   </Button>
                 ))}
               </div>
             </div>
             
+            {/* Show chart subtypes only when Chart is selected */}
+            {selectedFormatType === FORMAT_TYPES.CHART && (
+              <div>
+                <label className="text-sm font-medium mb-1 block dark:text-white">Chart Type</label>
+                <div className="grid grid-cols-3 gap-2">
+                  {Object.entries(CHART_SUBTYPES).map(([key, value]) => (
+                    <Button
+                      key={key}
+                      variant={selectedChartSubtype === value ? "default" : "outline"}
+                      onClick={() => setSelectedChartSubtype(value)}
+                      className="justify-start"
+                    >
+                      {key === 'PIE' && <PieChart className="mr-2 h-4 w-4" />}
+                      {key === 'BAR' && <BarChart2 className="mr-2 h-4 w-4" />}
+                      {key === 'LINE' && (
+                        <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
+                        </svg>
+                      )}
+                      {key}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+            )}
+            
             <div>
               <div className="flex items-center justify-between">
-                <label className="text-sm font-medium mb-1 block dark:text-white">Metric</label>
+                <label className="text-sm font-medium mb-1 block dark:text-white">Query</label>
                 <Button 
                   variant="ghost" 
                   size="sm" 
@@ -915,7 +1063,7 @@ export default function DiligenceDashboardViewer() {
               <Input
                 value={customMetric}
                 onChange={(e) => setCustomMetric(e.target.value)}
-                placeholder="Enter metric (e.g., Revenue, Headcount Growth, etc.)"
+                placeholder="Enter your question (e.g., Revenue by product, Customer distribution)"
                 className="dark:bg-darkbg dark:text-white mb-2"
               />
               
@@ -925,7 +1073,7 @@ export default function DiligenceDashboardViewer() {
                   <Input
                     value={metricDetails}
                     onChange={(e) => setMetricDetails(e.target.value)}
-                    placeholder="Provide additional details for the AI (e.g., time period, format)"
+                    placeholder="Provide additional details (e.g., time period, specific focus)"
                     className="dark:bg-darkbg dark:text-white"
                   />
                 </div>
@@ -937,7 +1085,7 @@ export default function DiligenceDashboardViewer() {
               <Input
                 value={widgetTitle}
                 onChange={(e) => setWidgetTitle(e.target.value)}
-                placeholder="Leave blank to use metric name"
+                placeholder="Leave blank to use query as title"
                 className="dark:bg-darkbg dark:text-white"
               />
             </div>
@@ -955,7 +1103,11 @@ export default function DiligenceDashboardViewer() {
             </Button>
             <Button 
               onClick={addWidget}
-              disabled={!selectedWidgetType || !customMetric.trim()}
+              disabled={
+                !selectedFormatType || 
+                (selectedFormatType === FORMAT_TYPES.CHART && !selectedChartSubtype) || 
+                !customMetric.trim()
+              }
               className="bg-blue-600 hover:bg-blue-700 text-white z-10"
             >
               Add Widget
@@ -1186,6 +1338,13 @@ function DraggableWidget({ widget, isEditing, onRemove, onEdit, onToggleSize, ch
     disabled: !isEditing
   });
   
+  // State for tracking resize operations
+  const [isResizing, setIsResizing] = useState(false);
+  const [startX, setStartX] = useState(0);
+  const [startY, setStartY] = useState(0);
+  const [startWidth, setStartWidth] = useState(widget.width);
+  const [startHeight, setStartHeight] = useState(widget.height);
+  
   // Combine both refs for the main widget container
   const setRefs = (element: HTMLElement | null) => {
     setNodeRef(element);
@@ -1195,10 +1354,10 @@ function DraggableWidget({ widget, isEditing, onRemove, onEdit, onToggleSize, ch
   const style = transform ? {
     transform: CSS.Transform.toString(transform),
     opacity: isDragging ? 0.5 : 1,
-    zIndex: isDragging ? 10 : 1
+    zIndex: isDragging ? 10 : (isResizing ? 20 : 1)
   } : {
     opacity: isDragging ? 0.5 : 1,
-    zIndex: isDragging ? 10 : 1
+    zIndex: isDragging ? 10 : (isResizing ? 20 : 1)
   };
 
   // Pure button handlers with NO connection to drag functionality
@@ -1223,6 +1382,83 @@ function DraggableWidget({ widget, isEditing, onRemove, onEdit, onToggleSize, ch
     return false; // Prevent any further handling
   };
   
+  // Start resize operation
+  const startResize = (e: React.MouseEvent, direction: string) => {
+    if (!isEditing) return;
+    
+    e.stopPropagation();
+    e.preventDefault();
+    
+    setIsResizing(true);
+    setStartX(e.clientX);
+    setStartY(e.clientY);
+    setStartWidth(widget.width);
+    setStartHeight(widget.height);
+    
+    // Add document-level event listeners for mouse move and up
+    document.addEventListener('mousemove', handleResize);
+    document.addEventListener('mouseup', stopResize);
+    
+    // Add class to body to prevent selection during resize
+    document.body.classList.add('resizing');
+  };
+  
+  // Handle resize during mouse movement
+  const handleResize = (e: MouseEvent) => {
+    if (!isResizing) return;
+    
+    // Calculate grid units based on movement
+    // Assuming each grid cell is roughly 100px wide in the 6-column grid
+    const gridCellWidth = window.innerWidth / 8; // Approximate grid cell width
+    const gridCellHeight = 150; // Approximate grid cell height
+    
+    const deltaX = e.clientX - startX;
+    const deltaY = e.clientY - startY;
+    
+    // Calculate new width in grid units (minimum 1, maximum 6)
+    let newWidth = startWidth + Math.round(deltaX / gridCellWidth);
+    newWidth = Math.max(1, Math.min(6, newWidth));
+    
+    // Calculate new height in grid units (minimum 1, maximum 4)
+    let newHeight = startHeight + Math.round(deltaY / gridCellHeight);
+    newHeight = Math.max(1, Math.min(4, newHeight));
+    
+    // Update the widget size in the parent component
+    if (newWidth !== widget.width || newHeight !== widget.height) {
+      const updatedWidget = {
+        ...widget,
+        width: newWidth,
+        height: newHeight,
+        // When manually resized, always consider it "expanded"
+        expanded: newWidth > 2 || newHeight > 1
+      };
+      
+      // Update the widget in parent component
+      onToggleSize(updatedWidget);
+    }
+  };
+  
+  // Stop resize operation
+  const stopResize = () => {
+    setIsResizing(false);
+    
+    // Remove document-level event listeners
+    document.removeEventListener('mousemove', handleResize);
+    document.removeEventListener('mouseup', stopResize);
+    
+    // Remove body class
+    document.body.classList.remove('resizing');
+  };
+  
+  // Clean up event listeners on unmount
+  useEffect(() => {
+    return () => {
+      document.removeEventListener('mousemove', handleResize);
+      document.removeEventListener('mouseup', stopResize);
+      document.body.classList.remove('resizing');
+    };
+  }, [isResizing]);
+  
   return (
     <Card 
       ref={setRefs}
@@ -1232,6 +1468,7 @@ function DraggableWidget({ widget, isEditing, onRemove, onEdit, onToggleSize, ch
         ${widget.height > 1 ? `row-span-${widget.height}` : ''}
         ${widget.expanded ? 'border-2 border-blue-300 dark:border-blue-700' : 'border border-gray-200 dark:border-gray-800'}
         overflow-hidden
+        ${isResizing ? 'pointer-events-none' : ''}
       `}
     >
       {/* Separate header with buttons that isn't part of the draggable area */}
@@ -1305,6 +1542,38 @@ function DraggableWidget({ widget, isEditing, onRemove, onEdit, onToggleSize, ch
             <rect x="0" y="8" width="20" height="2" rx="1" />
           </svg>
         </div>
+      )}
+      
+      {/* Resize handles - only visible in edit mode */}
+      {isEditing && (
+        <>
+          {/* Right resize handle */}
+          <div 
+            className="absolute top-0 bottom-0 right-0 w-4 cursor-e-resize"
+            onMouseDown={(e) => startResize(e, 'right')}
+            style={{ zIndex: 30 }}
+          >
+            <div className="absolute top-1/2 right-0 w-1 h-12 bg-blue-500 rounded-l opacity-40 hover:opacity-100 transform -translate-y-1/2"></div>
+          </div>
+          
+          {/* Bottom resize handle */}
+          <div 
+            className="absolute left-0 right-0 bottom-0 h-4 cursor-s-resize"
+            onMouseDown={(e) => startResize(e, 'bottom')}
+            style={{ zIndex: 30 }}
+          >
+            <div className="absolute bottom-0 left-1/2 h-1 w-12 bg-blue-500 rounded-t opacity-40 hover:opacity-100 transform -translate-x-1/2"></div>
+          </div>
+          
+          {/* Bottom-right corner resize handle */}
+          <div 
+            className="absolute right-0 bottom-0 w-6 h-6 cursor-se-resize"
+            onMouseDown={(e) => startResize(e, 'corner')}
+            style={{ zIndex: 40 }}
+          >
+            <div className="absolute right-0 bottom-0 w-3 h-3 bg-blue-500 rounded-tl opacity-40 hover:opacity-100"></div>
+          </div>
+        </>
       )}
     </Card>
   );
