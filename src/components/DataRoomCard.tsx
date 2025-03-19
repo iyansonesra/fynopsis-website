@@ -58,7 +58,7 @@ const DataRoomCard: React.FC<DataRoomCardProps> = ({ id, title, lastOpened, onCl
     try {
       const restOperation = post({
         apiName: 'S3_API',
-        path: `/s3/${id}/leave-room`,
+        path: `/share-folder/${id}/leave-room`,
         options: {
           headers: { 'Content-Type': 'application/json' },
           withCredentials: true,

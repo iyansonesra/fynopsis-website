@@ -109,6 +109,10 @@ export default function GeneralDashboard() {
     const [selectedDataroom, setSelectedDataroom] = useState<string | null>(null);
     const [isInvitesLoading, setIsInvitesLoading] = useState(true);
     const [isCreating, setIsCreating] = useState(false);
+    const [isAcceptDialogOpen, setIsAcceptDialogOpen] = useState(false);
+    const [confirmationName, setConfirmationName] = useState('');
+    const [pendingAcceptBucketId, setPendingAcceptBucketId] = useState<string | null>(null);
+    const [isAccepting, setIsAccepting] = useState(false);
 
     const tabs: Tab[] = [
         { icon: Library, label: 'Library' },
@@ -302,10 +306,22 @@ export default function GeneralDashboard() {
     // };
 
     const handleAcceptInvite = async (bucketId: string) => {
+        setPendingAcceptBucketId(bucketId);
+        setConfirmationName('');
+        setIsAcceptDialogOpen(true);
+    };
+
+    const handleConfirmAccept = async () => {
+        if (!pendingAcceptBucketId) return;
+        
+        const fullName = `${givenName} ${familyName}`;
+        if (confirmationName !== fullName) return;
+        
+        setIsAccepting(true);
         try {
             const restOperation = post({
                 apiName: 'S3_API',
-                path: `/share-folder/${bucketId}/accept-invite`,
+                path: `/share-folder/${pendingAcceptBucketId}/accept-invite`,
                 options: {
                     headers: {
                         'Content-Type': 'application/json'
@@ -316,10 +332,14 @@ export default function GeneralDashboard() {
 
             await restOperation.response;
             // Remove from invited list and refresh datarooms
-            setInvitedDatarooms(invitedDatarooms.filter(room => room.bucketId !== bucketId));
+            setInvitedDatarooms(invitedDatarooms.filter(room => room.bucketId !== pendingAcceptBucketId));
             handleFetchDataRooms();
+            setIsAcceptDialogOpen(false);
+            setPendingAcceptBucketId(null);
         } catch (error) {
             console.error('Error accepting invite:', error);
+        } finally {
+            setIsAccepting(false);
         }
     };
 
@@ -594,7 +614,62 @@ export default function GeneralDashboard() {
                         </div>
                     </div>
                 </div>
-            </div > :
+
+                {/* Accept Dataroom Confirmation Dialog */}
+                <Dialog open={isAcceptDialogOpen} onOpenChange={setIsAcceptDialogOpen}>
+                    <DialogContent className="dark:bg-darkbg dark:text-white border-none">
+                        <DialogHeader>
+                            <DialogTitle>Confirm Access</DialogTitle>
+                        </DialogHeader>
+                        <div className="my-4">
+                            <p className="text-sm mb-4 dark:text-slate-300">
+                                By accessing this dataroom, you agree to maintain the confidentiality of all information contained within. 
+                            </p>
+                            <p className="text-sm font-medium mb-2 dark:text-white">Enter your full name below:</p>
+                            <Input
+                                value={confirmationName}
+                                onChange={(e) => setConfirmationName(e.target.value)}
+                                placeholder={`${givenName} ${familyName}`}
+                                className="outline-none select-none dark:bg-darkbg dark:text-white"
+                                onKeyDown={(e) => {
+                                    if (e.key === 'Enter' && confirmationName === `${givenName} ${familyName}` && !isAccepting) {
+                                        handleConfirmAccept();
+                                    }
+                                }}
+                            />
+                        </div>
+                        <DialogFooter>
+                            <Button
+                                variant="outline"
+                                onClick={() => {
+                                    setIsAcceptDialogOpen(false);
+                                    setPendingAcceptBucketId(null);
+                                }}
+                                className="dark:bg-darkbg dark:border dark:hover:text-slate-400"
+                            >
+                                Cancel
+                            </Button>
+                            <Button
+                                onClick={handleConfirmAccept}
+                                disabled={confirmationName !== `${givenName} ${familyName}` || isAccepting}
+                                className="dark:hover:text-slate-400"
+                            >
+                                {isAccepting ? (
+                                    <span className="flex items-center">
+                                        <svg className="animate-spin -ml-1 mr-2 h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                        </svg>
+                                        Accepting...
+                                    </span>
+                                ) : (
+                                    'Accept & Join'
+                                )}
+                            </Button>
+                        </DialogFooter>
+                    </DialogContent>
+                </Dialog>
+            </div> :
             <div className="grid h-screen place-items-center dark:bg-darkbg">
                 <CircularProgress value={0.5} />
             </div>
