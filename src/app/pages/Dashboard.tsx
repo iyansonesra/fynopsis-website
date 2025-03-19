@@ -510,6 +510,9 @@ export default function GeneralDashboard() {
                                             onDelete={() => {
                                                 setDataRooms(dataRooms.filter(r => r.id !== room.id));
                                             }}
+                                            onLeave={() => {
+                                                setDataRooms(dataRooms.filter(r => r.id !== room.id));
+                                            }}
                                         />
                                     </div>
                                 ))

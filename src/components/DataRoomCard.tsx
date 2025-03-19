@@ -15,6 +15,7 @@ interface DataRoomCardProps {
   permissionLevel: string;
   sharedBy: string;
   onDelete?: () => void;
+  onLeave?: () => void;
 }
 
 interface sharedUser {
@@ -23,7 +24,7 @@ interface sharedUser {
   role: string;
 }
 
-const DataRoomCard: React.FC<DataRoomCardProps> = ({ id, title, lastOpened, onClick, permissionLevel, sharedBy, onDelete, users }) => {
+const DataRoomCard: React.FC<DataRoomCardProps> = ({ id, title, lastOpened, onClick, permissionLevel, sharedBy, onDelete, onLeave, users }) => {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = React.useState(false);
   const [isLeaveDialogOpen, setIsLeaveDialogOpen] = React.useState(false);
   const [isRenameDialogOpen, setIsRenameDialogOpen] = React.useState(false);
@@ -66,6 +67,7 @@ const DataRoomCard: React.FC<DataRoomCardProps> = ({ id, title, lastOpened, onCl
       });
       await restOperation.response;
       setIsLeaveDialogOpen(false);
+      onLeave?.(); // Call onLeave callback after successfully leaving
     } catch (error) {
       console.error('Error leaving dataroom:', error);
     }
