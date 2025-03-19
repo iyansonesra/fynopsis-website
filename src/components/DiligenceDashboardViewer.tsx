@@ -54,6 +54,7 @@ export default function DiligenceDashboardViewer() {
   const [templateDescription, setTemplateDescription] = useState('');
   const [availableTemplates, setAvailableTemplates] = useState<DashboardTemplate[]>([]);
   const [isLoadingTemplates, setIsLoadingTemplates] = useState(false);
+  const [pollingInterval, setPollingInterval] = useState<NodeJS.Timeout | null>(null);
   
   // Load dashboard data on component mount
   useEffect(() => {
@@ -66,6 +67,7 @@ export default function DiligenceDashboardViewer() {
       setIsLoading(true);
       const loadedWidgets = await MetricsService.getDashboardState(bucketId);
       setWidgets(loadedWidgets);
+      checkForLoadingWidgets(loadedWidgets);
     } catch (error) {
       console.error('Error loading dashboard state:', error);
       toast({
@@ -77,6 +79,70 @@ export default function DiligenceDashboardViewer() {
       setIsLoading(false);
     }
   };
+  
+  // Check if any widget is in loading state and start/stop polling as needed
+  const checkForLoadingWidgets = (currentWidgets: Widget[]) => {
+    const hasLoadingWidget = currentWidgets.some(widget => {
+      if (!widget.data) return true;
+      
+      // Check if data is a string that needs parsing
+      if (typeof widget.data === 'string') {
+        try {
+          const parsed = JSON.parse(widget.data);
+          return parsed?.status === 'loading';
+        } catch {
+          return true; // If we can't parse it, assume loading
+        }
+      }
+      
+      // Check direct status property
+      return widget.data?.status === 'loading';
+    });
+
+    // Clear any existing interval
+    if (pollingInterval) {
+      clearInterval(pollingInterval);
+      setPollingInterval(null);
+    }
+
+    // Start new polling if we have loading widgets
+    if (hasLoadingWidget) {
+      console.log('Some widgets are still loading, starting polling');
+      const interval = setInterval(() => {
+        console.log('Polling for dashboard updates');
+        loadDashboardState();
+      }, 20000); // 20 seconds
+      
+      setPollingInterval(interval);
+    } else {
+      console.log('All widgets loaded, polling stopped');
+    }
+  };
+
+  // Use effect to check for loading widgets whenever widgets change
+  useEffect(() => {
+    checkForLoadingWidgets(widgets);
+    
+    // Cleanup interval on component unmount
+    return () => {
+      if (pollingInterval) {
+        clearInterval(pollingInterval);
+      }
+    };
+  }, [widgets]);
+
+  // Load dashboard state on component mount
+  useEffect(() => {
+    loadDashboardState();
+    loadTemplates();
+    
+    // Cleanup on unmount
+    return () => {
+      if (pollingInterval) {
+        clearInterval(pollingInterval);
+      }
+    };
+  }, [bucketId]);
   
   // Save dashboard state
   const saveDashboard = async () => {
@@ -405,15 +471,94 @@ export default function DiligenceDashboardViewer() {
 
   // Component for displaying a data table
   const TableWidget = ({ widget }: { widget: Widget }) => {
-    return (
-      <div className="p-2 h-full overflow-auto">
-        {!widget.data || !widget.data.rows ? (
-          <div className="flex items-center justify-center h-full">Loading data...</div>
-        ) : (
+    // Parse the data if it's a string
+    const parseTableData = () => {
+      if (!widget.data) return null;
+      
+      // Check if we have a string that needs to be parsed
+      if (typeof widget.data === 'string') {
+        try {
+          return JSON.parse(widget.data);
+        } catch (error) {
+          console.error('Error parsing table data:', error);
+          return null;
+        }
+      }
+      
+      // Check for new format (JSON string inside a property)
+      if (widget.metricId && typeof widget.data[widget.metricId] === 'string') {
+        try {
+          return JSON.parse(widget.data[widget.metricId]);
+        } catch (error) {
+          console.error('Error parsing nested table data:', error);
+          return null;
+        }
+      }
+      
+      // Legacy format support
+      return widget.data;
+    };
+    
+    const tableData = parseTableData();
+    
+    // Handle loading state - check if it's null or has loading status
+    if (!tableData || tableData.status === 'loading' || 
+        (widget.data && widget.data.status === 'loading')) {
+      return (
+        <div className="flex items-center justify-center h-full">Loading data...</div>
+      );
+    }
+    
+    // New format with columns and rows of objects
+    if (tableData.columns && tableData.rows) {
+      return (
+        <div className="p-2 h-full overflow-auto">
+          <div className="mb-2">
+            {tableData.title && <h3 className="font-semibold text-sm">{tableData.title}</h3>}
+            {tableData.description && <p className="text-xs text-gray-500 dark:text-gray-400">{tableData.description}</p>}
+          </div>
           <table className="w-full border-collapse">
             <thead>
               <tr className="bg-gray-100 dark:bg-gray-800">
-                {widget.data.headers.map((header: string, index: number) => (
+                {tableData.columns.map((column: string, index: number) => (
+                  <th key={index} className="p-2 text-left border border-gray-200 dark:border-gray-700">
+                    {column}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {tableData.rows.map((row: any, rowIndex: number) => (
+                <tr 
+                  key={rowIndex} 
+                  className={rowIndex % 2 === 0 ? 'bg-white dark:bg-gray-950' : 'bg-gray-50 dark:bg-gray-900'}
+                >
+                  {tableData.columns.map((column: string, colIndex: number) => (
+                    <td key={colIndex} className="p-2 border border-gray-200 dark:border-gray-700">
+                      {row[column] !== null ? row[column] : '—'}
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          {tableData.metadata && (
+            <div className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+              Source count: {tableData.metadata.source_count}, Rows: {tableData.metadata.row_count}
+            </div>
+          )}
+        </div>
+      );
+    }
+    
+    // Legacy format support with headers and rows of arrays
+    if (tableData.headers && tableData.rows) {
+      return (
+        <div className="p-2 h-full overflow-auto">
+          <table className="w-full border-collapse">
+            <thead>
+              <tr className="bg-gray-100 dark:bg-gray-800">
+                {tableData.headers.map((header: string, index: number) => (
                   <th key={index} className="p-2 text-left border border-gray-200 dark:border-gray-700">
                     {header}
                   </th>
@@ -421,7 +566,7 @@ export default function DiligenceDashboardViewer() {
               </tr>
             </thead>
             <tbody>
-              {widget.data.rows.map((row: any[], rowIndex: number) => (
+              {tableData.rows.map((row: any[], rowIndex: number) => (
                 <tr 
                   key={rowIndex} 
                   className={rowIndex % 2 === 0 ? 'bg-white dark:bg-gray-950' : 'bg-gray-50 dark:bg-gray-900'}
@@ -435,9 +580,11 @@ export default function DiligenceDashboardViewer() {
               ))}
             </tbody>
           </table>
-        )}
-      </div>
-    );
+        </div>
+      );
+    }
+    
+    return <div className="flex items-center justify-center h-full">Invalid table data format</div>;
   };
   
   // Handle the end of a drag event
