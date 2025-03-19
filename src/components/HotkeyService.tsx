@@ -42,6 +42,19 @@ interface Files {
   size: string;
 }
 
+interface DocumentBounds {
+  page: number;
+  x0: number;
+  y0: number;
+  x1: number;
+  y1: number;
+  chunk_title?: string;
+  is_secondary?: boolean;
+  kg_properties?: any;
+  page_num?: number;
+  bounding_box?: any;
+}
+
 interface FileStore {
   cutFiles: FileNode[]; // Changed from cutFile to cutFiles
   setCutFiles: (files: FileNode[]) => void; // Changed from setCutFile
@@ -55,6 +68,12 @@ interface FileStore {
   setSelectedFile: (file: FileNode | null) => void;
   pendingSelectFileId: string | null;
   setPendingSelectFileId: (id: string | null) => void;
+  
+  // New fields for document bounds
+  documentBounds: Record<string, DocumentBounds>;
+  setDocumentBounds: (id: string, bounds: DocumentBounds) => void;
+  getDocumentBounds: (id: string) => DocumentBounds | null;
+  addMultipleDocumentBounds: (boundsMap: Record<string, any>) => void;
 }
 
 // Then update the store implementation
@@ -78,4 +97,19 @@ export const useFileStore = create<FileStore>((set, get) => ({
   setSelectedFile: (file) => set({ selectedFile: file }),
   pendingSelectFileId: null,
   setPendingSelectFileId: (id) => set({ pendingSelectFileId: id }),
+  documentBounds: {},
+
+  setDocumentBounds: (id, bounds) => set(state => ({
+    documentBounds: {
+      ...state.documentBounds,
+      [id]: bounds
+    }
+  })),
+  getDocumentBounds: (id) => get().documentBounds[id] || null,
+  addMultipleDocumentBounds: (boundsMap) => set(state => ({
+    documentBounds: {
+      ...state.documentBounds,
+      ...boundsMap
+    }
+  }))
 }));

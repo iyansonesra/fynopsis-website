@@ -17,17 +17,18 @@ interface Citation {
 interface AnswerWithCitationsProps {
     content: string;
     citations?: Citation[];
-    handleSourceClick?: (fileKey: string) => void;
+    handleSourceClick?: (fileKey: string, chunk?: string) => void;
 }
 
 interface GreenCircleProps {
     number: string;
     fileKey?: string;
-    onSourceClick?: (fileKey: string) => void;
+    onSourceClick?: (fileKey: string, chunk?: string) => void;
+    chunk?: string;
 }
 
 // Helper function to get file name - you need to implement this or pass it
-const GreenCircle = memo<GreenCircleProps>(({ number, fileKey, onSourceClick }) => {
+const GreenCircle = memo<GreenCircleProps>(({ number, fileKey, onSourceClick, chunk }) => {
     const getFileName = useFileStore(state => state.getFileName);
 
     // Use useMemo to avoid recalculating the file name on every render
@@ -50,7 +51,7 @@ const GreenCircle = memo<GreenCircleProps>(({ number, fileKey, onSourceClick }) 
             <HoverCardTrigger asChild>
                 <span
                     className={`inline-flex justify-center items-center w-5 h-5 bg-slate-400 dark:bg-slate-600 rounded-lg text-white text-xs font-normal mx-1 ${fileKey ? 'cursor-pointer hover:bg-slate-500 dark:hover:bg-slate-700' : ''}`}
-                    onClick={() => fileKey && onSourceClick?.(fileKey)}
+                    onClick={() => fileKey && onSourceClick?.(fileKey, chunk)}
                 >
                     {number}
                 </span>
@@ -96,15 +97,17 @@ export const AnswerWithCitations = memo<AnswerWithCitationsProps>(({ content, ci
     // Process the content once using useMemo to avoid re-processing on every render
     const transformedContent = useMemo(() => {
         if (content.includes("<t")) return "";
+
+        console.log("CITATIONS IN ANSWERWITH", citations);
         
         return content.replace(/@(\d+)@/g, (match, number, offset, string) => {
             const citation = getCitationByStep(number);
             const followingChar = string[offset + match.length] || '';
 
             if (followingChar === ' ' || followingChar === '' || followingChar === '\n') {
-                return `<circle data-number="${number}" data-filekey="${citation?.fileKey || ''}" />\n`;
+                return `<circle data-number="${number}" data-filekey="${citation?.fileKey || ''}" data-chunk="${citation?.chunkText}" />\n`;
             }
-            return `<circle data-number="${number}" data-filekey="${citation?.fileKey || ''}" />`;
+            return `<circle data-number="${number}" data-filekey="${citation?.fileKey || ''}" data-chunk="${citation?.chunkText}"/>`;
         });
     }, [content, citations]);
 
@@ -112,6 +115,7 @@ export const AnswerWithCitations = memo<AnswerWithCitationsProps>(({ content, ci
     interface CircleComponentProps {
         'data-number': string;
         'data-filekey': string;
+        'data-chunk': string;
     }
 
     const CircleComponentWrapper = useMemo(() => {
@@ -125,6 +129,7 @@ export const AnswerWithCitations = memo<AnswerWithCitationsProps>(({ content, ci
                     <GreenCircle
                         number={props["data-number"]}
                         fileKey={props["data-filekey"]}
+                        chunk={props["data-chunk"]}
                         onSourceClick={handleSourceClick}
                     />
                 );

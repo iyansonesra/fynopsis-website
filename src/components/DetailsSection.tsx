@@ -141,7 +141,7 @@ interface Message {
 
 interface DetailsSectionProps {
 
-    onFileSelect: (file: FileSelectProps) => void; // Changed type
+    onFileSelect: (file: FileSelectProps, fileChunk?: string) => void; // Changed type
     tableData: TableFile[]; // Add this prop
 }
 
@@ -268,10 +268,12 @@ const DetailSection: React.FC<DetailsSectionProps> = ({
     // Add selector for S3Store
     const s3Objects = useS3Store(state => state.objects);
 
-    const handleSourceCardClick = async (sourceUrl: string) => {
+    const handleSourceCardClick = async (sourceUrl: string, chunk?: string) => {
         const bucketUuid = window.location.pathname.split('/')[2] || '';
         if (isClickProcessing) return;
         setIsClickProcessing(true);
+
+        console.log("SOURCE CARD CLICKED:", sourceUrl);
 
         try {
             // First check if file exists in s3Objects
@@ -286,6 +288,8 @@ const DetailSection: React.FC<DetailsSectionProps> = ({
                     queryParams: { fileId: id || '' }
                 }
             });
+
+            console.log("AHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHH");
 
             const { body } = await downloadResponse.response;
             const responseText = await body.text();
@@ -308,7 +312,7 @@ const DetailSection: React.FC<DetailsSectionProps> = ({
                     tags: null,
                     summary: '',
                     status: ''
-                });
+                }, chunk);
             }
 
         }
@@ -443,6 +447,9 @@ const DetailSection: React.FC<DetailsSectionProps> = ({
                                             // Extract source keys directly from data.sources
                                             const keys = Object.keys(data.sources).filter(key => key !== '[[Prototype]]');
                                             console.log("keys:", keys);
+
+                                            const documentBoundsMap: Record<string, any> = {};
+
                                             keys.forEach(key => {
                                                 let id = key.split('/').pop();
                                                 const final_id = id?.split("::")[0];
@@ -452,7 +459,39 @@ const DetailSection: React.FC<DetailsSectionProps> = ({
                                                 if (fileName && lastMessage?.subSources) {
                                                     lastMessage.subSources[fileName] = key;
                                                 }
+
+                                                if (data.sources[key]) {
+                                                    console.log("wuhhhh")
+                                                    const source = data.sources[key];
+                                                    // Only save if it has the necessary coordinate information
+                                                    if (source && 
+                                                        (source.bounding_box.x0 !== undefined && 
+                                                         source.bounding_box.y0 !== undefined && 
+                                                         source.bounding_box.x1 !== undefined && 
+                                                         source.bounding_box.y1 !== undefined)) {
+                                                        
+                                                        documentBoundsMap[key] = {
+                                                            page: source.page || 0,
+                                                            x0: source.bounding_box.x0,
+                                                            y0: source.bounding_box.y0,
+                                                            x1: source.bounding_box.x1,
+                                                            y1: source.bounding_box.y1,
+                                                            chunk_title: source.chunk_title,
+                                                            is_secondary: source.is_secondary,
+                                                            kg_properties: source.kg_properties,
+                                                            page_num: source.page_num,
+                                                            bounding_box: source.bounding_box
+                                                        };
+                                                    }
+                                                }
+
+
                                             });
+
+                                            if (Object.keys(documentBoundsMap).length > 0) {
+                                                useFileStore.getState().addMultipleDocumentBounds(documentBoundsMap);
+                                                console.log("Stored document bounds:", documentBoundsMap);
+                                            }
                                         }
                                     }
                                     return newMessages;
@@ -935,6 +974,8 @@ const DetailSection: React.FC<DetailsSectionProps> = ({
                                 chunkText,
                                 position: offset
                             });
+
+                            console.log("citations:", citations);
                             return `@${stepNum}@`;
                         }
                     );

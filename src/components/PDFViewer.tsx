@@ -3,6 +3,7 @@ import styled from 'styled-components';
 import PDFHighlighterComponent from './PDFHighlight';
 import BasicPDFViewer from './PDFTest';
 import PDFHighlighterViewer from './PDFHighlight';
+import { IHighlight } from 'react-pdf-highlighter';
 
 const PDFContainer = styled.div`
   display: flex;
@@ -49,6 +50,18 @@ interface PDFViewerProps {
   checkInterval?: number;
   tabId: string;
   name: string;
+  boundingBoxes: IHighlight[]; // Changed to IHighlight[] type
+
+}
+
+interface BoundingBox {
+  x1: number;
+  y1: number;
+  x2: number;
+  y2: number;
+  pageNumber: number;
+  text?: string; // Optional text for the highlight
+  comment?: string; // Optional comment for the highlight
 }
 
 const getFileType = (url: string): string => {
@@ -81,7 +94,8 @@ const PDFViewer: React.FC<PDFViewerProps> = ({
   maxRetries = 5,
   checkInterval = 2000,
   tabId,
-  name
+  name,
+  boundingBoxes// New prop for external bounding boxes
 }) => {
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [retryCount, setRetryCount] = useState(0);
@@ -92,59 +106,60 @@ const PDFViewer: React.FC<PDFViewerProps> = ({
   const isOfficeFile = ['xlsx', 'xls', 'csv'].includes(fileType);
   const isPdfFile = documentUrl.includes('pdf');
 
-  useEffect(() => {
-    // Skip iframe loading checks for PDF files as they're handled by PDFHighlighter
-    console.log("documenturl", documentUrl);
-    console.log("doc name", name);
-    console.log('PDFViewer useEffect', fileType);
-    console.log('PDFViewer isPDF', isPdfFile);
-    if (isPdfFile) {
-      setIsLoading(false);
-      return;
-    }
+  // useEffect(() => {
+  //   // Skip iframe loading checks for PDF files as they're handled by PDFHighlighter
+  //   console.log("documenturl", documentUrl);
+  //   console.log("doc name", name);
+  //   console.log('PDFViewer useEffect', fileType);
+  //   console.log('PDFViewer isPDF', isPdfFile);
+  //   console.log("bounding boxes", boundingBoxes);
+  //   if (isPdfFile) {
+  //     setIsLoading(false);
+  //     return;
+  //   }
 
-    let checkTimer: NodeJS.Timeout;
-    let mounted = true;
+  //   let checkTimer: NodeJS.Timeout;
+  //   let mounted = true;
 
-    const checkIframeContent = () => {
-      if (!mounted || !iframeRef.current) return;
+  //   const checkIframeContent = () => {
+  //     if (!mounted || !iframeRef.current) return;
 
-      // For Office files, we only need to check if iframe is loaded
-      if (isOfficeFile) {
-        setIsLoading(false);
-        clearInterval(checkTimer);
-        return;
-      }
+  //     // For Office files, we only need to check if iframe is loaded
+  //     if (isOfficeFile) {
+  //       setIsLoading(false);
+  //       clearInterval(checkTimer);
+  //       return;
+  //     }
 
-      try {
-        const iframeDoc = iframeRef.current.contentDocument ||
-          iframeRef.current.contentWindow?.document;
+  //     try {
+  //       const iframeDoc = iframeRef.current.contentDocument ||
+  //         iframeRef.current.contentWindow?.document;
 
-        if (!iframeDoc || iframeDoc.body.children.length === 0) {
-          if (retryCount < maxRetries) {
-            console.log('Reloading document...');
-            setRetryCount(prev => prev + 1);
-            iframeRef.current.src = viewerUrl;
-          } else {
-            setIsLoading(false);
-            clearInterval(checkTimer);
-          }
-        } else {
-          setIsLoading(false);
-          clearInterval(checkTimer);
-        }
-      } catch (error) {
-        // console.log('Checking iframe content failed:', error);
-      }
-    };
+  //       if (!iframeDoc || iframeDoc.body.children.length === 0) {
+  //         if (retryCount < maxRetries) {
+  //           console.log('Reloading document...');
+  //           setRetryCount(prev => prev + 1);
+  //           iframeRef.current.src = viewerUrl;
+  //         } else {
+  //           setIsLoading(false);
+  //           clearInterval(checkTimer);
+  //         }
+  //       } else {
+  //         setIsLoading(false);
+  //         clearInterval(checkTimer);
+  //       }
+  //     } catch (error) {
+  //       // console.log('Checking iframe content failed:', error);
+  //     }
+  //   };
 
-    checkTimer = setInterval(checkIframeContent, checkInterval);
+  //   checkTimer = setInterval(checkIframeContent, checkInterval);
 
-    return () => {
-      mounted = false;
-      clearInterval(checkTimer);
-    };
-  }, [viewerUrl, retryCount, maxRetries, checkInterval, isOfficeFile, isPdfFile]);
+  //   return () => {
+  //     mounted = false;
+  //     clearInterval(checkTimer);
+  //   };
+  // }, [viewerUrl, retryCount, maxRetries, checkInterval, isOfficeFile, isPdfFile]);
 
   const handleLoad = () => {
     // For Office files, clear loading state immediately on load
@@ -169,7 +184,7 @@ const PDFViewer: React.FC<PDFViewerProps> = ({
     <PDFContainer>
       {isPdfFile ? (
         <PDFViewerContainer>
-          <PDFHighlighterComponent documentUrl={documentUrl} />
+          <PDFHighlighterComponent documentUrl={documentUrl} boundingBoxes={boundingBoxes}/>
 
         </PDFViewerContainer>
 

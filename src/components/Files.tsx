@@ -29,6 +29,8 @@ import { useFileStore } from './HotkeyService';
 import BasicPDFViewer from './PDFTest';
 import PDFHighlighterViewer from './PDFHighlight';
 import PDFHighlighterComponent from './PDFHighlight';
+import type { IHighlight } from "react-pdf-highlighter"; // Add this import
+
 interface Tab {
     id: string;
     title: string;
@@ -83,6 +85,19 @@ interface DocumentTags {
     confidentiality: string;
 }
 
+interface DocumentBounds {
+    page: number;
+    x0: number;
+    y0: number;
+    x1: number;
+    y1: number;
+    chunk_title?: string;
+    is_secondary?: boolean;
+    kg_properties?: any;
+    page_num?: number;
+    bounding_box?: any;
+}
+
 export default function Files({ setSelectedTab }: { setSelectedTab: React.Dispatch<React.SetStateAction<string>> }) {
     const [showFolderTree, setShowFolderTree] = useState(true);
     const [folderViewWidth, setFolderViewWidth] = useState('54%');
@@ -118,28 +133,106 @@ export default function Files({ setSelectedTab }: { setSelectedTab: React.Dispat
         }
     }, [showFolderTree, showDetailsView]);
 
-    // const addOrActivateTab = (newTab: { id: string; title: string; content: JSX.Element }) => {
-    //     setCurrentTabs(prevTabs => {
-    //         const existingTab = prevTabs.find(tab => tab.title === newTab.title);
-    //         if (existingTab) {
-    //             // If tab exists, just activate it
-    //             setActiveTabId(existingTab.id);
-    //             return prevTabs;
-    //         } else {
-    //             // If it's a new tab, add it and activate it
-    //             setActiveTabId(newTab.id);  // Set active tab ID for the new tab
-    //             return [...prevTabs, newTab];
-    //         }
-    //     });
-    // };
+    const boundsToHighlight = (bounds: DocumentBounds, fileId: string, chunkTitle?: string): IHighlight => {
+        const id = String(Math.random()).slice(2);
+        const width = bounds.x1 - bounds.x0;
+        const height = bounds.y1 - bounds.y0;
+
+        return {
+            id,
+            content: {
+                text: chunkTitle || "Highlighted area"
+            },
+            comment: {
+                text: chunkTitle || "",
+                emoji: "🔍"
+            },
+            position: {
+                boundingRect: {
+                    x1: bounds.x0,
+                    y1: bounds.y0,
+                    x2: bounds.x1,
+                    y2: bounds.y1,
+                    width,
+                    height,
+                    pageNumber: bounds.page
+                },
+                rects: [{
+                    x1: bounds.x0,
+                    y1: bounds.y0,
+                    x2: bounds.x1,
+                    y2: bounds.y1,
+                    width,
+                    height,
+                    pageNumber: bounds.page
+                }],
+                pageNumber: bounds.page
+            }
+        };
+    };
 
     useEffect(() => {
         console.log("showDetailsView changed:", showDetailsView);
     }, [showDetailsView]);
 
     // Remove the addOrActivateTab function and update handleFileSelect:
-    function handleFileSelect(file: FileSelectProps) {
+    function handleFileSelect(file: FileSelectProps, fileChunk?: string) {
         console.log('Files component - File selected:', file);
+        let highlightData: IHighlight[] = [];
+
+        const createEmptyHighlight = (): IHighlight => {
+            return {
+                id: String(Math.random()).slice(2),
+                content: {
+                    text: "Empty highlight"
+                },
+                comment: {
+                    text: "",
+                    emoji: "🔍"
+                },
+                position: {
+                    boundingRect: {
+                        x1: 0,
+                        y1: 0,
+                        x2: 0,
+                        y2: 0,
+                        width: 0,
+                        height: 0,
+                        pageNumber: 1
+                    },
+                    rects: [{
+                        x1: 0,
+                        y1: 0,
+                        x2: 0,
+                        y2: 0,
+                        width: 0,
+                        height: 0,
+                        pageNumber: 1
+                    }],
+                    pageNumber: 1
+                }
+            };
+        };
+
+        if (fileChunk) {
+            console.log("FILE CHUNK", fileChunk);
+            const boundsKey = `${file.id}::${fileChunk}`;
+            const bounds = useFileStore.getState().getDocumentBounds(boundsKey);
+            console.log("BOUNDS", bounds);
+            if (bounds) {
+                const highlight = boundsToHighlight(bounds, file.id, bounds.chunk_title);
+                console.log("Found bounds for chunk:", highlight);
+                highlightData.push(highlight);
+                highlightData.push(createEmptyHighlight());
+
+            } else {
+                highlightData.push(createEmptyHighlight());
+            }
+        } else {
+            console.log("FILE CHUNK NA");
+            highlightData.push(createEmptyHighlight());
+        }
+
         setSelectedFile(file);
         if (file.type && file.type.length > 0) {
             console.log("WE IN\n");
@@ -176,14 +269,15 @@ export default function Files({ setSelectedTab }: { setSelectedTab: React.Dispat
                             containerId={`pdf-viewer-${file.id}`}
                             tabId={newTabId}  // Use the actual tab ID
                             name={file.name}  // Make sure name is explicitly passed
-                        />
+                            boundingBoxes={highlightData} // Always pass the array - empty or with highlights
+                            />
 
                     )
                 });
             }
-            }
         }
-    
+    }
+
 
 
     return (
