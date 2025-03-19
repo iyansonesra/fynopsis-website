@@ -61,32 +61,21 @@ export async function fetchMetricData(
   metricDetails?: string
 ): Promise<MetricData> {
   try {
-    const restOperation = post({
-      apiName: 'S3_API',
-      path: `/ai/metrics/${dataroomId}`,
-      options: {
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          metricId,
-          format,
-          customMetric,
-          metricDetails
-        })
-      }
-    });
-
-    const { body } = await restOperation.response;
-    const responseText = await body.text();
-    const response = JSON.parse(responseText);
-    
-    return response.data;
-  } catch (error) {
-    console.error('Error fetching metric data:', error);
-    
-    // For demo purposes, return mock data based on metric type and format
+    // Skip the API call that doesn't exist and directly return mock data
+    console.log(`Generating mock data for metric: ${metricId}, format: ${format}, query: ${customMetric}`);
     return getMockMetricData(metricId, format, customMetric);
+  } catch (error) {
+    console.error('Error generating mock metric data:', error);
+    
+    // Return a simple error response
+    return {
+      id: metricId,
+      timestamp: new Date().toISOString(),
+      value: {
+        error: 'Failed to generate data'
+      },
+      confidence: 0
+    };
   }
 }
 
