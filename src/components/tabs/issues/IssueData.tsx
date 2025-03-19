@@ -13,12 +13,12 @@ export interface Issue {
   export const issuesData: Issue[] = [
     {
       id: 1,
-      number: 32659,
-      title: "[DevTools Bug]: cannot double click anymore on component name to filter the tree view (in Components tab)",
+      number: 1,
+      title: "How many RSUs has your company issue since February 23, 2024?",
       status: 'open',
-      author: 'clementcitiz',
+      author: 'Jason Horowitz',
       createdAt: 'opened 15 hours ago',
-      tags: ['Component: Developer Tools', 'Status: Unconfirmed', 'Type: Bug'],
+      tags: ['Urgent', 'Status: Unconfirmed', 'Type: General Question'],
       comments: 0
     },
     // ...other issues

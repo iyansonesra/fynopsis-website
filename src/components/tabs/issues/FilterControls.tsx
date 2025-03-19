@@ -50,44 +50,10 @@ export function IssueFilters() {
             </SelectContent>
         </Select>
 
-        <Select>
-            <SelectTrigger className="h-8 text-sm bg-transparent border-0 hover:bg-gray-100">
-                <div className="flex items-center">
-                    <span>Projects</span>
-                </div>
-            </SelectTrigger>
-            <SelectContent>
-                <SelectItem value="any">Any</SelectItem>
-                <SelectItem value="repo">Repository projects</SelectItem>
-                <SelectItem value="org">Organization projects</SelectItem>
-            </SelectContent>
-        </Select>
+       
+       
 
-        <Select>
-            <SelectTrigger className="h-8 text-sm bg-transparent border-0 hover:bg-gray-100">
-                <div className="flex items-center">
-                    <span>Milestones</span>
-                </div>
-            </SelectTrigger>
-            <SelectContent>
-                <SelectItem value="any">Any</SelectItem>
-                <SelectItem value="react19">React 19</SelectItem>
-                <SelectItem value="react18">React 18.x</SelectItem>
-            </SelectContent>
-        </Select>
-
-        <Select>
-            <SelectTrigger className="h-8 text-sm bg-transparent border-0 hover:bg-gray-100">
-                <div className="flex items-center">
-                    <span>Assignees</span>
-                </div>
-            </SelectTrigger>
-            <SelectContent>
-                <SelectItem value="any">Any</SelectItem>
-                <SelectItem value="me">Assigned to me</SelectItem>
-                <SelectItem value="none">Not assigned</SelectItem>
-            </SelectContent>
-        </Select>
+       
 
         <Select>
             <SelectTrigger className="h-8 text-sm bg-transparent border-0 hover:bg-gray-100">
@@ -147,18 +113,7 @@ export function IssueFilters() {
             </SelectContent>
         </Select>
 
-        <Select>
-            <SelectTrigger className="h-8 text-sm bg-transparent border-0 hover:bg-gray-100">
-                <div className="flex items-center">
-                    <span>Projects</span>
-                </div>
-            </SelectTrigger>
-            <SelectContent>
-                <SelectItem value="any">Any</SelectItem>
-                <SelectItem value="repo">Repository projects</SelectItem>
-                <SelectItem value="org">Organization projects</SelectItem>
-            </SelectContent>
-        </Select>
+    
 
         <Select>
             <SelectTrigger className="h-8 text-sm bg-transparent border-0 hover:bg-gray-100">
@@ -187,23 +142,9 @@ export function IssueFilters() {
                 <DropdownMenuLabel>More filters</DropdownMenuLabel>
                 <DropdownMenuSeparator />
 
-                <DropdownMenuSub>
-                    <DropdownMenuSubTrigger>Milestones</DropdownMenuSubTrigger>
-                    <DropdownMenuSubContent>
-                        <DropdownMenuItem>Any</DropdownMenuItem>
-                        <DropdownMenuItem>React 19</DropdownMenuItem>
-                        <DropdownMenuItem>React 18.x</DropdownMenuItem>
-                    </DropdownMenuSubContent>
-                </DropdownMenuSub>
+               
 
-                <DropdownMenuSub>
-                    <DropdownMenuSubTrigger>Assignees</DropdownMenuSubTrigger>
-                    <DropdownMenuSubContent>
-                        <DropdownMenuItem>Any</DropdownMenuItem>
-                        <DropdownMenuItem>Assigned to me</DropdownMenuItem>
-                        <DropdownMenuItem>Not assigned</DropdownMenuItem>
-                    </DropdownMenuSubContent>
-                </DropdownMenuSub>
+          
 
                 <DropdownMenuSub>
                     <DropdownMenuSubTrigger>Types</DropdownMenuSubTrigger>
@@ -256,32 +197,10 @@ export function IssueFilters() {
                 <DropdownMenuLabel>More filters</DropdownMenuLabel>
                 <DropdownMenuSeparator />
 
-                <DropdownMenuSub>
-                    <DropdownMenuSubTrigger>Projects</DropdownMenuSubTrigger>
-                    <DropdownMenuSubContent>
-                        <DropdownMenuItem>Any</DropdownMenuItem>
-                        <DropdownMenuItem>Repository projects</DropdownMenuItem>
-                        <DropdownMenuItem>Organization projects</DropdownMenuItem>
-                    </DropdownMenuSubContent>
-                </DropdownMenuSub>
+              
 
-                <DropdownMenuSub>
-                    <DropdownMenuSubTrigger>Milestones</DropdownMenuSubTrigger>
-                    <DropdownMenuSubContent>
-                        <DropdownMenuItem>Any</DropdownMenuItem>
-                        <DropdownMenuItem>React 19</DropdownMenuItem>
-                        <DropdownMenuItem>React 18.x</DropdownMenuItem>
-                    </DropdownMenuSubContent>
-                </DropdownMenuSub>
+          
 
-                <DropdownMenuSub>
-                    <DropdownMenuSubTrigger>Assignees</DropdownMenuSubTrigger>
-                    <DropdownMenuSubContent>
-                        <DropdownMenuItem>Any</DropdownMenuItem>
-                        <DropdownMenuItem>Assigned to me</DropdownMenuItem>
-                        <DropdownMenuItem>Not assigned</DropdownMenuItem>
-                    </DropdownMenuSubContent>
-                </DropdownMenuSub>
 
                 <DropdownMenuSub>
                     <DropdownMenuSubTrigger>Types</DropdownMenuSubTrigger>
@@ -342,32 +261,11 @@ export function IssueFilters() {
                     </DropdownMenuSubContent>
                 </DropdownMenuSub>
 
-                <DropdownMenuSub>
-                    <DropdownMenuSubTrigger>Projects</DropdownMenuSubTrigger>
-                    <DropdownMenuSubContent>
-                        <DropdownMenuItem>Any</DropdownMenuItem>
-                        <DropdownMenuItem>Repository projects</DropdownMenuItem>
-                        <DropdownMenuItem>Organization projects</DropdownMenuItem>
-                    </DropdownMenuSubContent>
-                </DropdownMenuSub>
+                
 
-                <DropdownMenuSub>
-                    <DropdownMenuSubTrigger>Milestones</DropdownMenuSubTrigger>
-                    <DropdownMenuSubContent>
-                        <DropdownMenuItem>Any</DropdownMenuItem>
-                        <DropdownMenuItem>React 19</DropdownMenuItem>
-                        <DropdownMenuItem>React 18.x</DropdownMenuItem>
-                    </DropdownMenuSubContent>
-                </DropdownMenuSub>
+             
 
-                <DropdownMenuSub>
-                    <DropdownMenuSubTrigger>Assignees</DropdownMenuSubTrigger>
-                    <DropdownMenuSubContent>
-                        <DropdownMenuItem>Any</DropdownMenuItem>
-                        <DropdownMenuItem>Assigned to me</DropdownMenuItem>
-                        <DropdownMenuItem>Not assigned</DropdownMenuItem>
-                    </DropdownMenuSubContent>
-                </DropdownMenuSub>
+           
 
                 <DropdownMenuSub>
                     <DropdownMenuSubTrigger>Types</DropdownMenuSubTrigger>
@@ -423,32 +321,10 @@ export function IssueFilters() {
                     </DropdownMenuSubContent>
                 </DropdownMenuSub>
 
-                <DropdownMenuSub>
-                    <DropdownMenuSubTrigger>Projects</DropdownMenuSubTrigger>
-                    <DropdownMenuSubContent>
-                        <DropdownMenuItem>Any</DropdownMenuItem>
-                        <DropdownMenuItem>Repository projects</DropdownMenuItem>
-                        <DropdownMenuItem>Organization projects</DropdownMenuItem>
-                    </DropdownMenuSubContent>
-                </DropdownMenuSub>
+              
 
-                <DropdownMenuSub>
-                    <DropdownMenuSubTrigger>Milestones</DropdownMenuSubTrigger>
-                    <DropdownMenuSubContent>
-                        <DropdownMenuItem>Any</DropdownMenuItem>
-                        <DropdownMenuItem>React 19</DropdownMenuItem>
-                        <DropdownMenuItem>React 18.x</DropdownMenuItem>
-                    </DropdownMenuSubContent>
-                </DropdownMenuSub>
-
-                <DropdownMenuSub>
-                    <DropdownMenuSubTrigger>Assignees</DropdownMenuSubTrigger>
-                    <DropdownMenuSubContent>
-                        <DropdownMenuItem>Any</DropdownMenuItem>
-                        <DropdownMenuItem>Assigned to me</DropdownMenuItem>
-                        <DropdownMenuItem>Not assigned</DropdownMenuItem>
-                    </DropdownMenuSubContent>
-                </DropdownMenuSub>
+               
+         
 
                 <DropdownMenuSub>
                     <DropdownMenuSubTrigger>Types</DropdownMenuSubTrigger>

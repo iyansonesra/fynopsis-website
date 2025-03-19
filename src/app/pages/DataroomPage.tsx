@@ -116,11 +116,13 @@ export default function Home() {
       window.history.pushState({}, '', newUrl);
     }
   }
+  useEffect(() => {
+    if (initialTabIndex !== -1 && activeTab !== initialTabIndex) {
+      setActiveTab(initialTabIndex);
+    }
+  }, [initialTabIndex, activeTab, setActiveTab]);
 
 
-  // Replace both effects with this single one
-  // Replace both effects with this single one
- // Replace the current useEffect logic that checks URL paths
 useEffect(() => {
   // Check URL path for issues first
   const pathArray = pathname?.split('/') ?? [];
@@ -128,45 +130,58 @@ useEffect(() => {
   // Find if "issues" appears in the path and if there's something after it
   const issuesIndex = pathArray.indexOf('issues');
   const hasIssueInPath = issuesIndex !== -1 && pathArray.length > issuesIndex + 1;
+  
+  // Get the issues tab index once
+  const issuesTabIndex = tabs.findIndex(tab => tab.label.toLowerCase() === 'issues');
 
-  // We need to avoid the infinite loop by only updating when needed
   if (hasIssueInPath) {
     // Handle issue ID in URL
     const issueIdFromUrl = parseInt(pathArray[issuesIndex + 1]);
     
     if (!isNaN(issueIdFromUrl) && activeIssueId !== issueIdFromUrl) {
       setActiveIssueId(issueIdFromUrl);
-      
-      // Set the issues tab if needed
-      const issuesTabIndex = tabs.findIndex(tab => tab.label.toLowerCase() === 'issues');
-      if (issuesTabIndex >= 0) {
+      // Always ensure the issues tab is selected when viewing an issue detail
+      // if (issuesTabIndex >= 0) {
+        // Only update states if they're different from current values
+
+        if(selectedTab === "issues") {
+          setActiveTab(issuesTabIndex);
+        }
         if (activeTab !== issuesTabIndex) {
           setActiveTab(issuesTabIndex);
         }
         if (selectedTab !== 'issues') {
           setSelectedTab('issues');
+          setActiveTab(issuesTabIndex);
+
         }
-      }
+      // }
     }
   } else if (activeIssueId !== null && !hasIssueInPath) {
-    // Only clear the issue ID if we're not on an issue path and we currently have an active issue
+    // Clear the issue ID if we're not on an issue path
     setActiveIssueId(null);
     
     // Now check tab query parameter
     const tabParam = searchParams.get('tab')?.toLowerCase();
-    if (tabParam === 'issues') {
-      // This is important - if we're on the issues tab with no specific issue, make sure UI reflects that
-      const tabIndex = tabs.findIndex(tab => tab.label.toLowerCase() === 'issues');
+    if (tabParam && tabParam !== selectedTab) {
+      const tabIndex = tabs.findIndex(tab => tab.label.toLowerCase() === tabParam);
       if (tabIndex >= 0) {
         setActiveTab(tabIndex);
-        setSelectedTab('issues');
+        setSelectedTab(tabParam);
+      }
+    }
+  } else {
+    // Handle regular tab changes from query params when not viewing specific issue
+    const tabParam = searchParams.get('tab')?.toLowerCase();
+    if (tabParam && tabParam !== selectedTab) {
+      const tabIndex = tabs.findIndex(tab => tab.label.toLowerCase() === tabParam);
+      if (tabIndex >= 0 && activeTab !== tabIndex) {
+        setActiveTab(tabIndex);
+        setSelectedTab(tabParam);
       }
     }
   }
-  // Only include pathname and searchParams in dependency array to avoid infinite loops
-  // but still respond to URL changes
-}, [pathname, searchParams, tabs, activeIssueId, activeTab, selectedTab]);
-
+}, [pathname, searchParams, tabs, activeIssueId, activeTab, selectedTab, setActiveTab, setActiveIssueId]);
 // Modify handleBackFromIssue to use history API directly
 const handleBackFromIssue = () => {
   const { id, subId } = params;
@@ -183,14 +198,20 @@ const handleBackFromIssue = () => {
 
 
 useEffect(() => {
-  // Only update the indicator if activeTab is valid and the ref exists
-  if (activeTab !== null &&
-    activeTab >= 0 &&
-    activeTab < tabs.length &&
-    tabRefs.current &&
-    tabRefs.current[activeTab]) {
-
-    const tabElement = tabRefs.current[activeTab];
+  // Skip if refs aren't ready
+  if (!tabRefs.current || tabRefs.current.length === 0) return;
+  
+  // Determine which tab index to use (activeTab might be null on first load)
+  console.log("activeTab: ", activeTab);
+  console.log("checking if its null: ", activeTab !== null);
+  const currentTab = activeTab !== null ? activeTab : initialTabIndex;
+  
+  // Only update if we have a valid index and the ref exists
+  if (currentTab >= 0 && 
+      currentTab < tabs.length && 
+      tabRefs.current[currentTab]) {
+    
+    const tabElement = tabRefs.current[currentTab];
     if (tabElement) {
       setIndicatorStyle({
         top: `${tabElement.offsetTop}px`,
@@ -198,7 +219,7 @@ useEffect(() => {
       });
     }
   }
-}, [activeTab, tabs.length]);
+}, [activeTab, tabs.length, initialTabIndex]);
 
   useEffect(() => {
     if (user) {

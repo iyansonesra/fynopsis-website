@@ -99,10 +99,8 @@ export function IssueDetail({ issueId, onBack }: { issueId: number, onBack: () =
                     <div className="flex items-center mb-2">
                         <div className="mr-3">
                             {issue.status === 'open' ? (
-                                <svg className="h-6 w-6 github-issue-open" viewBox="0 0 16 16">
-                                    <path d="M8 9.5a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3Z"></path>
-                                    <path d="M8 0a8 8 0 1 1 0 16A8 8 0 0 1 8 0ZM1.5 8a6.5 6.5 0 1 0 13 0 6.5 6.5 0 0 0-13 0Z"></path>
-                                </svg>
+                                           <div className="h-4 w-4 rounded-full bg-slate-300 mr-1"></div>
+
                             ) : (
                                 <svg className="h-6 w-6 github-issue-closed" viewBox="0 0 16 16">
                                     <path d="M11.28 6.78a.75.75 0 0 0-1.06-1.06L7.25 8.69 5.78 7.22a.75.75 0 0 0-1.06 1.06l2 2a.75.75 0 0 0 1.06 0l3.5-3.5Z"></path>
@@ -146,8 +144,10 @@ export function IssueDetail({ issueId, onBack }: { issueId: number, onBack: () =
                     {comments.map((comment) => (
                         <div key={comment.id} className="border github-border rounded-md mb-4">
                             <div className="bg-[#f6f8fa] p-3 border-b github-border flex items-center">
-                                <div className="w-8 h-8 rounded-full bg-gray-200 overflow-hidden mr-2">
-                                    <img src={comment.authorImage} alt={comment.author} className="w-full h-full object-cover" />
+                                <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center mr-2">
+                                    <span className="text-sm font-medium text-gray-700">
+                                        {comment.author.split(' ').map((n) => n[0]).join('')}
+                                    </span>
                                 </div>
                                 <div className="flex-1">
                                     <a href="#" className="github-link font-semibold">{comment.author}</a>

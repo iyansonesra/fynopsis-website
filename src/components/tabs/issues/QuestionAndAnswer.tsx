@@ -55,14 +55,6 @@ export function Issues() {
               placeholder="Filter labels"
               items={['Bug', 'Documentation', 'Enhancement', 'Good First Issue', 'Help Wanted', 'Question']}
             />
-            
-            <FilterDialog 
-              title="Milestones" 
-              icon={BookMarked} 
-              buttonText="Milestones"
-              placeholder="Filter milestones"
-              items={['React 19', 'React 18.3.0', 'Future']}
-            />
 
             <Button className="bg-blue-500 hover:bg-blue-800 h-9">
               <Plus className="h-4 w-4 mr-2" />
