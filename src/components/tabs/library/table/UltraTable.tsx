@@ -145,6 +145,8 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
   const [showFolderModal, setShowFolderModal] = useState(false);
   const [showRenameModal, setShowRenameModal] = useState(false);
   const [newRenameName, setNewRenameName] = useState('');
+  const [fileExtension, setFileExtension] = useState('');
+  const [itemToRename, setItemToRename] = useState<FileNode | null>(null);
 
   const [newFolderName, setNewFolderName] = useState('');
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
@@ -625,6 +627,9 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
 
   const handleRenameFile = async (id: string, newName: string) => {
     try {
+      // For files with extensions, combine the base name with the extension
+      const finalName = fileExtension ? newName + fileExtension : newName;
+      
       const response = await post({
         apiName: 'S3_API',
         path: `/s3/${bucketUuid}/rename-object`,
@@ -632,7 +637,7 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
           withCredentials: true,
           body: {
             fileId: id,
-            newName: newName
+            newName: finalName
           }
         }
       });
@@ -649,17 +654,13 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
 
         setShowRenameModal(false);
         setNewRenameName('');
-
+        setFileExtension('');
+        setItemToRename(null);
       }
 
     } catch (error) {
-
-      console.error('Error creating folder:', error);
-      // Remove folder from tree if API call fails
-
+      console.error('Error renaming file/folder:', error);
     }
-
-
   }
 
   const handleCreateFolder = async (name: string) => {
@@ -930,11 +931,6 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
       }
     };
 
-    const handleRename = async () => {
-      setShowRenameModal(true);
-      setSelectedItemId(item.id);
-    }
-
     const handleDelete = async () => {
       setTableData(prev =>
         prev.map(row =>
@@ -978,6 +974,25 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
       }
     };
 
+    const handleRename = async () => {
+      setShowRenameModal(true);
+      setSelectedItemId(item.id);
+      setItemToRename(item);
+      
+      if (!item.isFolder && item.name.includes('.')) {
+        // For files with extensions, split the name and extension
+        const lastDotIndex = item.name.lastIndexOf('.');
+        const baseName = item.name.substring(0, lastDotIndex);
+        const extension = item.name.substring(lastDotIndex);
+        
+        setNewRenameName(baseName);
+        setFileExtension(extension);
+      } else {
+        // For folders or files without extensions
+        setNewRenameName(item.name);
+        setFileExtension('');
+      }
+    }
 
 
     if (loading) {
@@ -1922,20 +1937,30 @@ th {
       {showRenameModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white dark:bg-gray-800 rounded-lg p-6 w-96">
-            <h3 className="text-lg font-semibold mb-4 dark:text-white">Rename File</h3>
-            <input
-              type="text"
-              value={newRenameName}
-              onChange={(e) => setNewRenameName(e.target.value)}
-              placeholder="Enter folder name"
-              className="w-full px-3 py-2 border rounded-md mb-4 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-              autoFocus
-            />
+            <h3 className="text-lg font-semibold mb-4 dark:text-white">
+              Rename {itemToRename?.isFolder ? 'Folder' : 'File'}
+            </h3>
+            <div className="flex items-center w-full mb-4">
+              <input
+                type="text"
+                value={newRenameName}
+                onChange={(e) => setNewRenameName(e.target.value)}
+                className="w-full px-3 py-2 border rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                autoFocus
+              />
+              {fileExtension && (
+                <div className="px-2 py-2 bg-gray-100 border-y border-r rounded-r-md dark:bg-gray-600 dark:border-gray-500 dark:text-gray-200">
+                  {fileExtension}
+                </div>
+              )}
+            </div>
             <div className="flex justify-end gap-2">
               <button
                 onClick={() => {
                   setShowRenameModal(false);
                   setNewRenameName('');
+                  setFileExtension('');
+                  setItemToRename(null);
                 }}
                 className="px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-md dark:text-gray-300 dark:hover:bg-gray-700"
               >

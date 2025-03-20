@@ -23,6 +23,10 @@ import { LineChart } from '@mui/x-charts';
 import {
     BarChart
 } from "@tremor/react";
+import { Checkbox } from '@/components/ui/checkbox';
+
+// Fix the ResponsiveGridLayout typing issue
+const ResponsiveGridLayoutWithChildren = WidthProvider(Responsive) as any;
 
 // Update the chart types to focus on the three main supported formats
 const FORMAT_TYPES = {
@@ -31,7 +35,7 @@ const FORMAT_TYPES = {
     GRAPH: 'graph'
 };
 
-// Available metrics for selection
+// Available metrics for selection - we'll keep this for reference but won't use it for selection
 const AVAILABLE_METRICS = getAvailableMetrics();
 
 // Define types for graph data
@@ -75,7 +79,7 @@ interface DashboardWidget {
 }
 
 // Enable responsive behavior with the HOC
-const ResponsiveGridLayout = WidthProvider(Responsive);
+// const ResponsiveGridLayout = WidthProvider(Responsive);
 
 export default function DiligenceDashboardViewer() {
     const params = useParams();
@@ -94,16 +98,31 @@ export default function DiligenceDashboardViewer() {
     const [dashboardTemplates, setDashboardTemplates] = useState<DashboardTemplate[]>([]);
     const [isLoadTemplateOpen, setIsLoadTemplateOpen] = useState(false);
     const [graphLayout, setGraphLayout] = useState<{ nodes: GraphNode[], links: GraphEdge[] }>({ nodes: [], links: [] });
-
+    const [newWidgetDetails, setNewWidgetDetails] = useState('');
+    const [newWidgetChartType, setNewWidgetChartType] = useState('');
+    const [newWidgetXAxis, setNewWidgetXAxis] = useState('');
+    const [newWidgetYAxis, setNewWidgetYAxis] = useState('');
+    const [newWidgetStacked, setNewWidgetStacked] = useState(false);
+    const [newWidgetHorizontal, setNewWidgetHorizontal] = useState(false);
+    const [newWidgetTimeSeries, setNewWidgetTimeSeries] = useState(false);
+    const [newWidgetShowPoints, setNewWidgetShowPoints] = useState(false);
+    const [newWidgetDonut, setNewWidgetDonut] = useState(false);
+    const [newWidgetShowPercentages, setNewWidgetShowPercentages] = useState(false);
+    const [newWidgetTableCols, setNewWidgetTableCols] = useState<string[]>([]);
 
     // Layout settings
     const cols = { lg: 12, md: 10, sm: 6, xs: 4, xxs: 2 };
     const rowHeight = 100;
 
     // Load dashboard data on component mount
-    // Load dashboard data on component mount
     useEffect(() => {
         loadDashboardState();
+        
+        // Load dashboard name from localStorage if available
+        const savedName = localStorage.getItem(`dashboard-${bucketId}-name`);
+        if (savedName) {
+            setDashboardName(savedName);
+        }
     }, [bucketId]);
 
     // Load dashboard state
@@ -181,7 +200,7 @@ export default function DiligenceDashboardViewer() {
 
     // ...existing code...
 
-    const handleAddWidget = () => {
+    const handleAddWidget = async () => {
         if (!newWidgetTitle.trim()) {
             toast({
                 title: "Error",
@@ -190,95 +209,204 @@ export default function DiligenceDashboardViewer() {
             });
             return;
         }
-
-        const newWidget: DashboardWidget = {
-            id: uuidv4(),
-            type: newWidgetType,
-            title: newWidgetTitle,
-            format: newWidgetFormat,
-            metricKey: newWidgetMetric,
-            x: 0,
-            y: Infinity, // Places at the bottom
-            w: 4,
-            h: 3,
-            minW: 2,
-            minH: 2,
-            maxW: 12,
-            maxH: 10,
-            data: null,
-            config: {
-                title: newWidgetTitle
-            }
-        };
-
-        setWidgets([...widgets, newWidget]);
-        setIsAddWidgetOpen(false);
-
-        // Reset form values
-        setNewWidgetTitle('');
-        setNewWidgetType('chart');
-        setNewWidgetFormat(FORMAT_TYPES.CHART);
-        setNewWidgetMetric('');
-
-        // Fetch data for the new widget if needed
-        fetchDataForWidget(newWidget);
-    };
-
-    const fetchDataForWidget = async (widget: DashboardWidget) => {
-        if (!widget.metricKey || !companyId) return;
-
-        try {
-            setIsLoading(true);
-            const data = await fetchMetricData(companyId as string, widget.metricKey, widget.format);
-
-            setWidgets(prev =>
-                prev.map(w =>
-                    w.id === widget.id ? { ...w, data } : w
-                )
-            );
-        } catch (error) {
-            console.error('Error fetching widget data:', error);
+        
+        if (!newWidgetMetric.trim()) {
             toast({
                 title: "Error",
-                description: "Failed to load widget data",
+                description: "Please specify a metric name",
                 variant: "destructive"
             });
-        } finally {
-            setIsLoading(false);
+            return;
+        }
+
+        try {
+            // Create new widget with initial parameters
+            const widgetId = uuidv4();
+            const newWidget: Widget = {
+                id: widgetId,
+                type: newWidgetFormat,
+                title: newWidgetTitle,
+                metricName: newWidgetMetric,
+                positionData: {
+                    width: 4,
+                    height: 3,
+                    x: 0,
+                    y: widgets.length > 0 ? Math.max(...widgets.map(w => w.y)) + 1 : 0,
+                    expanded: false
+                }
+            };
+            
+            // Add optional parameters if they exist
+            if (newWidgetDetails) newWidget.extraDetails = newWidgetDetails;
+            
+            // Add chart-specific parameters
+            if (newWidgetFormat === FORMAT_TYPES.CHART) {
+                if (newWidgetChartType) newWidget.chartType = newWidgetChartType;
+                if (newWidgetXAxis) newWidget.xAxis = newWidgetXAxis;
+                if (newWidgetYAxis) newWidget.yAxis = newWidgetYAxis;
+                
+                // Add chart type specific options
+                if (newWidgetChartType === 'bar') {
+                    if (newWidgetStacked) newWidget.stacked = true;
+                    if (newWidgetHorizontal) newWidget.horizontal = true;
+                } else if (newWidgetChartType === 'line') {
+                    if (newWidgetTimeSeries) newWidget.timeSeries = true;
+                    if (newWidgetShowPoints) newWidget.showPoints = true;
+                } else if (newWidgetChartType === 'pie') {
+                    if (newWidgetDonut) newWidget.donut = true;
+                    if (newWidgetShowPercentages) newWidget.showPercentages = true;
+                }
+            }
+            
+            // Add table-specific parameters
+            if (newWidgetFormat === FORMAT_TYPES.TABLE && newWidgetTableCols && newWidgetTableCols.length > 0) {
+                newWidget.tableCols = newWidgetTableCols;
+            }
+
+            // Add widget to backend
+            const savedWidget = await MetricsService.addWidget(bucketId, newWidget);
+            
+            // Convert to dashboard widget format for local state
+            const dashboardWidget: DashboardWidget = {
+                id: savedWidget.id,
+                type: savedWidget.type,
+                title: savedWidget.title,
+                format: savedWidget.type,
+                metricKey: savedWidget.metricName,
+                x: savedWidget.positionData.x,
+                y: savedWidget.positionData.y,
+                w: savedWidget.positionData.width,
+                h: savedWidget.positionData.height,
+                minW: 2,
+                minH: 2,
+                maxW: 12,
+                maxH: 10,
+                data: savedWidget.data || null,
+                config: {
+                    title: savedWidget.title,
+                    expanded: savedWidget.positionData.expanded || false,
+                    extraDetails: savedWidget.extraDetails
+                }
+            };
+
+            // Update local state
+            setWidgets([...widgets, dashboardWidget]);
+            setIsAddWidgetOpen(false);
+
+            // Reset form values
+            setNewWidgetTitle('');
+            setNewWidgetType('chart');
+            setNewWidgetFormat(FORMAT_TYPES.CHART);
+            setNewWidgetMetric('');
+            setNewWidgetDetails('');
+            setNewWidgetChartType('');
+            setNewWidgetXAxis('');
+            setNewWidgetYAxis('');
+            setNewWidgetStacked(false);
+            setNewWidgetHorizontal(false);
+            setNewWidgetTimeSeries(false);
+            setNewWidgetShowPoints(false);
+            setNewWidgetDonut(false);
+            setNewWidgetShowPercentages(false);
+            setNewWidgetTableCols([]);
+
+            toast({
+                title: "Success",
+                description: "Widget added successfully"
+            });
+        } catch (error) {
+            console.error('Error adding widget:', error);
+            toast({
+                title: "Error",
+                description: "Failed to add widget"
+            });
         }
     };
 
-    const handleDeleteWidget = (id: string) => {
-        setWidgets(widgets.filter(widget => widget.id !== id));
+    const handleDeleteWidget = async (id: string) => {
+        try {
+            // Delete widget from backend
+            await MetricsService.deleteWidget(bucketId, id);
+            
+            // Update local state
+            setWidgets(widgets.filter(widget => widget.id !== id));
+            
+            toast({
+                title: "Success",
+                description: "Widget deleted successfully"
+            });
+        } catch (error) {
+            console.error('Error deleting widget:', error);
+            toast({
+                title: "Error",
+                description: "Failed to delete widget"
+            });
+        }
     };
 
     const handleLayoutChange = (layout: any[]) => {
         // Update widget positions when layout changes
-        const updatedWidgets = widgets.map(widget => {
-            const layoutItem = layout.find(item => item.i === widget.id);
-            if (layoutItem) {
-                return {
-                    ...widget,
+        layout.forEach(layoutItem => {
+            const widget = widgets.find(w => w.id === layoutItem.i);
+            if (!widget) return;
+            
+            // Only update if position actually changed
+            if (
+                widget.x !== layoutItem.x ||
+                widget.y !== layoutItem.y ||
+                widget.w !== layoutItem.w ||
+                widget.h !== layoutItem.h
+            ) {
+                // Update local state immediately for responsive UI
+                const updatedWidgets = widgets.map(w => 
+                    w.id === widget.id 
+                        ? { ...w, x: layoutItem.x, y: layoutItem.y, w: layoutItem.w, h: layoutItem.h } 
+                        : w
+                );
+                setWidgets(updatedWidgets);
+                
+                // Debounce actual API calls to prevent too many requests
+                updateWidgetPosition(widget.id, {
                     x: layoutItem.x,
                     y: layoutItem.y,
-                    w: layoutItem.w,
-                    h: layoutItem.h
-                };
+                    width: layoutItem.w,
+                    height: layoutItem.h,
+                    expanded: widget.config?.expanded || false
+                });
             }
-            return widget;
         });
+    };
 
-        setWidgets(updatedWidgets);
+    // Debounce function to limit API calls
+    const debounceMap = new Map<string, NodeJS.Timeout>();
+    
+    const updateWidgetPosition = (widgetId: string, positionData: { x: number, y: number, width: number, height: number, expanded?: boolean }) => {
+        // Clear any existing timeout for this widget
+        if (debounceMap.has(widgetId)) {
+            clearTimeout(debounceMap.get(widgetId)!);
+        }
+        
+        // Set a new timeout
+        const timeoutId = setTimeout(async () => {
+            try {
+                await MetricsService.modifyWidget(bucketId, widgetId, { positionData });
+                debounceMap.delete(widgetId);
+            } catch (error) {
+                console.error(`Error updating position for widget ${widgetId}:`, error);
+            }
+        }, 500); // 500ms debounce
+        
+        debounceMap.set(widgetId, timeoutId);
     };
 
     const saveDashboard = async () => {
         try {
-            const widgetsMap = convertToDashboardState(widgets);
-            await MetricsService.saveDashboardState(bucketId, widgetsMap);
-
+            // Save dashboard name in local storage or your preferred storage
+            localStorage.setItem(`dashboard-${bucketId}-name`, dashboardName);
+            
             toast({
                 title: "Success",
-                description: "Dashboard saved successfully"
+                description: "Dashboard name saved successfully"
             });
 
             setIsSaveDashboardOpen(false);
@@ -292,10 +420,43 @@ export default function DiligenceDashboardViewer() {
         }
     };
 
-
-
-
-    // ...existing code...
+    // Toggle widget expanded state
+    const toggleWidgetExpanded = async (widgetId: string) => {
+        const widget = widgets.find(w => w.id === widgetId);
+        if (!widget) return;
+        
+        const expanded = !widget.config?.expanded;
+        
+        // Update local state first
+        const updatedWidgets = widgets.map(w => 
+            w.id === widgetId 
+                ? { 
+                    ...w, 
+                    config: { ...w.config, expanded } 
+                } 
+                : w
+        );
+        setWidgets(updatedWidgets);
+        
+        // Update in backend
+        try {
+            const positionData = {
+                x: widget.x,
+                y: widget.y,
+                width: widget.w,
+                height: widget.h,
+                expanded
+            };
+            
+            await MetricsService.modifyWidget(bucketId, widgetId, { positionData });
+        } catch (error) {
+            console.error('Error updating widget expanded state:', error);
+            toast({
+                title: "Error",
+                description: "Failed to update widget state"
+            });
+        }
+    };
 
     // Default pie chart rendering for other chart types
     // ...existing pie chart code...
@@ -305,7 +466,7 @@ export default function DiligenceDashboardViewer() {
         // Parse the data if it's a string
         const parseTableData = () => {
             if (!widget.data) return null;
-
+            
             // Check if we have a string that needs to be parsed
             if (typeof widget.data === 'string') {
                 try {
@@ -315,7 +476,7 @@ export default function DiligenceDashboardViewer() {
                     return null;
                 }
             }
-
+            
             // Check for new format (JSON string inside a property)
             if (typeof widget.data[widget.id] === 'string') {
                 try {
@@ -325,21 +486,21 @@ export default function DiligenceDashboardViewer() {
                     return null;
                 }
             }
-
+            
             // Legacy format support
             return widget.data;
         };
-
+        
         const tableData = parseTableData();
-
+        
         // Handle loading state - check if it's null or has loading status
-        if (!tableData || tableData.status === 'loading' ||
+        if (!tableData || tableData.status === 'loading' || 
             (widget.data && widget.data.status === 'loading')) {
             return (
                 <div className="flex items-center justify-center h-full">Loading data...</div>
             );
         }
-
+        
         // New format with columns and rows of objects
         if (tableData.columns && tableData.rows) {
             return (
@@ -360,8 +521,8 @@ export default function DiligenceDashboardViewer() {
                         </thead>
                         <tbody>
                             {tableData.rows.map((row: any, rowIndex: number) => (
-                                <tr
-                                    key={rowIndex}
+                                <tr 
+                                    key={rowIndex} 
                                     className={rowIndex % 2 === 0 ? 'bg-white dark:bg-gray-950' : 'bg-gray-50 dark:bg-gray-900'}
                                 >
                                     {tableData.columns.map((column: string, colIndex: number) => (
@@ -381,7 +542,7 @@ export default function DiligenceDashboardViewer() {
                 </div>
             );
         }
-
+        
         // Legacy format support with headers and rows of arrays
         if (tableData.headers && tableData.rows) {
             return (
@@ -398,8 +559,8 @@ export default function DiligenceDashboardViewer() {
                         </thead>
                         <tbody>
                             {tableData.rows.map((row: any[], rowIndex: number) => (
-                                <tr
-                                    key={rowIndex}
+                                <tr 
+                                    key={rowIndex} 
                                     className={rowIndex % 2 === 0 ? 'bg-white dark:bg-gray-950' : 'bg-gray-50 dark:bg-gray-900'}
                                 >
                                     {row.map((cell, cellIndex) => (
@@ -414,7 +575,7 @@ export default function DiligenceDashboardViewer() {
                 </div>
             );
         }
-
+        
         return <div className="flex items-center justify-center h-full">Invalid table data format</div>;
     };
 
@@ -717,7 +878,7 @@ export default function DiligenceDashboardViewer() {
             const colors = ["blue", "green", "purple", "amber", "rose"];
 
             // Calculate appropriate yAxisWidth based on data values
-            const maxValue = Math.max(...datasets.flatMap(d => d.data.filter(v => v !== null) as number[]));
+            const maxValue = Math.max(...datasets.flatMap((d: any) => d.data.filter((v: any) => v !== null) as number[]));
             const yAxisWidth = maxValue >= 1000000 ? 60 : (maxValue >= 10000 ? 50 : 40);
 
             return (
@@ -782,7 +943,7 @@ export default function DiligenceDashboardViewer() {
 
                     {/* Legend at the bottom - reduced padding */}
                     <div className="flex flex-wrap justify-center gap-2 text-xs mt-1 mb-1">
-                        {categories.map((category, index) => (
+                        {categories.map((category: string, index: number) => (
                             <div key={index} className="flex items-center px-1">
                                 <div
                                     className="w-2 h-2 rounded-full mr-1"
@@ -831,14 +992,31 @@ export default function DiligenceDashboardViewer() {
     };
     // Then update the renderWidgetContent function to use this component
     const renderWidgetContent = (widget: DashboardWidget) => {
+        // Convert DashboardWidget to Widget format for component compatibility
+        const adaptedWidget: Widget = {
+            id: widget.id,
+            type: widget.format,
+            title: widget.title,
+            metricName: widget.metricKey || '',
+            positionData: {
+                width: widget.w,
+                height: widget.h,
+                x: widget.x,
+                y: widget.y,
+                expanded: widget.config?.expanded || false
+            },
+            extraDetails: widget.config?.extraDetails,
+            data: widget.data
+        };
+        
         // Placeholder rendering based on widget type
-        switch (widget.format) {
+        switch(widget.format) {
             case FORMAT_TYPES.CHART:
-                return <ChartWidget widget={widget} />;
+                return <ChartWidget widget={adaptedWidget} />;
             case FORMAT_TYPES.TABLE:
-                return <TableWidget widget={widget} />;
+                return <TableWidget widget={adaptedWidget} />;
             case FORMAT_TYPES.GRAPH:
-                return <GraphWidget widget={widget} />;
+                return <GraphWidget widget={adaptedWidget} />;
             default:
                 return <div>Unknown widget type</div>;
         }
@@ -854,9 +1032,10 @@ export default function DiligenceDashboardViewer() {
                         <Button
                             variant="outline"
                             onClick={() => setIsSaveDashboardOpen(true)}
+                            title="Save the dashboard name. Widget changes are saved automatically."
                         >
                             <Save className="mr-2 h-4 w-4" />
-                            Save Dashboard
+                            Save Dashboard Name
                         </Button>
 
                         <Button
@@ -891,7 +1070,7 @@ export default function DiligenceDashboardViewer() {
                         </Button>
                     </div>
                 ) : (
-                    <ResponsiveGridLayout
+                    <ResponsiveGridLayoutWithChildren
                         className="layout"
                         layouts={{
                             lg: widgets.map(w => ({
@@ -927,6 +1106,18 @@ export default function DiligenceDashboardViewer() {
                                                 variant="ghost"
                                                 size="icon"
                                                 className="h-7 w-7"
+                                                onClick={() => toggleWidgetExpanded(widget.id)}
+                                                title={widget.config?.expanded ? "Minimize" : "Maximize"}
+                                            >
+                                                {widget.config?.expanded ? 
+                                                    <Minimize className="h-4 w-4" /> : 
+                                                    <Maximize className="h-4 w-4" />
+                                                }
+                                            </Button>
+                                            <Button
+                                                variant="ghost"
+                                                size="icon"
+                                                className="h-7 w-7"
                                                 onClick={() => {/* Widget settings */ }}
                                             >
                                                 <Settings className="h-4 w-4" />
@@ -947,7 +1138,7 @@ export default function DiligenceDashboardViewer() {
                                 </Card>
                             </div>
                         ))}
-                    </ResponsiveGridLayout>
+                    </ResponsiveGridLayoutWithChildren>
                 )}
 
 
@@ -988,22 +1179,176 @@ export default function DiligenceDashboardViewer() {
 
                             <div className="grid grid-cols-4 items-center gap-4">
                                 <UILabel htmlFor="widget-metric" className="text-right">Metric</UILabel>
-                                <UISelect
+                                <Input
+                                    id="widget-metric"
                                     value={newWidgetMetric}
-                                    onValueChange={setNewWidgetMetric}
-                                >
-                                    <SelectTrigger className="col-span-3">
-                                        <SelectValue placeholder="Select metric" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {AVAILABLE_METRICS.map(metric => (
-                                            <SelectItem key={metric.id} value={metric.id}>
-                                                {metric.name}
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </UISelect>
+                                    onChange={(e) => setNewWidgetMetric(e.target.value)}
+                                    className="col-span-3"
+                                    placeholder="Type any metric name (e.g., revenue, growth, customers)"
+                                />
                             </div>
+
+                            <div className="grid grid-cols-4 items-start gap-4">
+                                <UILabel htmlFor="widget-details" className="text-right pt-2">Description</UILabel>
+                                <Textarea
+                                    id="widget-details"
+                                    value={newWidgetDetails || ''}
+                                    onChange={(e) => setNewWidgetDetails(e.target.value)}
+                                    className="col-span-3"
+                                    placeholder="Additional details for this widget (optional)"
+                                    rows={2}
+                                />
+                            </div>
+
+                            {/* Show additional form fields based on widget format */}
+                            {newWidgetFormat === FORMAT_TYPES.CHART && (
+                                <>
+                                    <div className="grid grid-cols-4 items-center gap-4">
+                                        <UILabel htmlFor="chart-type" className="text-right">Chart Type</UILabel>
+                                        <UISelect
+                                            value={newWidgetChartType || ''}
+                                            onValueChange={setNewWidgetChartType}
+                                        >
+                                            <SelectTrigger className="col-span-3">
+                                                <SelectValue placeholder="Select chart type" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="bar">Bar Chart</SelectItem>
+                                                <SelectItem value="line">Line Chart</SelectItem>
+                                                <SelectItem value="pie">Pie Chart</SelectItem>
+                                            </SelectContent>
+                                        </UISelect>
+                                    </div>
+
+                                    {/* Fields specific to chart type */}
+                                    {newWidgetChartType && (
+                                        <>
+                                            <div className="grid grid-cols-4 items-center gap-4">
+                                                <UILabel htmlFor="x-axis" className="text-right">X-Axis</UILabel>
+                                                <Input
+                                                    id="x-axis"
+                                                    value={newWidgetXAxis || ''}
+                                                    onChange={(e) => setNewWidgetXAxis(e.target.value)}
+                                                    className="col-span-3"
+                                                    placeholder="X-Axis Label (optional)"
+                                                />
+                                            </div>
+
+                                            <div className="grid grid-cols-4 items-center gap-4">
+                                                <UILabel htmlFor="y-axis" className="text-right">Y-Axis</UILabel>
+                                                <Input
+                                                    id="y-axis"
+                                                    value={newWidgetYAxis || ''}
+                                                    onChange={(e) => setNewWidgetYAxis(e.target.value)}
+                                                    className="col-span-3"
+                                                    placeholder="Y-Axis Label (optional)"
+                                                />
+                                            </div>
+
+                                            {/* Chart type specific options */}
+                                            {newWidgetChartType === 'bar' && (
+                                                <div className="grid grid-cols-4 items-center gap-4">
+                                                    <div className="col-span-1"></div>
+                                                    <div className="flex space-x-4 col-span-3">
+                                                        <div className="flex items-center space-x-2">
+                                                            <Checkbox 
+                                                                id="stacked"
+                                                                checked={newWidgetStacked || false}
+                                                                onCheckedChange={(checked) => 
+                                                                    setNewWidgetStacked(checked === true)
+                                                                }
+                                                            />
+                                                            <label htmlFor="stacked" className="text-sm">Stacked</label>
+                                                        </div>
+                                                        <div className="flex items-center space-x-2">
+                                                            <Checkbox 
+                                                                id="horizontal"
+                                                                checked={newWidgetHorizontal || false}
+                                                                onCheckedChange={(checked) => 
+                                                                    setNewWidgetHorizontal(checked === true)
+                                                                }
+                                                            />
+                                                            <label htmlFor="horizontal" className="text-sm">Horizontal</label>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            )}
+
+                                            {newWidgetChartType === 'line' && (
+                                                <div className="grid grid-cols-4 items-center gap-4">
+                                                    <div className="col-span-1"></div>
+                                                    <div className="flex space-x-4 col-span-3">
+                                                        <div className="flex items-center space-x-2">
+                                                            <Checkbox 
+                                                                id="time-series"
+                                                                checked={newWidgetTimeSeries || false}
+                                                                onCheckedChange={(checked) => 
+                                                                    setNewWidgetTimeSeries(checked === true)
+                                                                }
+                                                            />
+                                                            <label htmlFor="time-series" className="text-sm">Time Series</label>
+                                                        </div>
+                                                        <div className="flex items-center space-x-2">
+                                                            <Checkbox 
+                                                                id="show-points"
+                                                                checked={newWidgetShowPoints || false}
+                                                                onCheckedChange={(checked) => 
+                                                                    setNewWidgetShowPoints(checked === true)
+                                                                }
+                                                            />
+                                                            <label htmlFor="show-points" className="text-sm">Show Points</label>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            )}
+
+                                            {newWidgetChartType === 'pie' && (
+                                                <div className="grid grid-cols-4 items-center gap-4">
+                                                    <div className="col-span-1"></div>
+                                                    <div className="flex space-x-4 col-span-3">
+                                                        <div className="flex items-center space-x-2">
+                                                            <Checkbox 
+                                                                id="donut"
+                                                                checked={newWidgetDonut || false}
+                                                                onCheckedChange={(checked) => 
+                                                                    setNewWidgetDonut(checked === true)
+                                                                }
+                                                            />
+                                                            <label htmlFor="donut" className="text-sm">Donut Chart</label>
+                                                        </div>
+                                                        <div className="flex items-center space-x-2">
+                                                            <Checkbox 
+                                                                id="show-percentages"
+                                                                checked={newWidgetShowPercentages || false}
+                                                                onCheckedChange={(checked) => 
+                                                                    setNewWidgetShowPercentages(checked === true)
+                                                                }
+                                                            />
+                                                            <label htmlFor="show-percentages" className="text-sm">Show Percentages</label>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </>
+                                    )}
+                                </>
+                            )}
+
+                            {newWidgetFormat === FORMAT_TYPES.TABLE && (
+                                <div className="grid grid-cols-4 items-start gap-4">
+                                    <UILabel htmlFor="table-columns" className="text-right pt-2">Table Columns</UILabel>
+                                    <Textarea
+                                        id="table-columns"
+                                        value={newWidgetTableCols?.join(', ') || ''}
+                                        onChange={(e) => setNewWidgetTableCols(
+                                            e.target.value.split(',').map(col => col.trim()).filter(Boolean)
+                                        )}
+                                        className="col-span-3"
+                                        placeholder="Column names separated by commas (optional)"
+                                        rows={2}
+                                    />
+                                </div>
+                            )}
                         </div>
 
                         <DialogFooter>

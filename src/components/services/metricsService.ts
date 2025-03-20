@@ -1,4 +1,4 @@
-import { post, get, del } from 'aws-amplify/api';
+import { post, get, del, put } from 'aws-amplify/api';
 // Service for fetching and processing metrics data for the diligence dashboard
 
 export interface Metric {
@@ -309,6 +309,183 @@ export class MetricsService {
       await restOperation.response;
     } catch (error) {
       console.error('Error deleting dashboard template:', error);
+      throw error;
+    }
+  }
+
+  // Add a widget to the dashboard
+  static async addWidget(bucketId: string, widget: Widget): Promise<Widget> {
+    try {
+      // Ensure widget has formatParams
+      if (!widget.formatParams) {
+        // Only format_type is required
+        const formatParams: Record<string, any> = {
+          format_type: widget.type
+        };
+        
+        // Only add parameters that have values - don't include empty values
+        if (widget.title) formatParams.title = widget.title;
+        if (widget.extraDetails) formatParams.description = widget.extraDetails;
+        
+        // Chart parameters - only add if they have values
+        if (widget.chartType) formatParams.chart_type = widget.chartType;
+        if (widget.xAxis) formatParams.x_axis = widget.xAxis;
+        if (widget.yAxis) formatParams.y_axis = widget.yAxis;
+        if (widget.series1) formatParams.series_1 = widget.series1;
+        if (widget.series2) formatParams.series_2 = widget.series2;
+        if (widget.values) formatParams.values = widget.values;
+        if (widget.chartDescription) formatParams.chart_description = widget.chartDescription;
+        
+        // Only add array params if they exist and aren't empty
+        if (widget.categories && widget.categories.length > 0) {
+          formatParams.categories = widget.categories;
+        }
+        
+        // Only add table columns if they exist and aren't empty
+        if (widget.tableCols && widget.tableCols.length > 0) {
+          formatParams.table_columns = widget.tableCols;
+        }
+        
+        // Boolean flags - only add if they're true
+        if (widget.timeSeries === true) formatParams.time_series = true;
+        if (widget.showPoints === true) formatParams.show_points = true;
+        if (widget.stacked === true) formatParams.stacked = true;
+        if (widget.horizontal === true) formatParams.horizontal = true;
+        if (widget.donut === true) formatParams.donut = true;
+        if (widget.showPercentages === true) formatParams.show_percentages = true;
+        
+        widget.formatParams = formatParams;
+      }
+      
+      const response = await post({
+        apiName: 'S3_API',
+        path: `/metrics/${bucketId}/widget`,
+        options: {
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            widget
+          })
+        }
+      });
+      
+      const { body } = await response.response;
+      const responseText = await body.text();
+      const parsedResponse = JSON.parse(responseText);
+      
+      return parsedResponse.widget;
+    } catch (error) {
+      console.error('Error adding widget:', error);
+      throw error;
+    }
+  }
+  
+  // Modify a widget (primarily for position data updates)
+  static async modifyWidget(bucketId: string, widgetId: string, updates: Partial<Widget>): Promise<Widget> {
+    try {
+      // Create a widget update object with only the changes
+      const widgetUpdates: Partial<Widget> = {};
+      
+      // Always include the ID
+      widgetUpdates.id = widgetId;
+      
+      // Position data is the primary use case
+      if (updates.positionData) {
+        widgetUpdates.positionData = updates.positionData;
+      }
+      
+      // Allow updating other properties - only include if they exist
+      if (updates.title !== undefined) widgetUpdates.title = updates.title;
+      if (updates.metricName !== undefined) widgetUpdates.metricName = updates.metricName;
+      if (updates.type !== undefined) widgetUpdates.type = updates.type;
+      if (updates.extraDetails !== undefined) widgetUpdates.extraDetails = updates.extraDetails;
+      
+      // Handle format parameters update
+      if (updates.formatParams) {
+        widgetUpdates.formatParams = updates.formatParams;
+      } else if (updates.chartType || updates.xAxis || updates.yAxis || updates.series1 || 
+                updates.series2 || updates.tableCols || updates.categories || updates.values || 
+                updates.chartDescription || updates.timeSeries !== undefined || 
+                updates.showPoints !== undefined || updates.stacked !== undefined || 
+                updates.horizontal !== undefined || updates.donut !== undefined || 
+                updates.showPercentages !== undefined) {
+        
+        // Build new format params with only non-empty values
+        const formatParams: Record<string, any> = {
+          format_type: updates.type || 'chart' // Default to chart if not specified
+        };
+        
+        // Only add parameters that have values
+        if (updates.title) formatParams.title = updates.title;
+        if (updates.extraDetails) formatParams.description = updates.extraDetails;
+        
+        // Chart parameters - only add if they have values
+        if (updates.chartType) formatParams.chart_type = updates.chartType;
+        if (updates.xAxis) formatParams.x_axis = updates.xAxis;
+        if (updates.yAxis) formatParams.y_axis = updates.yAxis;
+        if (updates.series1) formatParams.series_1 = updates.series1;
+        if (updates.series2) formatParams.series_2 = updates.series2;
+        if (updates.values) formatParams.values = updates.values;
+        if (updates.chartDescription) formatParams.chart_description = updates.chartDescription;
+        
+        // Only add array params if they exist and aren't empty
+        if (updates.categories && updates.categories.length > 0) {
+          formatParams.categories = updates.categories;
+        }
+        
+        // Only add table columns if they exist and aren't empty
+        if (updates.tableCols && updates.tableCols.length > 0) {
+          formatParams.table_columns = updates.tableCols;
+        }
+        
+        // Boolean flags - only add if they're explicitly set
+        if (updates.timeSeries !== undefined) formatParams.time_series = updates.timeSeries;
+        if (updates.showPoints !== undefined) formatParams.show_points = updates.showPoints;
+        if (updates.stacked !== undefined) formatParams.stacked = updates.stacked;
+        if (updates.horizontal !== undefined) formatParams.horizontal = updates.horizontal;
+        if (updates.donut !== undefined) formatParams.donut = updates.donut;
+        if (updates.showPercentages !== undefined) formatParams.show_percentages = updates.showPercentages;
+        
+        widgetUpdates.formatParams = formatParams;
+      }
+      
+      // Use the put function from aws-amplify/api
+      const apiResponse = await put({
+        apiName: 'S3_API',
+        path: `/metrics/${bucketId}/widget/${widgetId}`,
+        options: {
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            widget: widgetUpdates
+          })
+        }
+      });
+      
+      const { body } = await apiResponse.response;
+      const responseText = await body.text();
+      const parsedResponse = JSON.parse(responseText);
+      
+      return parsedResponse.widget;
+    } catch (error) {
+      console.error('Error modifying widget:', error);
+      throw error;
+    }
+  }
+  
+  // Delete a widget
+  static async deleteWidget(bucketId: string, widgetId: string): Promise<void> {
+    try {
+      const response = await del({
+        apiName: 'S3_API',
+        path: `/metrics/${bucketId}/widget/${widgetId}`
+      });
+      
+      await response.response;
+    } catch (error) {
+      console.error('Error deleting widget:', error);
       throw error;
     }
   }
