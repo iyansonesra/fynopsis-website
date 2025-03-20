@@ -109,9 +109,15 @@ export function Issues() {
     }
   }
 
+  const [selectedIssueId, setSelectedIssueId] = useState<string | number | null>(null);
+
+  // Then modify handleIssueClick
   const handleIssueClick = (issueId: number | string) => {
     setActiveIssueId(issueId);
-    router.push(`/dataroom/${dataroomId}/${subId}/issues/${issueId}`);
+    setSelectedIssueId(issueId);
+    
+    // Update URL without triggering a navigation/refresh
+    window.history.pushState({}, '', `/dataroom/${dataroomId}/${subId}/issues/${issueId}`);
   };
 
   const handleCreateIssue = async (newIssueData: Omit<FrontendIssue, 'id' | 'number' | 'createdAt'>) => {
