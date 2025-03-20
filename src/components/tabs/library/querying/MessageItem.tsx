@@ -92,8 +92,8 @@ interface MessageItemProps {
     isLastMessage: boolean;
     handleSourceCardClick: (sourceUrl: string, chunk?: string) => void;
     getFileName: (filename: string) => string;
-    accordionValues: { [key: string]: string };
-    setAccordionValues: React.Dispatch<React.SetStateAction<{ [key: string]: string }>>;
+    // accordionValues: { [key: string]: string };
+    // setAccordionValues: React.Dispatch<React.SetStateAction<{ [key: string]: string }>>;
 }
 
 
@@ -214,8 +214,8 @@ const GreenCircle = memo<GreenCircleProps>(({ number, fileKey, onSourceClick }) 
     );
 }, (prevProps, nextProps) => {
     // Custom comparison function to avoid unnecessary re-renders
-    return prevProps.number === nextProps.number && 
-           prevProps.fileKey === nextProps.fileKey;
+    return prevProps.number === nextProps.number &&
+        prevProps.fileKey === nextProps.fileKey;
 });
 
 // Add display name to GreenCircle
@@ -228,9 +228,12 @@ export const MessageItem = memo<MessageItemProps>(({
     isLastMessage,
     handleSourceCardClick,
     getFileName,
-    accordionValues,
-    setAccordionValues
+    // accordionValues,
+    // setAccordionValues
 }) => {
+
+    const accordionValues = useFileStore(state => state.accordionValues);
+    const setAccordionValue = useFileStore(state => state.setAccordionValue);
 
     const getCitationByStep = (stepNumber: string) => {
         return message.citations?.find(citation => citation.stepNumber === stepNumber);
@@ -242,20 +245,23 @@ export const MessageItem = memo<MessageItemProps>(({
 
     useEffect(() => {
         // Set accordions to open by default
-        setAccordionValues(prev => ({
-            ...prev,
-            [`accordion-${index}`]: prev[`accordion-${index}`] === undefined ? 'steps' : prev[`accordion-${index}`],
-            [`progress-${index}`]: prev[`progress-${index}`] === undefined ? 'progress' : prev[`progress-${index}`]
-        }));
+        const accordionKey = `accordion-${index}`;
+        const progressKey = `progress-${index}`;
+
+        // Only set if not already set
+        if (accordionValues[accordionKey] === undefined) {
+            setAccordionValue(accordionKey, 'steps');
+        }
+
+        if (accordionValues[progressKey] === undefined) {
+            setAccordionValue(progressKey, 'progress');
+        }
 
         // Close progress accordion when thinking is complete
         if (message.steps && message.steps.length > 0) {
-            setAccordionValues(prev => ({
-                ...prev,
-                [`progress-${index}`]: ''
-            }));
+            setAccordionValue(progressKey, '');
         }
-    }, [message.progressText, index, setAccordionValues]);
+    }, [message.progressText, index, message.steps]);
 
     const AnimatedProgressText: React.FC<{ text: string }> = ({ text }) => {
         return (
@@ -305,10 +311,7 @@ export const MessageItem = memo<MessageItemProps>(({
                         collapsible
                         value={accordionValues[`accordion-${index}`] || ''}
                         onValueChange={(value) => {
-                            setAccordionValues(prev => ({
-                                ...prev,
-                                [`accordion-${index}`]: value
-                            }));
+                            setAccordionValue(`accordion-${index}`, value);
                         }}
                         className="w-full -space-y-px mb-2"
                     >
@@ -328,18 +331,15 @@ export const MessageItem = memo<MessageItemProps>(({
 
                             <AccordionContent className="pb-2 pt-2 text-muted-foreground w-full">
                                 {message.progressText && (
-                                    <Accordion
-                                        type="single"
-                                        collapsible
-                                        value={accordionValues[`progress-${index}`] || ''}
-                                        onValueChange={(value) => {
-                                            setAccordionValues(prev => ({
-                                                ...prev,
-                                                [`progress-${index}`]: value
-                                            }));
-                                        }}
-                                        className="w-full mb-3"
-                                    >
+                                     <Accordion
+                                     type="single"
+                                     collapsible
+                                     value={accordionValues[`progress-${index}`] || ''}
+                                     onValueChange={(value) => {
+                                         setAccordionValue(`progress-${index}`, value);
+                                     }}
+                                     className="w-full mb-3"
+                                 >
                                         <AccordionItem
                                             value="progress"
                                             className="border-none bg-slate-50 dark:bg-slate-800/50 rounded-md w-full"
@@ -406,9 +406,9 @@ export const MessageItem = memo<MessageItemProps>(({
                                         {message.steps.map((step, stepIndex) => (
                                             <div key={stepIndex} className="step-item w-full">
                                                 <Markdown
-                                                
+
                                                 >
-                                                        {(() => {
+                                                    {(() => {
                                                         const content = `<span class="text-xs text-gray-500 whitespace-nowrap">${step.number}. </span><span class="text-xs text-gray-700 dark:text-gray-300 font-normal">${step.content}</span>`;
 
                                                         // Transform content to include citation circles if needed

@@ -58,7 +58,7 @@ const PDFHighlighterContainer = styled.div`
 `;
 
 const Spinner = () => (
-  <div className="loader bg-green-100">Loading PDF...</div>
+  <div className="loader">Loading PDF...</div>
 );
 
 // Popup component to show highlight comment
