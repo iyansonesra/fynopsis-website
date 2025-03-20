@@ -83,11 +83,14 @@ class QAService {
       }
       
       const response = await get({
-        apiName: 'api',
+        apiName: 'S3_API',
         path: `/qa/${bucketId}`,
         options: {
-          headers: await this.getAuthHeaders(),
-          queryParams
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          queryParams,
+          withCredentials: true
         }
       });
       
@@ -131,10 +134,13 @@ class QAService {
   async getIssue(bucketId: string, issueId: string): Promise<FrontendIssue> {
     try {
       const response = await get({
-        apiName: 'api',
+        apiName: 'S3_API',
         path: `/qa/${bucketId}/${issueId}`,
         options: {
-          headers: await this.getAuthHeaders()
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          withCredentials: true
         }
       });
       
@@ -155,10 +161,12 @@ class QAService {
   async createIssue(bucketId: string, issue: CreateIssueRequest | any): Promise<FrontendIssue> {
     try {
       const response = await post({
-        apiName: 'api',
+        apiName: 'S3_API',
         path: `/qa/${bucketId}`,
         options: {
-          headers: await this.getAuthHeaders(),
+          headers: {
+            'Content-Type': 'application/json'
+          },
           body: JSON.stringify(issue)
         }
       });
@@ -180,11 +188,14 @@ class QAService {
   async addAnswer(bucketId: string, issueId: string, answer: CreateAnswerRequest): Promise<Answer> {
     try {
       const response = await post({
-        apiName: 'api',
+        apiName: 'S3_API',
         path: `/qa/${bucketId}/${issueId}/answers`,
         options: {
-          headers: await this.getAuthHeaders(),
-          body: JSON.stringify(answer)
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(answer),
+          withCredentials: true
         }
       });
       
@@ -203,12 +214,15 @@ class QAService {
    */
   async updateIssueStatus(bucketId: string, issueId: string, request: UpdateStatusRequest): Promise<FrontendIssue> {
     try {
-      const response = await patch({
-        apiName: 'api',
-        path: `/qa/${bucketId}/${issueId}`,
+      const response = await post({
+        apiName: 'S3_API',
+        path: `/qa/${bucketId}/${issueId}/status`,
         options: {
-          headers: await this.getAuthHeaders(),
-          body: JSON.stringify(request)
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(request),
+          withCredentials: true
         }
       });
       
@@ -229,7 +243,7 @@ class QAService {
   private mapQuestionToIssue(question: any): Issue {
     return {
       id: question.questionId || question.id,
-      questionId: question.questionId,
+      questionId: question.questionId || question.id,
       title: question.question || question.title,
       question: question.question,
       status: question.status || 'open',
@@ -263,13 +277,13 @@ class QAService {
    */
   mapToFrontend(backendIssue: Issue | any): FrontendIssue {
     return {
-      id: Number(backendIssue.questionId || backendIssue.id) || Math.floor(Math.random() * 10000),
+      id: backendIssue.questionId || backendIssue.id,
       title: backendIssue.question || backendIssue.title || '',
       status: (backendIssue.status || 'open') as 'open' | 'closed',
       author: backendIssue.createdByUserName || backendIssue.createdByName || 'Anonymous',
       createdByUserId: backendIssue.createdByUserId || '',
       createdByUserName: backendIssue.createdByUserName || backendIssue.createdByName || 'Anonymous',
-      number: Number(backendIssue.questionId) || Math.floor(Math.random() * 10000),
+      number: backendIssue.questionId || backendIssue.id,
       createdAt: backendIssue.timestamp ? `opened ${new Date(backendIssue.timestamp).toLocaleString()}` : 'opened recently',
       timestamp: backendIssue.timestamp || new Date().toISOString(),
       tags: backendIssue.tags || [],
@@ -283,16 +297,10 @@ class QAService {
   /**
    * Get auth headers for API requests
    */
-  private async getAuthHeaders(): Promise<{ Authorization: string }> {
-    try {
-      const { tokens } = await fetchAuthSession();
-      return {
-        Authorization: tokens?.idToken?.toString() || ''
-      };
-    } catch (error) {
-      console.error('Error getting auth headers:', error);
-      throw error;
-    }
+  private async getAuthHeaders(): Promise<Record<string, string>> {
+    return {
+      'Content-Type': 'application/json'
+    };
   }
 }
 

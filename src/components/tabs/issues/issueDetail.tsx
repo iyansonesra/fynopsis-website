@@ -9,7 +9,7 @@ import { issuesData } from './IssueData'  // Fallback data
 import { qaService } from '../../services/QAService'
 import { Textarea } from '@/components/ui/textarea'
 import { useToast } from '@/components/ui/use-toast'
-import { useParams } from 'next/navigation'
+import { useParams, useRouter } from 'next/navigation'
 
 interface Comment {
     id: number | string
@@ -23,24 +23,36 @@ interface Comment {
     isOriginalPoster?: boolean
 }
 
-export function IssueDetail({ issueId, onBack }: { issueId: number | string, onBack: () => void }) {
+export function IssueDetail({ onBack }: { onBack?: () => void }) {
+    const router = useRouter()
+    const { id: dataroomId, subId, issueId } = useParams()
     const [issue, setIssue] = useState<any>(null)
     const [comments, setComments] = useState<Comment[]>([])
     const [isLoading, setIsLoading] = useState(true)
     const [answerContent, setAnswerContent] = useState('')
     const [isSubmitting, setIsSubmitting] = useState(false)
     const { toast } = useToast()
-    const { id: dataroomId } = useParams()
+
+    const handleBack = () => {
+        if (onBack) {
+            onBack()
+        } else {
+            router.push(`/dataroom/${dataroomId}/${subId}/issues`)
+        }
+    }
 
     useEffect(() => {
         // Fetch the issue from the API
         const fetchIssue = async () => {
+            if (!issueId) return
+
             try {
                 setIsLoading(true)
                 
                 if (dataroomId) {
                     // Try to fetch from API
                     try {
+                        // Ensure issueId is used as a string without conversion
                         const apiIssue = await qaService.getIssue(dataroomId as string, issueId.toString())
                         setIssue(apiIssue)
                         
@@ -48,7 +60,7 @@ export function IssueDetail({ issueId, onBack }: { issueId: number | string, onB
                         if (apiIssue.answers && apiIssue.answers.length > 0) {
                             setComments(apiIssue.answers.map((answer: any) => ({
                                 id: answer.id,
-                                content: answer.content,
+                                content: answer.content || answer.answer || '',
                                 createdByUserName: answer.createdByUserName,
                                 createdByUserId: answer.createdByUserId,
                                 timestamp: answer.timestamp,
@@ -65,7 +77,7 @@ export function IssueDetail({ issueId, onBack }: { issueId: number | string, onB
                 }
                 
                 // Fallback to mock data
-                const foundIssue = issuesData.find(i => i.id === issueId)
+                const foundIssue = issuesData.find(i => i.id.toString() === issueId.toString())
                 setIssue(foundIssue)
                 
                 // Mock comments data
@@ -101,7 +113,7 @@ export function IssueDetail({ issueId, onBack }: { issueId: number | string, onB
     }, [issueId, dataroomId])
 
     const handleSubmitAnswer = async () => {
-        if (!answerContent.trim() || !dataroomId) return
+        if (!answerContent.trim() || !dataroomId || !issueId) return
         
         try {
             setIsSubmitting(true)
@@ -141,7 +153,7 @@ export function IssueDetail({ issueId, onBack }: { issueId: number | string, onB
     }
 
     const toggleIssueStatus = async () => {
-        if (!issue || !dataroomId) return
+        if (!issue || !dataroomId || !issueId) return
         
         try {
             const newStatus = issue.status === 'open' ? 'closed' : 'open'
@@ -189,7 +201,7 @@ export function IssueDetail({ issueId, onBack }: { issueId: number | string, onB
     if (!issue) {
         return <div className="flex flex-col items-center justify-center h-full">
             <h2 className="text-xl font-bold mb-4">Issue not found</h2>
-            <Button onClick={onBack}>Go back to issues</Button>
+            <Button onClick={handleBack}>Go back to issues</Button>
         </div>
     }
 
@@ -201,7 +213,7 @@ export function IssueDetail({ issueId, onBack }: { issueId: number | string, onB
                     <Button 
                         variant="ghost" 
                         className="pl-2 flex items-center text-sm"
-                        onClick={onBack}
+                        onClick={handleBack}
                     >
                         <ChevronLeft className="h-4 w-4 mr-1" />
                         Back to issues
@@ -222,7 +234,6 @@ export function IssueDetail({ issueId, onBack }: { issueId: number | string, onB
                             )}
                         </div>
                         <h1 className="text-2xl font-bold">{issue.title}</h1>
-                        <span className="text-gray-500 ml-3">#{issue.number || issue.id}</span>
                     </div>
                     
                     <div className="flex items-center text-sm text-[#57606a]">
