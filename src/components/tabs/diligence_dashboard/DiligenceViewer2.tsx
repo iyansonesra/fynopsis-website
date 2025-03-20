@@ -139,8 +139,8 @@ export default function DiligenceDashboardViewer() {
             metricKey: widget.metricName,
             x: widget.positionData.y,
             y: widget.positionData.x,
-            w: widget.positionData.width*2,
-            h: widget.positionData.height*2,
+            w: widget.positionData.width * 2,
+            h: widget.positionData.height * 2,
             minW: 2,
             minH: 2,
             maxW: 12,
@@ -748,6 +748,35 @@ export default function DiligenceDashboardViewer() {
                             showLegend={false}
                             showTooltip={true}
                             showGridLines={false}
+                            customTooltip={({ payload, active, label }) => {
+                                if (!active || !payload) return null;
+
+                                return (
+                                    <div className="bg-white dark:bg-gray-800 shadow-lg border border-gray-200 dark:border-gray-700 p-2 rounded-md">
+                                        <div className="font-medium">{label}</div>
+                                        {payload.map((entry, index) => (
+                                            <div key={index} className="flex items-center mt-1">
+                                                <div
+                                                    className="w-2 h-2 rounded-full mr-1"
+                                                    style={{ backgroundColor: getCategoryColor(colors[index % colors.length]) }}
+                                                ></div>
+                                                <span className="mr-2">{entry.name}:</span>
+                                                <span className="font-medium">
+                                                    {entry.value !== undefined ?
+                                                        (Number(entry.value) >= 1000000 ?
+                                                            `${(Number(entry.value) / 1000000).toFixed(1)}M` :
+                                                            (Number(entry.value) >= 1000 ?
+                                                                `${(Number(entry.value) / 1000).toFixed(0)}K` :
+                                                                Number(entry.value).toString())
+                                                        ) :
+                                                        "N/A"
+                                                    }
+                                                </span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                );
+                            }}
                         />
                     </div>
 
