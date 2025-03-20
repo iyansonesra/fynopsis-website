@@ -23,9 +23,14 @@ interface Comment {
     isOriginalPoster?: boolean
 }
 
-export function IssueDetail({ onBack }: { onBack?: () => void }) {
+interface IssueDetailProps {
+    issueId: number | string;
+    onBack?: () => void;
+}
+
+export const IssueDetail: React.FC<IssueDetailProps> = ({ issueId, onBack }) => {
     const router = useRouter()
-    const { id: dataroomId, subId, issueId } = useParams()
+    const { id: dataroomId, subId } = useParams()
     const [issue, setIssue] = useState<any>(null)
     const [comments, setComments] = useState<Comment[]>([])
     const [isLoading, setIsLoading] = useState(true)

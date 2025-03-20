@@ -32,6 +32,8 @@ import DeepResearchViewer from '@/components/tabs/deep_research/DeepResearchView
 import DiligenceDashboardViewer from '@/components/tabs/diligence_dashboard/DiligenceViewer2';
 import { Issues } from '@/components/tabs/issues/QuestionAndAnswer';
 import { IssueDetail } from '@/components/tabs/issues/issueDetail';
+import websocketManager, { FileUpdateMessage } from '@/lib/websocketManager';
+import { useToast } from "@/components/ui/use-toast";
 
 
 type IndicatorStyle = {
@@ -86,6 +88,10 @@ export default function Home() {
   const [familyName, setFamilyName] = useState('');
   const [givenName, setGivenName] = useState('');
   const [shouldAnimate, setShouldAnimate] = useState(false);
+  const { toast } = useToast();
+  
+  // WebSocket connection state
+  const [wsConnected, setWsConnected] = useState(false);
 
   function signIn(): void {
     router.push('/signin');
@@ -417,6 +423,102 @@ useEffect(() => {
   const handleReturnToDashboard = () => {
     router.push('/dashboard');
   };
+
+  // Initialize WebSocket connection when the component mounts
+  useEffect(() => {
+    if (!dataroomId) return;
+    
+    console.log('Connecting to WebSocket for dataroom:', dataroomId);
+    
+    // Check if already connected to this dataroom
+    if (websocketManager.isConnectedTo(dataroomId)) {
+      console.log('Already connected to WebSocket for dataroom:', dataroomId);
+      setWsConnected(true);
+      return;
+    }
+    
+    // Connect to the WebSocket
+    websocketManager.connect(dataroomId)
+      .then(() => {
+        setWsConnected(true);
+        console.log('WebSocket connected successfully');
+      })
+      .catch(error => {
+        console.error('Error connecting to WebSocket:', error);
+      });
+    
+    // Set up a handler for file update messages
+    const handleFileUpdate = (message: FileUpdateMessage) => {
+      // Don't show notifications for our own actions
+      if (message.data.userEmail === userAttributes?.email) {
+        return;
+      }
+      
+      // Process the message
+      let toastMessage = '';
+      
+      switch (message.type) {
+        case 'FILE_UPLOADED':
+          toastMessage = `File "${message.data.fileName}" uploaded by ${message.data.uploadedBy || 'a user'}`;
+          break;
+        case 'FILE_DELETED':
+          toastMessage = `File "${message.data.fileName}" deleted by ${message.data.uploadedBy || 'a user'}`;
+          break;
+        case 'FILE_MOVED':
+          toastMessage = `File "${message.data.fileName}" moved by ${message.data.uploadedBy || 'a user'}`;
+          break;
+        case 'FILE_RENAMED':
+          toastMessage = `File renamed to "${message.data.fileName}" by ${message.data.uploadedBy || 'a user'}`;
+          break;
+        case 'FILE_TAG_UPDATED':
+          toastMessage = `Tags updated for "${message.data.fileName}" by ${message.data.uploadedBy || 'a user'}`;
+          break;
+        case 'BATCH_STATUS_UPDATED':
+          toastMessage = `Processing status updated for "${message.data.fileName}"`;
+          break;
+        case 'FOLDER_CREATED':
+          toastMessage = `Folder "${message.data.fileName}" created by ${message.data.uploadedBy || 'a user'}`;
+          break;
+        case 'pong':
+          // Don't display toast for pong messages
+          break;
+        default:
+          if (message.type && message.type !== 'ping') {
+            toastMessage = `Update: ${message.type}`;
+          }
+      }
+      
+      if (toastMessage) {
+        toast({
+          title: "File Update",
+          description: toastMessage,
+          duration: 4000,
+        });
+      }
+    };
+    
+    // Register the handler
+    websocketManager.addMessageHandler(handleFileUpdate);
+    
+    // Set up ping interval to keep the connection alive
+    const pingInterval = setInterval(() => {
+      if (websocketManager.isConnectedTo(dataroomId)) {
+        websocketManager.sendMessage({ action: 'ping' });
+      }
+    }, 45000); // Every 45 seconds
+    
+    // Clean up
+    return () => {
+      clearInterval(pingInterval);
+      websocketManager.removeMessageHandler(handleFileUpdate);
+      
+      // We still retain the connection when navigating away from the room
+      if (dataroomId) {
+        console.log('Releasing WebSocket connection reference');
+        websocketManager.release();
+      }
+    };
+  }, [dataroomId, userAttributes?.email, toast]);
 
   if (!hasPermission) {
     return (

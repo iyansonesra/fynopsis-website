@@ -21,6 +21,28 @@ export interface Widget {
   title: string;
   metricName: string;
   extraDetails?: string;
+  // Properties for different visualization types
+  tableCols?: string[];
+  // Chart-specific properties
+  chartType?: string;
+  xAxis?: string;
+  yAxis?: string;
+  series1?: string;
+  series2?: string;
+  categories?: string[];
+  values?: string;
+  chartDescription?: string;
+  // Line chart specific
+  timeSeries?: boolean;
+  showPoints?: boolean;
+  // Bar chart specific
+  stacked?: boolean;
+  horizontal?: boolean;
+  // Pie chart specific
+  donut?: boolean;
+  showPercentages?: boolean;
+  // Graph specific
+  graphLayout?: string;
   positionData: {
     width: number;
     height: number;
@@ -29,6 +51,7 @@ export interface Widget {
     expanded?: boolean;
   };
   data?: any;
+  formatParams?: Record<string, any>;
 }
 
 export interface DashboardTemplate {
@@ -49,6 +72,7 @@ export interface DashboardTemplate {
  * @param format The desired format of the data (e.g., 'pieChart', 'barChart')
  * @param customMetric Optional custom metric text
  * @param metricDetails Optional additional details for the AI
+ * @param formatParams Optional additional parameters for formatting the response
  * @returns Promise with the metric data
  */
 export async function fetchMetricData(
@@ -56,7 +80,8 @@ export async function fetchMetricData(
   metricId: string, 
   format: string,
   customMetric?: string,
-  metricDetails?: string
+  metricDetails?: string,
+  formatParams?: Record<string, any>
 ): Promise<MetricData> {
   try {
     // Make API call to backend to get real data
@@ -115,6 +140,53 @@ export class MetricsService {
       
       // Convert widgets object to array
       const widgetsArray = Object.values(widgets);
+      
+      // Ensure each widget has proper format parameters
+      widgetsArray.forEach(widget => {
+        // Add formatParams if not present
+        if (!widget.formatParams) {
+          const formatParams: Record<string, any> = {
+            format_type: widget.type
+          };
+          
+          // Only add parameters that have values
+          if (widget.title) formatParams.title = widget.title;
+          if (widget.extraDetails) formatParams.description = widget.extraDetails;
+          
+          // Add type-specific parameters
+          if (widget.type === 'table') {
+            if (widget.tableCols && widget.tableCols.length > 0) {
+              formatParams.table_columns = widget.tableCols;
+            }
+          } else if (widget.type === 'chart') {
+            // Chart specific parameters - only add if they have values
+            if (widget.chartType) formatParams.chart_type = widget.chartType;
+            if (widget.xAxis) formatParams.x_axis = widget.xAxis;
+            if (widget.yAxis) formatParams.y_axis = widget.yAxis;
+            if (widget.series1) formatParams.series_1 = widget.series1;
+            if (widget.series2) formatParams.series_2 = widget.series2;
+            if (widget.categories && widget.categories.length > 0) formatParams.categories = widget.categories;
+            if (widget.values) formatParams.values = widget.values;
+            if (widget.chartDescription) formatParams.chart_description = widget.chartDescription;
+            
+            // Boolean flags for specific chart types - only add if they're true
+            if (widget.chartType === 'line') {
+              if (widget.timeSeries === true) formatParams.time_series = true;
+              if (widget.showPoints === true) formatParams.show_points = true;
+            } else if (widget.chartType === 'bar') {
+              if (widget.stacked === true) formatParams.stacked = true;
+              if (widget.horizontal === true) formatParams.horizontal = true;
+            } else if (widget.chartType === 'pie') {
+              if (widget.donut === true) formatParams.donut = true;
+              if (widget.showPercentages === true) formatParams.show_percentages = true;
+            }
+          } else if (widget.type === 'graph') {
+            if (widget.graphLayout) formatParams.graph_layout = widget.graphLayout;
+          }
+          
+          widget.formatParams = formatParams;
+        }
+      });
       
       // Log what we're sending to help debug
       console.log('Sending widgets array:', JSON.stringify(widgetsArray).substring(0, 200) + '...');

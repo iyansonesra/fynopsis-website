@@ -25,16 +25,30 @@ class WebSocketManager {
   private reconnectDelay = 1000;
   private pingInterval: NodeJS.Timeout | null = null;
   private currentDataroomId: string | null = null;
+  private isConnecting = false;
+  private connectionRefs = 0;
 
   async connect(dataroomId: string) {
-    // Temporarily disabled WebSocket connection
-    console.log('WebSocket connection disabled');
-    this.currentDataroomId = dataroomId;
+    // If we're already connected to this dataroom, just increment the ref count
+    if (this.currentDataroomId === dataroomId && 
+       (this.ws?.readyState === WebSocket.OPEN || 
+        this.ws?.readyState === WebSocket.CONNECTING || 
+        this.isConnecting)) {
+      this.connectionRefs++;
+      console.log(`Already connected to dataroom ${dataroomId}, ref count: ${this.connectionRefs}`);
+      return;
+    }
     
-    /*
+    // If we're connecting to a different dataroom, disconnect first
+    if (this.currentDataroomId && this.currentDataroomId !== dataroomId) {
+      this.disconnect();
+    }
+    
+    this.connectionRefs = 1;
+    this.currentDataroomId = dataroomId;
+    this.isConnecting = true;
+    
     try {
-      // Save the dataroom ID for reconnect attempts
-      this.currentDataroomId = dataroomId;
       console.log('Connecting to WebSocket for dataroom:', dataroomId);
       
       // Get the auth session directly
@@ -57,6 +71,7 @@ class WebSocketManager {
 
       this.ws.onopen = () => {
         console.log('WebSocket connected to dataroom:', dataroomId);
+        this.isConnecting = false;
         this.reconnectAttempts = 0;
         
         // Set up ping to keep connection alive every 50 seconds
@@ -74,22 +89,24 @@ class WebSocketManager {
       };
 
       this.ws.onclose = (event) => {
+        this.isConnecting = false;
         console.log(`WebSocket disconnected from dataroom: ${dataroomId}, code: ${event.code}, reason: ${event.reason || 'No reason provided'}`);
         this.clearPingInterval();
         
         // Only attempt to reconnect for non-normal closure or if we didn't initiate the close
-        if (event.code !== 1000 && event.code !== 1001) {
+        if (event.code !== 1000 && event.code !== 1001 && this.connectionRefs > 0) {
           this.attemptReconnect();
         }
       };
 
       this.ws.onerror = (error) => {
+        this.isConnecting = false;
         console.error('WebSocket error:', error);
       };
     } catch (error) {
+      this.isConnecting = false;
       console.error('Error connecting to WebSocket:', error);
     }
-    */
   }
 
   private setupPingInterval() {
@@ -114,9 +131,6 @@ class WebSocketManager {
   }
 
   private attemptReconnect() {
-    // Temporarily disabled WebSocket reconnection
-    console.log('WebSocket reconnection disabled');
-    /*
     if (this.reconnectAttempts >= this.maxReconnectAttempts || !this.currentDataroomId) {
       console.log('Max reconnect attempts reached, giving up');
       return;
@@ -130,7 +144,14 @@ class WebSocketManager {
       console.log(`Reconnecting (attempt ${this.reconnectAttempts})...`);
       this.connect(this.currentDataroomId!);
     }, delay);
-    */
+  }
+
+  sendMessage(message: any) {
+    if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+      this.ws.send(JSON.stringify(message));
+    } else {
+      console.error('Cannot send message: WebSocket not connected');
+    }
   }
 
   addMessageHandler(handler: (message: FileUpdateMessage) => void) {
@@ -141,13 +162,34 @@ class WebSocketManager {
     this.messageHandlers = this.messageHandlers.filter(h => h !== handler);
   }
 
+  release() {
+    if (this.connectionRefs > 0) {
+      this.connectionRefs--;
+      console.log(`Released WebSocket connection, ref count: ${this.connectionRefs}`);
+    }
+    
+    // Only disconnect when no more references
+    if (this.connectionRefs === 0) {
+      this.disconnect();
+    }
+  }
+
   disconnect() {
+    this.connectionRefs = 0;
     this.clearPingInterval();
     this.currentDataroomId = null;
+    
     if (this.ws) {
+      console.log('Disconnecting WebSocket');
       this.ws.close(1000, 'Disconnected by client');
       this.ws = null;
     }
+  }
+
+  // Check if we're connected to a specific dataroom
+  isConnectedTo(dataroomId: string): boolean {
+    return this.currentDataroomId === dataroomId && 
+           this.ws?.readyState === WebSocket.OPEN;
   }
 }
 

@@ -1450,60 +1450,67 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
   useEffect(() => {
     if (!dataroomId) return;
     
-    // Connect to the WebSocket for this dataroom
-    websocketManager.connect(dataroomId);
-    
-    // Handler for file updates
+    // Handler for file updates - we don't establish the connection here anymore
+    // as it's handled at the DataroomPage level
     const handleFileUpdate = (message: FileUpdateMessage) => {
       // Display a toast notification for the update
-      let toastMessage = '';
-      let shouldRefresh = true;
+      const currentUser = emailRef.current;
+      const isOwnAction = message.data.userEmail === currentUser;
+      let shouldRefresh = false;
+      
+      // Don't refresh for our own actions, as we already update the UI directly
+      if (isOwnAction) {
+        return;
+      }
       
       switch (message.type) {
         case 'FILE_UPLOADED':
-          toastMessage = `File "${message.data.fileName}" uploaded by ${message.data.uploadedBy || 'a user'}`;
+          shouldRefresh = true;
           break;
         case 'FILE_DELETED':
-          toastMessage = `File "${message.data.fileName}" deleted by ${message.data.uploadedBy || 'a user'}`;
+          shouldRefresh = true;
           break;
         case 'FILE_MOVED':
-          toastMessage = `File "${message.data.fileName}" moved by ${message.data.uploadedBy || 'a user'}`;
+          // Only refresh if this folder is affected (source or destination)
+          if (message.data.sourceId === pathArray[3] || message.data.destinationId === pathArray[3]) {
+            shouldRefresh = true;
+          }
           break;
         case 'FILE_RENAMED':
-          toastMessage = `File renamed to "${message.data.fileName}" by ${message.data.uploadedBy || 'a user'}`;
+          shouldRefresh = true;
           break;
         case 'FILE_TAG_UPDATED':
-          toastMessage = `Tags updated for "${message.data.fileName}" by ${message.data.uploadedBy || 'a user'}`;
+          shouldRefresh = true;
+          break;
+        case 'BATCH_STATUS_UPDATED':
+          shouldRefresh = true; 
+          break;
+        case 'FOLDER_CREATED':
+          // Only refresh if it's in the current directory
+          if (message.data.parentFolderId === (pathArray[3] === "home" ? "ROOT" : pathArray[3])) {
+            shouldRefresh = true;
+          }
           break;
         case 'pong':
-          // Don't display toast or refresh for pong messages (WebSocket keepalive)
-          shouldRefresh = false;
+          // Don't refresh for pong messages
           break;
-        default:
-          toastMessage = `File update: ${message.type}`;
       }
       
-      if (toastMessage && shouldRefresh) {
-        toast({
-          title: "File Update",
-          description: toastMessage,
-          duration: 4000,
-        });
-        
+      if (shouldRefresh) {
         // Refresh the file list when changes are detected
         handleRefresh();
       }
     };
     
-    // Register the event handler
+    // Register the event handler on the existing WebSocket connection
     websocketManager.addMessageHandler(handleFileUpdate);
     
     // Cleanup
     return () => {
       websocketManager.removeMessageHandler(handleFileUpdate);
-      websocketManager.disconnect();
+      // We don't call release() here as the connection is managed at the DataroomPage level
     };
-  }, [dataroomId]);
+  }, [dataroomId, pathArray]);
 
   const [showDeleteConfirmation, setShowDeleteConfirmation] = useState<boolean>(false);
 

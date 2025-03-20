@@ -8,7 +8,7 @@ import { Card } from '@/components/ui/card';
 import { AlertCircle, BarChart2, ChevronDown, Circle, PieChart, PlusCircle, Settings, X, Save, FolderOpen, Maximize, Minimize } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { v4 as uuidv4 } from 'uuid';
-import { fetchMetricData, getAvailableMetrics, MetricsService, Widget, DashboardTemplate } from '../../services/metricsService';
+import { fetchMetricData, getAvailableMetrics, MetricsService, Widget, DashboardTemplate, MetricData } from '../../services/metricsService';
 import { DndContext, DragEndEvent, useDraggable, useDroppable } from '@dnd-kit/core';
 import { CSS } from '@dnd-kit/utilities';
 import { Label as UILabel } from '@/components/ui/label';
@@ -18,9 +18,12 @@ import { toast } from '@/components/ui/use-toast';
 
 // Update the chart types to focus on the three main supported formats
 const FORMAT_TYPES = {
-  CHART: 'chart',
+  CONVERSATION: 'conversation',
+  FIGURE: 'figure',
   TABLE: 'table',
-  GRAPH: 'graph'
+  CHART: 'chart',
+  GRAPH: 'graph',
+  DIAGRAM: 'diagram'
 };
 
 // Available metrics for selection
@@ -349,7 +352,47 @@ export default function DiligenceDashboardViewer() {
   // Fetch data for a specific widget
   const fetchWidgetData = async (widget: Widget) => {
     try {
-      let data;
+      let data: MetricData;
+      
+      // Create format_params with only the required format_type
+      const formatParams: Record<string, any> = {
+        format_type: widget.type
+      };
+      
+      // Only add parameters that have values
+      if (widget.title) formatParams.title = widget.title;
+      if (widget.extraDetails) formatParams.description = widget.extraDetails;
+      
+      // Add additional parameters based on widget type
+      if (widget.type === FORMAT_TYPES.TABLE) {
+        if (widget.tableCols && widget.tableCols.length > 0) {
+          formatParams.table_columns = widget.tableCols;
+        }
+      } else if (widget.type === FORMAT_TYPES.CHART) {
+        // Chart specific parameters - only add if they have values
+        if (widget.chartType) formatParams.chart_type = widget.chartType;
+        if (widget.xAxis) formatParams.x_axis = widget.xAxis;
+        if (widget.yAxis) formatParams.y_axis = widget.yAxis;
+        if (widget.series1) formatParams.series_1 = widget.series1;
+        if (widget.series2) formatParams.series_2 = widget.series2;
+        if (widget.categories && widget.categories.length > 0) formatParams.categories = widget.categories;
+        if (widget.values) formatParams.values = widget.values;
+        if (widget.chartDescription) formatParams.chart_description = widget.chartDescription;
+        
+        // Boolean flags for specific chart types - only add if they're true
+        if (widget.chartType === 'line') {
+          if (widget.timeSeries === true) formatParams.time_series = true;
+          if (widget.showPoints === true) formatParams.show_points = true;
+        } else if (widget.chartType === 'bar') {
+          if (widget.stacked === true) formatParams.stacked = true;
+          if (widget.horizontal === true) formatParams.horizontal = true;
+        } else if (widget.chartType === 'pie') {
+          if (widget.donut === true) formatParams.donut = true;
+          if (widget.showPercentages === true) formatParams.show_percentages = true;
+        }
+      } else if (widget.type === FORMAT_TYPES.GRAPH) {
+        if (widget.graphLayout) formatParams.graph_layout = widget.graphLayout;
+      }
       
       // Use metricName as the query
       data = await fetchMetricData(
@@ -357,7 +400,8 @@ export default function DiligenceDashboardViewer() {
         widget.id, 
         widget.type,
         widget.metricName,
-        widget.extraDetails
+        widget.extraDetails,
+        formatParams
       );
       
       if (data) {
