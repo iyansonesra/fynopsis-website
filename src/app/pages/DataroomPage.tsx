@@ -29,7 +29,7 @@ import Link from 'next/link';
 import { useFileStore } from '@/components/services/HotkeyService';
 import TableViewer from '@/components/tabs/library/table/TableViewer';
 import DeepResearchViewer from '@/components/tabs/deep_research/DeepResearchViewer';
-import DiligenceDashboardViewer from '@/components/tabs/diligence_dashboard/DiligenceDashboardViewer';
+import DiligenceDashboardViewer from '@/components/tabs/diligence_dashboard/DiligenceViewer2';
 import { Issues } from '@/components/tabs/issues/QuestionAndAnswer';
 import { IssueDetail } from '@/components/tabs/issues/issueDetail';
 

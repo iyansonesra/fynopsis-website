@@ -135,6 +135,8 @@ export class MetricsService {
       
       const { body } = await response.response;
       const responseText = await body.text();
+
+      console.log("posting dashboard state: ", responseText);
       return JSON.parse(responseText);
     } catch (error) {
       console.error('Error saving dashboard state:', error);
@@ -152,6 +154,8 @@ export class MetricsService {
       const { body } = await restOperation.response;
       const responseText = await body.text();
       const response = JSON.parse(responseText);
+      console.log("getting dashboard state: ", response);
+
       return response.widgets;
     } catch (error) {
       console.error('Error getting dashboard state:', error);
