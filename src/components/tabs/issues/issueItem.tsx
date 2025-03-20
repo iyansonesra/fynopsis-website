@@ -2,11 +2,11 @@ import { Badge } from '@/components/ui/badge'
 import { MessageCircle } from 'lucide-react'
 
 interface Issue {
-  id: number
+  id: number | string
   title: string
   status: 'open' | 'closed'
   author: string
-  number: number
+  number?: number | string
   createdAt: string
   tags: string[]
   comments: number
@@ -14,7 +14,7 @@ interface Issue {
 
 interface IssueItemProps {
   issue: Issue
-  onClick: (issueNumber: number) => void
+  onClick: (issueNumber: number | string) => void
   getTagColor: (tag: string) => string
 }
 
@@ -23,7 +23,7 @@ export function IssueItem({ issue, onClick, getTagColor }: IssueItemProps) {
     <div className="border-b github-border p-4 hover:bg-[#f6f8fa]">
       <div
         className="flex items-start cursor-pointer"
-        onClick={() => onClick(issue.number)}
+        onClick={() => onClick(issue.id)}
       >
         <div className="min-w-[20px] mt-1 mr-3">
           {issue.status === 'open' ? (
@@ -52,8 +52,6 @@ export function IssueItem({ issue, onClick, getTagColor }: IssueItemProps) {
             </div>
           </div>
           <div className="text-xs text-[#57606a] mt-1 truncate">
-            <span>#{issue.number}</span>
-            <span className="mx-1">•</span>
             <span>{issue.createdAt} by </span>
             <a href="#" className="github-link">{issue.author}</a>
           </div>
@@ -63,7 +61,7 @@ export function IssueItem({ issue, onClick, getTagColor }: IssueItemProps) {
             className="flex items-center text-[#57606a] hover:text-blue-600 ml-2 whitespace-nowrap"
             onClick={(e) => {
               e.stopPropagation();  // Prevent triggering parent onClick
-              window.location.href = `/issues/${issue.number}#comments`;
+              window.location.href = `/issues/${issue.id}#comments`;
             }}
           >
             <MessageCircle className="h-4 w-4 mr-1" />
