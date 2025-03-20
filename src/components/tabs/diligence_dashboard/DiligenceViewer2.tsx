@@ -126,16 +126,22 @@ export default function DiligenceDashboardViewer() {
     }, [bucketId]);
 
     // Load dashboard state
-
     const loadDashboardState = async () => {
         try {
             setIsLoading(true);
+            // Get dashboard state from MetricsService
             const loadedWidgetsMap = await MetricsService.getDashboardState(bucketId);
-            console.log("loadedWidgetsMap", loadedWidgetsMap);
+            console.log("Loaded widgets map:", loadedWidgetsMap);
 
             // Convert from MetricsService.Widget format to DashboardWidget format
             const convertedWidgets = convertWidgetsFormat(loadedWidgetsMap);
+            console.log("Converted widgets with positions:", convertedWidgets);
             setWidgets(convertedWidgets);
+            
+            toast({
+                title: "Success",
+                description: "Dashboard loaded successfully"
+            });
         } catch (error) {
             console.error('Error loading dashboard state:', error);
             toast({
@@ -156,10 +162,11 @@ export default function DiligenceDashboardViewer() {
             title: widget.title,
             format: widget.type, // Assuming type corresponds to format
             metricKey: widget.metricName,
-            x: widget.positionData.y,
-            y: widget.positionData.x,
-            w: widget.positionData.width * 2,
-            h: widget.positionData.height * 2,
+            // Position data - use the values from positionData
+            x: widget.positionData?.x || 0,
+            y: widget.positionData?.y || 0,
+            w: widget.positionData?.width || 4,
+            h: widget.positionData?.height || 3,
             minW: 2,
             minH: 2,
             maxW: 12,
@@ -167,7 +174,7 @@ export default function DiligenceDashboardViewer() {
             data: widget.data || null,
             config: {
                 title: widget.title,
-                expanded: widget.positionData.expanded,
+                expanded: widget.positionData?.expanded || false,
                 extraDetails: widget.extraDetails
             }
         }));
@@ -185,6 +192,7 @@ export default function DiligenceDashboardViewer() {
                 metricName: widget.metricKey || '',
                 extraDetails: widget.config?.extraDetails,
                 positionData: {
+                    // Directly map UI coordinates to backend coordinates
                     width: widget.w,
                     height: widget.h,
                     x: widget.x,
@@ -389,10 +397,17 @@ export default function DiligenceDashboardViewer() {
         // Set a new timeout
         const timeoutId = setTimeout(async () => {
             try {
+                // Use MetricsService to update the widget position
                 await MetricsService.modifyWidget(bucketId, widgetId, { positionData });
+                console.log(`Widget ${widgetId} position updated successfully`);
                 debounceMap.delete(widgetId);
             } catch (error) {
                 console.error(`Error updating position for widget ${widgetId}:`, error);
+                toast({
+                    title: "Error",
+                    description: "Failed to update widget position",
+                    variant: "destructive"
+                });
             }
         }, 500); // 500ms debounce
         
@@ -843,6 +858,112 @@ export default function DiligenceDashboardViewer() {
             );
         }
 
+        // Handle line chart type
+        if (widget.data.chart_type === 'line') {
+            // Extract relevant data
+            const { title, description, labels, datasets, xAxis, yAxis, options } = widget.data;
+
+            // Process dataset values for LineChart
+            const processedDatasets = datasets.map((dataset: any, index: number) => {
+                // Filter out null values
+                const validData = dataset.data.map((value: any, i: number) => {
+                    // If value is a range array, take the average for visualization
+                    if (Array.isArray(value)) {
+                        return { x: i, y: (value[0] + value[1]) / 2 };
+                    }
+                    // Skip null values
+                    if (value === null) return null;
+                    return { x: i, y: value };
+                }).filter(Boolean);
+
+                return {
+                    data: validData,
+                    label: dataset.label,
+                    color: dataset.borderColor || getCategoryColor(['blue', 'green', 'purple', 'amber', 'rose'][index % 5]),
+                    showMark: true,
+                    lineWidth: 2,
+                    pointSize: 6
+                };
+            });
+
+            // Determine Y-axis scale
+            const allValues = datasets.flatMap((d: any) => 
+                d.data.filter((v: any) => v !== null)
+                    .map((v: any) => Array.isArray(v) ? Math.max(...v) : v)
+            );
+            const maxValue = Math.max(...allValues);
+            const yAxisMax = Math.ceil(maxValue * 1.1 / 1000) * 1000; // Round up to nearest thousand with 10% padding
+
+            return (
+                <div className="flex flex-col h-full w-full">
+                    {/* Title and description */}
+                    <div className="px-2 pt-1 pb-1">
+                        {title && <h3 className="font-semibold text-sm">{title}</h3>}
+                        {description && <p className="text-xs text-gray-500 dark:text-gray-400">{description}</p>}
+                    </div>
+
+                    {/* Chart container with fixed height */}
+                    <div className="relative flex-1" style={{ height: 'calc(100% - 60px)', minHeight: 150 }}>
+                        <LineChart
+                            xAxis={[{
+                                data: labels.map((_: string, i: number) => i),
+                                scaleType: 'point',
+                                valueFormatter: (value: number) => labels[value] || '',
+                            }]}
+                            yAxis={[{
+                                min: 0,
+                                max: yAxisMax,
+                                valueFormatter: (value: number) => 
+                                    value >= 1000 
+                                        ? `$${(value / 1000).toFixed(0)}k` 
+                                        : `$${value}`,
+                            }]}
+                            series={processedDatasets}
+                            width={undefined}
+                            height={undefined}
+                            margin={{ left: 50, right: 20, top: 20, bottom: 40 }}
+                            slotProps={{
+                                legend: { hidden: true }
+                            }}
+                            sx={{
+                                width: '100%',
+                                height: '100%',
+                                '& .MuiLineElement-root': {
+                                    strokeWidth: 2,
+                                },
+                                '& .MuiMarkElement-root': {
+                                    stroke: 'white',
+                                    strokeWidth: 2,
+                                    scale: '0.6',
+                                    fill: 'white'
+                                }
+                            }}
+                        />
+                    </div>
+
+                    {/* Legend at the bottom */}
+                    <div className="flex flex-wrap justify-center gap-2 text-xs mt-1 mb-1">
+                        {datasets.map((dataset: any, index: number) => (
+                            <div key={index} className="flex items-center px-1">
+                                <div
+                                    className="w-2 h-2 rounded-full mr-1"
+                                    style={{ backgroundColor: dataset.borderColor || getCategoryColor(['blue', 'green', 'purple', 'amber', 'rose'][index % 5]) }}
+                                ></div>
+                                <span>{typeof dataset.label === 'object' ? 'Revenue' : dataset.label}</span>
+                            </div>
+                        ))}
+                    </div>
+
+                    {/* Display range information if available */}
+                    {datasets.some((d: any) => d.data.some((v: any) => Array.isArray(v))) && (
+                        <div className="text-xs text-center text-gray-500 mb-1">
+                            * Ranges shown as average values
+                        </div>
+                    )}
+                </div>
+            );
+        }
+
         // Handle bar chart type
         if (widget.data.chart_type === 'bar') {
             // Extract relevant data
@@ -1056,7 +1177,14 @@ export default function DiligenceDashboardViewer() {
                 </div>
 
 
-                {widgets.length === 0 ? (
+                {isLoading ? (
+                    <div className="h-full flex flex-col items-center justify-center text-muted-foreground">
+                        <div className="flex flex-col items-center gap-2">
+                            <div className="h-12 w-12 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
+                            <p className="text-lg font-medium">Loading dashboard...</p>
+                        </div>
+                    </div>
+                ) : widgets.length === 0 ? (
                     <div className="h-full flex flex-col items-center justify-center text-muted-foreground">
                         <AlertCircle className="h-10 w-10 mb-4" />
                         <p className="text-lg">No widgets added yet</p>
