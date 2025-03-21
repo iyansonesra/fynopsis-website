@@ -105,8 +105,23 @@ export default function Files({ setSelectedTab }: { setSelectedTab: React.Dispat
         showDetailsView,
         setShowDetailsView,
         selectedFile,
-        setSelectedFile
+        setSelectedFile,
+        // Add the new properties from the store
+        tabSystemPanelSize,
+        detailSectionPanelSize,
+        setTabSystemPanelSize,
+        setDetailSectionPanelSize
     } = useFileStore();
+
+    const handleTabSystemResize = (size: number) => {
+        setTabSystemPanelSize(size);
+    };
+
+    const handleDetailSectionResize = (size: number) => {
+        setDetailSectionPanelSize(size);
+    };
+
+
     const { tabs, activeTabId, setActiveTabId, addTab } = useTabStore();
 
     const [tableData, setTableData] = useState<TableFile[]>([]);
@@ -191,25 +206,25 @@ export default function Files({ setSelectedTab }: { setSelectedTab: React.Dispat
                 },
                 position: {
                     boundingRect: {
-                      x1: 0,
-                      y1: 0,
-                      x2: 0,
-                      y2: 0,
-                      width: 0,
-                      height: 0,
-                    },
-                    rects: [
-                      {
                         x1: 0,
                         y1: 0,
                         x2: 0,
                         y2: 0,
                         width: 0,
                         height: 0,
-                      },
+                    },
+                    rects: [
+                        {
+                            x1: 0,
+                            y1: 0,
+                            x2: 0,
+                            y2: 0,
+                            width: 0,
+                            height: 0,
+                        },
                     ],
                     pageNumber: 1,
-                  },
+                },
             };
         };
 
@@ -269,7 +284,7 @@ export default function Files({ setSelectedTab }: { setSelectedTab: React.Dispat
                             tabId={newTabId}  // Use the actual tab ID
                             name={file.name}  // Make sure name is explicitly passed
                             boundingBoxes={highlightData} // Always pass the array - empty or with highlights
-                            />
+                        />
 
                     )
                 });
@@ -286,7 +301,11 @@ export default function Files({ setSelectedTab }: { setSelectedTab: React.Dispat
                 className="bg-background flex w-full mb-2 flex-row h-full overflow-hidden font-montserrat dark:bg-darkbg"
             >
 
-                <ResizablePanel defaultSize={75} minSize={40}>
+                <ResizablePanel
+                    defaultSize={tabSystemPanelSize}
+                    minSize={40}
+                    onResize={handleTabSystemResize}
+                >
                     <TabSystem
                         tabs={tabs}
                         activeTabId={activeTabId}
@@ -300,13 +319,16 @@ export default function Files({ setSelectedTab }: { setSelectedTab: React.Dispat
                             }
                         }}
                     />
-                    {/* <DataTable 
-                        onFileSelect={handleFileSelect} 
-                        setTableData={setTableData}  // Pass setTableData to DataTable
-                    /> */}
+
                 </ResizablePanel>
                 <ResizableHandle withHandle className='dark:bg-slate-900' />
-                <ResizablePanel defaultSize={25} minSize={20} collapsible={true} collapsedSize={0}>
+                <ResizablePanel
+                    defaultSize={detailSectionPanelSize}
+                    minSize={20}
+                    collapsible={true}
+                    collapsedSize={0}
+                    onResize={handleDetailSectionResize}
+                >
                     <DetailSection
                         key={`detail-section-${showDetailsView}`}
                         onFileSelect={handleFileSelect}

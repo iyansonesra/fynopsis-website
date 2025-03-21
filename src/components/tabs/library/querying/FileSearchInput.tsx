@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useEffect } from "react";
 import { ScrollArea } from "@/components/ui/scroll-area";
+"@/components/ui/scroll-area";
 import { Input } from "@/components/ui/input";
 import { useS3Store, TreeNode } from "../../../services/fileService";
 import { FileIcon } from "lucide-react";
