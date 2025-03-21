@@ -198,7 +198,11 @@ export const IssueDetail: React.FC<IssueDetailProps> = ({ issueId, onBack }) => 
     }
 
     if (isLoading) {
-        return <div className="flex justify-center items-center h-full">Loading...</div>
+        return (
+            <div className="flex justify-center items-center h-full w-full absolute inset-0">
+                <div className="animate-spin h-10 w-10 rounded-full border-4 border-blue-500 border-t-transparent"></div>
+            </div>
+        )
     }
 
     if (!issue) {
