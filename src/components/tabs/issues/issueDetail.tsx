@@ -10,6 +10,7 @@ import { qaService } from '../../services/QAService'
 import { Textarea } from '@/components/ui/textarea'
 import { useToast } from '@/components/ui/use-toast'
 import { useParams, useRouter } from 'next/navigation'
+import { useFileStore } from '@/components/services/HotkeyService'
 
 interface Comment {
     id: number | string
@@ -37,6 +38,9 @@ export const IssueDetail: React.FC<IssueDetailProps> = ({ issueId, onBack }) => 
     const [answerContent, setAnswerContent] = useState('')
     const [isSubmitting, setIsSubmitting] = useState(false)
     const { toast } = useToast()
+    
+    // Access the global issue tab state for filter consistency
+    const { issuesActiveTab } = useFileStore()
 
     const handleBack = () => {
         if (onBack) {

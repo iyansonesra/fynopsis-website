@@ -68,7 +68,7 @@ export default function Home() {
 
   // Initialize activeTab based on the default tab from URL
   const initialTabIndex = tabs.findIndex(tab => tab.label.toLowerCase() === defaultTab);
-  const { activeTab, setActiveTab, activeIssueId, setActiveIssueId } = useFileStore();
+  const { activeTab, setActiveTab, activeIssueId, setActiveIssueId, issuesActiveTab } = useFileStore();
 
   const [indicatorStyle, setIndicatorStyle] = useState<IndicatorStyle>({} as IndicatorStyle);
   const tabRefs = useRef<(HTMLDivElement | null)[]>([]);
@@ -187,7 +187,7 @@ useEffect(() => {
   
 }, [pathname, tabs, activeIssueId, searchParams]); // Add searchParams to dependencies
 
-// Update handleBackFromIssue to immediately return to issues list
+// Update handleBackFromIssue to preserve the issuesActiveTab state
 const handleBackFromIssue = () => {
   // First update the URL to remove the issueId query param
   const url = new URL(window.location.href);
@@ -204,6 +204,8 @@ const handleBackFromIssue = () => {
     
     // Force a re-render immediately
     setForceRender(prev => prev + 1);
+    
+    // Note: We no longer need to reset issuesActiveTab - it's preserved in the store
   }, 0);
 };
 
@@ -418,7 +420,7 @@ useEffect(() => {
       case "diligence":
         return <DiligenceDashboardViewer />;
       case "issues":
-        return <Issues key={`issues-list-${forceRender}`} />; 
+        return <Issues key={`issues-list-${forceRender}-${issuesActiveTab}`} />; 
       default:
         return <Files setSelectedTab={setSelectedTab} />;
     }

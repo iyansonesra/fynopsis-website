@@ -110,6 +110,8 @@ interface FileStore {
   setActiveTab: (tab: number) => void; 
   activeIssueId: number | string | null;
   setActiveIssueId: (issueId: number | string | null) => void;
+  issuesActiveTab: string;
+  setIssuesActiveTab: (tab: string) => void;
 
   tabSystemPanelSize: number;
   detailSectionPanelSize: number;
@@ -170,6 +172,8 @@ export const useFileStore = create<FileStore>((set, get) => ({
   setActiveTab: (tab) => set({ activeTab: tab }),
   activeIssueId: null,
   setActiveIssueId: (issueId) => set({ activeIssueId: issueId }),
+  issuesActiveTab: 'open',
+  setIssuesActiveTab: (tab) => set({ issuesActiveTab: tab }),
   tabSystemPanelSize: 75,
   detailSectionPanelSize: 25,
   setTabSystemPanelSize: (size) => set({ tabSystemPanelSize: size }),

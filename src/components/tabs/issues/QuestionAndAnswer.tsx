@@ -21,8 +21,7 @@ export function Issues() {
   const [issues, setIssues] = useState<FrontendIssue[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState(' ')
-  const [activeTab, setActiveTab] = useState('open')
-  const { setActiveIssueId } = useFileStore();
+  const { setActiveIssueId, issuesActiveTab, setIssuesActiveTab } = useFileStore();
   const [isCreateIssueOpen, setIsCreateIssueOpen] = useState(false)
   const [lastEvaluatedKey, setLastEvaluatedKey] = useState<string | null>(null)
   const [selectedIssueId, setSelectedIssueId] = useState<string | number | null>(null);
@@ -31,12 +30,12 @@ export function Issues() {
   // Add ref to track selected issue
   const prevSelectedIssueRef = useRef<string | number | null>(null);
 
-  // Filter issues based on activeTab
+  // Filter issues based on issuesActiveTab
   const filteredIssues = useMemo(() => {
     return issues.filter(issue => 
-      activeTab === 'open' ? issue.status === 'open' : issue.status === 'closed'
+      issuesActiveTab === 'open' ? issue.status === 'open' : issue.status === 'closed'
     );
-  }, [issues, activeTab]);
+  }, [issues, issuesActiveTab]);
 
   // Count issues by status
   const openIssuesCount = useMemo(() => {
@@ -198,8 +197,8 @@ export function Issues() {
         {/* Issues list */}
         <div className="border github-border rounded-md overflow-hidden">
           <IssueListHeader 
-            activeTab={activeTab} 
-            setActiveTab={setActiveTab} 
+            activeTab={issuesActiveTab} 
+            setActiveTab={setIssuesActiveTab} 
             openCount={openIssuesCount}
             closedCount={closedIssuesCount}
           />
