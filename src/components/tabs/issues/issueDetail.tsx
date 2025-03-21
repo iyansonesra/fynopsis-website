@@ -40,9 +40,7 @@ export const IssueDetail: React.FC<IssueDetailProps> = ({ issueId, onBack }) => 
 
     const handleBack = () => {
         if (onBack) {
-            onBack()
-        } else {
-            router.push(`/dataroom/${dataroomId}/${subId}/issues`)
+            onBack();
         }
     }
 
@@ -218,7 +216,7 @@ export const IssueDetail: React.FC<IssueDetailProps> = ({ issueId, onBack }) => 
                     <Button 
                         variant="ghost" 
                         className="pl-2 flex items-center text-sm"
-                        onClick={handleBack}
+                        onClick={onBack}
                     >
                         <ChevronLeft className="h-4 w-4 mr-1" />
                         Back to issues

@@ -2,13 +2,12 @@
 "use client";
 
 import logo from './../assets/fynopsis_noBG.png'
-import { useState, useEffect } from "react"
+import React, { useState, useEffect, useRef } from "react"
 import { useAuthenticator } from '@aws-amplify/ui-react';
 import { Clipboard, LucideIcon, Activity, Table, Database, ChartPie } from "lucide-react";
 
 import { fetchUserAttributes, FetchUserAttributesOutput } from 'aws-amplify/auth';
 import { CircularProgress } from "@mui/material";
-import React, { useRef } from 'react';
 import { useParams, usePathname, useSearchParams } from 'next/navigation';
 import { useRouter } from 'next/navigation';
 import { Library, Users, LogOut, MessagesSquare } from 'lucide-react';
@@ -92,7 +91,15 @@ export default function Home() {
   
   // WebSocket connection state
   const [wsConnected, setWsConnected] = useState(false);
+  
+  // Add force render counter for issue navigation
+  const [forceRender, setForceRender] = useState(0);
 
+  // Add a ref to track the previous pathname and issue ID to avoid loops
+  const prevPathRef = useRef<string | null>(null);
+  const prevIssueIdRef = useRef<string | number | null>(null);
+
+  // Force re-render counter for issue navigation
   function signIn(): void {
     router.push('/signin');
   }
@@ -109,14 +116,25 @@ export default function Home() {
         setShouldAnimate(true);
       }
       
+      // If switching to a tab other than issues, clear any active issue
+      if (tabName !== 'issues' && activeIssueId !== null) {
+        prevIssueIdRef.current = null;
+        setActiveIssueId(null);
+      }
+      
       setActiveTab(index);
       setSelectedTab(tabName);
 
       // Update URL query parameter without full page navigation
       const params = new URLSearchParams(searchParams.toString());
       params.set('tab', tabName);
+      
+      // Also remove any issueId query param when switching tabs
+      if (tabName !== 'issues') {
+        params.delete('issueId');
+      }
 
-      // Use the router to update the URL
+      // Use window.history to update the URL
       const pathname = window.location.pathname;
       const newUrl = `${pathname}?${params.toString()}`;
       window.history.pushState({}, '', newUrl);
@@ -130,73 +148,63 @@ export default function Home() {
 
 
 useEffect(() => {
-  // Check URL path for issues first
-  const pathArray = pathname?.split('/') ?? [];
-
-  // Find if "issues" appears in the path and if there's something after it
-  const issuesIndex = pathArray.indexOf('issues');
-  const hasIssueInPath = issuesIndex !== -1 && pathArray.length > issuesIndex + 1;
+  // Skip if pathname not ready or if the pathname hasn't changed since last check
+  if (!pathname || pathname === prevPathRef.current) return;
   
-  // Get the issues tab index once
-  const issuesTabIndex = tabs.findIndex(tab => tab.label.toLowerCase() === 'issues');
+  // Update the previous pathname ref
+  prevPathRef.current = pathname;
 
-  if (hasIssueInPath) {
-    // Handle issue ID in URL
-    const issueIdFromUrl = parseInt(pathArray[issuesIndex + 1]);
+  // Check for issueId in query parameters
+  const issueIdParam = searchParams.get('issueId');
+  
+  // Parse the URL path to determine active tab
+  const pathArray = pathname.split('/');
+  
+  // Extract tab from URL (ignoring any issue IDs in the path)
+  let tabFromUrl = 'library'; // Default
+  if (pathArray.length >= 4) {
+    tabFromUrl = pathArray[3].toLowerCase();
     
-    if (!isNaN(issueIdFromUrl) && activeIssueId !== issueIdFromUrl) {
-      setActiveIssueId(issueIdFromUrl);
-      // Always ensure the issues tab is selected when viewing an issue detail
-      // if (issuesTabIndex >= 0) {
-        // Only update states if they're different from current values
-
-        if(selectedTab === "issues") {
-          setActiveTab(issuesTabIndex);
-        }
-        if (activeTab !== issuesTabIndex) {
-          setActiveTab(issuesTabIndex);
-        }
-        if (selectedTab !== 'issues') {
-          setSelectedTab('issues');
-          setActiveTab(issuesTabIndex);
-
-        }
-      // }
-    }
-  } else if (activeIssueId !== null && !hasIssueInPath) {
-    // Clear the issue ID if we're not on an issue path
-    setActiveIssueId(null);
-    
-    // Now check tab query parameter
-    const tabParam = searchParams.get('tab')?.toLowerCase();
-    if (tabParam && tabParam !== selectedTab) {
-      const tabIndex = tabs.findIndex(tab => tab.label.toLowerCase() === tabParam);
-      if (tabIndex >= 0) {
-        setActiveTab(tabIndex);
-        setSelectedTab(tabParam);
-      }
-    }
-  } else {
-    // Handle regular tab changes from query params when not viewing specific issue
-    const tabParam = searchParams.get('tab')?.toLowerCase();
-    if (tabParam && tabParam !== selectedTab) {
-      const tabIndex = tabs.findIndex(tab => tab.label.toLowerCase() === tabParam);
-      if (tabIndex >= 0 && activeTab !== tabIndex) {
-        setActiveTab(tabIndex);
-        setSelectedTab(tabParam);
-      }
+    // Special case: if we're on the issues tab and there's an issueId in query params
+    if (tabFromUrl === 'issues' && issueIdParam && activeIssueId !== issueIdParam) {
+      prevIssueIdRef.current = activeIssueId;
+      setActiveIssueId(issueIdParam);
     }
   }
-}, [pathname, searchParams, tabs, activeIssueId, activeTab, selectedTab, setActiveTab, setActiveIssueId]);
-// Modify handleBackFromIssue to use history API directly
-const handleBackFromIssue = () => {
-  const { id, subId } = params;
-  // Use history API to update URL without triggering a full navigation
-  const newUrl = `/dataroom/${id}/${subId}?tab=issues`;
-  window.history.pushState({}, '', newUrl);
   
-  // Manually set the active issue to null AFTER updating URL
-  setActiveIssueId(null);
+  // Find the tab index
+  const tabIndex = tabs.findIndex(tab => tab.label.toLowerCase() === tabFromUrl);
+  
+  // Only update if we found a valid tab and it's different from current
+  if (tabIndex !== -1 && tabIndex !== activeTab) {
+    setActiveTab(tabIndex);
+  }
+  
+  // Only update selected tab name if it's different
+  if (tabFromUrl !== selectedTab && (tabIndex !== -1 || tabFromUrl === 'library')) {
+    setSelectedTab(tabFromUrl);
+  }
+  
+}, [pathname, tabs, activeIssueId, searchParams]); // Add searchParams to dependencies
+
+// Update handleBackFromIssue to immediately return to issues list
+const handleBackFromIssue = () => {
+  // First update the URL to remove the issueId query param
+  const url = new URL(window.location.href);
+  url.searchParams.delete('issueId');
+  window.history.pushState({}, '', url.toString());
+  
+  // Create a small delay to ensure the URL change is registered first
+  setTimeout(() => {
+    // Reset issue tracking to prevent loops
+    prevIssueIdRef.current = null;
+    
+    // Clear the active issue ID - this should trigger a re-render
+    setActiveIssueId(null);
+    
+    // Force a re-render immediately
+    setForceRender(prev => prev + 1);
+  }, 0);
 };
 
 
@@ -382,14 +390,18 @@ useEffect(() => {
     }
   }
   const renderSelectedScreen = () => {
-    // If we have an active issue ID and we're on the issues tab, show the issue detail
-
-    console.log("activeissuedid: ", activeIssueId);
-    console.log("selectedTab: ", selectedTab);
-    if (activeIssueId !== null && selectedTab.toLowerCase() === 'issues') {
-      return <IssueDetail issueId={activeIssueId} onBack={handleBackFromIssue} />;
+    // First check if we should render the issue detail
+    if (activeIssueId && selectedTab.toLowerCase() === 'issues') {
+      return (
+        <IssueDetail 
+          issueId={activeIssueId} 
+          onBack={handleBackFromIssue} 
+          key={`issue-${activeIssueId}-${forceRender}`} 
+        />
+      );
     }
-
+    
+    // Otherwise render the appropriate tab content
     switch (selectedTab.toLowerCase()) {
       case "library":
         return <Files setSelectedTab={setSelectedTab} />;
@@ -406,7 +418,7 @@ useEffect(() => {
       case "diligence":
         return <DiligenceDashboardViewer />;
       case "issues":
-        return <Issues />; // Regular issues list
+        return <Issues key={`issues-list-${forceRender}`} />; 
       default:
         return <Files setSelectedTab={setSelectedTab} />;
     }

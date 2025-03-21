@@ -1,10 +1,10 @@
 'use client'
 
-import { useState, useMemo, useEffect, useCallback } from 'react'
+import { useState, useMemo, useEffect, useCallback, useRef } from 'react'
 import { Button } from '@/components/ui/button'
 import { BookMarked, Plus, Tag } from 'lucide-react'
 import { ScrollArea } from '@/components/ui/scroll-area'
-import { useParams, useRouter } from 'next/navigation'
+import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import { useFileStore } from '../../services/HotkeyService'
 import { IssueSearch } from './IssueSearchBar'
 import { FilterDialog } from './FilterDialog'
@@ -17,6 +17,7 @@ import { useToast } from '@/components/ui/use-toast'
 export function Issues() {
   const router = useRouter()
   const { id: dataroomId, subId } = useParams();
+  const searchParams = useSearchParams();
   const [issues, setIssues] = useState<FrontendIssue[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState(' ')
@@ -24,7 +25,11 @@ export function Issues() {
   const { setActiveIssueId } = useFileStore();
   const [isCreateIssueOpen, setIsCreateIssueOpen] = useState(false)
   const [lastEvaluatedKey, setLastEvaluatedKey] = useState<string | null>(null)
+  const [selectedIssueId, setSelectedIssueId] = useState<string | number | null>(null);
   const { toast } = useToast()
+  
+  // Add ref to track selected issue
+  const prevSelectedIssueRef = useRef<string | number | null>(null);
 
   // Filter issues based on activeTab
   const filteredIssues = useMemo(() => {
@@ -93,7 +98,14 @@ export function Issues() {
   // Load issues on component mount
   useEffect(() => {
     fetchIssues();
-  }, [fetchIssues]);
+    
+    // Check for issueId in query parameters on initial mount only
+    const issueId = searchParams.get('issueId');
+    if (issueId) {
+      setActiveIssueId(issueId);
+      setSelectedIssueId(issueId);
+    }
+  }, [fetchIssues, searchParams, setActiveIssueId]);
 
   const getTagColor = (tag: string) => {
     if (tag.includes('Component:')) {
@@ -109,15 +121,22 @@ export function Issues() {
     }
   }
 
-  const [selectedIssueId, setSelectedIssueId] = useState<string | number | null>(null);
-
-  // Then modify handleIssueClick
+  // Modified handleIssueClick to use state and add query param for shareable links
   const handleIssueClick = (issueId: number | string) => {
-    setActiveIssueId(issueId);
-    setSelectedIssueId(issueId);
-    
-    // Update URL without triggering a navigation/refresh
-    window.history.pushState({}, '', `/dataroom/${dataroomId}/${subId}/issues/${issueId}`);
+    // Only update if the selected issue is changing and not toggling back and forth
+    if (issueId.toString() !== selectedIssueId?.toString() && issueId.toString() !== prevSelectedIssueRef.current?.toString()) {
+      // Store the previous issue ID to prevent toggling
+      prevSelectedIssueRef.current = issueId;
+      
+      // First update state
+      setActiveIssueId(issueId);
+      setSelectedIssueId(issueId);
+      
+      // Then update URL query parameter without page refresh
+      const url = new URL(window.location.href);
+      url.searchParams.set('issueId', issueId.toString());
+      window.history.pushState({}, '', url.toString());
+    }
   };
 
   const handleCreateIssue = async (newIssueData: Omit<FrontendIssue, 'id' | 'number' | 'createdAt'>) => {
