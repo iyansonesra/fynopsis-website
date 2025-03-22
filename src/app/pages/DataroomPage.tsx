@@ -2,13 +2,12 @@
 "use client";
 
 import logo from './../assets/fynopsis_noBG.png'
-import { useState, useEffect } from "react"
+import React, { useState, useEffect, useRef } from "react"
 import { useAuthenticator } from '@aws-amplify/ui-react';
 import { Clipboard, LucideIcon, Activity, Table, Database, ChartPie } from "lucide-react";
 
 import { fetchUserAttributes, FetchUserAttributesOutput } from 'aws-amplify/auth';
 import { CircularProgress } from "@mui/material";
-import React, { useRef } from 'react';
 import { useParams, usePathname, useSearchParams } from 'next/navigation';
 import { useRouter } from 'next/navigation';
 import { Library, Users, LogOut, MessagesSquare } from 'lucide-react';
@@ -27,7 +26,7 @@ import { TagDisplay } from '@/components/tabs/library/table/TagsHover';
 import { AuditLogViewer } from '@/components/tabs/audit_log/AuditLogViewer';
 import Link from 'next/link';
 import { useFileStore } from '@/components/services/HotkeyService';
-import TableViewer from '@/components/tabs/library/table/TableViewer';
+// import TableViewer from '@/components/tabs/library/table/TableViewer';
 import DeepResearchViewer from '@/components/tabs/deep_research/DeepResearchViewer';
 import DiligenceDashboardViewer from '@/components/tabs/diligence_dashboard/DiligenceViewer2';
 import { Issues } from '@/components/tabs/issues/QuestionAndAnswer';
@@ -69,7 +68,7 @@ export default function Home() {
 
   // Initialize activeTab based on the default tab from URL
   const initialTabIndex = tabs.findIndex(tab => tab.label.toLowerCase() === defaultTab);
-  const { activeTab, setActiveTab, activeIssueId, setActiveIssueId } = useFileStore();
+  const { activeTab, setActiveTab, activeIssueId, setActiveIssueId, issuesActiveTab } = useFileStore();
 
   const [indicatorStyle, setIndicatorStyle] = useState<IndicatorStyle>({} as IndicatorStyle);
   const tabRefs = useRef<(HTMLDivElement | null)[]>([]);
@@ -92,7 +91,15 @@ export default function Home() {
   
   // WebSocket connection state
   const [wsConnected, setWsConnected] = useState(false);
+  
+  // Add force render counter for issue navigation
+  const [forceRender, setForceRender] = useState(0);
 
+  // Add a ref to track the previous pathname and issue ID to avoid loops
+  const prevPathRef = useRef<string | null>(null);
+  const prevIssueIdRef = useRef<string | number | null>(null);
+
+  // Force re-render counter for issue navigation
   function signIn(): void {
     router.push('/signin');
   }
@@ -109,14 +116,25 @@ export default function Home() {
         setShouldAnimate(true);
       }
       
+      // If switching to a tab other than issues, clear any active issue
+      if (tabName !== 'issues' && activeIssueId !== null) {
+        prevIssueIdRef.current = null;
+        setActiveIssueId(null);
+      }
+      
       setActiveTab(index);
       setSelectedTab(tabName);
 
       // Update URL query parameter without full page navigation
       const params = new URLSearchParams(searchParams.toString());
       params.set('tab', tabName);
+      
+      // Also remove any issueId query param when switching tabs
+      if (tabName !== 'issues') {
+        params.delete('issueId');
+      }
 
-      // Use the router to update the URL
+      // Use window.history to update the URL
       const pathname = window.location.pathname;
       const newUrl = `${pathname}?${params.toString()}`;
       window.history.pushState({}, '', newUrl);
@@ -130,73 +148,65 @@ export default function Home() {
 
 
 useEffect(() => {
-  // Check URL path for issues first
-  const pathArray = pathname?.split('/') ?? [];
-
-  // Find if "issues" appears in the path and if there's something after it
-  const issuesIndex = pathArray.indexOf('issues');
-  const hasIssueInPath = issuesIndex !== -1 && pathArray.length > issuesIndex + 1;
+  // Skip if pathname not ready or if the pathname hasn't changed since last check
+  if (!pathname || pathname === prevPathRef.current) return;
   
-  // Get the issues tab index once
-  const issuesTabIndex = tabs.findIndex(tab => tab.label.toLowerCase() === 'issues');
+  // Update the previous pathname ref
+  prevPathRef.current = pathname;
 
-  if (hasIssueInPath) {
-    // Handle issue ID in URL
-    const issueIdFromUrl = parseInt(pathArray[issuesIndex + 1]);
+  // Check for issueId in query parameters
+  const issueIdParam = searchParams.get('issueId');
+  
+  // Parse the URL path to determine active tab
+  const pathArray = pathname.split('/');
+  
+  // Extract tab from URL (ignoring any issue IDs in the path)
+  let tabFromUrl = 'library'; // Default
+  if (pathArray.length >= 4) {
+    tabFromUrl = pathArray[3].toLowerCase();
     
-    if (!isNaN(issueIdFromUrl) && activeIssueId !== issueIdFromUrl) {
-      setActiveIssueId(issueIdFromUrl);
-      // Always ensure the issues tab is selected when viewing an issue detail
-      // if (issuesTabIndex >= 0) {
-        // Only update states if they're different from current values
-
-        if(selectedTab === "issues") {
-          setActiveTab(issuesTabIndex);
-        }
-        if (activeTab !== issuesTabIndex) {
-          setActiveTab(issuesTabIndex);
-        }
-        if (selectedTab !== 'issues') {
-          setSelectedTab('issues');
-          setActiveTab(issuesTabIndex);
-
-        }
-      // }
-    }
-  } else if (activeIssueId !== null && !hasIssueInPath) {
-    // Clear the issue ID if we're not on an issue path
-    setActiveIssueId(null);
-    
-    // Now check tab query parameter
-    const tabParam = searchParams.get('tab')?.toLowerCase();
-    if (tabParam && tabParam !== selectedTab) {
-      const tabIndex = tabs.findIndex(tab => tab.label.toLowerCase() === tabParam);
-      if (tabIndex >= 0) {
-        setActiveTab(tabIndex);
-        setSelectedTab(tabParam);
-      }
-    }
-  } else {
-    // Handle regular tab changes from query params when not viewing specific issue
-    const tabParam = searchParams.get('tab')?.toLowerCase();
-    if (tabParam && tabParam !== selectedTab) {
-      const tabIndex = tabs.findIndex(tab => tab.label.toLowerCase() === tabParam);
-      if (tabIndex >= 0 && activeTab !== tabIndex) {
-        setActiveTab(tabIndex);
-        setSelectedTab(tabParam);
-      }
+    // Special case: if we're on the issues tab and there's an issueId in query params
+    if (tabFromUrl === 'issues' && issueIdParam && activeIssueId !== issueIdParam) {
+      prevIssueIdRef.current = activeIssueId;
+      setActiveIssueId(issueIdParam);
     }
   }
-}, [pathname, searchParams, tabs, activeIssueId, activeTab, selectedTab, setActiveTab, setActiveIssueId]);
-// Modify handleBackFromIssue to use history API directly
-const handleBackFromIssue = () => {
-  const { id, subId } = params;
-  // Use history API to update URL without triggering a full navigation
-  const newUrl = `/dataroom/${id}/${subId}?tab=issues`;
-  window.history.pushState({}, '', newUrl);
   
-  // Manually set the active issue to null AFTER updating URL
-  setActiveIssueId(null);
+  // Find the tab index
+  const tabIndex = tabs.findIndex(tab => tab.label.toLowerCase() === tabFromUrl);
+  
+  // Only update if we found a valid tab and it's different from current
+  if (tabIndex !== -1 && tabIndex !== activeTab) {
+    setActiveTab(tabIndex);
+  }
+  
+  // Only update selected tab name if it's different
+  if (tabFromUrl !== selectedTab && (tabIndex !== -1 || tabFromUrl === 'library')) {
+    setSelectedTab(tabFromUrl);
+  }
+  
+}, [pathname, tabs, activeIssueId, searchParams]); // Add searchParams to dependencies
+
+// Update handleBackFromIssue to preserve the issuesActiveTab state
+const handleBackFromIssue = () => {
+  // First update the URL to remove the issueId query param
+  const url = new URL(window.location.href);
+  url.searchParams.delete('issueId');
+  window.history.pushState({}, '', url.toString());
+  
+  // Create a small delay to ensure the URL change is registered first
+  setTimeout(() => {
+    // Reset issue tracking to prevent loops
+    prevIssueIdRef.current = null;
+    
+    // Clear the active issue ID - this should trigger a re-render
+    setActiveIssueId(null);
+    
+    // Force a re-render immediately
+    setForceRender(prev => prev + 1);
+    
+    // Note: We no longer need to reset issuesActiveTab - it's preserved in the store
+  }, 0);
 };
 
 
@@ -382,14 +392,18 @@ useEffect(() => {
     }
   }
   const renderSelectedScreen = () => {
-    // If we have an active issue ID and we're on the issues tab, show the issue detail
-
-    // console.log("activeissuedid: ", activeIssueId);
-    // console.log("selectedTab: ", selectedTab);
-    if (activeIssueId !== null && selectedTab.toLowerCase() === 'issues') {
-      return <IssueDetail issueId={activeIssueId} onBack={handleBackFromIssue} />;
+    // First check if we should render the issue detail
+    if (activeIssueId && selectedTab.toLowerCase() === 'issues') {
+      return (
+        <IssueDetail 
+          issueId={activeIssueId} 
+          onBack={handleBackFromIssue} 
+          key={`issue-${activeIssueId}-${forceRender}`} 
+        />
+      );
     }
-
+    
+    // Otherwise render the appropriate tab content
     switch (selectedTab.toLowerCase()) {
       case "library":
         return <Files setSelectedTab={setSelectedTab} />;
@@ -399,14 +413,14 @@ useEffect(() => {
         return <UserManagement dataroomId={''} />;
       case "activity":
         return <AuditLogViewer bucketId={dataroomId} />;
-      case "extract":
-        return <TableViewer />;
-      case "deep research":
-        return <DeepResearchViewer />;
+      // case "extract":
+      //   return <TableViewer />;
+      // case "deep research":
+      //   return <DeepResearchViewer />;
       case "diligence":
         return <DiligenceDashboardViewer />;
       case "issues":
-        return <Issues />; // Regular issues list
+        return <Issues key={`issues-list-${forceRender}-${issuesActiveTab}`} />; 
       default:
         return <Files setSelectedTab={setSelectedTab} />;
     }
@@ -425,100 +439,100 @@ useEffect(() => {
   };
 
   // Initialize WebSocket connection when the component mounts
-  useEffect(() => {
-    if (!dataroomId) return;
+  // useEffect(() => {
+  //   if (!dataroomId) return;
     
-    console.log('Connecting to WebSocket for dataroom:', dataroomId);
+  //   console.log('Connecting to WebSocket for dataroom:', dataroomId);
     
-    // Check if already connected to this dataroom
-    if (websocketManager.isConnectedTo(dataroomId)) {
-      console.log('Already connected to WebSocket for dataroom:', dataroomId);
-      setWsConnected(true);
-      return;
-    }
+  //   // Check if already connected to this dataroom
+  //   if (websocketManager.isConnectedTo(dataroomId)) {
+  //     console.log('Already connected to WebSocket for dataroom:', dataroomId);
+  //     setWsConnected(true);
+  //     return;
+  //   }
     
-    // Connect to the WebSocket
-    websocketManager.connect(dataroomId)
-      .then(() => {
-        setWsConnected(true);
-        console.log('WebSocket connected successfully');
-      })
-      .catch(error => {
-        console.error('Error connecting to WebSocket:', error);
-      });
+  //   // Connect to the WebSocket
+  //   websocketManager.connect(dataroomId)
+  //     .then(() => {
+  //       setWsConnected(true);
+  //       console.log('WebSocket connected successfully');
+  //     })
+  //     .catch(error => {
+  //       console.error('Error connecting to WebSocket:', error);
+  //     });
     
-    // Set up a handler for file update messages
-    const handleFileUpdate = (message: FileUpdateMessage) => {
-      // Don't show notifications for our own actions
-      if (message.data.userEmail === userAttributes?.email) {
-        return;
-      }
+  //   // Set up a handler for file update messages
+  //   const handleFileUpdate = (message: FileUpdateMessage) => {
+  //     // Don't show notifications for our own actions
+  //     if (message.data.userEmail === userAttributes?.email) {
+  //       return;
+  //     }
       
-      // Process the message
-      let toastMessage = '';
+  //     // Process the message
+  //     let toastMessage = '';
       
-      switch (message.type) {
-        case 'FILE_UPLOADED':
-          toastMessage = `File "${message.data.fileName}" uploaded by ${message.data.uploadedBy || 'a user'}`;
-          break;
-        case 'FILE_DELETED':
-          toastMessage = `File "${message.data.fileName}" deleted by ${message.data.uploadedBy || 'a user'}`;
-          break;
-        case 'FILE_MOVED':
-          toastMessage = `File "${message.data.fileName}" moved by ${message.data.uploadedBy || 'a user'}`;
-          break;
-        case 'FILE_RENAMED':
-          toastMessage = `File renamed to "${message.data.fileName}" by ${message.data.uploadedBy || 'a user'}`;
-          break;
-        case 'FILE_TAG_UPDATED':
-          toastMessage = `Tags updated for "${message.data.fileName}" by ${message.data.uploadedBy || 'a user'}`;
-          break;
-        case 'BATCH_STATUS_UPDATED':
-          toastMessage = `Processing status updated for "${message.data.fileName}"`;
-          break;
-        case 'FOLDER_CREATED':
-          toastMessage = `Folder "${message.data.fileName}" created by ${message.data.uploadedBy || 'a user'}`;
-          break;
-        case 'pong':
-          // Don't display toast for pong messages
-          break;
-        default:
-          if (message.type && message.type !== 'ping') {
-            toastMessage = `Update: ${message.type}`;
-          }
-      }
+  //     switch (message.type) {
+  //       case 'FILE_UPLOADED':
+  //         toastMessage = `File "${message.data.fileName}" uploaded by ${message.data.uploadedBy || 'a user'}`;
+  //         break;
+  //       case 'FILE_DELETED':
+  //         toastMessage = `File "${message.data.fileName}" deleted by ${message.data.uploadedBy || 'a user'}`;
+  //         break;
+  //       case 'FILE_MOVED':
+  //         toastMessage = `File "${message.data.fileName}" moved by ${message.data.uploadedBy || 'a user'}`;
+  //         break;
+  //       case 'FILE_RENAMED':
+  //         toastMessage = `File renamed to "${message.data.fileName}" by ${message.data.uploadedBy || 'a user'}`;
+  //         break;
+  //       case 'FILE_TAG_UPDATED':
+  //         toastMessage = `Tags updated for "${message.data.fileName}" by ${message.data.uploadedBy || 'a user'}`;
+  //         break;
+  //       case 'BATCH_STATUS_UPDATED':
+  //         toastMessage = `Processing status updated for "${message.data.fileName}"`;
+  //         break;
+  //       case 'FOLDER_CREATED':
+  //         toastMessage = `Folder "${message.data.fileName}" created by ${message.data.uploadedBy || 'a user'}`;
+  //         break;
+  //       case 'pong':
+  //         // Don't display toast for pong messages
+  //         break;
+  //       default:
+  //         if (message.type && message.type !== 'ping') {
+  //           toastMessage = `Update: ${message.type}`;
+  //         }
+  //     }
       
-      if (toastMessage) {
-        toast({
-          title: "File Update",
-          description: toastMessage,
-          duration: 4000,
-        });
-      }
-    };
+  //     if (toastMessage) {
+  //       toast({
+  //         title: "File Update",
+  //         description: toastMessage,
+  //         duration: 4000,
+  //       });
+  //     }
+  //   };
     
-    // Register the handler
-    websocketManager.addMessageHandler(handleFileUpdate);
+  //   // Register the handler
+  //   websocketManager.addMessageHandler(handleFileUpdate);
     
-    // Set up ping interval to keep the connection alive
-    const pingInterval = setInterval(() => {
-      if (websocketManager.isConnectedTo(dataroomId)) {
-        websocketManager.sendMessage({ action: 'ping' });
-      }
-    }, 45000); // Every 45 seconds
+  //   // Set up ping interval to keep the connection alive
+  //   const pingInterval = setInterval(() => {
+  //     if (websocketManager.isConnectedTo(dataroomId)) {
+  //       websocketManager.sendMessage({ action: 'ping' });
+  //     }
+  //   }, 45000); // Every 45 seconds
     
-    // Clean up
-    return () => {
-      clearInterval(pingInterval);
-      websocketManager.removeMessageHandler(handleFileUpdate);
+  //   // Clean up
+  //   return () => {
+  //     clearInterval(pingInterval);
+  //     websocketManager.removeMessageHandler(handleFileUpdate);
       
-      // We still retain the connection when navigating away from the room
-      if (dataroomId) {
-        console.log('Releasing WebSocket connection reference');
-        websocketManager.release();
-      }
-    };
-  }, [dataroomId, userAttributes?.email, toast]);
+  //     // We still retain the connection when navigating away from the room
+  //     if (dataroomId) {
+  //       console.log('Releasing WebSocket connection reference');
+  //       websocketManager.release();
+  //     }
+  //   };
+  // }, [dataroomId, userAttributes?.email, toast]);
 
   if (!hasPermission) {
     return (

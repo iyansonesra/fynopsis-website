@@ -10,6 +10,7 @@ import { qaService } from '../../services/QAService'
 import { Textarea } from '@/components/ui/textarea'
 import { useToast } from '@/components/ui/use-toast'
 import { useParams, useRouter } from 'next/navigation'
+import { useFileStore } from '@/components/services/HotkeyService'
 
 interface Comment {
     id: number | string
@@ -37,12 +38,13 @@ export const IssueDetail: React.FC<IssueDetailProps> = ({ issueId, onBack }) => 
     const [answerContent, setAnswerContent] = useState('')
     const [isSubmitting, setIsSubmitting] = useState(false)
     const { toast } = useToast()
+    
+    // Access the global issue tab state for filter consistency
+    const { issuesActiveTab } = useFileStore()
 
     const handleBack = () => {
         if (onBack) {
-            onBack()
-        } else {
-            router.push(`/dataroom/${dataroomId}/${subId}/issues`)
+            onBack();
         }
     }
 
@@ -200,7 +202,11 @@ export const IssueDetail: React.FC<IssueDetailProps> = ({ issueId, onBack }) => 
     }
 
     if (isLoading) {
-        return <div className="flex justify-center items-center bg-green-100 h-full">Loading...</div>
+        return (
+            <div className="flex justify-center items-center h-full w-full absolute inset-0">
+                <div className="animate-spin h-10 w-10 rounded-full border-4 border-blue-500 border-t-transparent"></div>
+            </div>
+        )
     }
 
     if (!issue) {
@@ -218,7 +224,7 @@ export const IssueDetail: React.FC<IssueDetailProps> = ({ issueId, onBack }) => 
                     <Button 
                         variant="ghost" 
                         className="pl-2 flex items-center text-sm"
-                        onClick={handleBack}
+                        onClick={onBack}
                     >
                         <ChevronLeft className="h-4 w-4 mr-1" />
                         Back to issues

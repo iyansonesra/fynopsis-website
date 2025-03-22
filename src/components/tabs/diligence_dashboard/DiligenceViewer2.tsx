@@ -21,7 +21,8 @@ import 'react-resizable/css/styles.css';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { LineChart } from '@mui/x-charts';
 import {
-    BarChart
+    BarChart,
+    DonutChart
 } from "@tremor/react";
 import { Checkbox } from '@/components/ui/checkbox';
 
@@ -31,8 +32,7 @@ const ResponsiveGridLayoutWithChildren = WidthProvider(Responsive) as any;
 // Update the chart types to focus on the three main supported formats
 const FORMAT_TYPES = {
     CHART: 'chart',
-    TABLE: 'table',
-    GRAPH: 'graph'
+    TABLE: 'table'
 };
 
 // Available metrics for selection - we'll keep this for reference but won't use it for selection
@@ -80,6 +80,454 @@ interface DashboardWidget {
 
 // Enable responsive behavior with the HOC
 // const ResponsiveGridLayout = WidthProvider(Responsive);
+
+// Helper function to get color values for the legend
+const getCategoryColor = (color: string) => {
+    const colorMap: { [key: string]: string } = {
+        'blue': '#3B82F6',
+        'green': '#10B981',
+        'purple': '#8B5CF6',
+        'amber': '#F59E0B',
+        'rose': '#F43F5E'
+    };
+    return colorMap[color] || '#3B82F6';
+};
+
+// Helper function to convert hex colors to Tremor color names when possible
+const getTremorColor = (hexColor: string): string => {
+    // Mapping of hex colors to Tremor color names
+    const tremor_colors: { [key: string]: string } = {
+        '#3B82F6': 'blue',
+        '#10B981': 'green',
+        '#8B5CF6': 'purple',
+        '#F59E0B': 'amber',
+        '#F43F5E': 'rose',
+        '#06B6D4': 'cyan',
+        '#EC4899': 'pink',
+        '#EF4444': 'red',
+        '#14B8A6': 'teal',
+        '#F97316': 'orange',
+        '#A3E635': 'lime',
+        '#64748B': 'slate',
+        '#6B7280': 'gray',
+        '#78716C': 'stone'
+    };
+    return tremor_colors[hexColor] || hexColor.replace('#', '');
+};
+
+const ChartWidget = ({ widget }: { widget: Widget }) => {
+    // Check if the widget data is loading or empty
+    if (!widget.data || widget.data.status === 'loading') {
+        return (
+            <div className="flex items-center justify-center h-full">Loading chart data...</div>
+        );
+    }
+
+    // Handle line chart type
+    if (widget.data.chart_type === 'line') {
+        // Extract relevant data
+        const { title, description, labels, datasets, xAxis, yAxis, options } = widget.data;
+
+        // Process dataset values for LineChart
+        const processedDatasets = datasets.map((dataset: any, index: number) => {
+            // Filter out null values
+            const validData = dataset.data.map((value: any, i: number) => {
+                // If value is a range array, take the average for visualization
+                if (Array.isArray(value)) {
+                    return { x: i, y: (value[0] + value[1]) / 2 };
+                }
+                // Skip null values
+                if (value === null) return null;
+                return { x: i, y: value };
+            }).filter(Boolean);
+
+            return {
+                data: validData,
+                label: dataset.label,
+                color: dataset.borderColor || getCategoryColor(['blue', 'green', 'purple', 'amber', 'rose'][index % 5]),
+                showMark: true,
+                lineWidth: 2,
+                pointSize: 6
+            };
+        });
+
+        // Determine Y-axis scale
+        const allValues = datasets.flatMap((d: any) => 
+            d.data.filter((v: any) => v !== null)
+                .map((v: any) => Array.isArray(v) ? Math.max(...v) : v)
+        );
+        const maxValue = Math.max(...allValues);
+        const yAxisMax = Math.ceil(maxValue * 1.1 / 1000) * 1000; // Round up to nearest thousand with 10% padding
+
+        return (
+            <div className="flex flex-col h-full w-full">
+                {/* Title and description */}
+                <div className="px-2 pt-1 pb-1">
+                    {title && <h3 className="font-semibold text-sm">{title}</h3>}
+                    {description && <p className="text-xs text-gray-500 dark:text-gray-400">{description}</p>}
+                </div>
+
+                {/* Chart container with fixed height */}
+                <div className="relative flex-1" style={{ height: 'calc(100% - 60px)', minHeight: 150 }}>
+                    <LineChart
+                        xAxis={[{
+                            data: labels.map((_: string, i: number) => i),
+                            scaleType: 'point',
+                            valueFormatter: (value: number) => labels[value] || '',
+                        }]}
+                        yAxis={[{
+                            min: 0,
+                            max: yAxisMax,
+                            valueFormatter: (value: number) => 
+                                value >= 1000 
+                                    ? `$${(value / 1000).toFixed(0)}k` 
+                                    : `$${value}`,
+                        }]}
+                        series={processedDatasets}
+                        width={undefined}
+                        height={undefined}
+                        margin={{ left: 50, right: 20, top: 20, bottom: 40 }}
+                        slotProps={{
+                            legend: { hidden: true }
+                        }}
+                        sx={{
+                            width: '100%',
+                            height: '100%',
+                            '& .MuiLineElement-root': {
+                                strokeWidth: 2,
+                            },
+                            '& .MuiMarkElement-root': {
+                                stroke: 'white',
+                                strokeWidth: 2,
+                                scale: '0.6',
+                                fill: 'white'
+                            }
+                        }}
+                    />
+                </div>
+
+                {/* Legend at the bottom */}
+                <div className="flex flex-wrap justify-center gap-2 text-xs mt-1 mb-1">
+                    {datasets.map((dataset: any, index: number) => (
+                        <div key={index} className="flex items-center px-1">
+                            <div
+                                className="w-2 h-2 rounded-full mr-1"
+                                style={{ backgroundColor: dataset.borderColor || getCategoryColor(['blue', 'green', 'purple', 'amber', 'rose'][index % 5]) }}
+                            ></div>
+                            <span>{typeof dataset.label === 'object' ? 'Revenue' : dataset.label}</span>
+                        </div>
+                    ))}
+                </div>
+
+                {/* Display range information if available */}
+                {datasets.some((d: any) => d.data.some((v: any) => Array.isArray(v))) && (
+                    <div className="text-xs text-center text-gray-500 mb-1">
+                        * Ranges shown as average values
+                    </div>
+                )}
+            </div>
+        );
+    }
+
+    // Handle bar chart type
+    if (widget.data.chart_type === 'bar') {
+        // Extract relevant data
+        const { title, description, labels, datasets, xAxis, yAxis } = widget.data;
+
+        // Format the data for Tremor's BarChart
+        const formattedData = labels.map((label: string, index: number) => {
+            const dataPoint: Record<string, any> = { label: label.length > 15 ? label.substring(0, 15) + '...' : label };
+
+            // Add each dataset's value for this label
+            datasets.forEach((dataset: { label: string; data: (number | null)[] }) => {
+                // Use a shortened version of the label for cleaner display
+                const shortLabel = dataset.label
+                    .replace(' Revenue (in millions)', '')
+                    .replace(' (Revenue Range)', '')
+                    .replace('Revenue ', '');
+
+                dataPoint[shortLabel] = dataset.data[index];
+            });
+
+            return dataPoint;
+        });
+
+        // Create the categories array for Tremor (from dataset labels)
+        const categories = datasets.map((dataset: { label: string }) =>
+            dataset.label
+                .replace(' Revenue (in millions)', '')
+                .replace(' (Revenue Range)', '')
+                .replace('Revenue ', '')
+        );
+
+        // Define colors to match the previous implementation
+        const colorValues = ["blue", "green", "purple", "amber", "rose"];
+
+        // Calculate appropriate yAxisWidth based on data values
+        const maxValue = Math.max(...datasets.flatMap((d: any) => d.data.filter((v: any) => v !== null) as number[]));
+        const yAxisWidth = maxValue >= 1000000 ? 60 : (maxValue >= 10000 ? 50 : 40);
+
+        return (
+            <div className="flex flex-col h-full w-full">
+                {/* Title and description */}
+                <div className="px-2 pt-1 pb-1">
+                    {title && <h3 className="font-semibold text-sm">{title}</h3>}
+                    {description && <p className="text-xs text-gray-500 dark:text-gray-400">{description}</p>}
+                </div>
+
+                {/* Chart container with fixed height and proper margin for axis labels */}
+                <div className="relative flex-1" style={{
+                    height: 'calc(100% - 60px)',
+                    minHeight: 0
+                }}>
+                    <BarChart
+                        className="h-full"
+                        data={formattedData}
+                        index="label"
+                        categories={categories}
+                        colors={colorValues}
+                        valueFormatter={(value) => {
+                            if (value >= 1000000) return `${(value / 1000000).toFixed(1)}M`;
+                            if (value >= 1000) return `${(value / 1000).toFixed(0)}K`;
+                            return value.toString();
+                        }}
+                        yAxisWidth={yAxisWidth}
+                        showLegend={false}
+                        showTooltip={true}
+                        showGridLines={false}
+                        customTooltip={({ payload, active, label }) => {
+                            if (!active || !payload) return null;
+
+                            return (
+                                <div className="bg-white dark:bg-gray-800 shadow-lg border border-gray-200 dark:border-gray-700 p-2 rounded-md">
+                                    <div className="font-medium">{label}</div>
+                                    {payload.map((entry, index) => (
+                                        <div key={index} className="flex items-center mt-1">
+                                            <div
+                                                className="w-2 h-2 rounded-full mr-1"
+                                                style={{ backgroundColor: getCategoryColor(colorValues[index % colorValues.length]) }}
+                                            ></div>
+                                            <span className="mr-2">{entry.name}:</span>
+                                            <span className="font-medium">
+                                                {entry.value !== undefined ?
+                                                    (Number(entry.value) >= 1000000 ?
+                                                        `${(Number(entry.value) / 1000000).toFixed(1)}M` :
+                                                        (Number(entry.value) >= 1000 ?
+                                                            `${(Number(entry.value) / 1000).toFixed(0)}K` :
+                                                            Number(entry.value).toString())
+                                                    ) :
+                                                    "N/A"
+                                                }
+                                            </span>
+                                        </div>
+                                    ))}
+                                </div>
+                            );
+                        }}
+                    />
+                </div>
+
+                {/* Legend at the bottom - reduced padding */}
+                <div className="flex flex-wrap justify-center gap-2 text-xs mt-1 mb-1">
+                    {categories.map((category: string, index: number) => (
+                        <div key={index} className="flex items-center px-1">
+                            <div
+                                className="w-2 h-2 rounded-full mr-1"
+                                style={{ backgroundColor: getCategoryColor(colorValues[index % colorValues.length]) }}
+                            ></div>
+                            <span>{category}</span>
+                        </div>
+                    ))}
+                </div>
+            </div>
+        );
+    }
+
+    // Handle pie chart type
+    if (widget.data.chart_type === 'pie') {
+        // Extract relevant data
+        const { title, description, labels, datasets } = widget.data;
+        
+        // Format data for Tremor's DonutChart
+        const pieData = labels.map((label: string, index: number) => ({
+            name: label,
+            value: datasets[0].data[index]
+        }));
+        
+        // Determine if we should show as donut or pie
+        const showDonut = widget.data.options?.donut === true;
+        
+        // Get colors from the dataset or use defaults
+        const customColors = datasets[0].backgroundColor || 
+            ['#36A2EB', '#FF6384', '#FFCE56', '#4BC0C0', '#9966FF'];
+        
+        // Format Tremor colors - convert hex to Tremor color names when possible
+        const tremorColors = customColors.map((color: string) => 
+            getTremorColor(color)
+        );
+
+        return (
+            <div className="flex flex-col h-full w-full">
+                {/* Title and description */}
+                <div className="px-2 pt-1 pb-1">
+                    {title && <h3 className="font-semibold text-sm">{title}</h3>}
+                    {description && <p className="text-xs text-gray-500 dark:text-gray-400">{description}</p>}
+                </div>
+                
+                {/* Chart container */}
+                <div className="flex-1 flex items-center justify-center">
+                    <DonutChart
+                        data={pieData}
+                        category="value"
+                        index="name"
+                        colors={tremorColors}
+                        showAnimation={true}
+                        valueFormatter={(value) => `${value}%`}
+                        showTooltip={true}
+                        showLabel={false}
+                        className="h-full max-h-64 mx-auto"
+                        variant={showDonut ? "donut" : "pie"}
+                    />
+                </div>
+                
+                {/* Legend */}
+                <div className="flex flex-wrap justify-center gap-2 text-xs mt-1 mb-1">
+                    {labels.map((label: string, index: number) => (
+                        <div key={index} className="flex items-center px-1">
+                            <div
+                                className="w-2 h-2 rounded-full mr-1"
+                                style={{ backgroundColor: customColors[index % customColors.length] }}
+                            ></div>
+                            <span>{label}: {datasets[0].data[index]}%</span>
+                        </div>
+                    ))}
+                </div>
+            </div>
+        );
+    }
+
+    // Default fallback for unknown chart types
+    return (
+        <div className="flex items-center justify-center h-full">Unknown chart type</div>
+    );
+};
+
+const TableWidget = ({ widget }: { widget: Widget }) => {
+    // Parse the data if it's a string
+    const parseTableData = () => {
+        if (!widget.data) return null;
+        
+        // Check if we have a string that needs to be parsed
+        if (typeof widget.data === 'string') {
+            try {
+                return JSON.parse(widget.data);
+            } catch (error) {
+                console.error('Error parsing table data:', error);
+                return null;
+            }
+        }
+        
+        // Check for new format (JSON string inside a property)
+        if (typeof widget.data[widget.id] === 'string') {
+            try {
+                return JSON.parse(widget.data[widget.id]);
+            } catch (error) {
+                console.error('Error parsing nested table data:', error);
+                return null;
+            }
+        }
+        
+        // Legacy format support
+        return widget.data;
+    };
+    
+    const tableData = parseTableData();
+    
+    // Handle loading state - check if it's null or has loading status
+    if (!tableData || tableData.status === 'loading' || 
+        (widget.data && widget.data.status === 'loading')) {
+        return (
+            <div className="flex items-center justify-center h-full">Loading data...</div>
+        );
+    }
+    
+    // New format with columns and rows of objects
+    if (tableData.columns && tableData.rows) {
+        return (
+            <div className="p-2 h-full overflow-auto">
+                <div className="mb-2">
+                    {tableData.title && <h3 className="font-semibold text-sm">{tableData.title}</h3>}
+                    {tableData.description && <p className="text-xs text-gray-500 dark:text-gray-400">{tableData.description}</p>}
+                </div>
+                <table className="w-full border-collapse">
+                    <thead>
+                        <tr className="bg-gray-100 dark:bg-gray-800">
+                            {tableData.columns.map((column: string, index: number) => (
+                                <th key={index} className="p-2 text-left border border-gray-200 dark:border-gray-700">
+                                    {column}
+                                </th>
+                            ))}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {tableData.rows.map((row: any, rowIndex: number) => (
+                            <tr 
+                                key={rowIndex} 
+                                className={rowIndex % 2 === 0 ? 'bg-white dark:bg-gray-950' : 'bg-gray-50 dark:bg-gray-900'}
+                            >
+                                {tableData.columns.map((column: string, colIndex: number) => (
+                                    <td key={colIndex} className="p-2 border border-gray-200 dark:border-gray-700">
+                                        {row[column] !== null ? row[column] : '—'}
+                                    </td>
+                                ))}
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+                {tableData.metadata && (
+                    <div className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+                        Source count: {tableData.metadata.source_count}, Rows: {tableData.metadata.row_count}
+                    </div>
+                )}
+            </div>
+        );
+    }
+    
+    // Legacy format support with headers and rows of arrays
+    if (tableData.headers && tableData.rows) {
+        return (
+            <div className="p-2 h-full overflow-auto">
+                <table className="w-full border-collapse">
+                    <thead>
+                        <tr className="bg-gray-100 dark:bg-gray-800">
+                            {tableData.headers.map((header: string, index: number) => (
+                                <th key={index} className="p-2 text-left border border-gray-200 dark:border-gray-700">
+                                    {header}
+                                </th>
+                            ))}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {tableData.rows.map((row: any[], rowIndex: number) => (
+                            <tr 
+                                key={rowIndex} 
+                                className={rowIndex % 2 === 0 ? 'bg-white dark:bg-gray-950' : 'bg-gray-50 dark:bg-gray-900'}
+                            >
+                                {row.map((cell, cellIndex) => (
+                                    <td key={cellIndex} className="p-2 border border-gray-200 dark:border-gray-700">
+                                        {cell}
+                                    </td>
+                                ))}
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            </div>
+        );
+    }
+    
+    return <div className="flex items-center justify-center h-full">Invalid table data format</div>;
+};
 
 export default function DiligenceDashboardViewer() {
     const params = useParams();
@@ -473,644 +921,6 @@ export default function DiligenceDashboardViewer() {
         }
     };
 
-    // Default pie chart rendering for other chart types
-    // ...existing pie chart code...
-
-
-    const TableWidget = ({ widget }: { widget: Widget }) => {
-        // Parse the data if it's a string
-        const parseTableData = () => {
-            if (!widget.data) return null;
-            
-            // Check if we have a string that needs to be parsed
-            if (typeof widget.data === 'string') {
-                try {
-                    return JSON.parse(widget.data);
-                } catch (error) {
-                    console.error('Error parsing table data:', error);
-                    return null;
-                }
-            }
-            
-            // Check for new format (JSON string inside a property)
-            if (typeof widget.data[widget.id] === 'string') {
-                try {
-                    return JSON.parse(widget.data[widget.id]);
-                } catch (error) {
-                    console.error('Error parsing nested table data:', error);
-                    return null;
-                }
-            }
-            
-            // Legacy format support
-            return widget.data;
-        };
-        
-        const tableData = parseTableData();
-        
-        // Handle loading state - check if it's null or has loading status
-        if (!tableData || tableData.status === 'loading' || 
-            (widget.data && widget.data.status === 'loading')) {
-            return (
-                <div className="flex items-center justify-center h-full">Loading data...</div>
-            );
-        }
-        
-        // New format with columns and rows of objects
-        if (tableData.columns && tableData.rows) {
-            return (
-                <div className="p-2 h-full overflow-auto">
-                    <div className="mb-2">
-                        {tableData.title && <h3 className="font-semibold text-sm">{tableData.title}</h3>}
-                        {tableData.description && <p className="text-xs text-gray-500 dark:text-gray-400">{tableData.description}</p>}
-                    </div>
-                    <table className="w-full border-collapse">
-                        <thead>
-                            <tr className="bg-gray-100 dark:bg-gray-800">
-                                {tableData.columns.map((column: string, index: number) => (
-                                    <th key={index} className="p-2 text-left border border-gray-200 dark:border-gray-700">
-                                        {column}
-                                    </th>
-                                ))}
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {tableData.rows.map((row: any, rowIndex: number) => (
-                                <tr 
-                                    key={rowIndex} 
-                                    className={rowIndex % 2 === 0 ? 'bg-white dark:bg-gray-950' : 'bg-gray-50 dark:bg-gray-900'}
-                                >
-                                    {tableData.columns.map((column: string, colIndex: number) => (
-                                        <td key={colIndex} className="p-2 border border-gray-200 dark:border-gray-700">
-                                            {row[column] !== null ? row[column] : '—'}
-                                        </td>
-                                    ))}
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                    {tableData.metadata && (
-                        <div className="mt-2 text-xs text-gray-500 dark:text-gray-400">
-                            Source count: {tableData.metadata.source_count}, Rows: {tableData.metadata.row_count}
-                        </div>
-                    )}
-                </div>
-            );
-        }
-        
-        // Legacy format support with headers and rows of arrays
-        if (tableData.headers && tableData.rows) {
-            return (
-                <div className="p-2 h-full overflow-auto">
-                    <table className="w-full border-collapse">
-                        <thead>
-                            <tr className="bg-gray-100 dark:bg-gray-800">
-                                {tableData.headers.map((header: string, index: number) => (
-                                    <th key={index} className="p-2 text-left border border-gray-200 dark:border-gray-700">
-                                        {header}
-                                    </th>
-                                ))}
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {tableData.rows.map((row: any[], rowIndex: number) => (
-                                <tr 
-                                    key={rowIndex} 
-                                    className={rowIndex % 2 === 0 ? 'bg-white dark:bg-gray-950' : 'bg-gray-50 dark:bg-gray-900'}
-                                >
-                                    {row.map((cell, cellIndex) => (
-                                        <td key={cellIndex} className="p-2 border border-gray-200 dark:border-gray-700">
-                                            {cell}
-                                        </td>
-                                    ))}
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                </div>
-            );
-        }
-        
-        return <div className="flex items-center justify-center h-full">Invalid table data format</div>;
-    };
-
-    const GraphWidget = ({ widget }: { widget: Widget }) => {
-        // Use local state for this specific widget instance
-        const [localGraphLayout, setLocalGraphLayout] = useState<{ nodes: GraphNode[], links: GraphEdge[] }>({ nodes: [], links: [] });
-
-        // Process and layout the graph data when widget changes
-        useEffect(() => {
-            if (!widget.data || widget.data.status === 'loading') return;
-
-            const { nodes, edges } = widget.data;
-            if (!nodes || !edges) return;
-
-            // Set up hierarchical layout
-            const processedNodes = calculateHierarchicalLayout(nodes as GraphNode[], edges as GraphEdge[]);
-            const processedLinks = edges.map((edge: GraphEdge) => ({
-                source: edge.source,
-                target: edge.target,
-                relationship: edge.relationship,
-                directed: edge.directed
-            }));
-
-            setLocalGraphLayout({ nodes: processedNodes, links: processedLinks });
-        }, [widget.data]);
-
-        // Calculate hierarchical positions for nodes
-        const calculateHierarchicalLayout = (nodes: GraphNode[], edges: GraphEdge[]): GraphNode[] => {
-            // Define levels based on node categories
-            const categoryLevels: { [key: string]: number } = {
-                'Company': 0,
-                'Revenue Stream': 1,
-                'Industry Application': 2
-            };
-
-            // Group nodes by level
-            const nodesByLevel: { [key: number]: GraphNode[] } = {};
-            nodes.forEach(node => {
-                const level = categoryLevels[node.category] || 0;
-                if (!nodesByLevel[level]) nodesByLevel[level] = [];
-                nodesByLevel[level].push(node);
-            });
-
-            // Calculate node positions level by level
-            const processedNodes: GraphNode[] = [];
-            const levelCount = Object.keys(nodesByLevel).length;
-            const maxNodesInLevel = Math.max(...Object.values(nodesByLevel).map(n => n.length));
-
-            for (let level = 0; level < levelCount; level++) {
-                const nodesInLevel = nodesByLevel[level] || [];
-                const levelWidth = nodesInLevel.length;
-
-                nodesInLevel.forEach((node, index) => {
-                    // Calculate revenue value for node sizing if available
-                    let revenue = 0;
-                    if (node.attributes) {
-                        const revenueStr = node.attributes.fiscal_year_2024_revenue ||
-                            node.attributes.q4_fiscal_2024_revenue || '';
-
-                        // Extract numeric value from string like "$33.196 billion" or "$899 million"
-                        if (revenueStr) {
-                            const match = revenueStr.match(/\$?([\d,.]+)\s*(billion|million)?/i);
-                            if (match) {
-                                const value = parseFloat(match[1].replace(/,/g, ''));
-                                const unit = match[2]?.toLowerCase();
-                                revenue = unit === 'billion' ? value * 1000 : (unit === 'million' ? value : value);
-                            }
-                        }
-                    }
-
-                    // Scale node size based on revenue (with min and max size)
-                    const nodeSize = revenue ? Math.max(25, Math.min(50, 25 + (revenue / 10000) * 25)) : 30;
-
-                    // Assign colors based on category
-                    let nodeColor = '#3B82F6'; // default blue
-                    if (node.category === 'Revenue Stream') nodeColor = '#10B981'; // green
-                    if (node.category === 'Industry Application') nodeColor = '#8B5CF6'; // purple
-
-                    processedNodes.push({
-                        ...node,
-                        x: (index + 1) * (100 / (levelWidth + 1)), // Horizontal position as percentage
-                        y: (level + 1) * (100 / (levelCount + 1)), // Vertical position as percentage
-                        size: nodeSize,
-                        color: nodeColor
-                    });
-                });
-            }
-
-            return processedNodes;
-        };
-
-        // Render loading state
-        if (!widget.data || widget.data.status === 'loading') {
-            return <div className="flex items-center justify-center h-full">Loading graph data...</div>;
-        }
-
-        // Extract title and description
-        const { title, description } = widget.data;
-
-        // Calculate SVG dimensions based on container size
-        // Using a 16:9 aspect ratio
-        const svgWidth = 100;
-        const svgHeight = 60;
-
-        return (
-            <div className="flex flex-col h-full p-4 overflow-hidden">
-                {title && <h3 className="font-semibold text-sm">{title}</h3>}
-                {description && <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">{description}</p>}
-
-                <div className="flex-1 bg-gray-50 dark:bg-gray-800 rounded-lg overflow-hidden shadow-inner">
-                    <svg
-                        viewBox={`0 0 ${svgWidth} ${svgHeight}`}
-                        className="w-full h-full"
-                        style={{ maxHeight: "250px" }}
-                    >
-                        {/* Draw edges first (so they're underneath nodes) */}
-                        {localGraphLayout.links.map((link, index) => {
-                            // Find connected nodes
-                            const sourceNode = localGraphLayout.nodes.find(n => n.id === link.source);
-                            const targetNode = localGraphLayout.nodes.find(n => n.id === link.target);
-
-                            if (!sourceNode || !targetNode) return null;
-
-                            // Ensure nodes have coordinates (use defaults if undefined)
-                            const x1 = (sourceNode.x || 50) * svgWidth / 100;
-                            const y1 = (sourceNode.y || 50) * svgHeight / 100;
-                            const x2 = (targetNode.x || 50) * svgWidth / 100;
-                            const y2 = (targetNode.y || 50) * svgHeight / 100;
-
-                            return (
-                                <g key={`edge-${index}`}>
-                                    <line
-                                        x1={x1}
-                                        y1={y1}
-                                        x2={x2}
-                                        y2={y2}
-                                        stroke="rgba(156, 163, 175, 0.6)"
-                                        strokeWidth="1.5"
-                                        className="transition-all duration-300"
-                                    />
-
-                                    {/* Add arrow for directed edges */}
-                                    {link.directed && (
-                                        <polygon
-                                            points={calculateArrowPoints(x1, y1, x2, y2, (targetNode.size || 30) / 3)}
-                                            fill="rgba(156, 163, 175, 0.6)"
-                                            className="transition-all duration-300"
-                                        />
-                                    )}
-
-                                    {/* Edge label for relationship type */}
-                                    {link.relationship && (
-                                        <text
-                                            x={(x1 + x2) / 2}
-                                            y={(y1 + y2) / 2 - 2}
-                                            fontSize="2.5"
-                                            textAnchor="middle"
-                                            fill="rgba(107, 114, 128, 0.8)"
-                                            className="pointer-events-none"
-                                        >
-                                            {link.relationship}
-                                        </text>
-                                    )}
-                                </g>
-                            );
-                        })}
-
-                        {/* Draw nodes */}
-                        {localGraphLayout.nodes.map((node, index) => {
-                            // Convert percentage positions to SVG coordinates (with defaults)
-                            const cx = (node.x || 50) * svgWidth / 100;
-                            const cy = (node.y || 50) * svgHeight / 100;
-                            const nodeSize = node.size || 30;
-
-                            return (
-                                <g
-                                    key={`node-${index}`}
-                                    className="cursor-pointer transition-all duration-300 hover:opacity-80"
-                                    style={{ opacity: 0.9 }}
-                                >
-                                    {/* Node circle */}
-                                    <circle
-                                        cx={cx}
-                                        cy={cy}
-                                        r={nodeSize / 10}
-                                        fill={node.color || '#3B82F6'}
-                                        stroke="white"
-                                        strokeWidth="0.5"
-                                    >
-                                        {/* Tooltip */}
-                                        <title>
-                                            {node.label}
-                                            {node.attributes && Object.entries(node.attributes).map(([key, value]) =>
-                                                `\n${key}: ${value}`
-                                            ).join('')}
-                                        </title>
-                                    </circle>
-
-                                    {/* Node label */}
-                                    <text
-                                        x={cx}
-                                        y={cy + nodeSize / 8 + 1}
-                                        fontSize="2.5"
-                                        textAnchor="middle"
-                                        fill="#4B5563"
-                                        className="pointer-events-none font-medium"
-                                    >
-                                        {node.label}
-                                    </text>
-                                </g>
-                            );
-                        })}
-                    </svg>
-                </div>
-
-                {/* Legend */}
-                <div className="flex flex-wrap justify-center mt-3 gap-3">
-                    <div className="flex items-center">
-                        <div className="w-3 h-3 rounded-full bg-blue-500 mr-1.5"></div>
-                        <span className="text-xs">Company</span>
-                    </div>
-                    <div className="flex items-center">
-                        <div className="w-3 h-3 rounded-full bg-green-500 mr-1.5"></div>
-                        <span className="text-xs">Revenue Stream</span>
-                    </div>
-                    <div className="flex items-center">
-                        <div className="w-3 h-3 rounded-full bg-purple-500 mr-1.5"></div>
-                        <span className="text-xs">Industry Application</span>
-                    </div>
-                </div>
-            </div>
-        );
-    };
-
-    function calculateArrowPoints(x1: number, y1: number, x2: number, y2: number, size: number) {
-        // Calculate angle of the edge
-        const angle = Math.atan2(y2 - y1, x2 - x1);
-
-        // Calculate endpoint (adjusted to not overlap the target node)
-        const endX = x2 - (size / 5) * Math.cos(angle);
-        const endY = y2 - (size / 5) * Math.sin(angle);
-
-        // Calculate the arrow points
-        const arrowSize = size / 10;
-        const arrowAngle = Math.PI / 6; // 30 degrees
-
-        const x3 = endX - arrowSize * Math.cos(angle - arrowAngle);
-        const y3 = endY - arrowSize * Math.sin(angle - arrowAngle);
-
-        const x4 = endX - arrowSize * Math.cos(angle + arrowAngle);
-        const y4 = endY - arrowSize * Math.sin(angle + arrowAngle);
-
-        return `${endX},${endY} ${x3},${y3} ${x4},${y4}`;
-    }
-
-
-    // Add to imports at the top of the file
-
-    // Add this component in the file before the return statement
-    const ChartWidget = ({ widget }: { widget: Widget }) => {
-        // Check if the widget data is loading or empty
-        if (!widget.data || widget.data.status === 'loading') {
-            return (
-                <div className="flex items-center justify-center h-full">Loading chart data...</div>
-            );
-        }
-
-        // Handle line chart type
-        if (widget.data.chart_type === 'line') {
-            // Extract relevant data
-            const { title, description, labels, datasets, xAxis, yAxis, options } = widget.data;
-
-            // Process dataset values for LineChart
-            const processedDatasets = datasets.map((dataset: any, index: number) => {
-                // Filter out null values
-                const validData = dataset.data.map((value: any, i: number) => {
-                    // If value is a range array, take the average for visualization
-                    if (Array.isArray(value)) {
-                        return { x: i, y: (value[0] + value[1]) / 2 };
-                    }
-                    // Skip null values
-                    if (value === null) return null;
-                    return { x: i, y: value };
-                }).filter(Boolean);
-
-                return {
-                    data: validData,
-                    label: dataset.label,
-                    color: dataset.borderColor || getCategoryColor(['blue', 'green', 'purple', 'amber', 'rose'][index % 5]),
-                    showMark: true,
-                    lineWidth: 2,
-                    pointSize: 6
-                };
-            });
-
-            // Determine Y-axis scale
-            const allValues = datasets.flatMap((d: any) => 
-                d.data.filter((v: any) => v !== null)
-                    .map((v: any) => Array.isArray(v) ? Math.max(...v) : v)
-            );
-            const maxValue = Math.max(...allValues);
-            const yAxisMax = Math.ceil(maxValue * 1.1 / 1000) * 1000; // Round up to nearest thousand with 10% padding
-
-            return (
-                <div className="flex flex-col h-full w-full">
-                    {/* Title and description */}
-                    <div className="px-2 pt-1 pb-1">
-                        {title && <h3 className="font-semibold text-sm">{title}</h3>}
-                        {description && <p className="text-xs text-gray-500 dark:text-gray-400">{description}</p>}
-                    </div>
-
-                    {/* Chart container with fixed height */}
-                    <div className="relative flex-1" style={{ height: 'calc(100% - 60px)', minHeight: 150 }}>
-                        <LineChart
-                            xAxis={[{
-                                data: labels.map((_: string, i: number) => i),
-                                scaleType: 'point',
-                                valueFormatter: (value: number) => labels[value] || '',
-                            }]}
-                            yAxis={[{
-                                min: 0,
-                                max: yAxisMax,
-                                valueFormatter: (value: number) => 
-                                    value >= 1000 
-                                        ? `$${(value / 1000).toFixed(0)}k` 
-                                        : `$${value}`,
-                            }]}
-                            series={processedDatasets}
-                            width={undefined}
-                            height={undefined}
-                            margin={{ left: 50, right: 20, top: 20, bottom: 40 }}
-                            slotProps={{
-                                legend: { hidden: true }
-                            }}
-                            sx={{
-                                width: '100%',
-                                height: '100%',
-                                '& .MuiLineElement-root': {
-                                    strokeWidth: 2,
-                                },
-                                '& .MuiMarkElement-root': {
-                                    stroke: 'white',
-                                    strokeWidth: 2,
-                                    scale: '0.6',
-                                    fill: 'white'
-                                }
-                            }}
-                        />
-                    </div>
-
-                    {/* Legend at the bottom */}
-                    <div className="flex flex-wrap justify-center gap-2 text-xs mt-1 mb-1">
-                        {datasets.map((dataset: any, index: number) => (
-                            <div key={index} className="flex items-center px-1">
-                                <div
-                                    className="w-2 h-2 rounded-full mr-1"
-                                    style={{ backgroundColor: dataset.borderColor || getCategoryColor(['blue', 'green', 'purple', 'amber', 'rose'][index % 5]) }}
-                                ></div>
-                                <span>{typeof dataset.label === 'object' ? 'Revenue' : dataset.label}</span>
-                            </div>
-                        ))}
-                    </div>
-
-                    {/* Display range information if available */}
-                    {datasets.some((d: any) => d.data.some((v: any) => Array.isArray(v))) && (
-                        <div className="text-xs text-center text-gray-500 mb-1">
-                            * Ranges shown as average values
-                        </div>
-                    )}
-                </div>
-            );
-        }
-
-        // Handle bar chart type
-        if (widget.data.chart_type === 'bar') {
-            // Extract relevant data
-            const { title, description, labels, datasets, xAxis, yAxis } = widget.data;
-
-            // Format the data for Tremor's BarChart
-            const formattedData = labels.map((label: string, index: number) => {
-                const dataPoint: Record<string, any> = { label: label.length > 15 ? label.substring(0, 15) + '...' : label };
-
-                // Add each dataset's value for this label
-                datasets.forEach((dataset: { label: string; data: (number | null)[] }) => {
-                    // Use a shortened version of the label for cleaner display
-                    const shortLabel = dataset.label
-                        .replace(' Revenue (in millions)', '')
-                        .replace(' (Revenue Range)', '')
-                        .replace('Revenue ', '');
-
-                    dataPoint[shortLabel] = dataset.data[index];
-                });
-
-                return dataPoint;
-            });
-
-            // Create the categories array for Tremor (from dataset labels)
-            const categories = datasets.map((dataset: { label: string }) =>
-                dataset.label
-                    .replace(' Revenue (in millions)', '')
-                    .replace(' (Revenue Range)', '')
-                    .replace('Revenue ', '')
-            );
-
-            // Define colors to match the previous implementation
-            const colors = ["blue", "green", "purple", "amber", "rose"];
-
-            // Calculate appropriate yAxisWidth based on data values
-            const maxValue = Math.max(...datasets.flatMap((d: any) => d.data.filter((v: any) => v !== null) as number[]));
-            const yAxisWidth = maxValue >= 1000000 ? 60 : (maxValue >= 10000 ? 50 : 40);
-
-            return (
-                <div className="flex flex-col h-full w-full">
-                    {/* Title and description */}
-                    <div className="px-2 pt-1 pb-1">
-                        {title && <h3 className="font-semibold text-sm">{title}</h3>}
-                        {description && <p className="text-xs text-gray-500 dark:text-gray-400">{description}</p>}
-                    </div>
-
-                    {/* Chart container with fixed height and proper margin for axis labels */}
-                    <div className="relative flex-1" style={{
-                        height: 'calc(100% - 60px)',
-                        minHeight: 0
-                    }}>
-                        <BarChart
-                            className="h-full"
-                            data={formattedData}
-                            index="label"
-                            categories={categories}
-                            colors={colors}
-                            valueFormatter={(value) => {
-                                if (value >= 1000000) return `${(value / 1000000).toFixed(1)}M`;
-                                if (value >= 1000) return `${(value / 1000).toFixed(0)}K`;
-                                return value.toString();
-                            }}
-                            yAxisWidth={yAxisWidth}
-                            showLegend={false}
-                            showTooltip={true}
-                            showGridLines={false}
-                            customTooltip={({ payload, active, label }) => {
-                                if (!active || !payload) return null;
-
-                                return (
-                                    <div className="bg-white dark:bg-gray-800 shadow-lg border border-gray-200 dark:border-gray-700 p-2 rounded-md">
-                                        <div className="font-medium">{label}</div>
-                                        {payload.map((entry, index) => (
-                                            <div key={index} className="flex items-center mt-1">
-                                                <div
-                                                    className="w-2 h-2 rounded-full mr-1"
-                                                    style={{ backgroundColor: getCategoryColor(colors[index % colors.length]) }}
-                                                ></div>
-                                                <span className="mr-2">{entry.name}:</span>
-                                                <span className="font-medium">
-                                                    {entry.value !== undefined ?
-                                                        (Number(entry.value) >= 1000000 ?
-                                                            `${(Number(entry.value) / 1000000).toFixed(1)}M` :
-                                                            (Number(entry.value) >= 1000 ?
-                                                                `${(Number(entry.value) / 1000).toFixed(0)}K` :
-                                                                Number(entry.value).toString())
-                                                        ) :
-                                                        "N/A"
-                                                    }
-                                                </span>
-                                            </div>
-                                        ))}
-                                    </div>
-                                );
-                            }}
-                        />
-                    </div>
-
-                    {/* Legend at the bottom - reduced padding */}
-                    <div className="flex flex-wrap justify-center gap-2 text-xs mt-1 mb-1">
-                        {categories.map((category: string, index: number) => (
-                            <div key={index} className="flex items-center px-1">
-                                <div
-                                    className="w-2 h-2 rounded-full mr-1"
-                                    style={{ backgroundColor: getCategoryColor(colors[index % colors.length]) }}
-                                ></div>
-                                <span>{category}</span>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-            );
-        }
-
-        // Default pie chart rendering (from existing code)
-        return (
-            <div className="flex flex-col items-center justify-center h-full py-2">
-                <PieChart className={`${widget.positionData?.expanded ? 'w-32 h-32' : 'w-24 h-24'} mb-2 text-blue-500 transition-all duration-300`} />
-                <div className="text-sm text-center">
-                    {!widget.data || !widget.data.segments ? (
-                        "Loading data..."
-                    ) : (
-                        <div className={`grid ${widget.positionData?.expanded ? 'grid-cols-3' : 'grid-cols-2'} gap-2 mt-2 transition-all duration-300`}>
-                            {widget.data.segments.map((segment: any, index: number) => (
-                                <div key={index} className={`flex items-center ${widget.positionData?.expanded ? 'text-sm' : 'text-xs'} transition-all duration-300`}>
-                                    <div className={`w-3 h-3 rounded-full mr-1 bg-blue-${300 + (index * 100)}`}></div>
-                                    <span>{segment.label}: {segment.value}%</span>
-                                </div>
-                            ))}
-                        </div>
-                    )}
-                </div>
-            </div>
-        );
-    };
-
-    // Helper function to get color values for the legend
-    const getCategoryColor = (color: string) => {
-        const colorMap: { [key: string]: string } = {
-            'blue': '#3B82F6',
-            'green': '#10B981',
-            'purple': '#8B5CF6',
-            'amber': '#F59E0B',
-            'rose': '#F43F5E'
-        };
-        return colorMap[color] || '#3B82F6';
-    };
     // Then update the renderWidgetContent function to use this component
     const renderWidgetContent = (widget: DashboardWidget) => {
         // Convert DashboardWidget to Widget format for component compatibility
@@ -1136,8 +946,6 @@ export default function DiligenceDashboardViewer() {
                 return <ChartWidget widget={adaptedWidget} />;
             case FORMAT_TYPES.TABLE:
                 return <TableWidget widget={adaptedWidget} />;
-            case FORMAT_TYPES.GRAPH:
-                return <GraphWidget widget={adaptedWidget} />;
             default:
                 return <div>Unknown widget type</div>;
         }
@@ -1306,7 +1114,6 @@ export default function DiligenceDashboardViewer() {
                                     <SelectContent>
                                         <SelectItem value={FORMAT_TYPES.CHART}>Chart</SelectItem>
                                         <SelectItem value={FORMAT_TYPES.TABLE}>Table</SelectItem>
-                                        <SelectItem value={FORMAT_TYPES.GRAPH}>Graph</SelectItem>
                                     </SelectContent>
                                 </UISelect>
                             </div>
@@ -1555,4 +1362,5 @@ export default function DiligenceDashboardViewer() {
         </ScrollArea>
 
     );
+
 }
