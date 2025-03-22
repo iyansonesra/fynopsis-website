@@ -167,8 +167,8 @@ export default function DiligenceDashboardViewer() {
             y: widget.positionData?.y || 0,
             w: widget.positionData?.width || 4,
             h: widget.positionData?.height || 3,
-            minW: 2,
-            minH: 2,
+            minW: 1,
+            minH: 1,
             maxW: 12,
             maxH: 10,
             data: widget.data || null,
@@ -1199,31 +1199,37 @@ export default function DiligenceDashboardViewer() {
                     </div>
                 ) : (
                     <ResponsiveGridLayoutWithChildren
-                        className="layout"
-                        layouts={{
-                            lg: widgets.map(w => ({
-                                i: w.id,
-                                x: w.x,
-                                y: w.y,
-                                w: w.w,
-                                h: w.h,
-                                minW: w.minW,
-                                minH: w.minH,
-                                maxW: w.maxW,
-                                maxH: w.maxH
-                            }))
-                        }}
-                        breakpoints={{ lg: 1200, md: 996, sm: 768, xs: 480, xxs: 0 }}
-                        cols={cols}
-                        rowHeight={rowHeight}
-                        onLayoutChange={handleLayoutChange}
-                        draggableHandle=".widget-drag-handle"
-                        useCSSTransforms={true}
-                        compactType="horizontal"
-                        preventCollision={false}
-                        verticalCompact={true}
-                        autoSize={true}
-                    >
+                    className="layout"
+                    layouts={{
+                        lg: widgets.map(w => ({
+                            i: w.id,
+                            x: w.x,
+                            y: w.y,
+                            w: w.w,
+                            h: w.h,
+                            minW: w.minW,
+                            minH: w.minH,
+                            maxW: w.maxW,
+                            maxH: w.maxH
+                        }))
+                    }}
+                    // breakpoints={{ lg: 1200, md: 996, sm: 768, xs: 480, xxs: 0 }}
+                    // cols={cols}
+                    // rowHeight={rowHeight}
+                    onLayoutChange={handleLayoutChange}
+                    // draggableHandle=".widget-drag-handle"
+                    // useCSSTransforms={true}
+                    // compactType="vertical"
+                    // preventCollision={true}      // Change to true to prevent collision during drag
+                    // verticalCompact={true}
+                    // autoSize={true}
+                    // margin={[10, 10]}            // Add some vertical margin for better visual separation
+                    // containerPadding={[10, 10]}  // Add some padding around the container
+                    // isResizable={true}
+                    // isBounded={true}
+                    // isDraggable={true}
+                    // transformScale={1}           // Ensure correct scaling
+                >
                         {widgets.map((widget) => (
                             <div key={widget.id}>
                                 <Card className="flex flex-col h-full overflow-hidden">

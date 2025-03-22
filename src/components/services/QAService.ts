@@ -146,6 +146,8 @@ class QAService {
       
       const { body } = await response.response;
       const responseData = await body.json();
+
+      console.log("ISSUE RESPONSE DATA", responseData);
       
       const backendIssue = this.mapQuestionToIssue(responseData);
       return this.mapToFrontend(backendIssue);

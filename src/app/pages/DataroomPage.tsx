@@ -384,8 +384,8 @@ useEffect(() => {
   const renderSelectedScreen = () => {
     // If we have an active issue ID and we're on the issues tab, show the issue detail
 
-    console.log("activeissuedid: ", activeIssueId);
-    console.log("selectedTab: ", selectedTab);
+    // console.log("activeissuedid: ", activeIssueId);
+    // console.log("selectedTab: ", selectedTab);
     if (activeIssueId !== null && selectedTab.toLowerCase() === 'issues') {
       return <IssueDetail issueId={activeIssueId} onBack={handleBackFromIssue} />;
     }

@@ -21,6 +21,15 @@ interface Citation {
   position: number;
 }
 
+interface BatchStep {
+  stepNumber: number;
+  totalSteps: number;
+  description: string;
+  sources: Record<string, string>;
+  isActive: boolean;
+}
+
+// Update the Message interface to include batches
 interface Message {
   type: 'question' | 'answer' | 'error';
   content: string;
@@ -30,6 +39,7 @@ interface Message {
   sourcingSteps?: string[];
   subSources?: Record<string, any>;
   citations?: Citation[];
+  batches?: BatchStep[]; // Add this new field
 }
 
 interface FileNode {

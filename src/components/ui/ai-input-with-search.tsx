@@ -1,6 +1,6 @@
 "use client";
 
-import { BrainCircuit, Globe, Paperclip, Plus, Send, Sparkle, Sparkles } from "lucide-react";
+import { BrainCircuit, ChevronDown, Globe, Paperclip, Plus, Send, Sparkle, Sparkles } from "lucide-react";
 import { useState } from "react";
 import { Textarea } from "@/components/ui/textarea";
 import { motion, AnimatePresence } from "framer-motion";
@@ -10,6 +10,7 @@ import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/h
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import FileSelector from "../tabs/library/querying/FileSearchInput";
 import { ScrollArea, ScrollBar } from "./scroll-area";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "./dropdown-menu";
 
 
 interface AIInputWithSearchProps {
@@ -17,7 +18,7 @@ interface AIInputWithSearchProps {
   placeholder?: string;
   minHeight?: number;
   maxHeight?: number;
-  onSubmit: (value: string, withSearch: boolean, selectedFiles: any[]) => void;
+  onSubmit: (value: string, searchType: string, selectedFiles: any[]) => void;
   onFileSelect: (file: any) => void;
   className?: string;
   disabled?: boolean; // Add this prop
@@ -41,17 +42,29 @@ export const AIInputWithSearch: React.FC<AIInputWithSearchProps> = ({
   const [showSearch, setShowSearch] = useState(false);
   const [isPopoverOpen, setIsPopoverOpen] = useState(false);
   const [selectedFiles, setSelectedFiles] = useState<any[]>([]);
+  const [searchType, setSearchType] = useState<string>("auto");
 
 
   const handleSubmit = () => {
     if (value.trim()) {
       // Extract fileId from selectedFiles
       const fileKeys = selectedFiles.map(file => file.fileId);
-      onSubmit?.(value, showSearch, fileKeys);
+      onSubmit?.(value, searchType, fileKeys);
       setValue("");
       setSelectedFiles([]);
       adjustHeight(true);
     }
+  };
+  const searchTypeLabels = {
+    auto: "Auto",
+    reasoning: "Reasoning",
+    planning: "Planning"
+  };
+
+  const searchTypeIcons = {
+    auto: <Sparkles className="w-4 h-4" />,
+    reasoning: <BrainCircuit className="w-4 h-4" />,
+    planning: <Globe className="w-4 h-4" />
   };
 
 
@@ -172,64 +185,46 @@ export const AIInputWithSearch: React.FC<AIInputWithSearchProps> = ({
               </Popover>
 
 
-              <button
-                type="button"
-                onClick={() => setShowSearch(!showSearch)}
-                className={cn(
-                  "rounded-full transition-all flex items-center gap-2 px-1.5 py-1 border h-8",
-                  showSearch
-                    ? "bg-sky-500/15 border-sky-400 text-sky-500"
-                    : "bg-black/5 dark:bg-white/5 border-transparent text-black/40 dark:text-white/40 hover:text-black dark:hover:text-white"
-                )}
-              >
-                <div className="w-4 h-4 flex items-center justify-center flex-shrink-0">
-                  <motion.div
-                    animate={{
-                      rotate: showSearch ? 180 : 0,
-                      scale: showSearch ? 1.1 : 1,
-                    }}
-                    whileHover={{
-                      rotate: showSearch ? 180 : 15,
-                      scale: 1.1,
-                      transition: {
-                        type: "spring",
-                        stiffness: 300,
-                        damping: 10,
-                      },
-                    }}
-                    transition={{
-                      type: "spring",
-                      stiffness: 260,
-                      damping: 25,
-                    }}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button
+                    type="button"
+                    className={cn(
+                      "rounded-full transition-all flex items-center gap-2 px-3 py-1 border h-8",
+                      "bg-black/5 dark:bg-white/5 border-transparent hover:border-gray-300 dark:hover:border-gray-600 text-black/70 dark:text-white/70 select-none outline-none"
+                    )}
+                    disabled={disabled}
                   >
-                    <Sparkles
-                      className={cn(
-                        "w-4 h-4",
-                        showSearch
-                          ? "text-sky-500"
-                          : "text-inherit"
-                      )}
-                    />
-                  </motion.div>
-                </div>
-                <AnimatePresence>
-                  {showSearch && (
-                    <motion.span
-                      initial={{ width: 0, opacity: 0 }}
-                      animate={{
-                        width: "auto",
-                        opacity: 1,
-                      }}
-                      exit={{ width: 0, opacity: 0 }}
-                      transition={{ duration: 0.2 }}
-                      className="text-sm overflow-hidden whitespace-nowrap text-sky-500 flex-shrink-0"
-                    >
-                      Reasoning
-                    </motion.span>
-                  )}
-                </AnimatePresence>
-              </button>
+                    <div className="w-4 h-4 flex items-center justify-center flex-shrink-0">
+                      {searchTypeIcons[searchType as keyof typeof searchTypeIcons]}
+                    </div>
+                    <span className="text-sm">{searchTypeLabels[searchType as keyof typeof searchTypeLabels]}</span>
+                    <ChevronDown className="w-3 h-3 opacity-50 ml-1" />
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start" className="min-w-[150px]">
+                  <DropdownMenuItem 
+                    className="flex items-center gap-2"
+                    onClick={() => setSearchType("auto")}
+                  >
+                    <Sparkles className="w-4 h-4" />
+                    <span>Auto</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem 
+                    className="flex items-center gap-2"
+                    onClick={() => setSearchType("reasoning")}
+                  >
+                    <BrainCircuit className="w-4 h-4" />
+                    <span>Reasoning</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem className="flex items-center gap-2"
+                    onClick={() => setSearchType("planning")}
+                  >
+                    <Globe className="w-4 h-4" />
+                    <span>Planning</span>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
             <div className="absolute right-3 bottom-3">
               <button

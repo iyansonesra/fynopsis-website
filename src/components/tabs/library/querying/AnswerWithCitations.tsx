@@ -98,7 +98,7 @@ export const AnswerWithCitations = memo<AnswerWithCitationsProps>(({ content, ci
     const transformedContent = useMemo(() => {
         if (content.includes("<t")) return "";
 
-        console.log("CITATIONS IN ANSWERWITH", citations);
+        // console.log("CITATIONS IN ANSWERWITH", citations);
         
         return content.replace(/@(\d+)@/g, (match, number, offset, string) => {
             const citation = getCitationByStep(number);

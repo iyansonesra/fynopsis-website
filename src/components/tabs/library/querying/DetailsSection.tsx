@@ -75,6 +75,7 @@ const throttle = <T extends (...args: any[]) => void>(func: T, limit: number): T
 const throttledSetState = throttle((setter, value) => setter(value), 2);
 
 
+
 interface ThoughtStep {
     number: number;
     content: string;
@@ -338,7 +339,7 @@ const DetailSection: React.FC<DetailsSectionProps> = ({
     };
 
 
-    const queryAllDocuments = async (searchTerm: string, withReasoning: boolean, selectedFiles: any[]) => {
+    const queryAllDocuments = async (searchTerm: string, searchType: string, selectedFiles: any[]) => {
         setLastQuery(searchTerm); // Add this line at the start of the function
 
         try {
@@ -391,8 +392,9 @@ const DetailSection: React.FC<DetailsSectionProps> = ({
                                 thread_id: currentThreadId,
                                 collection_name: bucketUuid,
                                 query: searchTerm,
-                                use_reasoning: withReasoning,
-                                file_keys: selectedFiles
+                                use_reasoning: searchType == "reasoning" ? true : false,
+                                file_keys: selectedFiles,
+                                use_planning: searchType == "planning" ? true : false
                             }
                         }));
                     }
@@ -402,8 +404,10 @@ const DetailSection: React.FC<DetailsSectionProps> = ({
                             data: {
                                 collection_name: bucketUuid,
                                 query: searchTerm,
-                                use_reasoning: withReasoning,
-                                file_keys: selectedFiles
+                                use_reasoning: searchType == "reasoning" ? true : false,
+                                file_keys: selectedFiles,
+                                use_planning: searchType == "planning" ? true : false
+                        
                             }
                         }));
                     }
@@ -411,6 +415,7 @@ const DetailSection: React.FC<DetailsSectionProps> = ({
 
 
                 ws.onmessage = (event) => {
+
                     try {
                         const data = JSON.parse(event.data);
                         console.log("data:", data);
@@ -450,30 +455,103 @@ const DetailSection: React.FC<DetailsSectionProps> = ({
                                 // });
                             }
                         }
+
+                        if (data.type === 'batch') {
+                            // Handle batch response
+                            console.log("Batch data received:", data);
+                            const batchItems = data.items || [];
+                            
+                            if (batchItems.length > 0) {
+                                // We're interested in step_start items which contain the description
+                                const stepStartItem = batchItems.find((item: { type: string; }) => item.type === 'step_start');
+                                
+                                if (stepStartItem) {
+                                    setIsThinking(true);
+                                    const currentMessages = useFileStore.getState().messages;
+                                    
+                                    // Only update if we have an answer message already
+                                    if (currentMessages.length > 0 && 
+                                        currentMessages[currentMessages.length - 1].type === 'answer') {
+                                        
+                                        const lastMessage = currentMessages[currentMessages.length - 1];
+                                        
+                                        // Create or update batches array
+                                        const batches = lastMessage.batches || [];
+                                        
+                                        // Add the new batch with step information
+                                        batches.push({
+                                            stepNumber: stepStartItem.step_number,
+                                            totalSteps: stepStartItem.total_steps,
+                                            description: stepStartItem.description,
+                                            sources: {},
+                                            isActive: true // Mark this as the active batch
+                                        });
+
+                                        if (batches.length > 1) {
+                                            for (let i = 0; i < batches.length - 1; i++) {
+                                                batches[i].isActive = false;
+                                            }
+                                        }
+                                        
+                                        // Update the progress text to show the current step
+                                        const progressText = `Step ${stepStartItem.step_number} of ${stepStartItem.total_steps}: ${stepStartItem.description}`;
+                                        
+                                        // Update the message with all changes at once
+                                        updateLastMessage({
+                                            batches,
+                                            progressText
+                                        });
+                                    } else if (currentMessages.length > 0 && 
+                                               currentMessages[currentMessages.length - 1].type === 'question') {
+                                        // If the last message is a question, create a new answer message
+                                        const batches = [{
+                                            stepNumber: stepStartItem.step_number,
+                                            totalSteps: stepStartItem.total_steps,
+                                            description: stepStartItem.description,
+                                            sources: {},
+                                            isActive: true
+                                        }];
+                                        
+                                        const progressText = `Step ${stepStartItem.step_number} of ${stepStartItem.total_steps}: ${stepStartItem.description}`;
+                                        
+                                        addMessage({
+                                            type: 'answer',
+                                            content: '',
+                                            batches,
+                                            progressText
+                                        });
+
+                                    }
+                                }
+                            }
+                        }
                         if (data.type === 'status') {
                             if (data.sources) {
                                 setIsThinking(true);
                                 const currentMessages = useFileStore.getState().messages;
-
+                        
                                 // Only update if we have an answer message already
                                 if (currentMessages.length > 0 &&
                                     currentMessages[currentMessages.length - 1].type === 'answer') {
-
+                        
                                     const lastMessage = currentMessages[currentMessages.length - 1];
                                     // Create sourcingSteps array if it doesn't exist
                                     const sourcingSteps = lastMessage.sourcingSteps || [];
                                     sourcingSteps.push(data.message);
-
+                        
                                     let subSources = lastMessage.subSources || {};
-
-
+                                    
+                                    // Get the batches array and find the active batch
+                                    const batches = lastMessage.batches || [];
+                                    const activeBatchIndex = batches.findIndex(batch => batch.isActive);
+                        
                                     if (data.sources) {
                                         // Extract source keys directly from data.sources
                                         const keys = Object.keys(data.sources).filter(key => key !== '[[Prototype]]');
                                         console.log("keys:", keys);
-
+                        
                                         const documentBoundsMap: Record<string, any> = {};
-
+                        
                                         keys.forEach(key => {
                                             let id = key.split('/').pop();
                                             const final_id = id?.split("::")[0];
@@ -482,18 +560,25 @@ const DetailSection: React.FC<DetailsSectionProps> = ({
                                             const fileName = id ? getFileName(final_id ?? "") : undefined;
                                             if (fileName) {
                                                 subSources[fileName] = key;
+                                                
+                                                // If we have an active batch, add this source to it
+                                                if (activeBatchIndex !== -1) {
+                                                    if (!batches[activeBatchIndex].sources) {
+                                                        batches[activeBatchIndex].sources = {};
+                                                    }
+                                                    batches[activeBatchIndex].sources[fileName] = key;
+                                                }
                                             }
-
+                        
                                             if (data.sources[key]) {
-                                                console.log("wuhhhh")
                                                 const source = data.sources[key];
                                                 // Only save if it has the necessary coordinate information
                                                 if (source &&
                                                     (source.bounding_box.x0 !== undefined &&
-                                                        source.bounding_box.y0 !== undefined &&
-                                                        source.bounding_box.x1 !== undefined &&
-                                                        source.bounding_box.y1 !== undefined)) {
-
+                                                     source.bounding_box.y0 !== undefined &&
+                                                     source.bounding_box.x1 !== undefined &&
+                                                     source.bounding_box.y1 !== undefined)) {
+                        
                                                     documentBoundsMap[key] = {
                                                         page: source.page || 0,
                                                         x0: source.bounding_box.x0,
@@ -520,6 +605,7 @@ const DetailSection: React.FC<DetailsSectionProps> = ({
                                     updateLastMessage({
                                         sourcingSteps,
                                         subSources,
+                                        batches,
                                         progressText: "Generating sources..."
                                     });
 
@@ -794,7 +880,7 @@ const DetailSection: React.FC<DetailsSectionProps> = ({
     const handleRetry = async () => {
         setShowRetry(false);
         setIsLoading(true);
-        await queryAllDocuments(lastQuery, true, []);
+        await queryAllDocuments(lastQuery, "auto", []);
     };
 
 
@@ -1003,7 +1089,7 @@ const DetailSection: React.FC<DetailsSectionProps> = ({
                             position: offset
                         });
 
-                        console.log("citations:", citations);
+                        // console.log("citations:", citations);
                         return `@${stepNum}@`;
                     }
                 );

@@ -101,7 +101,16 @@ interface MessageItemProps {
 
 
 // Modify the Message interface to include citations
-interface Message {
+interface BatchStep {
+    stepNumber: number;
+    totalSteps: number;
+    description: string;
+    sources: Record<string, string>;
+    isActive: boolean;
+  }
+  
+  // Update the Message interface to include batches
+  interface Message {
     type: 'question' | 'answer' | 'error';
     content: string;
     sources?: Source[];
@@ -109,8 +118,9 @@ interface Message {
     progressText?: string;
     sourcingSteps?: string[];
     subSources?: Record<string, any>;
-    citations?: Citation[];  // Add this new field
-}
+    citations?: Citation[];
+    batches?: BatchStep[]; // Add this new field
+  }
 
 interface DetailsSectionProps {
 
@@ -331,15 +341,15 @@ export const MessageItem = memo<MessageItemProps>(({
 
                             <AccordionContent className="pb-2 pt-2 text-muted-foreground w-full">
                                 {message.progressText && (
-                                     <Accordion
-                                     type="single"
-                                     collapsible
-                                     value={accordionValues[`progress-${index}`] || ''}
-                                     onValueChange={(value) => {
-                                         setAccordionValue(`progress-${index}`, value);
-                                     }}
-                                     className="w-full mb-3"
-                                 >
+                                    <Accordion
+                                        type="single"
+                                        collapsible
+                                        value={accordionValues[`progress-${index}`] || ''}
+                                        onValueChange={(value) => {
+                                            setAccordionValue(`progress-${index}`, value);
+                                        }}
+                                        className="w-full mb-3"
+                                    >
                                         <AccordionItem
                                             value="progress"
                                             className="border-none bg-slate-50 dark:bg-slate-800/50 rounded-md w-full"
@@ -348,7 +358,7 @@ export const MessageItem = memo<MessageItemProps>(({
                                                 <AnimatedProgressText text={message.progressText || ''} />
                                             </AccordionTrigger>
                                             <AccordionContent className="px-3 pb-2 w-full overflow-hidden">
-                                                {message.sourcingSteps && message.sourcingSteps.length > 0 ? (
+                                                {!message.batches && message.sourcingSteps && message.sourcingSteps.length > 0 ? (
                                                     <div className="space-y-2 w-full">
                                                         {message.sourcingSteps.map((step, stepIdx) => (
                                                             <div key={stepIdx} className="space-y-1 w-full">
@@ -393,7 +403,81 @@ export const MessageItem = memo<MessageItemProps>(({
                                                         ))}
                                                     </div>
                                                 ) : (
-                                                    <div className="text-xs text-gray-500">No sourcing steps available</div>
+                                                    <div></div>
+                                                    // <div className="text-xs text-gray-500">No sourcing steps available</div>
+                                                )}
+
+
+                                                {/* Batch steps */}
+                                                {message.batches && message.batches.length > 0 && (
+                                                    <div className="w-full space-y-2 mt-3">
+                                                        {message.batches.map((batch, batchIdx) => (
+                                                            <Accordion
+                                                                key={`batch-${batchIdx}`}
+                                                                type="single"
+                                                                collapsible
+                                                                value={accordionValues[`batch-${index}-${batchIdx}`] || (batch.isActive ? `batch-${batchIdx}` : '')}
+                                                                onValueChange={(value) => {
+                                                                    setAccordionValue(`batch-${index}-${batchIdx}`, value);
+                                                                }}
+                                                                className="w-full border-none"
+                                                            >
+                                                                <AccordionItem
+                                                                    value={`batch-${batchIdx}`}
+                                                                    className="border bg-slate-50 dark:bg-slate-800/50 rounded-md"
+                                                                >
+                                                                    <AccordionTrigger className="py-2 px-3 text-xs hover:no-underline">
+                                                                        <div className="flex justify-between items-center w-full">
+                                                                            <div className="flex items-center gap-2">
+                                                                                <span className="text-slate-500 dark:text-slate-400">
+                                                                                    Step {batch.stepNumber}/{batch.totalSteps}:
+                                                                                </span>
+                                                                                <span className="font-medium text-slate-700 dark:text-slate-300">
+                                                                                    {batch.description}
+                                                                                </span>
+                                                                            </div>
+                                                                            {batch.sources && Object.keys(batch.sources).length > 0 && (
+                                                                                <span className="text-xs text-slate-500 dark:text-slate-400">
+                                                                                    {Object.keys(batch.sources).length} sources
+                                                                                </span>
+                                                                            )}
+                                                                        </div>
+                                                                    </AccordionTrigger>
+
+                                                                    <AccordionContent className="px-3 pb-2">
+                                                                        {batch.sources && Object.keys(batch.sources).length > 0 ? (
+                                                                            <div className="space-y-2 mt-2">
+                                                                                <div className="text-xs text-slate-600 dark:text-slate-400 mb-2">
+                                                                                    Sources found for this step:
+                                                                                </div>
+                                                                                <ScrollArea className="w-full">
+                                                                                    <div className="flex flex-wrap gap-2 pb-1">
+                                                                                        {Object.entries(batch.sources).map(([fileName, fileKey]) => (
+                                                                                            <div
+                                                                                                key={fileKey as string}
+                                                                                                className="shrink-0 inline-flex items-center gap-2 px-3 py-1 rounded-md bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 cursor-pointer"
+                                                                                                onClick={() => handleSourceCardClick(fileKey as string)}
+                                                                                            >
+                                                                                                <FileText className="h-3 w-3 text-slate-500 dark:text-slate-400 shrink-0" />
+                                                                                                <span className="text-xs text-slate-600 dark:text-slate-300 truncate max-w-[150px]">
+                                                                                                    {fileName}
+                                                                                                </span>
+                                                                                            </div>
+                                                                                        ))}
+                                                                                    </div>
+                                                                                    <ScrollBar orientation="horizontal" />
+                                                                                </ScrollArea>
+                                                                            </div>
+                                                                        ) : (
+                                                                            <div className="text-xs text-slate-500 dark:text-slate-400 py-1">
+                                                                                No sources found for this step
+                                                                            </div>
+                                                                        )}
+                                                                    </AccordionContent>
+                                                                </AccordionItem>
+                                                            </Accordion>
+                                                        ))}
+                                                    </div>
                                                 )}
                                             </AccordionContent>
                                         </AccordionItem>
