@@ -358,7 +358,7 @@ export const MessageItem = memo<MessageItemProps>(({
                                                 <AnimatedProgressText text={message.progressText || ''} />
                                             </AccordionTrigger>
                                             <AccordionContent className="px-3 pb-2 w-full overflow-hidden">
-                                                {!message.batches && message.sourcingSteps && message.sourcingSteps.length > 0 ? (
+                                                {((message.batches && message.batches.length === 0) || !message.batches) && message.sourcingSteps && message.sourcingSteps.length > 0 ? (
                                                     <div className="space-y-2 w-full">
                                                         {message.sourcingSteps.map((step, stepIdx) => (
                                                             <div key={stepIdx} className="space-y-1 w-full">
@@ -432,7 +432,7 @@ export const MessageItem = memo<MessageItemProps>(({
                                                                                 <span className="text-slate-500 dark:text-slate-400">
                                                                                     Step {batch.stepNumber}/{batch.totalSteps}:
                                                                                 </span>
-                                                                                <span className="font-medium text-slate-700 dark:text-slate-300">
+                                                                                <span className="font-medium text-slate-700 dark:text-slate-300 text-left">
                                                                                     {batch.description}
                                                                                 </span>
                                                                             </div>
@@ -470,7 +470,7 @@ export const MessageItem = memo<MessageItemProps>(({
                                                                             </div>
                                                                         ) : (
                                                                             <div className="text-xs text-slate-500 dark:text-slate-400 py-1">
-                                                                                No sources found for this step
+                                                                                Finding sources...
                                                                             </div>
                                                                         )}
                                                                     </AccordionContent>
