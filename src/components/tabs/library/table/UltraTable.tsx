@@ -19,7 +19,11 @@ import { CSS } from '@dnd-kit/utilities';
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { useS3Store, TreeNode } from "../../../services/fileService";
 import { usePathname } from 'next/navigation';
-import { ChevronDown, ChevronRight, Circle, FileIcon, FolderIcon, Plus, RefreshCcw, Upload, Search } from 'lucide-react';
+import { 
+  ChevronDown, ChevronRight, Circle, FileIcon, FolderIcon, 
+  Plus, RefreshCcw, Upload, Search, Download, Pencil, Trash,
+  RotateCcw 
+} from 'lucide-react';
 import { Input } from '../../../ui/input';
 import DragDropOverlay from './DragDrop';
 import { v4 as uuidv4 } from 'uuid';
@@ -40,7 +44,6 @@ import path from 'path';
 import { useParams, useRouter } from 'next/navigation';
 import { useFileStore } from '../../../services/HotkeyService';
 import { ContextMenu, ContextMenuCheckboxItem, ContextMenuContent, ContextMenuItem, ContextMenuLabel, ContextMenuRadioGroup, ContextMenuRadioItem, ContextMenuSeparator, ContextMenuShortcut, ContextMenuSub, ContextMenuSubContent, ContextMenuSubTrigger, ContextMenuTrigger } from "@/components/ui/context-menu";
-import { Download, Pencil, Trash } from 'lucide-react';
 import { useTabStore } from '../../../tabStore';
 import { useToast } from "@/components/ui/use-toast";
 import { Button } from '@/components/ui/button';
@@ -994,6 +997,66 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
       }
     }
 
+    const handleRetry = async () => {
+      try {
+        // Set status to pending while we attempt to retry
+        setTableData(prev =>
+          prev.map(row =>
+            row.id === item.id
+              ? { ...row, status: 'PENDING' }
+              : row
+          )
+        );
+        
+        // Call retry API
+        const response = await post({
+          apiName: 'S3_API',
+          path: `/s3/${bucketUuid}/retry-file-processing`,
+          options: {
+            withCredentials: true,
+            body: {
+              fileId: item.id
+            }
+          }
+        });
+        
+        const { body } = await response.response;
+        const result = await body.json();
+        
+        // Update file status to queued
+        setTableData(prev =>
+          prev.map(row =>
+            row.id === item.id
+              ? { ...row, status: 'QUEUED' }
+              : row
+          )
+        );
+        
+        toast({
+          title: "Success",
+          description: "File resubmitted for processing",
+          variant: "default"
+        });
+        
+      } catch (error) {
+        console.error('Error retrying file processing:', error);
+        
+        // Set status back to failed if the retry attempt itself failed
+        setTableData(prev =>
+          prev.map(row =>
+            row.id === item.id
+              ? { ...row, status: 'FAILED' }
+              : row
+          )
+        );
+        
+        toast({
+          title: "Error",
+          description: "Failed to retry file processing",
+          variant: "destructive"
+        });
+      }
+    };
 
     if (loading) {
       return (
@@ -1160,6 +1223,19 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
                 }}>
                   {item.name}
                 </div>
+                {item.status === 'FAILED' && !item.isFolder && (
+                  <button 
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      e.preventDefault();
+                      handleRetry();
+                    }}
+                    className="ml-2 p-1 text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300 rounded-full hover:bg-red-100 dark:hover:bg-red-900"
+                    title="Retry processing"
+                  >
+                    <RotateCcw size={14} />
+                  </button>
+                )}
               </div>
             </td>
             <td style={{
@@ -1288,6 +1364,12 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
             <Pencil className="mr-2 h-4 w-4" />
             Rename
           </ContextMenuItem>
+          {item.status === 'FAILED' && !item.isFolder && (
+            <ContextMenuItem onClick={handleRetry}>
+              <RotateCcw className="mr-2 h-4 w-4" />
+              Retry Processing
+            </ContextMenuItem>
+          )}
           <ContextMenuSeparator />
           <ContextMenuItem onClick={handleDelete} className="text-red-600">
             <Trash className="mr-2 h-4 w-4" />
@@ -1462,70 +1544,70 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
   };
 
   // Connect to WebSocket when component mounts with the current dataroom
-  useEffect(() => {
-    if (!dataroomId) return;
+  // useEffect(() => {
+  //   if (!dataroomId) return;
     
-    // Handler for file updates - we don't establish the connection here anymore
-    // as it's handled at the DataroomPage level
-    const handleFileUpdate = (message: FileUpdateMessage) => {
-      // Display a toast notification for the update
-      const currentUser = emailRef.current;
-      const isOwnAction = message.data.userEmail === currentUser;
-      let shouldRefresh = false;
+  //   // Handler for file updates - we don't establish the connection here anymore
+  //   // as it's handled at the DataroomPage level
+  //   const handleFileUpdate = (message: FileUpdateMessage) => {
+  //     // Display a toast notification for the update
+  //     const currentUser = emailRef.current;
+  //     const isOwnAction = message.data.userEmail === currentUser;
+  //     let shouldRefresh = false;
       
-      // Don't refresh for our own actions, as we already update the UI directly
-      if (isOwnAction) {
-        return;
-      }
+  //     // Don't refresh for our own actions, as we already update the UI directly
+  //     if (isOwnAction) {
+  //       return;
+  //     }
       
-      switch (message.type) {
-        case 'FILE_UPLOADED':
-          shouldRefresh = true;
-          break;
-        case 'FILE_DELETED':
-          shouldRefresh = true;
-          break;
-        case 'FILE_MOVED':
-          // Only refresh if this folder is affected (source or destination)
-          if (message.data.sourceId === pathArray[3] || message.data.destinationId === pathArray[3]) {
-            shouldRefresh = true;
-          }
-          break;
-        case 'FILE_RENAMED':
-          shouldRefresh = true;
-          break;
-        case 'FILE_TAG_UPDATED':
-          shouldRefresh = true;
-          break;
-        case 'BATCH_STATUS_UPDATED':
-          shouldRefresh = true; 
-          break;
-        case 'FOLDER_CREATED':
-          // Only refresh if it's in the current directory
-          if (message.data.parentFolderId === (pathArray[3] === "home" ? "ROOT" : pathArray[3])) {
-            shouldRefresh = true;
-          }
-          break;
-        case 'pong':
-          // Don't refresh for pong messages
-          break;
-      }
+  //     switch (message.type) {
+  //       case 'FILE_UPLOADED':
+  //         shouldRefresh = true;
+  //         break;
+  //       case 'FILE_DELETED':
+  //         shouldRefresh = true;
+  //         break;
+  //       case 'FILE_MOVED':
+  //         // Only refresh if this folder is affected (source or destination)
+  //         if (message.data.sourceId === pathArray[3] || message.data.destinationId === pathArray[3]) {
+  //           shouldRefresh = true;
+  //         }
+  //         break;
+  //       case 'FILE_RENAMED':
+  //         shouldRefresh = true;
+  //         break;
+  //       case 'FILE_TAG_UPDATED':
+  //         shouldRefresh = true;
+  //         break;
+  //       case 'BATCH_STATUS_UPDATED':
+  //         shouldRefresh = true; 
+  //         break;
+  //       case 'FOLDER_CREATED':
+  //         // Only refresh if it's in the current directory
+  //         if (message.data.parentFolderId === (pathArray[3] === "home" ? "ROOT" : pathArray[3])) {
+  //           shouldRefresh = true;
+  //         }
+  //         break;
+  //       case 'pong':
+  //         // Don't refresh for pong messages
+  //         break;
+  //     }
       
-      if (shouldRefresh) {
-        // Refresh the file list when changes are detected
-        handleRefresh();
-      }
-    };
+  //     if (shouldRefresh) {
+  //       // Refresh the file list when changes are detected
+  //       handleRefresh();
+  //     }
+  //   };
     
-    // Register the event handler on the existing WebSocket connection
-    websocketManager.addMessageHandler(handleFileUpdate);
+  //   // Register the event handler on the existing WebSocket connection
+  //   websocketManager.addMessageHandler(handleFileUpdate);
     
-    // Cleanup
-    return () => {
-      websocketManager.removeMessageHandler(handleFileUpdate);
-      // We don't call release() here as the connection is managed at the DataroomPage level
-    };
-  }, [dataroomId, pathArray]);
+  //   // Cleanup
+  //   return () => {
+  //     websocketManager.removeMessageHandler(handleFileUpdate);
+  //     // We don't call release() here as the connection is managed at the DataroomPage level
+  //   };
+  // }, [dataroomId, pathArray]);
 
   const [showDeleteConfirmation, setShowDeleteConfirmation] = useState<boolean>(false);
 
