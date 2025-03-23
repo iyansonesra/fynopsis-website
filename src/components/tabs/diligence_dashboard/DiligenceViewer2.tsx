@@ -84,11 +84,11 @@ interface DashboardWidget {
 // Helper function to get color values for the legend
 const getCategoryColor = (color: string) => {
     const colorMap: { [key: string]: string } = {
-        'blue': '#3B82F6',
-        'green': '#10B981',
-        'purple': '#8B5CF6',
-        'amber': '#F59E0B',
-        'rose': '#F43F5E'
+        'blue': '#3b82f6',
+        'emerald': '#10b981',
+        'violet': '#8b5cf6',
+        'amber': '#f59e0b',
+        'cyan': '#06b6d4'
     };
     return colorMap[color] || '#3B82F6';
 };
@@ -261,7 +261,7 @@ const ChartWidget = ({ widget }: { widget: Widget }) => {
         );
 
         // Define colors to match the previous implementation
-        const colorValues = ["blue", "green", "purple", "amber", "rose"];
+        const colorValues = ["blue", "emerald", "violet", "amber", "cyan"];
 
         // Calculate appropriate yAxisWidth based on data values
         const maxValue = Math.max(...datasets.flatMap((d: any) => d.data.filter((v: any) => v !== null) as number[]));
@@ -380,7 +380,7 @@ const ChartWidget = ({ widget }: { widget: Widget }) => {
                         data={pieData}
                         category="value"
                         index="name"
-                        colors={tremorColors}
+                        // colors={tremorColors}
                         showAnimation={true}
                         valueFormatter={(value) => `${value}%`}
                         showTooltip={true}

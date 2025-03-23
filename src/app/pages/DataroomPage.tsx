@@ -415,8 +415,8 @@ useEffect(() => {
         return <AuditLogViewer bucketId={dataroomId} />;
       // case "extract":
       //   return <TableViewer />;
-      // case "deep research":
-      //   return <DeepResearchViewer />;
+      case "deep research":
+        return <DeepResearchViewer />;
       case "diligence":
         return <DiligenceDashboardViewer />;
       case "issues":
