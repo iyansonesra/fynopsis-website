@@ -54,7 +54,7 @@ export default function Home() {
     { icon: Library, label: 'Library' },
     { icon: Users, label: 'Users' },
     { icon: Activity, label: 'Activity' },
-    { icon: Table, label: 'Extract' },
+    // { icon: Table, label: 'Extract' },
     { icon: Database, label: 'Deep Research' },
     { icon: ChartPie, label: 'Diligence' },
     { icon: MessagesSquare, label: 'Issues' }, // New tab for Issues

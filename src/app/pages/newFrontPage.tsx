@@ -251,7 +251,7 @@ const FrontPage: React.FC = () => {
                         </FadeInSlideUp>
 
                         {/* Video Embed Section */}
-                        <FadeInSlideUp className="mt-16 relative max-w-[90%] md:max-w-[95%] lg:max-w-[90%] mx-auto">
+                        {/* <FadeInSlideUp className="mt-16 relative max-w-[90%] md:max-w-[95%] lg:max-w-[90%] mx-auto">
                             <h2 className="text-2xl md:text-3xl font-semibold text-center mb-6 text-white font-cormorant">
                                 See <span className="bg-gradient-to-r from-[#38B6FF] via-[#5271FF] to-[#004AAD] bg-clip-text text-transparent">Fynopsis</span> in Action
                             </h2>
@@ -265,7 +265,7 @@ const FrontPage: React.FC = () => {
                                     ></iframe>
                                 </div>
                             </NeonGradientCard>
-                        </FadeInSlideUp>
+                        </FadeInSlideUp> */}
                     </div>
 
                     <div className="mt-12 flex flex-col items-center justify-center w-full  gap-4 z-40">

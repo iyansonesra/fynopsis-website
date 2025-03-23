@@ -1,34 +1,24 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { 
-  Table, 
-  TableBody, 
-  TableCell, 
-  TableHead, 
-  TableHeader, 
-  TableRow 
-} from '@/components/ui/table';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { 
   Card, 
-  CardContent 
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+  CardFooter
 } from '@/components/ui/card';
 import { 
   Button 
 } from '@/components/ui/button';
 import { 
-  Plus, 
   Search,
-  Trash2, 
-  X,
   Info,
-  Copy,
   Download,
   Loader2,
-  Check,
+  Copy,
+  RefreshCw,
   FileText
 } from 'lucide-react';
-import { 
-  Input 
-} from '@/components/ui/input';
 import { 
   Textarea 
 } from '@/components/ui/textarea';
@@ -39,241 +29,433 @@ import {
 } from '@/components/ui/hover-card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useToast } from '@/components/ui/use-toast';
-import { useRouter } from "next/router";
-import { nanoid } from "nanoid";
-import { useParams, usePathname } from "next/navigation";
+import { usePathname } from "next/navigation";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Separator } from "@/components/ui/separator";
+import { fetchAuthSession } from 'aws-amplify/auth';
 
-// Interfaces
-interface ColumnDefinition {
+interface Source {
   id: string;
-  title: string;
+  pageNumber: number;
+  chunkTitle: string;
+  chunkText: string;
 }
 
-interface CellData {
+interface Message {
+  type: 'question' | 'answer' | 'error';
   content: string;
-  sourceFileId?: string;
-  sourcePageNumber?: number;
-  status?: 'loading' | 'complete' | 'empty';
+  sources?: Source[];
+  steps?: ThoughtStep[];
+  progressText?: string;
+  sourcingSteps?: string[];
+  subSources?: Record<string, any>;
+  batches?: {
+    stepNumber: number;
+    totalSteps: number;
+    description: string;
+    sources: Record<string, any>;
+    isActive: boolean;
+  }[];
 }
 
-interface TableData {
-  [fileId: string]: {
-    [columnId: string]: CellData;
-  };
+interface ThoughtStep {
+  number: number;
+  content: string;
 }
+
+// Get ID token for WebSocket authentication
+const getIdToken = async () => {
+  try {
+    const { tokens } = await fetchAuthSession();
+    return tokens?.idToken?.toString();
+  } catch (error) {
+    console.error('Error getting ID token:', error);
+    throw error;
+  }
+};
 
 export const DeepResearchViewer: React.FC = () => {
-  const [columns, setColumns] = useState<ColumnDefinition[]>([]);
-  const [tableData, setTableData] = useState<TableData>({});
   const [searchQuery, setSearchQuery] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [editingCell, setEditingCell] = useState<{fileId: string, columnId: string} | null>(null);
-  const [editValue, setEditValue] = useState('');
   const { toast } = useToast();
-  const inputRef = useRef<HTMLInputElement>(null);
+  
   const [processingStatus, setProcessingStatus] = useState<string>('');
   const pathname = usePathname();
   const pathParts = pathname ? pathname.split('/') : [];
   const dataroomId = pathParts.length > 2 ? pathParts[2] : null;
   const [wsConnection, setWsConnection] = useState<WebSocket | null>(null);
-
-  // Initialize columns
-  useEffect(() => {
-    setColumns([
-      { id: 'col1', title: 'Entity Name' },
-      { id: 'col2', title: 'Role' },
-      { id: 'col3', title: 'Contact Info' }
-    ]);
+  
+  // Response state
+  const [responseText, setResponseText] = useState<string>('');
+  const [formattedResponse, setFormattedResponse] = useState<{[key: string]: string}>({});
+  const [queryHistory, setQueryHistory] = useState<Array<{query: string, response: string, timestamp: Date}>>([]);
+  const [copiedToClipboard, setCopiedToClipboard] = useState(false);
+  
+  // WebSocket processing state
+  const [isWebSocketActive, setIsWebSocketActive] = useState(false);
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [isThinking, setIsThinking] = useState(false);
+  const [showRetry, setShowRetry] = useState(false);
+  const [lastQuery, setLastQuery] = useState<string>('');
+  const [currentThreadId, setCurrentThreadId] = useState<string>('');
+  const processingRef = useRef<boolean>(false);
+  const pendingSearchResultsRef = useRef<{ response: string, sources: any, thread_id: string }[]>([]);
+  
+  // Add a message to the messages array
+  const addMessage = useCallback((message: Message) => {
+    setMessages(prev => [...prev, message]);
+  }, []);
+  
+  // Update the last message in the messages array
+  const updateLastMessage = useCallback((update: Partial<Message>) => {
+    setMessages(prev => {
+      if (prev.length === 0) return prev;
+      const newMessages = [...prev];
+      const lastIndex = newMessages.length - 1;
+      newMessages[lastIndex] = { ...newMessages[lastIndex], ...update };
+      return newMessages;
+    });
   }, []);
 
-  // WebSocket message handler
-  const handleWebSocketMessage = (event: MessageEvent) => {
-    try {
-      const message = JSON.parse(event.data);
-      console.log('Received WebSocket message:', message);
-      
-      if (message.type === 'cell_update') {
-        // Get the file ID and content from the message
-        const { file_key, content } = message;
+  // Function to process search result buffer to avoid too many state updates
+  const processSearchResultBuffer = (fullText?: string) => {
+    if (pendingSearchResultsRef.current.length === 0) {
+      processingRef.current = false;
+      return;
+    }
+
+    processingRef.current = true;
+
+    // Process all pending updates
+    const pendingUpdates = [...pendingSearchResultsRef.current];
+    pendingSearchResultsRef.current = [];
+
+    // Use the full text for parsing instead of incrementally adding
+    const textToProcess = fullText || responseText;
+
+    // Try to parse structured content from the full text
+    if (textToProcess.includes('<answer>')) {
+      const answerMatch = textToProcess.match(/<answer>([\s\S]*?)(<\/answer>|$)/);
+      if (answerMatch && answerMatch[1]) {
+        // Process the structured answer format
+        const answerContent = answerMatch[1];
         
-        // Update table data for this file
-        setTableData(prevData => {
-          const newData = { ...prevData };
+        // Look for bold section headers followed by content
+        const sections = answerContent.split(/\*\*([^*]+)\*\*:/g).filter(Boolean);
+        const parsedData: {[key: string]: string} = {};
+        
+        for (let i = 0; i < sections.length; i += 2) {
+          if (i + 1 < sections.length) {
+            const key = sections[i].trim();
+            const value = sections[i + 1].trim();
+            parsedData[key] = value;
+          }
+        }
+        
+        if (Object.keys(parsedData).length > 0) {
+          setFormattedResponse(parsedData);
+        }
+      }
+    }
+
+    // Schedule next processing if needed
+    if (pendingSearchResultsRef.current.length > 0) {
+      requestAnimationFrame(() => processSearchResultBuffer(fullText));
+    } else {
+      processingRef.current = false;
+    }
+  };
+
+  const queryAllDocuments = async (searchTerm: string) => {
+    setLastQuery(searchTerm);
+    setResponseText('');
+    setFormattedResponse({});
+    // Clear any previous response buffers
+    pendingSearchResultsRef.current = [];
+
+    try {
+      setIsWebSocketActive(true);
+      setIsLoading(true);
+
+      // Add question message
+      addMessage({ type: 'question', content: searchTerm });
+
+      const bucketUuid = dataroomId || '';
+      const websocketHost = `${process.env.NEXT_PUBLIC_SEARCH_API_CODE}.execute-api.${process.env.NEXT_PUBLIC_REGION}.amazonaws.com`;
+
+      const idToken = await getIdToken();
+      if (!idToken) {
+        throw new Error('No ID token available');
+      }
+
+      const params = new URLSearchParams();
+      params.append('idToken', idToken);
+
+      const websocketUrl = `wss://${websocketHost}/prod?${params.toString()}`;
+      const ws = new WebSocket(websocketUrl);
+
+      // Keep track of the full response text to ensure we don't lose any part
+      let fullResponseText = '';
+
+      ws.onopen = () => {
+        setWsConnection(ws);
+        const message = {
+          action: 'query',
+          data: {
+            collection_name: bucketUuid,
+            query: searchTerm,
+            file_keys: [], // Empty array means search across all files
+            use_deep_search: true, // Enable deep search mode
+            ...(currentThreadId ? { thread_id: currentThreadId } : {})
+          }
+        };
+
+        ws.send(JSON.stringify(message));
+        setProcessingStatus('Initializing deep research analysis...');
+      };
+
+      ws.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          console.log("WebSocket data received:", data);
           
-          // If this file doesn't have an entry yet, initialize it
-          if (!newData[file_key]) {
-            newData[file_key] = {};
+          // Handle pong response - just log it
+          if (data.type === 'pong') {
+            console.log('Received pong from server');
+            return;
           }
           
-          // Check if response contains delimited values
-          if (content && content.includes('<DELIMITER>')) {
-            // Split the content by delimiter
-            const values = content.split('<DELIMITER>');
+          if (data.type === 'progress') {
+            const progressText = data.step || data.message;
+            setProcessingStatus(progressText);
             
-            // Assign each value to the corresponding column
-            columns.forEach((col, index) => {
-              const value = index < values.length ? values[index] : 'N/A';
-              
-              newData[file_key][col.id] = {
-                content: value,
-                status: 'complete'
-              };
-            });
-          } else {
-            // If not delimited (old format or error), assign to first column and leave others empty
-            if (columns.length > 0) {
-              newData[file_key][columns[0].id] = {
-                content: content || '',
-                status: 'complete'
-              };
-              
-              // Mark other columns as empty
-              for (let i = 1; i < columns.length; i++) {
-                newData[file_key][columns[i].id] = {
+            // Update last message if it's an answer message
+            if (messages.length > 0) {
+              const lastMessage = messages[messages.length - 1];
+              if (lastMessage.type === 'answer') {
+                if (lastMessage.progressText !== progressText) {
+                  updateLastMessage({ progressText });
+                }
+              } else if (lastMessage.type === 'question') {
+                addMessage({
+                  type: 'answer',
                   content: '',
-                  status: 'empty'
-                };
+                  progressText: progressText
+                });
               }
             }
           }
           
-          return newData;
-        });
-      } 
-      else if (message.type === 'status') {
-        // Update processing status
-        setProcessingStatus(message.message || '');
-      }
-      else if (message.type === 'complete') {
-        // Processing complete
-        setProcessingStatus('Processing complete');
+          if (data.type === 'batch') {
+            const batchItems = data.items || [];
+            
+            if (batchItems.length > 0) {
+              const stepStartItem = batchItems.find((item: { type: string; }) => item.type === 'step_start');
+              
+              if (stepStartItem) {
+                setIsThinking(true);
+                
+                if (messages.length > 0 && messages[messages.length - 1].type === 'answer') {
+                  const lastMessage = messages[messages.length - 1];
+                  
+                  // Create or update batches array
+                  const batches = lastMessage.batches || [];
+                  
+                  // Add the new batch with step information
+                  batches.push({
+                    stepNumber: stepStartItem.step_number,
+                    totalSteps: stepStartItem.total_steps,
+                    description: stepStartItem.description,
+                    sources: {},
+                    isActive: true // Mark this as the active batch
+                  });
+
+                  if (batches.length > 1) {
+                    for (let i = 0; i < batches.length - 1; i++) {
+                      batches[i].isActive = false;
+                    }
+                  }
+                  
+                  // Update the progress text
+                  const progressText = `Step ${stepStartItem.step_number} of ${stepStartItem.total_steps}: ${stepStartItem.description}`;
+                  
+                  updateLastMessage({
+                    batches,
+                    progressText
+                  });
+                } else if (messages.length > 0 && messages[messages.length - 1].type === 'question') {
+                  const batches = [{
+                    stepNumber: stepStartItem.step_number,
+                    totalSteps: stepStartItem.total_steps,
+                    description: stepStartItem.description,
+                    sources: {},
+                    isActive: true
+                  }];
+                  
+                  const progressText = `Step ${stepStartItem.step_number} of ${stepStartItem.total_steps}: ${stepStartItem.description}`;
+                  
+                  addMessage({
+                    type: 'answer',
+                    content: '',
+                    batches,
+                    progressText
+                  });
+                }
+              }
+            }
+          }
+          
+          if (data.type === 'status') {
+            setProcessingStatus(data.message || '');
+            
+            // Handle source data if present
+            if (data.sources) {
+              setIsThinking(true);
+              
+              if (messages.length > 0 && messages[messages.length - 1].type === 'answer') {
+                const lastMessage = messages[messages.length - 1];
+                const sourcingSteps = lastMessage.sourcingSteps || [];
+                sourcingSteps.push(data.message);
+                
+                let subSources = lastMessage.subSources || {};
+                const batches = lastMessage.batches || [];
+                const activeBatchIndex = batches.findIndex(batch => batch.isActive);
+                
+                if (data.sources) {
+                  const keys = Object.keys(data.sources).filter(key => key !== '[[Prototype]]');
+                  keys.forEach(key => {
+                    // In a real app, you would have a function to get file names
+                    // For now, we'll just use the key
+                    const fileName = key.split('/').pop() || key;
+                    subSources[fileName] = key;
+                    
+                    if (activeBatchIndex !== -1) {
+                      if (!batches[activeBatchIndex].sources) {
+                        batches[activeBatchIndex].sources = {};
+                      }
+                      batches[activeBatchIndex].sources[fileName] = key;
+                    }
+                  });
+                }
+                
+                updateLastMessage({
+                  sourcingSteps,
+                  subSources,
+                  batches,
+                  progressText: "Generating sources..."
+                });
+              }
+            }
+          }
+          
+          if (data.type === 'response') {
+            if (data.thread_id) {
+              setCurrentThreadId(data.thread_id);
+            }
+            
+            // Directly append the response to the text state to ensure we don't miss anything
+            fullResponseText += data.response;
+            setResponseText(fullResponseText);
+            
+            // Also add to buffer for any additional formatting/processing
+            pendingSearchResultsRef.current.push({
+              response: data.response,
+              sources: data.sources || {},
+              thread_id: data.thread_id || ''
+            });
+            
+            // Process the buffer if not already processing
+            if (!processingRef.current) {
+              processSearchResultBuffer(fullResponseText);
+            }
+          }
+          
+          if (data.type === 'complete') {
+            setIsWebSocketActive(false);
+            setIsLoading(false);
+            
+            // Add to query history
+            setQueryHistory(prev => [
+              {
+                query: searchTerm,
+                response: responseText,
+                timestamp: new Date()
+              },
+              ...prev
+            ]);
+            
+            toast({
+              title: "Analysis complete",
+              description: "The research has been completed.",
+            });
+          }
+          
+          if (data.type === 'error' || data.error) {
+            const errorMessage = data.message || data.error || "An error occurred during processing";
+            setProcessingStatus('');
+            setIsWebSocketActive(false);
+            setIsLoading(false);
+            setShowRetry(true);
+            
+            addMessage({
+              type: 'error',
+              content: errorMessage
+            });
+            
+            toast({
+              title: "Error analyzing documents",
+              description: errorMessage,
+              variant: "destructive"
+            });
+          }
+          
+        } catch (error) {
+          console.error('Error processing WebSocket message:', error);
+          setIsWebSocketActive(false);
+          setIsLoading(false);
+          setShowRetry(true);
+        }
+      };
+      
+      ws.onerror = (error) => {
+        console.error('WebSocket Error:', error);
+        setIsWebSocketActive(false);
         setIsLoading(false);
+        setShowRetry(true);
         
         toast({
-          title: "Analysis complete",
-          description: "The research has been completed and results are displayed.",
-        });
-      }
-      else if (message.type === 'error' || message.error) {
-        // Handle error
-        const errorMessage = message.message || message.error || "An error occurred during processing";
-        setProcessingStatus('');
-        setIsLoading(false);
-        
-        console.error('WebSocket error message:', errorMessage);
-        
-        toast({
-          title: "Error analyzing documents",
-          description: errorMessage,
+          title: "Connection Error",
+          description: "Could not connect to analysis service. Please try again.",
           variant: "destructive"
         });
-      }
+      };
+      
+      ws.onclose = () => {
+        setIsWebSocketActive(false);
+        setIsLoading(false);
+      };
+      
     } catch (error) {
-      console.error('Error parsing WebSocket message:', error);
-    }
-  };
-
-  // Define the connectWebSocket function directly in the component
-  const connectWebSocket = async (dataroomId: string): Promise<WebSocket> => {
-    try {
-      const response = await fetch('/api/websocket', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ dataroomId }),
-      });
+      console.error('Error querying documents:', error);
+      setIsWebSocketActive(false);
+      setIsLoading(false);
+      setShowRetry(true);
       
-      if (!response.ok) {
-        throw new Error('Failed to get WebSocket token');
-      }
-      
-      const { url } = await response.json();
-      const ws = new WebSocket(url);
-      
-      return new Promise((resolve, reject) => {
-        ws.onopen = () => {
-          console.log('WebSocket connected for deep research');
-          setWsConnection(ws);
-          resolve(ws);
-        };
-
-        ws.onmessage = handleWebSocketMessage;
-
-        ws.onclose = (event) => {
-          console.log('WebSocket disconnected', event);
-          setWsConnection(null);
-        };
-
-        ws.onerror = (error) => {
-          console.error('WebSocket error:', error);
-          setWsConnection(null);
-          
-          toast({
-            title: "Connection Error",
-            description: "Could not connect to analysis service. Please try again.",
-            variant: "destructive"
-          });
-          
-          reject(error);
-        };
-      });
-    } catch (error) {
-      console.error('Error connecting to WebSocket:', error);
-      
-      // Display more specific error message
       toast({
-        title: "Connection Error",
-        description: error instanceof Error ? error.message : "Failed to connect to the analysis service",
+        title: "Error",
+        description: error instanceof Error ? error.message : "An unknown error occurred",
         variant: "destructive"
       });
-      
-      throw error;
     }
-  };
-
-  // Validate columns before sending query
-  const validateColumns = () => {
-    // Ensure we have at least one column
-    if (columns.length === 0) {
-      toast({
-        title: "No columns defined",
-        description: "Please add at least one column before analyzing documents.",
-        variant: "destructive"
-      });
-      return false;
-    }
-
-    // Check for empty column titles
-    const emptyTitleColumns = columns.filter(col => !col.title.trim());
-    if (emptyTitleColumns.length > 0) {
-      toast({
-        title: "Empty column title",
-        description: "Please provide a title for all columns.",
-        variant: "destructive"
-      });
-      return false;
-    }
-
-    return true;
   };
 
   const handleSendQuery = async () => {
-    setIsLoading(true);
-      
     if (!searchQuery.trim()) {
       toast({
         title: "No query provided",
-        description: "Please describe what information you're looking for.",
+        description: "Please enter a query to search the documents.",
         variant: "destructive"
       });
-      setIsLoading(false);
-      return;
-    }
-
-    // Validate columns
-    if (!validateColumns()) {
-      setIsLoading(false);
       return;
     }
 
@@ -283,394 +465,416 @@ export const DeepResearchViewer: React.FC = () => {
         description: "Could not determine which dataroom to search.",
         variant: "destructive"
       });
-      setIsLoading(false);
       return;
     }
     
-    // Initialize an empty table for now - results will come in via WebSocket
-    const initialTableData: TableData = {};
-    // Add a special "deep-search" row that will contain results
-    initialTableData["deep-search-results"] = {};
-    columns.forEach(col => {
-      initialTableData["deep-search-results"][col.id] = { 
-        content: '', 
-        status: 'loading'
-      };
-    });
-    
-    setTableData(initialTableData);
-    
-    try {
-      // Connect to WebSocket if not already connected
-      let ws = wsConnection;
-      if (!ws || ws.readyState !== WebSocket.OPEN) {
-        // Wait for the connection to be fully established
-        ws = await connectWebSocket(dataroomId);
-      }
-      
-      // WebSocket must be defined and open at this point
-      if (!ws || ws.readyState !== WebSocket.OPEN) {
-        throw new Error('WebSocket connection not open');
-      }
-      
-      // Format column data for the backend
-      const columnTitles = columns.map(col => col.title);
-      
-      // Send the query message with no file_keys to perform deep search across all files
-      const message = {
-        action: 'query',
-        data: {
-          collection_name: dataroomId,
-          query: searchQuery,
-          file_keys: [], // Empty array means search across all files
-          for_table: true,
-          table_cols: columnTitles,
-          use_reasoning: true,
-          use_deep_search: true // Enable deep search mode
-        }
-      };
-      
-      console.log('Sending deep research query:', message);
-      // At this point, ws should always be defined and open
-      if (ws && ws.readyState === WebSocket.OPEN) {
-        ws.send(JSON.stringify(message));
-        setProcessingStatus('Initializing deep research analysis...');
-      } else {
-        throw new Error('WebSocket connection not ready for sending');
-      }
-      
-    } catch (error) {
-      console.error("Error sending query:", error);
-      setIsLoading(false);
-      
-      toast({
-        title: "Error analyzing documents",
-        description: "There was a problem connecting to the analysis service. Please try again.",
-        variant: "destructive"
-      });
-      
-      // Reset loading states
-      const resetTableData = { ...tableData };
-      if (resetTableData["deep-search-results"]) {
-        columns.forEach(col => {
-          if (resetTableData["deep-search-results"][col.id]) {
-            resetTableData["deep-search-results"][col.id].status = 'empty';
-          }
+    await queryAllDocuments(searchQuery);
+  };
+
+  const handleRetry = async () => {
+    setShowRetry(false);
+    await queryAllDocuments(lastQuery);
+  };
+
+  const copyToClipboard = () => {
+    navigator.clipboard.writeText(responseText).then(
+      function() {
+        setCopiedToClipboard(true);
+        setTimeout(() => setCopiedToClipboard(false), 2000);
+        toast({
+          title: "Copied to clipboard",
+          description: "The response has been copied to your clipboard.",
+        });
+      },
+      function(err) {
+        toast({
+          title: "Error",
+          description: "Could not copy text: " + err,
+          variant: "destructive"
         });
       }
-      
-      setTableData(resetTableData);
-    }
+    );
   };
 
-  const handleAddColumn = () => {
-    const newColumnId = `col${columns.length + 1}`;
-    setColumns([...columns, { id: newColumnId, title: `Column ${columns.length + 1}` }]);
-  };
-
-  const handleRemoveColumn = (columnId: string) => {
-    setColumns(columns.filter(col => col.id !== columnId));
-    
-    // Update table data to remove this column from all rows
-    const updatedTableData = { ...tableData };
-    Object.keys(updatedTableData).forEach(fileId => {
-      const { [columnId]: removed, ...rest } = updatedTableData[fileId];
-      updatedTableData[fileId] = rest;
-    });
-    
-    setTableData(updatedTableData);
-  };
-
-  const handleUpdateColumnTitle = (columnId: string, newTitle: string) => {
-    setColumns(columns.map(col => 
-      col.id === columnId ? { ...col, title: newTitle } : col
-    ));
-  };
-
-  const handleCellClick = (fileId: string, columnId: string) => {
-    const cellData = tableData[fileId]?.[columnId];
-    if (cellData?.status === 'complete') {
-      // Start editing this cell
-      setEditingCell({ fileId, columnId });
-      setEditValue(cellData.content);
-    }
-  };
-
-  const handleSaveEdit = () => {
-    if (editingCell) {
-      const { fileId, columnId } = editingCell;
-      setTableData(prev => {
-        const newData = { ...prev };
-        if (!newData[fileId]) {
-          newData[fileId] = {};
-        }
-        newData[fileId][columnId] = {
-          ...newData[fileId][columnId],
-          content: editValue,
-          status: 'complete'
-        };
-        return newData;
-      });
-      setEditingCell(null);
-    }
-  };
-
-  const handleCancelEdit = () => {
-    setEditingCell(null);
-  };
-
-  const handleEditKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter') {
-      handleSaveEdit();
-    } else if (e.key === 'Escape') {
-      handleCancelEdit();
-    }
-  };
-
-  const exportTableToCSV = () => {
-    // Convert table data to CSV
-    let csvContent = '';
-    
-    // Header row with column titles
-    csvContent += columns.map(col => `"${col.title}"`).join(',') + '\n';
-    
-    // Data rows
-    Object.keys(tableData).forEach(fileId => {
-      const row = columns.map(col => {
-        const cellContent = tableData[fileId]?.[col.id]?.content || '';
-        return `"${cellContent.replace(/"/g, '""')}"`;
-      }).join(',');
-      csvContent += row + '\n';
-    });
-    
-    // Create download link
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const exportToTextFile = () => {
+    const blob = new Blob([responseText], { type: 'text/plain;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.setAttribute('href', url);
-    link.setAttribute('download', `research-results-${new Date().toISOString().slice(0, 10)}.csv`);
+    link.setAttribute('download', `deep-research-${new Date().toISOString().slice(0, 10)}.txt`);
     link.style.visibility = 'hidden';
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
   };
 
+  // Add useRef for scrolling to bottom
+  const resultsScrollAreaRef = useRef<HTMLDivElement>(null);
+
+  // Add useEffect to scroll to bottom when new results arrive
+  useEffect(() => {
+    if (resultsScrollAreaRef.current && responseText) {
+      // Use setTimeout to ensure DOM has updated
+      setTimeout(() => {
+        if (resultsScrollAreaRef.current) {
+          resultsScrollAreaRef.current.scrollTop = resultsScrollAreaRef.current.scrollHeight;
+        }
+      }, 0);
+    }
+  }, [responseText]);
+
   return (
-    <div className="flex flex-col h-full w-full overflow-hidden">
-      <div className="flex justify-between items-center p-4 border-b">
-        <h1 className="text-2xl font-bold">Deep Research Analysis</h1>
-        <div className="flex items-center gap-2">
-          <Button 
-            onClick={handleSendQuery}
-            disabled={isLoading}
-            className="whitespace-nowrap"
-          >
-            {isLoading ? (
-              <>
-                <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent"></div>
-                {processingStatus || 'Processing...'}
-              </>
-            ) : (
-              <>
-                <Search className="h-4 w-4 mr-2" />
-                Run Deep Research
-              </>
-            )}
-          </Button>
-          {Object.keys(tableData).length > 0 && (
-            <Button
-              variant="outline"
-              onClick={exportTableToCSV}
-              className="whitespace-nowrap"
-            >
-              <Download className="h-4 w-4 mr-2" />
-              Export CSV
-            </Button>
-          )}
-        </div>
+    <div className="flex flex-col h-full w-full overflow-hidden p-4 gap-4">
+      <div className="flex justify-between items-center">
+        <h1 className="text-2xl font-bold">Advanced Query Panel</h1>
       </div>
       
-      <div className="p-4">
-        <Card className="mb-4">
-          <CardContent className="p-4">
-            <div className="flex items-start gap-2">
-              <Textarea 
-                placeholder="Describe what information you're looking for across all documents..." 
-                className="flex-1 min-h-[80px]"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
-              <HoverCard>
-                <HoverCardTrigger asChild>
-                  <Button variant="ghost" size="icon">
-                    <Info className="h-4 w-4" />
-                  </Button>
-                </HoverCardTrigger>
-                <HoverCardContent className="w-96">
-                  <div className="space-y-2">
-                    <h4 className="text-sm font-semibold">Deep Research Query</h4>
-                    <p className="text-sm text-muted-foreground">
-                      Describe what information you&apos;re looking for across all documents in the dataroom. The system will extract data
-                      for each column in the table.
-                    </p>
-                    <div className="rounded bg-muted p-2 text-sm">
-                      <p className="font-medium mb-1">Example queries:</p>
-                      <ul className="list-disc pl-4 space-y-1">
-                        <li>&quot;Find all companies mentioned across documents and their revenue figures&quot;</li>
-                        <li>&quot;Identify key regulatory requirements mentioned in any document&quot;</li>
-                        <li>&quot;Extract all financial projections for the next 5 years from any document&quot;</li>
-                      </ul>
-                    </div>
-                    <p className="text-xs text-muted-foreground">
-                      For best results, provide a detailed query and set clear column names.
-                    </p>
-                  </div>
-                </HoverCardContent>
-              </HoverCard>
-            </div>
-            
-            <div className="mt-4">
-              <div className="mb-2 font-medium">Define columns for extraction:</div>
-              <div className="flex flex-wrap gap-2 mb-2">
-                {columns.map((col) => (
-                  <div key={col.id} className="flex items-center border rounded p-2 bg-card">
-                    <Input
-                      value={col.title}
-                      onChange={(e) => handleUpdateColumnTitle(col.id, e.target.value)}
-                      className="border-0 p-0 h-6 w-auto"
-                    />
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => handleRemoveColumn(col.id)}
-                      className="h-6 w-6 ml-1"
+      <Tabs defaultValue="query" className="flex-1 flex flex-col">
+        <TabsList className="mb-4">
+          <TabsTrigger value="query">Query</TabsTrigger>
+          <TabsTrigger value="history">History</TabsTrigger>
+        </TabsList>
+        
+        <TabsContent value="query" className="flex-1 flex flex-col gap-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Document Query</CardTitle>
+              <CardDescription>
+                Ask a question about the documents in this dataroom
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="flex flex-col gap-2">
+                <Textarea 
+                  placeholder="Enter your query..." 
+                  className="min-h-[120px] text-base"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                />
+                <div className="flex justify-between items-center">
+                  <HoverCard>
+                    <HoverCardTrigger asChild>
+                      <Button variant="ghost" size="sm">
+                        <Info className="h-4 w-4 mr-2" />
+                        Query Tips
+                      </Button>
+                    </HoverCardTrigger>
+                    <HoverCardContent className="w-96">
+                      <div className="space-y-2">
+                        <h4 className="text-sm font-semibold">Tips for Better Results</h4>
+                        <p className="text-sm text-muted-foreground">
+                          Be specific and detailed in your questions. You can ask complex questions about the content in your documents.
+                        </p>
+                        <div className="rounded bg-muted p-2 text-sm">
+                          <p className="font-medium mb-1">Example queries:</p>
+                          <ul className="list-disc pl-4 space-y-1">
+                            <li>&quot;What are the key financial projections for the next 3 years?&quot;</li>
+                            <li>&quot;Summarize the regulatory requirements mentioned in any document&quot;</li>
+                            <li>&quot;List all companies mentioned and their relationship to each other&quot;</li>
+                          </ul>
+                        </div>
+                      </div>
+                    </HoverCardContent>
+                  </HoverCard>
+                  <div className="flex gap-2">
+                    {showRetry && (
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={handleRetry}
+                        disabled={isLoading}
+                      >
+                        <RefreshCw className="h-4 w-4 mr-2" />
+                        Retry
+                      </Button>
+                    )}
+                    <Button 
+                      onClick={handleSendQuery}
+                      disabled={isLoading}
                     >
-                      <X className="h-3 w-3" />
+                      {isLoading ? (
+                        <>
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          {processingStatus || 'Processing...'}
+                        </>
+                      ) : (
+                        <>
+                          <Search className="h-4 w-4 mr-2" />
+                          Search Documents
+                        </>
+                      )}
                     </Button>
                   </div>
-                ))}
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleAddColumn}
-                  className="flex items-center"
-                >
-                  <Plus className="h-3 w-3 mr-1" /> Add Column
-                </Button>
+                </div>
               </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-      
-      <div className="flex-1 overflow-hidden">
-        {Object.keys(tableData).length > 0 ? (
-          <div className="h-full overflow-auto">
-            <div className="min-w-full relative">
-              <Table className="w-full border-collapse">
-                <TableHeader className="sticky top-0 z-10 bg-background">
-                  <TableRow className="border-b border-border">
-                    <TableHead className="w-[200px] min-w-[200px] border-r border-border bg-background sticky left-0 z-20">Source</TableHead>
-                    {columns.map((col) => (
-                      <TableHead key={col.id} className="w-[180px] min-w-[180px] border-r border-border bg-background">
-                        {col.title}
-                      </TableHead>
+            </CardContent>
+          </Card>
+
+          <Card className="flex-1 flex flex-col overflow-hidden">
+            <CardHeader className="pb-2">
+              <div className="flex justify-between items-center">
+                <CardTitle>Results</CardTitle>
+                {responseText && (
+                  <div className="flex gap-2">
+                    <Button variant="outline" size="sm" onClick={copyToClipboard}>
+                      {copiedToClipboard ? (
+                        <>
+                          <Copy className="h-4 w-4 mr-2" />
+                          Copied!
+                        </>
+                      ) : (
+                        <>
+                          <Copy className="h-4 w-4 mr-2" />
+                          Copy
+                        </>
+                      )}
+                    </Button>
+                    <Button variant="outline" size="sm" onClick={exportToTextFile}>
+                      <Download className="h-4 w-4 mr-2" />
+                      Export
+                    </Button>
+                  </div>
+                )}
+              </div>
+            </CardHeader>
+            <CardContent className="flex-1 overflow-hidden p-0">
+              <div 
+                className="h-full rounded-md border p-4 overflow-y-auto" 
+                ref={resultsScrollAreaRef}
+                style={{ 
+                  maxHeight: "calc(100vh - 340px)", 
+                  overflowX: "hidden",
+                  wordBreak: "break-word"
+                }}
+              >
+                {isLoading && !responseText ? (
+                  <div className="flex flex-col items-center justify-center h-full text-muted-foreground gap-2">
+                    <Loader2 className="h-8 w-8 animate-spin" />
+                    <p>{processingStatus || 'Analyzing documents...'}</p>
+                  </div>
+                ) : responseText ? (
+                  <div className="space-y-4">
+                    {Object.keys(formattedResponse).length > 0 ? (
+                      <div className="space-y-4">
+                        {Object.entries(formattedResponse).map(([key, value], index) => (
+                          <div key={index} className="space-y-2">
+                            <h3 className="font-bold text-lg">- <strong>{key}</strong>:</h3>
+                            <div className="text-sm text-muted-foreground whitespace-pre-wrap pl-4">
+                              {/* Process value to keep bullet points and structure */}
+                              {value.split('\n').map((line, i) => {
+                                // Format the line based on its content - special handling for bullet points
+                                const trimmedLine = line.trim();
+                                if (trimmedLine.startsWith('▸')) {
+                                  return <p key={i} className="mb-1 font-medium">{trimmedLine}</p>;
+                                } else if (trimmedLine.startsWith('-') || trimmedLine.startsWith('•')) {
+                                  return <p key={i} className="mb-1 ml-2">{trimmedLine}</p>;
+                                } else {
+                                  return <p key={i} className="mb-1">{trimmedLine}</p>;
+                                }
+                              })}
+                            </div>
+                            {index < Object.entries(formattedResponse).length - 1 && (
+                              <Separator className="my-3" />
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <FormatResponseWithCitations text={responseText} />
+                    )}
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-center h-full text-muted-foreground">
+                    Enter a query and click Search to see results
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+        
+        <TabsContent value="history" className="flex-1 flex flex-col gap-4">
+          <Card className="flex-1 flex flex-col overflow-hidden">
+            <CardHeader>
+              <CardTitle>Query History</CardTitle>
+              <CardDescription>
+                Your recent queries and their results
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="flex-1 overflow-hidden p-0">
+              <ScrollArea className="h-full">
+                {queryHistory.length > 0 ? (
+                  <div className="space-y-4 p-4">
+                    {queryHistory.map((item, index) => (
+                      <Card key={index} className="overflow-hidden">
+                        <CardHeader className="pb-2">
+                          <div className="flex justify-between items-center">
+                            <CardTitle className="text-base">
+                              {item.query.length > 60 
+                                ? item.query.substring(0, 60) + '...' 
+                                : item.query}
+                            </CardTitle>
+                            <span className="text-xs text-muted-foreground">
+                              {item.timestamp.toLocaleString()}
+                            </span>
+                          </div>
+                        </CardHeader>
+                        <CardContent className="pb-4">
+                          <div className="max-h-40 overflow-y-auto">
+                            <pre className="whitespace-pre-wrap text-sm">
+                              {item.response.length > 300 
+                                ? item.response.substring(0, 300) + '...' 
+                                : item.response}
+                            </pre>
+                          </div>
+                        </CardContent>
+                        <CardFooter className="border-t pt-2 pb-2">
+                          <div className="flex w-full justify-end">
+                            <Button 
+                              variant="ghost" 
+                              size="sm"
+                              onClick={() => {
+                                setSearchQuery(item.query);
+                                setResponseText(item.response);
+                                // Try to parse the response
+                                try {
+                                  const lines = item.response.split('\n').filter((line: string) => line.trim());
+                                  const parsedData: {[key: string]: string} = {};
+                                  
+                                  lines.forEach((line: string) => {
+                                    const colonIndex = line.indexOf(':');
+                                    if (colonIndex > 0) {
+                                      const key = line.substring(0, colonIndex).trim();
+                                      const value = line.substring(colonIndex + 1).trim();
+                                      parsedData[key] = value;
+                                    }
+                                  });
+                                  
+                                  if (Object.keys(parsedData).length > 0) {
+                                    setFormattedResponse(parsedData);
+                                  } else {
+                                    setFormattedResponse({});
+                                  }
+                                } catch (error) {
+                                  console.error('Error parsing response:', error);
+                                  setFormattedResponse({});
+                                }
+                              }}
+                            >
+                              <RefreshCw className="h-4 w-4 mr-2" />
+                              Reuse Query
+                            </Button>
+                          </div>
+                        </CardFooter>
+                      </Card>
                     ))}
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {Object.keys(tableData).map((fileId) => (
-                    <TableRow key={fileId} className="border-b border-border hover:bg-transparent">
-                      <TableCell className="font-medium truncate border-r border-border bg-background sticky left-0 z-10 hover:bg-transparent">
-                        <div className="flex items-center gap-2">
-                          <FileText className="h-4 w-4 flex-shrink-0 text-muted-foreground" />
-                          <span className="truncate">
-                            {fileId === "deep-search-results" ? "Deep Search Results" : fileId}
-                          </span>
-                        </div>
-                      </TableCell>
-                      {columns.map((col) => {
-                        const cellData = tableData[fileId][col.id];
-                        const isEditing = editingCell && 
-                                         editingCell.fileId === fileId && 
-                                         editingCell.columnId === col.id;
-                        
-                        if (isEditing) {
-                          return (
-                            <TableCell key={col.id} className="border-r border-border relative overflow-visible hover:bg-transparent">
-                              <div className="relative flex w-full items-center pr-6">
-                                <Input
-                                  ref={inputRef}
-                                  value={editValue}
-                                  onChange={(e) => setEditValue(e.target.value)}
-                                  onKeyDown={handleEditKeyDown}
-                                  onBlur={handleSaveEdit}
-                                  className="h-7 text-sm w-full"
-                                  autoFocus
-                                />
-                                <div className="absolute right-0 flex gap-1 h-full">
-                                  <Button 
-                                    variant="ghost" 
-                                    size="icon"
-                                    className="h-5 w-5 rounded-full"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      handleSaveEdit();
-                                    }}
-                                  >
-                                    <Check className="h-3 w-3" />
-                                  </Button>
-                                  <Button 
-                                    variant="ghost" 
-                                    size="icon"
-                                    className="h-5 w-5 rounded-full"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      handleCancelEdit();
-                                    }}
-                                  >
-                                    <X className="h-3 w-3" />
-                                  </Button>
-                                </div>
-                              </div>
-                            </TableCell>
-                          );
-                        }
-                        
-                        if (cellData.status === 'loading') {
-                          return (
-                            <TableCell key={col.id} className="border-r border-border hover:bg-transparent">
-                              <div className="flex justify-center items-center h-6">
-                                <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-                              </div>
-                            </TableCell>
-                          );
-                        }
-                        
-                        return (
-                          <TableCell 
-                            key={col.id} 
-                            className="border-r border-border cursor-pointer hover:bg-transparent"
-                            onClick={() => handleCellClick(fileId, col.id)}
-                          >
-                            {cellData.content}
-                          </TableCell>
-                        );
-                      })}
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          </div>
-        ) : (
-          <div className="h-full flex items-center justify-center text-muted-foreground">
-            Run a deep research query to see results here
-          </div>
-        )}
-      </div>
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-center h-full text-muted-foreground p-4">
+                    No query history yet
+                  </div>
+                )}
+              </ScrollArea>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 };
 
-export default DeepResearchViewer; 
+export default DeepResearchViewer;
+
+// Add these functions to handle citation formatting
+const FormatResponseWithCitations: React.FC<{ text: string }> = ({ text }) => {
+  // Check if we have answer tags and extract just the answer content
+  let content = text;
+  if (text.includes('<answer>') && text.includes('</answer>')) {
+    const match = text.match(/<answer>([\s\S]*?)<\/answer>/);
+    if (match && match[1]) {
+      content = match[1].trim();
+    }
+  } else if (text.includes('<think>')) {
+    // If there's no complete answer but there is thinking content,
+    // we want to show everything after the <think> tag
+    const thinkIndex = text.indexOf('<think>');
+    if (thinkIndex >= 0) {
+      // Get everything after the think tag
+      const afterThink = text.substring(thinkIndex + 7);
+      
+      // If there's an end think tag, get everything between
+      const endThinkIndex = afterThink.indexOf('</think>');
+      if (endThinkIndex >= 0) {
+        content = afterThink.substring(0, endThinkIndex).trim();
+      } else {
+        content = afterThink.trim();
+      }
+    }
+  }
+
+  // For very long content, use a more efficient approach
+  if (content.length > 10000) {
+    // For long content, just handle citation format and return as text
+    const formattedText = content.replace(/\[(\d+)\]\(([^:)]+)(?:::([^)]+))?\)/g, 
+      (match, num) => ` [${num}] `);
+    
+    return (
+      <div className="whitespace-pre-wrap text-sm long-content">
+        {formattedText}
+      </div>
+    );
+  }
+  
+  // For shorter content, use the full React Node processing
+  const processedContent = processCitations(content);
+  return <div className="whitespace-pre-wrap text-sm">{processedContent}</div>;
+};
+
+// Function to process citations and convert file IDs
+const processCitations = (text: string): React.ReactNode[] => {
+  // Regex to match [number](fileId::chunk) patterns
+  const regex = /\[(\d+)\]\(([^:)]+)(?:::([^)]+))?\)/g;
+  
+  // Split the text by citations
+  const parts = text.split(regex);
+  const result: React.ReactNode[] = [];
+  
+  for (let i = 0; i < parts.length; i++) {
+    // Regular text part
+    if (i % 4 === 0) {
+      if (parts[i]) {
+        result.push(<span key={`text-${i}`}>{parts[i]}</span>);
+      }
+    }
+    // Citation part
+    else if (i % 4 === 1) {
+      const citationNumber = parts[i];
+      const fileId = parts[i + 1];
+      const chunk = parts[i + 2];
+      
+      if (citationNumber && fileId) {
+        result.push(
+          <span 
+            key={`citation-${i}`} 
+            className="inline-flex justify-center items-center w-5 h-5 bg-slate-400 dark:bg-slate-600 rounded-lg text-white text-xs font-normal mx-1 cursor-pointer hover:bg-slate-500 dark:hover:bg-slate-700"
+            title={`Citation ${citationNumber} - ${getShortFileName(fileId)}`}
+          >
+            {citationNumber}
+          </span>
+        );
+      }
+      
+      // Skip the next two parts since we've already processed them
+      i += 2;
+    }
+  }
+  
+  return result;
+};
+
+// Helper function to format file names
+const getShortFileName = (fileId: string): string => {
+  // Extract just the last part of the file ID for display
+  const parts = fileId.split('/');
+  return parts[parts.length - 1];
+}; 
