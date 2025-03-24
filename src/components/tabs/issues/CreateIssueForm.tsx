@@ -25,11 +25,11 @@ export function CreateIssueForm({ isOpen, onClose, onSubmit }: CreateIssueFormPr
 
   // Predefined list of tags
   const availableTags = [
-    'Bug', 
-    'Documentation', 
-    'Enhancement', 
-    'Good First Issue', 
-    'Help Wanted', 
+    'Bug',
+    'Documentation',
+    'Enhancement',
+    'Good First Issue',
+    'Help Wanted',
     'Question',
     'Urgent',
     'Type: General Question',
@@ -76,7 +76,7 @@ export function CreateIssueForm({ isOpen, onClose, onSubmit }: CreateIssueFormPr
     }
   }
 
-  const filteredTags = availableTags.filter(tag => 
+  const filteredTags = availableTags.filter(tag =>
     tag.toLowerCase().includes(tagFilter.toLowerCase())
   )
 
@@ -114,77 +114,51 @@ export function CreateIssueForm({ isOpen, onClose, onSubmit }: CreateIssueFormPr
         </DialogHeader>
         <div className="space-y-4 py-2">
           <div>
-            <Input 
-              placeholder="Issue title" 
+            <Input
+              placeholder="Issue title"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              className="font-medium text-lg"
+              className="font-medium text-lg select-none outline-none"
             />
           </div>
           <div>
-            <Textarea 
-              placeholder="Add a description..." 
+            <Textarea
+              placeholder="Add a description..."
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              className="min-h-[150px]"
+              className="min-h-[150px] max-h-[150px] overflow-y-auto resize-none border-2 border-gray-200 focus:border-blue-500 rounded-md p-2 select-none outline-none"
             />
           </div>
-          <div>
-            <p className="text-sm font-medium mb-2">Status</p>
-            <RadioGroup 
-              defaultValue="open" 
-              value={status}
-              onValueChange={(value) => setStatus(value as 'open' | 'closed')} 
-              className="flex space-x-4"
-            >
-              <div className="flex items-center space-x-2">
-                <RadioGroupItem value="open" id="status-open" />
-                <Label htmlFor="status-open" className="text-sm flex items-center gap-1.5">
-                  <div className="h-3 w-3 rounded-full bg-slate-300"></div>
-                  Open
-                </Label>
-              </div>
-              <div className="flex items-center space-x-2">
-                <RadioGroupItem value="closed" id="status-closed" />
-                <Label htmlFor="status-closed" className="text-sm flex items-center gap-1.5">
-                  <svg className="h-3 w-3 github-issue-closed" viewBox="0 0 16 16">
-                    <path d="M11.28 6.78a.75.75 0 0 0-1.06-1.06L7.25 8.69 5.78 7.22a.75.75 0 0 0-1.06 1.06l2 2a.75.75 0 0 0 1.06 0l3.5-3.5Z"></path>
-                    <path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0Zm-1.5 0a6.5 6.5 0 1 0-13 0 6.5 6.5 0 0 0 13 0Z"></path>
-                  </svg>
-                  Closed
-                </Label>
-              </div>
-            </RadioGroup>
-          </div>
+       
           <div>
             <p className="text-sm font-medium mb-2">Labels</p>
-            
+
             {/* Selected tags display */}
             {selectedTags.length > 0 && (
               <div className="flex flex-wrap gap-2 mb-4">
                 {selectedTags.map(tag => (
-                  <Badge 
-                    key={tag} 
+                  <Badge
+                    key={tag}
                     className={`${getTagColor(tag)} flex gap-1 items-center hover:opacity-90`}
                   >
                     {tag}
-                    <X 
-                      className="h-3 w-3 cursor-pointer" 
+                    <X
+                      className="h-3 w-3 cursor-pointer"
                       onClick={() => toggleTag(tag)}
                     />
                   </Badge>
                 ))}
               </div>
             )}
-            
+
             {/* Tag filter input */}
-            <Input 
-              placeholder="Filter labels" 
+            <Input
+              placeholder="Filter labels"
               value={tagFilter}
               onChange={(e) => setTagFilter(e.target.value)}
               className="mb-4"
             />
-            
+
             {/* Tag selection area */}
             <div className="max-h-[180px] overflow-y-auto border rounded-md">
               {filteredTags.length === 0 ? (
@@ -192,11 +166,10 @@ export function CreateIssueForm({ isOpen, onClose, onSubmit }: CreateIssueFormPr
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-1 p-2">
                   {filteredTags.map(tag => (
-                    <div 
-                      key={tag} 
-                      className={`p-2 hover:bg-[#f6f8fa] cursor-pointer rounded-md flex items-center justify-between ${
-                        selectedTags.includes(tag) ? 'bg-[#f1f8ff]' : ''
-                      }`}
+                    <div
+                      key={tag}
+                      className={`p-2 hover:bg-[#f6f8fa] cursor-pointer rounded-md flex items-center justify-between ${selectedTags.includes(tag) ? 'bg-[#f1f8ff]' : ''
+                        }`}
                       onClick={() => toggleTag(tag)}
                     >
                       <div className="flex items-center gap-2">
@@ -214,7 +187,7 @@ export function CreateIssueForm({ isOpen, onClose, onSubmit }: CreateIssueFormPr
           </div>
           <div className="flex justify-end gap-2">
             <Button variant="outline" onClick={resetForm}>Cancel</Button>
-            <Button 
+            <Button
               className="bg-blue-500 hover:bg-blue-800"
               onClick={handleSubmit}
               disabled={!title.trim()}

@@ -7,12 +7,15 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import { useFileStore } from '../../services/HotkeyService'
 import { IssueSearch } from './IssueSearchBar'
-import { FilterDialog } from './FilterDialog'
-import { IssueListHeader } from './IssueListHeader'
+import { FilterDialog } from './filtering/FilterDialog'
+import { IssueListHeader } from './filtering/IssueListHeader'
 import { IssueItem } from './issueItem'
 import { qaService, FrontendIssue } from '../../services/QAService'
 import { CreateIssueForm } from './CreateIssueForm'
 import { useToast } from '@/components/ui/use-toast'
+import { extractUniqueTagsFromIssues } from '../../services/QAService'
+import { IssueFilters } from './filtering/FilterControls'
+
 
 export function Issues() {
   const router = useRouter()
@@ -20,28 +23,62 @@ export function Issues() {
   const searchParams = useSearchParams();
   const [issues, setIssues] = useState<FrontendIssue[]>([])
   const [isLoading, setIsLoading] = useState(true)
-  const [searchQuery, setSearchQuery] = useState(' ')
+  const [searchQuery, setSearchQuery] = useState('')
   const { setActiveIssueId, issuesActiveTab, setIssuesActiveTab } = useFileStore();
   const [isCreateIssueOpen, setIsCreateIssueOpen] = useState(false)
   const [lastEvaluatedKey, setLastEvaluatedKey] = useState<string | null>(null)
   const [selectedIssueId, setSelectedIssueId] = useState<string | number | null>(null);
   const { toast } = useToast()
-  
+  const [availableTags, setAvailableTags] = useState<string[]>([])
+  const [selectedTags, setSelectedTags] = useState<string[]>([])
+  const [sortOption, setSortOption] = useState<string>('newest') // Add this state for sorting
+
   // Add ref to track selected issue
   const prevSelectedIssueRef = useRef<string | number | null>(null);
 
   // Filter issues based on issuesActiveTab
   const filteredIssues = useMemo(() => {
-    return issues.filter(issue => 
-      issuesActiveTab === 'open' ? issue.status === 'open' : issue.status === 'closed'
-    );
-  }, [issues, issuesActiveTab]);
+    const filtered = issues.filter(issue => {
+      // First, filter by tab (open/closed)
+      const statusMatch = issuesActiveTab === 'open' ?
+      issue.status === 'open' :
+      issue.status === 'closed';
+
+    // Then, filter by search query if it exists
+    const searchMatch = !searchQuery.trim() ||
+      issue.title.toLowerCase().includes(searchQuery.toLowerCase());
+
+    // Filter by selected tags if any are selected
+    // Use ANY logic (OR) instead of ALL logic (AND)
+    const tagsMatch = selectedTags.length === 0 ||
+      (issue.tags && issue.tags.some(tag => selectedTags.includes(tag)));
+
+    return statusMatch && searchMatch && tagsMatch;
+  });
+
+  // Then, sort the filtered issues
+  return filtered.sort((a, b) => {
+    // Parse the timestamps for comparison
+    const timeA = new Date(a.timestamp || a.createdAt).getTime();
+    const timeB = new Date(b.timestamp || b.createdAt).getTime();
+    
+    switch (sortOption) {
+      case 'newest':
+        return timeB - timeA; // Newest first (descending)
+      case 'oldest':
+        return timeA - timeB; // Oldest first (ascending)
+      // Add more sort options here as needed
+      default:
+        return timeB - timeA; // Default to newest
+    }
+  });
+}, [issues, issuesActiveTab, searchQuery, selectedTags, sortOption]);
 
   // Count issues by status
   const openIssuesCount = useMemo(() => {
     return issues.filter(issue => issue.status === 'open').length;
   }, [issues]);
-  
+
   const closedIssuesCount = useMemo(() => {
     return issues.filter(issue => issue.status === 'closed').length;
   }, [issues]);
@@ -49,7 +86,7 @@ export function Issues() {
   // Fetch issues
   const fetchIssues = useCallback(async () => {
     if (!dataroomId) return;
-    
+
     try {
       setIsLoading(true);
       const result = await qaService.getIssues(dataroomId as string);
@@ -70,16 +107,16 @@ export function Issues() {
   // Fetch more issues (pagination)
   const fetchMoreIssues = useCallback(async () => {
     if (!dataroomId || !lastEvaluatedKey) return;
-    
+
     try {
       setIsLoading(true);
       const result = await qaService.getIssues(
-        dataroomId as string, 
+        dataroomId as string,
         'all',
-        50, 
+        50,
         lastEvaluatedKey
       );
-      
+
       setIssues(prevIssues => [...prevIssues, ...result.items]);
       setLastEvaluatedKey(result.lastEvaluatedKey);
     } catch (error) {
@@ -96,8 +133,32 @@ export function Issues() {
 
   // Load issues on component mount
   useEffect(() => {
-    fetchIssues();
-    
+    const fetchIssuesAndTags = async () => {
+      if (!dataroomId) return;
+
+      try {
+        setIsLoading(true);
+        const result = await qaService.getIssues(dataroomId as string);
+        setIssues(result.items);
+        setLastEvaluatedKey(result.lastEvaluatedKey);
+
+        // Extract unique tags from the fetched issues
+        const tags = extractUniqueTagsFromIssues(result.items);
+        setAvailableTags(tags);
+      } catch (error) {
+        console.error('Error fetching issues:', error);
+        toast({
+          title: 'Error',
+          description: 'Failed to load questions',
+          variant: 'destructive'
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchIssuesAndTags();
+
     // Check for issueId in query parameters on initial mount only
     const issueId = searchParams.get('issueId');
     if (issueId) {
@@ -105,6 +166,14 @@ export function Issues() {
       setSelectedIssueId(issueId);
     }
   }, [fetchIssues, searchParams, setActiveIssueId]);
+
+  const handleTagsChange = (tags: string[]) => {
+    setSelectedTags(tags);
+  };
+
+  const handleSortChange = (option: string) => {
+    setSortOption(option);
+  };
 
   const getTagColor = (tag: string) => {
     if (tag.includes('Component:')) {
@@ -126,11 +195,11 @@ export function Issues() {
     if (issueId.toString() !== selectedIssueId?.toString() && issueId.toString() !== prevSelectedIssueRef.current?.toString()) {
       // Store the previous issue ID to prevent toggling
       prevSelectedIssueRef.current = issueId;
-      
+
       // First update state
       setActiveIssueId(issueId);
       setSelectedIssueId(issueId);
-      
+
       // Then update URL query parameter without page refresh
       const url = new URL(window.location.href);
       url.searchParams.set('issueId', issueId.toString());
@@ -147,13 +216,13 @@ export function Issues() {
         status: newIssueData.status,
         tags: newIssueData.tags
       };
-      
+
       // Create the issue
       const newIssue = await qaService.createIssue(dataroomId as string, createRequest);
-      
+
       // Add the new issue to the list
       setIssues(prevIssues => [newIssue, ...prevIssues]);
-      
+
       toast({
         title: 'Success',
         description: 'Question created successfully',
@@ -168,6 +237,8 @@ export function Issues() {
     }
   }
 
+
+
   return (
     <ScrollArea className="w-full h-full">
       <div className="w-full px-6 mx-auto py-6">
@@ -176,15 +247,15 @@ export function Issues() {
           <IssueSearch value={searchQuery} onChange={setSearchQuery} />
 
           <div className="flex w-full md:w-auto gap-2 justify-between">
-            <FilterDialog 
-              title="Labels" 
-              icon={Tag} 
+            {/* <FilterDialog
+              title="Labels"
+              icon={Tag}
               buttonText="Labels"
               placeholder="Filter labels"
               items={['Bug', 'Documentation', 'Enhancement', 'Good First Issue', 'Help Wanted', 'Question']}
-            />
+            /> */}
 
-            <Button 
+            <Button
               className="bg-blue-500 hover:bg-blue-800 h-9"
               onClick={() => setIsCreateIssueOpen(true)}
             >
@@ -196,11 +267,16 @@ export function Issues() {
 
         {/* Issues list */}
         <div className="border github-border rounded-md overflow-hidden">
-          <IssueListHeader 
-            activeTab={issuesActiveTab} 
-            setActiveTab={setIssuesActiveTab} 
+        <IssueListHeader
+            activeTab={issuesActiveTab}
+            setActiveTab={setIssuesActiveTab}
             openCount={openIssuesCount}
             closedCount={closedIssuesCount}
+            availableTags={availableTags}
+            selectedTags={selectedTags}
+            onTagsChange={handleTagsChange}
+            sortOption={sortOption}          // Add this prop
+            onSortChange={handleSortChange}  // Add this prop
           />
 
           {/* Issues list */}
@@ -216,17 +292,17 @@ export function Issues() {
             ) : (
               <>
                 {filteredIssues.map((issue) => (
-                  <IssueItem 
+                  <IssueItem
                     key={issue.id}
                     issue={issue}
                     onClick={handleIssueClick}
                     getTagColor={getTagColor}
                   />
                 ))}
-                
+
                 {lastEvaluatedKey && (
                   <div className="py-3 px-4 text-center">
-                    <Button 
+                    <Button
                       variant="outline"
                       onClick={fetchMoreIssues}
                       disabled={isLoading}
@@ -242,7 +318,7 @@ export function Issues() {
       </div>
 
       {/* Create Issue Dialog */}
-      <CreateIssueForm 
+      <CreateIssueForm
         isOpen={isCreateIssueOpen}
         onClose={() => setIsCreateIssueOpen(false)}
         onSubmit={handleCreateIssue}

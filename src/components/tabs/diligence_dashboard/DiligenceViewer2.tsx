@@ -800,39 +800,49 @@ export default function DiligenceDashboardViewer() {
         }
     };
 
-    const handleLayoutChange = (layout: any[]) => {
-        // Update widget positions when layout changes
-        layout.forEach(layoutItem => {
-            const widget = widgets.find(w => w.id === layoutItem.i);
-            if (!widget) return;
-            
-            // Only update if position actually changed
-            if (
-                widget.x !== layoutItem.x ||
-                widget.y !== layoutItem.y ||
-                widget.w !== layoutItem.w ||
-                widget.h !== layoutItem.h
-            ) {
-                // Update local state immediately for responsive UI
-                const updatedWidgets = widgets.map(w => 
-                    w.id === widget.id 
-                        ? { ...w, x: layoutItem.x, y: layoutItem.y, w: layoutItem.w, h: layoutItem.h } 
-                        : w
-                );
-                setWidgets(updatedWidgets);
-                
-                // Debounce actual API calls to prevent too many requests
-                updateWidgetPosition(widget.id, {
-                    x: layoutItem.x,
-                    y: layoutItem.y,
-                    width: layoutItem.w,
-                    height: layoutItem.h,
-                    expanded: widget.config?.expanded || false
-                });
-            }
-        });
-    };
-
+   // ...existing code...
+const handleLayoutChange = (layout: any[]) => {
+    // Create a new copy of widgets with updated positions
+    const updatedWidgets = widgets.map(widget => {
+        const layoutItem = layout.find(item => item.i === widget.id);
+        if (!layoutItem) return widget;
+        
+        return {
+            ...widget,
+            x: layoutItem.x, 
+            y: layoutItem.y,
+            w: layoutItem.w,
+            h: layoutItem.h
+        };
+    });
+    
+    // Update state with the new widget positions
+    setWidgets(updatedWidgets);
+    
+    // Then send updates to the backend (with debouncing)
+    layout.forEach(layoutItem => {
+        const widget = widgets.find(w => w.id === layoutItem.i);
+        if (!widget) return;
+        
+        // Only update if position actually changed
+        if (
+            widget.x !== layoutItem.x ||
+            widget.y !== layoutItem.y ||
+            widget.w !== layoutItem.w ||
+            widget.h !== layoutItem.h
+        ) {
+            // Debounce API calls to prevent too many requests
+            updateWidgetPosition(widget.id, {
+                x: layoutItem.x,
+                y: layoutItem.y,
+                width: layoutItem.w,
+                height: layoutItem.h,
+                expanded: widget.config?.expanded || false
+            });
+        }
+    });
+};
+// ...existing code...
     // Debounce function to limit API calls
     const debounceMap = new Map<string, NodeJS.Timeout>();
     

@@ -96,6 +96,8 @@ class QAService {
       
       const { body } = await response.response;
       const responseData = await body.json();
+
+      console.log("responsedata", responseData);
       
       // Transform the response data to backend format first
       let backendItems: Issue[] = [];
@@ -308,3 +310,19 @@ class QAService {
 
 // Export as singleton
 export const qaService = new QAService(); 
+
+// Add this helper function to your QAService
+export const extractUniqueTagsFromIssues = (issues: FrontendIssue[]): string[] => {
+  // Create a Set to automatically handle duplicates
+  const uniqueTags = new Set<string>();
+  
+  // Collect all tags from all issues
+  issues.forEach(issue => {
+    if (issue.tags && Array.isArray(issue.tags)) {
+      issue.tags.forEach(tag => uniqueTags.add(tag));
+    }
+  });
+  
+  // Convert Set back to array and sort alphabetically
+  return Array.from(uniqueTags).sort();
+};

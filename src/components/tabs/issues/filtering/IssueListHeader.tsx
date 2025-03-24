@@ -1,13 +1,28 @@
 import { IssueFilters } from './FilterControls'
 
 interface IssueListHeaderProps {
-  activeTab: string
-  setActiveTab: (tab: string) => void
-  openCount: number
-  closedCount: number
+  activeTab: string;
+  setActiveTab: (tab: string) => void;
+  openCount: number;
+  closedCount: number;
+  availableTags: string[];
+  selectedTags: string[];
+  onTagsChange: (tags: string[]) => void;
+  sortOption: string;               // Add this prop
+  onSortChange: (option: string) => void;  // Add this prop
 }
 
-export function IssueListHeader({ activeTab, setActiveTab, openCount, closedCount }: IssueListHeaderProps) {
+export function IssueListHeader({
+  activeTab,
+  setActiveTab,
+  openCount,
+  closedCount,
+  availableTags,
+  selectedTags,
+  onTagsChange,
+  sortOption,                // Add this prop
+  onSortChange               // Add this prop
+}: IssueListHeaderProps) {
   return (
     <div className="bg-[#f6f8fa] border-b github-border flex flex-col md:flex-row md:items-center p-4 gap-2">
       <div className="flex gap-4 text-sm">
@@ -40,7 +55,14 @@ export function IssueListHeader({ activeTab, setActiveTab, openCount, closedCoun
         </button>
       </div>
 
-      <IssueFilters />
+      {/* Add IssueFilters component in the same line */}
+      <IssueFilters 
+        availableTags={availableTags}
+        selectedTags={selectedTags}
+        onTagsChange={onTagsChange}
+        sortOption={sortOption}           // Pass these props
+        onSortChange={onSortChange}       // to IssueFilters
+      />
     </div>
   )
 }

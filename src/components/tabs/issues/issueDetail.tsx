@@ -5,7 +5,6 @@ import { ChevronLeft, MessageCircle } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { ScrollArea } from '../../ui/scroll-area'
-import { issuesData } from './IssueData'  // Fallback data
 import { qaService } from '../../services/QAService'
 import { Textarea } from '@/components/ui/textarea'
 import { useToast } from '@/components/ui/use-toast'
@@ -84,31 +83,31 @@ export const IssueDetail: React.FC<IssueDetailProps> = ({ issueId, onBack }) => 
                 }
                 
                 // Fallback to mock data
-                const foundIssue = issuesData.find(i => i.id.toString() === issueId.toString())
-                setIssue(foundIssue)
+                // const foundIssue = issuesData.find(i => i.id.toString() === issueId.toString())
+                // setIssue(foundIssue)
                 
                 // Mock comments data
-                const mockComments = [
-                    {
-                        id: 1,
-                        author: foundIssue?.author || 'Unknown',
-                        content: 'I encountered this issue when trying to use the latest version. Here are the steps to reproduce...',
-                        createdAt: foundIssue?.createdAt || 'some time ago',
-                        isOriginalPoster: true
-                    }
-                ]
+                // const mockComments = [
+                //     {
+                //         id: 1,
+                //         author: foundIssue?.author || 'Unknown',
+                //         content: 'I encountered this issue when trying to use the latest version. Here are the steps to reproduce...',
+                //         createdAt: foundIssue?.createdAt || 'some time ago',
+                //         isOriginalPoster: true
+                //     }
+                // ]
                 
-                if ((foundIssue?.comments ?? 0) > 1) {
-                    mockComments.push({
-                        id: 2,
-                        author: 'reactTeamMember',
-                        content: 'Thanks for reporting this issue. We are looking into it and will provide an update soon.',
-                        createdAt: '3 days ago',
-                        isOriginalPoster: false
-                    })
-                }
+                // if ((foundIssue?.comments ?? 0) > 1) {
+                //     mockComments.push({
+                //         id: 2,
+                //         author: 'reactTeamMember',
+                //         content: 'Thanks for reporting this issue. We are looking into it and will provide an update soon.',
+                //         createdAt: '3 days ago',
+                //         isOriginalPoster: false
+                //     })
+                // }
                 
-                setComments(mockComments)
+                // setComments(mockComments)
                 setIsLoading(false)
             } catch (error) {
                 console.error('Error fetching issue:', error)
