@@ -37,16 +37,22 @@ export function Issues() {
   const prevSelectedIssueRef = useRef<string | number | null>(null);
 
   // Filter issues based on issuesActiveTab
-  const filteredIssues = useMemo(() => {
-    const filtered = issues.filter(issue => {
-      // First, filter by tab (open/closed)
-      const statusMatch = issuesActiveTab === 'open' ?
+ // Modify the filteredIssues useMemo function to include searching by issue number
+
+const filteredIssues = useMemo(() => {
+  const filtered = issues.filter(issue => {
+    // First, filter by tab (open/closed)
+    const statusMatch = issuesActiveTab === 'open' ?
       issue.status === 'open' :
       issue.status === 'closed';
 
     // Then, filter by search query if it exists
-    const searchMatch = !searchQuery.trim() ||
-      issue.title.toLowerCase().includes(searchQuery.toLowerCase());
+    // Check if the search query is numeric and matches issue number
+    const isSearchingByNumber = !isNaN(Number(searchQuery.trim())) && searchQuery.trim() !== '';
+    
+    const searchMatch = !searchQuery.trim() || 
+      issue.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
+      (isSearchingByNumber && issue.issueNumber === Number(searchQuery.trim()));
 
     // Filter by selected tags if any are selected
     // Use ANY logic (OR) instead of ALL logic (AND)
@@ -73,7 +79,6 @@ export function Issues() {
     }
   });
 }, [issues, issuesActiveTab, searchQuery, selectedTags, sortOption]);
-
   // Count issues by status
   const openIssuesCount = useMemo(() => {
     return issues.filter(issue => issue.status === 'open').length;
@@ -91,6 +96,8 @@ export function Issues() {
       setIsLoading(true);
       const result = await qaService.getIssues(dataroomId as string);
       setIssues(result.items);
+
+      console.log("issues", issues)
       setLastEvaluatedKey(result.lastEvaluatedKey);
     } catch (error) {
       console.error('Error fetching issues:', error);
@@ -140,6 +147,8 @@ export function Issues() {
         setIsLoading(true);
         const result = await qaService.getIssues(dataroomId as string);
         setIssues(result.items);
+
+        console.log("issues", issues)
         setLastEvaluatedKey(result.lastEvaluatedKey);
 
         // Extract unique tags from the fetched issues
@@ -247,14 +256,6 @@ export function Issues() {
           <IssueSearch value={searchQuery} onChange={setSearchQuery} />
 
           <div className="flex w-full md:w-auto gap-2 justify-between">
-            {/* <FilterDialog
-              title="Labels"
-              icon={Tag}
-              buttonText="Labels"
-              placeholder="Filter labels"
-              items={['Bug', 'Documentation', 'Enhancement', 'Good First Issue', 'Help Wanted', 'Question']}
-            /> */}
-
             <Button
               className="bg-blue-500 hover:bg-blue-800 h-9"
               onClick={() => setIsCreateIssueOpen(true)}

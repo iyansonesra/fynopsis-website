@@ -15,6 +15,7 @@ export interface Issue {
   timestamp: string;
   lastUpdated: string;
   answers: Answer[];
+  issueNumber?: number; // Add the new field
 }
 
 export interface Answer {
@@ -59,6 +60,7 @@ export interface FrontendIssue {
   answers?: any[];
   description?: string;
   lastUpdated?: string;
+  issueNumber?: number; // Add the new field
 }
 
 class QAService {
@@ -257,7 +259,8 @@ class QAService {
       lastUpdated: question.lastUpdated || question.timestamp || new Date().toISOString(),
       tags: question.tags || [],
       description: question.description || question.fileContext || '',
-      answers: (question.answers || []).map((a: any) => this.mapAnswerResponse(a))
+      answers: (question.answers || []).map((a: any) => this.mapAnswerResponse(a)),
+      issueNumber: question.issueNumber || null // Map the new field
     };
   }
   
@@ -294,7 +297,8 @@ class QAService {
       comments: Array.isArray(backendIssue.answers) ? backendIssue.answers.length : 0,
       answers: backendIssue.answers || [],
       description: backendIssue.description || backendIssue.fileContext || '',
-      lastUpdated: backendIssue.lastUpdated || backendIssue.timestamp || new Date().toISOString()
+      lastUpdated: backendIssue.lastUpdated || backendIssue.timestamp || new Date().toISOString(),
+      issueNumber: backendIssue.issueNumber || null // Map the new field
     };
   }
   

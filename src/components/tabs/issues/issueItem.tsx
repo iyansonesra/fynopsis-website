@@ -10,6 +10,7 @@ interface Issue {
   createdAt: string
   tags: string[]
   comments: number
+  issueNumber?: number // Add the new field
 }
 
 interface IssueItemProps {
@@ -42,8 +43,8 @@ export function IssueItem({ issue, onClick, getTagColor }: IssueItemProps) {
             </a>
             <div className="flex flex-wrap gap-1">
               {issue.tags.map((tag, i) => (
-                <Badge 
-                  key={i} 
+                <Badge
+                  key={i}
                   className={`${getTagColor(tag)} hover:bg-opacity-80 cursor-pointer font-normal px-2 text-xs whitespace-nowrap`}
                 >
                   {tag}
@@ -52,7 +53,8 @@ export function IssueItem({ issue, onClick, getTagColor }: IssueItemProps) {
             </div>
           </div>
           <div className="text-xs text-[#57606a] mt-1 truncate">
-            <span>{issue.createdAt} by </span>
+            {issue.issueNumber && <span className="font-medium">#{issue.issueNumber}</span>}
+            <span>{issue.issueNumber ? ' • ' : ''}{issue.createdAt} by </span>
             <a href="#" className="github-link">{issue.author}</a>
           </div>
         </div>
