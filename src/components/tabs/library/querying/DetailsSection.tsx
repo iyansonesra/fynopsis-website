@@ -1483,7 +1483,17 @@ const DetailSection: React.FC<DetailsSectionProps> = ({
 
 
                 {!selectedFile && (
-                    <div>HELLOOO</div>
+                    <div className="flex flex-col items-center justify-center p-4 mt-4 text-center">
+                        <div className="flex items-center justify-center mb-2 text-gray-400 dark:text-gray-500">
+                            <BadgeInfo className="h-6 w-6 mr-2" />
+                        </div>
+                        <p className="text-sm text-gray-500 dark:text-gray-400">
+                            No file has been selected
+                        </p>
+                        <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
+                            Select a file to view its details
+                        </p>
+                    </div>
                 )}
             </ScrollArea>
         </>

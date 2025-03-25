@@ -25,21 +25,29 @@ export function CreateIssueForm({ isOpen, onClose, onSubmit }: CreateIssueFormPr
 
   // Predefined list of tags
   const availableTags = [
-    'Bug',
-    'Documentation',
-    'Enhancement',
-    'Good First Issue',
-    'Help Wanted',
-    'Question',
-    'Urgent',
-    'Type: General Question',
+    'Due Diligence',
+    'Financial Data',
+    'Legal Documents',
+    'Compliance',
+    'Confidentiality',
+    'Deal Structure',
+    'Valuation',
+    'Tax Considerations',
+    'Regulatory Approval',
+    'Document Missing',
+    'Data Inconsistency',
+    'Access Issue',
+    'Urgent: Time-Sensitive',
+    'Information Request',
     'Type: Technical Question',
-    'Type: Feature Request',
-    'Component: Frontend',
-    'Component: Backend',
-    'Component: API',
-    'Status: Unconfirmed',
-    'Status: In Progress'
+    'Type: Process Question',
+    'Type: Document Request',
+    'Component: Financial',
+    'Component: Legal',
+    'Component: Operations',
+    'Status: Pending Review',
+    'Status: In Progress',
+    'Status: Awaiting Information'
   ]
 
   const handleSubmit = () => {
