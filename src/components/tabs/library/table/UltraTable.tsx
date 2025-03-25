@@ -19,10 +19,10 @@ import { CSS } from '@dnd-kit/utilities';
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { useS3Store, TreeNode } from "../../../services/fileService";
 import { usePathname } from 'next/navigation';
-import { 
-  ChevronDown, ChevronRight, Circle, FileIcon, FolderIcon, 
+import {
+  ChevronDown, ChevronRight, Circle, FileIcon, FolderIcon,
   Plus, RefreshCcw, Upload, Search, Download, Pencil, Trash,
-  RotateCcw 
+  RotateCcw
 } from 'lucide-react';
 import { Input } from '../../../ui/input';
 import DragDropOverlay from './DragDrop';
@@ -181,7 +181,7 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
     if (pendingSelectFileId && !isLoading) {
       // Find the file in the current directory
       const fileExists = tableData.some(item => item.id === pendingSelectFileId);
-      
+
       if (fileExists) {
         // Select the file
         setSelectedItemIds([pendingSelectFileId]);
@@ -198,16 +198,16 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
         setSearchQueryVisible(false);
       }
     }
-    
+
     function handleKeyDown(event: KeyboardEvent) {
       if (event.key === 'Escape') {
         setSearchQueryVisible(false);
       }
     }
-    
+
     document.addEventListener('mousedown', handleClickOutside);
     document.addEventListener('keydown', handleKeyDown);
-    
+
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
       document.removeEventListener('keydown', handleKeyDown);
@@ -263,11 +263,11 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
               withCredentials: true
             }
           });
-          
+
           const { body } = await response.response;
           const responseText = await body.text();
           const result = JSON.parse(responseText);
-          
+
           if (result && Array.isArray(result.files)) {
             setSearchableFiles(result.files);
           }
@@ -276,7 +276,7 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
         }
       }
     };
-    
+
     loadSearchableFiles();
   }, [bucketUuid, searchableFiles.length, setSearchableFiles]);
 
@@ -564,7 +564,7 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
       const { body, statusCode } = await restOperation.response;
       const responseText = await body.text();
       const response = JSON.parse(responseText);
-      
+
       // Check for folder not found error response
       if (statusCode === 404 || (response.statusCode === 404 && response.message === 'Folder not found')) {
         console.error("Folder not found, navigating to home directory");
@@ -595,11 +595,11 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
       setIsLoading(false);
     } catch (error) {
       console.error('Error listing S3 objects:', error);
-      
+
       // Handle errors, including 404 errors that might be thrown as exceptions
       const err = error as any; // Type assertion for the error object
       if (
-        (err?.statusCode === 404) || 
+        (err?.statusCode === 404) ||
         (err?.response?.statusCode === 404) ||
         (typeof err?.message === 'string' && err.message.includes('not found'))
       ) {
@@ -632,7 +632,7 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
     try {
       // For files with extensions, combine the base name with the extension
       const finalName = fileExtension ? newName + fileExtension : newName;
-      
+
       const response = await post({
         apiName: 'S3_API',
         path: `/s3/${bucketUuid}/rename-object`,
@@ -981,13 +981,13 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
       setShowRenameModal(true);
       setSelectedItemId(item.id);
       setItemToRename(item);
-      
+
       if (!item.isFolder && item.name.includes('.')) {
         // For files with extensions, split the name and extension
         const lastDotIndex = item.name.lastIndexOf('.');
         const baseName = item.name.substring(0, lastDotIndex);
         const extension = item.name.substring(lastDotIndex);
-        
+
         setNewRenameName(baseName);
         setFileExtension(extension);
       } else {
@@ -1007,7 +1007,7 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
               : row
           )
         );
-        
+
         // Call retry API
         const response = await post({
           apiName: 'S3_API',
@@ -1019,10 +1019,10 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
             }
           }
         });
-        
+
         const { body } = await response.response;
         const result = await body.json();
-        
+
         // Update file status to queued
         setTableData(prev =>
           prev.map(row =>
@@ -1031,16 +1031,16 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
               : row
           )
         );
-        
+
         toast({
           title: "Success",
           description: "File resubmitted for processing",
           variant: "default"
         });
-        
+
       } catch (error) {
         console.error('Error retrying file processing:', error);
-        
+
         // Set status back to failed if the retry attempt itself failed
         setTableData(prev =>
           prev.map(row =>
@@ -1049,7 +1049,7 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
               : row
           )
         );
-        
+
         toast({
           title: "Error",
           description: "Failed to retry file processing",
@@ -1224,7 +1224,7 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
                   {item.name}
                 </div>
                 {item.status === 'FAILED' && !item.isFolder && (
-                  <button 
+                  <button
                     onClick={(e) => {
                       e.stopPropagation();
                       e.preventDefault();
@@ -1326,6 +1326,8 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
                     }}
                     className="text-black"
                   >
+                    <Download className="mr-2 h-4 w-4" />
+
                     Download
                   </DropdownMenuItem>
                   <DropdownMenuItem
@@ -1336,8 +1338,25 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
                     }}
                     className="text-black"
                   >
+                    <Pencil className="mr-2 h-4 w-4" />
+
                     Rename
                   </DropdownMenuItem>
+                  {item.status === 'FAILED' && !item.isFolder && (
+                    <DropdownMenuItem
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleRetry();
+                        setOpenDropdownId(null);
+                      }}
+                      className="text-black"
+                    >
+                      <RotateCcw className="mr-2 h-4 w-4" />
+
+                      Retry Processing
+                    </DropdownMenuItem>
+                  )}
+
                   <DropdownMenuItem
                     onClick={(e) => {
                       e.stopPropagation();
@@ -1346,6 +1365,7 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
                     }}
                     className="text-red-600 focus:text-red-600"
                   >
+                    <Trash className="mr-2 h-4 w-4" />
                     Delete
                   </DropdownMenuItem>
 
@@ -1392,7 +1412,7 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
   // Add mass delete function to delete all selected items
   const handleMassDelete = async () => {
     if (selectedItemIds.length === 0) return;
-    
+
     // Mark selected items as GRAY while deleting
     setTableData(prev =>
       prev.map(row =>
@@ -1417,13 +1437,13 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
 
       const { body } = await response.response;
       const result = await body.json();
-      
+
       // Remove deleted items from the table
       setTableData(prev => prev.filter(row => !selectedItemIds.includes(row.id)));
-      
+
       // Clear selection after deletion
       setSelectedItemIds([]);
-      
+
       toast({
         title: "Success",
         description: `${selectedItemIds.length} item${selectedItemIds.length > 1 ? 's' : ''} deleted successfully`,
@@ -1431,7 +1451,7 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
       });
     } catch (error) {
       console.error('Error deleting items:', error);
-      
+
       // Revert status for items that failed to delete
       setTableData(prev =>
         prev.map(row =>
@@ -1440,7 +1460,7 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
             : row
         )
       );
-      
+
       toast({
         title: "Error",
         description: "Failed to delete selected items",
@@ -1546,7 +1566,7 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
   // Connect to WebSocket when component mounts with the current dataroom
   // useEffect(() => {
   //   if (!dataroomId) return;
-    
+
   //   // Handler for file updates - we don't establish the connection here anymore
   //   // as it's handled at the DataroomPage level
   //   const handleFileUpdate = (message: FileUpdateMessage) => {
@@ -1554,12 +1574,12 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
   //     const currentUser = emailRef.current;
   //     const isOwnAction = message.data.userEmail === currentUser;
   //     let shouldRefresh = false;
-      
+
   //     // Don't refresh for our own actions, as we already update the UI directly
   //     if (isOwnAction) {
   //       return;
   //     }
-      
+
   //     switch (message.type) {
   //       case 'FILE_UPLOADED':
   //         shouldRefresh = true;
@@ -1592,16 +1612,16 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
   //         // Don't refresh for pong messages
   //         break;
   //     }
-      
+
   //     if (shouldRefresh) {
   //       // Refresh the file list when changes are detected
   //       handleRefresh();
   //     }
   //   };
-    
+
   //   // Register the event handler on the existing WebSocket connection
   //   websocketManager.addMessageHandler(handleFileUpdate);
-    
+
   //   // Cleanup
   //   return () => {
   //     websocketManager.removeMessageHandler(handleFileUpdate);
@@ -1761,7 +1781,7 @@ th {
               />
             </div>
             {searchQueryVisible && (
-              <div 
+              <div
                 ref={searchDropdownRef}
                 className="absolute top-full left-0 w-full z-50 mt-2 shadow-lg rounded-md"
                 style={{ maxHeight: '400px' }}
@@ -1776,50 +1796,50 @@ th {
                       <ul>
                         {searchableFiles
                           .filter(file => file.fileName.toLowerCase().includes(searchValue.toLowerCase()))
-                            .map((file) => (
-                              <li
-                                key={file.fileId}
-                                onClick={() => {
-                                  // Check if file is already open in a tab
-                                  const fileTab = tabs.find(tab => tab.title === file.fileName);
-                                  
-                                  if (fileTab) {
-                                    // If file is already open, just activate that tab
-                                    setActiveTabId(fileTab.id);
-                                    setSearchQueryVisible(false);
-                                  } else {
-                                    // Store the file ID to be selected after navigation
-                                    setPendingSelectFileId(file.fileId);
-                                    
-                                    // Navigate to the directory
-                                    const segments = pathname.split('/');
-                                    segments.pop(); // Remove the last segment
-                                    segments.push(file.parentFolderId === 'ROOT' ? 'home' : file.parentFolderId);
-                                    router.push(segments.join('/'));
-                                    
-                                    // Close the search dropdown
-                                    setSearchQueryVisible(false);
-                                  }
-                                }}
-                                className="px-4 py-2 text-sm bg-transparent cursor-pointer hover:bg-slate-200 dark:hover:bg-slate-700 dark:text-white flex items-center"
-                              >
-                                <FileIcon className="mr-2 h-4 w-4" />
-                                <div className="flex flex-col overflow-hidden">
-                                  <span className="truncate">
-                                    {highlightMatch(file.fileName, searchValue)}
-                                  </span>
-                                  <span className="text-xs text-gray-500 dark:text-gray-400 truncate">
-                                    {file.parentFolderName === "Root" ? "Home" : file.parentFolderName}
-                                  </span>
-                                </div>
-                              </li>
-                            ))}
-                        {searchValue && 
+                          .map((file) => (
+                            <li
+                              key={file.fileId}
+                              onClick={() => {
+                                // Check if file is already open in a tab
+                                const fileTab = tabs.find(tab => tab.title === file.fileName);
+
+                                if (fileTab) {
+                                  // If file is already open, just activate that tab
+                                  setActiveTabId(fileTab.id);
+                                  setSearchQueryVisible(false);
+                                } else {
+                                  // Store the file ID to be selected after navigation
+                                  setPendingSelectFileId(file.fileId);
+
+                                  // Navigate to the directory
+                                  const segments = pathname.split('/');
+                                  segments.pop(); // Remove the last segment
+                                  segments.push(file.parentFolderId === 'ROOT' ? 'home' : file.parentFolderId);
+                                  router.push(segments.join('/'));
+
+                                  // Close the search dropdown
+                                  setSearchQueryVisible(false);
+                                }
+                              }}
+                              className="px-4 py-2 text-sm bg-transparent cursor-pointer hover:bg-slate-200 dark:hover:bg-slate-700 dark:text-white flex items-center"
+                            >
+                              <FileIcon className="mr-2 h-4 w-4" />
+                              <div className="flex flex-col overflow-hidden">
+                                <span className="truncate">
+                                  {highlightMatch(file.fileName, searchValue)}
+                                </span>
+                                <span className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                                  {file.parentFolderName === "Root" ? "Home" : file.parentFolderName}
+                                </span>
+                              </div>
+                            </li>
+                          ))}
+                        {searchValue &&
                           searchableFiles.filter(file => file.fileName.toLowerCase().includes(searchValue.toLowerCase())).length === 0 && (
-                          <div className="p-4 text-center text-gray-500 dark:text-gray-400">
-                            No matching files found
-                          </div>
-                        )}
+                            <div className="p-4 text-center text-gray-500 dark:text-gray-400">
+                              No matching files found
+                            </div>
+                          )}
                       </ul>
                     )}
                   </ScrollArea>
@@ -1834,7 +1854,7 @@ th {
         <ScrollArea data-drop-zone className="relative w-full flex-1">
           <ContextMenu>
             <ContextMenuTrigger className="flex flex-grow">
-              
+
               <div className="flex flex-grow">
 
                 <DndContext
@@ -2083,14 +2103,14 @@ th {
 
 const highlightMatch = (text: string, query: string): React.ReactNode => {
   if (!query || query.trim() === '') return text;
-  
+
   const parts = text.split(new RegExp(`(${query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi'));
-  
+
   return (
     <>
-      {parts.map((part, index) => 
-        part.toLowerCase() === query.toLowerCase() 
-          ? <span key={index} className="bg-yellow-200 dark:bg-yellow-700 font-medium">{part}</span> 
+      {parts.map((part, index) =>
+        part.toLowerCase() === query.toLowerCase()
+          ? <span key={index} className="bg-yellow-200 dark:bg-yellow-700 font-medium">{part}</span>
           : part
       )}
     </>
