@@ -19,7 +19,7 @@ import { Responsive, WidthProvider } from 'react-grid-layout';
 import 'react-grid-layout/css/styles.css';
 import 'react-resizable/css/styles.css';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { LineChart } from '@mui/x-charts';
+import { LineChart } from '@tremor/react';
 import {
     BarChart,
     DonutChart
@@ -127,38 +127,52 @@ const ChartWidget = ({ widget }: { widget: Widget }) => {
     if (widget.data.chart_type === 'line') {
         // Extract relevant data
         const { title, description, labels, datasets, xAxis, yAxis, options } = widget.data;
-
-        // Process dataset values for LineChart
-        const processedDatasets = datasets.map((dataset: any, index: number) => {
-            // Filter out null values
-            const validData = dataset.data.map((value: any, i: number) => {
-                // If value is a range array, take the average for visualization
-                if (Array.isArray(value)) {
-                    return { x: i, y: (value[0] + value[1]) / 2 };
+    
+        // Format data for Tremor LineChart
+        const formattedData = labels.map((label: string, index: number) => {
+            const dataPoint: Record<string, any> = { date: label };
+    
+            // Add each dataset's value for this label
+            datasets.forEach((dataset: any) => {
+                // Use a shortened version of the label for cleaner display
+                const shortLabel = dataset.label
+                    .replace(' Revenue (in millions)', '')
+                    .replace(' (Revenue Range)', '')
+                    .replace('Revenue ', '');
+    
+                // If the value is an array [min, max], take the average
+                if (Array.isArray(dataset.data[index]) && dataset.data[index].length === 2) {
+                    dataPoint[shortLabel] = (dataset.data[index][0] + dataset.data[index][1]) / 2;
+                } else {
+                    dataPoint[shortLabel] = dataset.data[index];
                 }
-                // Skip null values
-                if (value === null) return null;
-                return { x: i, y: value };
-            }).filter(Boolean);
-
-            return {
-                data: validData,
-                label: dataset.label,
-                color: dataset.borderColor || getCategoryColor(['blue', 'green', 'purple', 'amber', 'rose'][index % 5]),
-                showMark: true,
-                lineWidth: 2,
-                pointSize: 6
-            };
+            });
+    
+            return dataPoint;
         });
+    
+        // Create categories array from dataset labels
+        const categories = datasets.map((dataset: any) => 
+            dataset.label
+                .replace(' Revenue (in millions)', '')
+                .replace(' (Revenue Range)', '')
+                .replace('Revenue ', '')
+        );
+    
+        // Define colors to match the dataset border colors or use defaults
+        const colorValues = ["blue", "emerald", "violet", "amber", "cyan"];
 
-        // Determine Y-axis scale
-        const allValues = datasets.flatMap((d: any) => 
+    
+        // Calculate appropriate yAxisWidth based on data values
+        const maxValue = Math.max(...datasets.flatMap((d: any) => 
             d.data.filter((v: any) => v !== null)
                 .map((v: any) => Array.isArray(v) ? Math.max(...v) : v)
-        );
-        const maxValue = Math.max(...allValues);
-        const yAxisMax = Math.ceil(maxValue * 1.1 / 1000) * 1000; // Round up to nearest thousand with 10% padding
-
+        ));
+        const yAxisWidth = maxValue >= 1000000 ? 60 : (maxValue >= 10000 ? 50 : 40);
+    
+        // Determine if showAnimation should be true based on points option
+        const showAnimation = options?.showPoints !== false;
+    
         return (
             <div className="flex flex-col h-full w-full">
                 {/* Title and description */}
@@ -166,59 +180,72 @@ const ChartWidget = ({ widget }: { widget: Widget }) => {
                     {title && <h3 className="font-semibold text-sm">{title}</h3>}
                     {description && <p className="text-xs text-gray-500 dark:text-gray-400">{description}</p>}
                 </div>
-
+    
                 {/* Chart container with fixed height */}
                 <div className="relative flex-1" style={{ height: 'calc(100% - 60px)', minHeight: 150 }}>
                     <LineChart
-                        xAxis={[{
-                            data: labels.map((_: string, i: number) => i),
-                            scaleType: 'point',
-                            valueFormatter: (value: number) => labels[value] || '',
-                        }]}
-                        yAxis={[{
-                            min: 0,
-                            max: yAxisMax,
-                            valueFormatter: (value: number) => 
-                                value >= 1000 
-                                    ? `$${(value / 1000).toFixed(0)}k` 
-                                    : `$${value}`,
-                        }]}
-                        series={processedDatasets}
-                        width={undefined}
-                        height={undefined}
-                        margin={{ left: 50, right: 20, top: 20, bottom: 40 }}
-                        slotProps={{
-                            legend: { hidden: true }
+                        className="h-full"
+                        data={formattedData}
+                        index="date"
+                        categories={categories}
+                        colors={colorValues}
+                        valueFormatter={(value) => {
+                            if (value >= 1000000) return `${(value / 1000000).toFixed(1)}M`;
+                            if (value >= 1000) return `${(value / 1000).toFixed(0)}K`;
+                            return value.toString();
                         }}
-                        sx={{
-                            width: '100%',
-                            height: '100%',
-                            '& .MuiLineElement-root': {
-                                strokeWidth: 2,
-                            },
-                            '& .MuiMarkElement-root': {
-                                stroke: 'white',
-                                strokeWidth: 2,
-                                scale: '0.6',
-                                fill: 'white'
-                            }
+                        yAxisWidth={yAxisWidth}
+                        showLegend={false}
+                        showAnimation={showAnimation}
+                        showTooltip={true}
+                        showGridLines={true}
+                        curveType={options?.tension ? "natural" : "linear"}
+                        connectNulls={true}
+                        customTooltip={({ payload, active, label }) => {
+                            if (!active || !payload) return null;
+    
+                            return (
+                                <div className="bg-white dark:bg-gray-800 shadow-lg border border-gray-200 dark:border-gray-700 p-2 rounded-md">
+                                    <div className="font-medium">{label}</div>
+                                    {payload.map((entry, index) => (
+                                        <div key={index} className="flex items-center mt-1">
+                                            <div
+                                                className="w-2 h-2 rounded-full mr-1"
+                                                style={{ backgroundColor: getCategoryColor(colorValues[index % colorValues.length]) }}
+                                            ></div>
+                                            <span className="mr-2">{entry.name}:</span>
+                                            <span className="font-medium">
+                                                {entry.value !== undefined ?
+                                                    (Number(entry.value) >= 1000000 ?
+                                                        `${(Number(entry.value) / 1000000).toFixed(1)}M` :
+                                                        (Number(entry.value) >= 1000 ?
+                                                            `${(Number(entry.value) / 1000).toFixed(0)}K` :
+                                                            Number(entry.value).toString())
+                                                    ) :
+                                                    "N/A"
+                                                }
+                                            </span>
+                                        </div>
+                                    ))}
+                                </div>
+                            );
                         }}
                     />
                 </div>
-
+    
                 {/* Legend at the bottom */}
                 <div className="flex flex-wrap justify-center gap-2 text-xs mt-1 mb-1">
                     {datasets.map((dataset: any, index: number) => (
                         <div key={index} className="flex items-center px-1">
                             <div
                                 className="w-2 h-2 rounded-full mr-1"
-                                style={{ backgroundColor: dataset.borderColor || getCategoryColor(['blue', 'green', 'purple', 'amber', 'rose'][index % 5]) }}
+                                style={{ backgroundColor: getCategoryColor(colorValues[index % colorValues.length]) }}
                             ></div>
                             <span>{typeof dataset.label === 'object' ? 'Revenue' : dataset.label}</span>
                         </div>
                     ))}
                 </div>
-
+    
                 {/* Display range information if available */}
                 {datasets.some((d: any) => d.data.some((v: any) => Array.isArray(v))) && (
                     <div className="text-xs text-center text-gray-500 mb-1">
