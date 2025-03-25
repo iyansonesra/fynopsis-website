@@ -31,20 +31,26 @@ interface GreenCircleProps {
 const GreenCircle = memo<GreenCircleProps>(({ number, fileKey, onSourceClick, chunk }) => {
     const getFileName = useFileStore(state => state.getFileName);
 
+    const boundsKey = `${fileKey}::${chunk}`;
+
+    const bounds = useFileStore.getState().getDocumentBounds(boundsKey);
+
+    console.log("BOUNDS", bounds);
+    console.log("BOUNDS KEY", boundsKey);
+
     // Use useMemo to avoid recalculating the file name on every render
     const fileName = useMemo(() => {
         if (!fileKey) return '';
         return getFileName(fileKey.split('/').pop() || '');
     }, [fileKey, getFileName]);
 
-        useEffect(() => {
-            
-            // You can also measure render performance
-            const startTime = performance.now();
-            return () => {
-                const duration = performance.now() - startTime;
-            };
-        });
+    useEffect(() => {
+        // You can also measure render performance
+        const startTime = performance.now();
+        return () => {
+            const duration = performance.now() - startTime;
+        };
+    });
 
     return (
         <HoverCard openDelay={100} closeDelay={100}>
@@ -58,16 +64,24 @@ const GreenCircle = memo<GreenCircleProps>(({ number, fileKey, onSourceClick, ch
             </HoverCardTrigger>
             {fileKey && (
                 <HoverCardPortal>
-                    <HoverCardContent className="p-2 dark:bg-gray-900 dark:border-gray-800 z-[9999] w-fit">
-                        <div className="flex items-left space-x-2">
-                            <FileText className="h-4 w-4 text-slate-500 dark:text-slate-400" />
-                            <span className="text-sm text-slate-700 dark:text-slate-300">
-                                <span className="truncate w-full">
+                    <HoverCardContent className="p-3 dark:bg-gray-900 dark:border-gray-800 z-[9999] w-80 max-w-[90vw]">
+                        <div className="flex flex-col gap-2">
+                            <div className="flex items-center space-x-2">
+                                <FileText className="h-4 w-4 text-slate-500 dark:text-slate-400 flex-shrink-0" />
+                                <span className="text-sm font-medium text-slate-700 dark:text-slate-300 truncate">
                                     {fileName.length > 30 ? `${fileName.substring(0, 15)}...${fileName.substring(fileName.length - 15)}` : fileName}
                                 </span>
-                            </span>
+                            </div>
+                            
+                            {bounds && (
+                                <div className="mt-1 text-xs text-slate-600 dark:text-slate-400 border-t border-slate-200 dark:border-slate-700 pt-2">
+                                    <p className="line-clamp-6 whitespace-pre-wrap">
+                                        {bounds.chunk_title}
+                                    </p>
+                                </div>
+                            )}
                         </div>
-                        </HoverCardContent>
+                    </HoverCardContent>
                 </HoverCardPortal>
             )}
         </HoverCard>
@@ -75,7 +89,8 @@ const GreenCircle = memo<GreenCircleProps>(({ number, fileKey, onSourceClick, ch
 }, (prevProps, nextProps) => {
     // Strict equality check for props that matter
     return prevProps.number === nextProps.number &&
-        prevProps.fileKey === nextProps.fileKey;
+        prevProps.fileKey === nextProps.fileKey &&
+        prevProps.chunk === nextProps.chunk;
 });
 GreenCircle.displayName = 'GreenCircle';
 
