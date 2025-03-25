@@ -1,6 +1,6 @@
 "use client";
 
-import { BrainCircuit, ChevronDown, Globe, Paperclip, Plus, Send, Sparkle, Sparkles } from "lucide-react";
+import { BookOpen, BrainCircuit, ChevronDown, Globe, Paperclip, Plus, Send, Sparkle, Sparkles } from "lucide-react";
 import { useState } from "react";
 import { Textarea } from "@/components/ui/textarea";
 import { motion, AnimatePresence } from "framer-motion";
@@ -55,16 +55,19 @@ export const AIInputWithSearch: React.FC<AIInputWithSearchProps> = ({
       adjustHeight(true);
     }
   };
+
   const searchTypeLabels = {
     auto: "Auto",
     reasoning: "Reasoning",
-    planning: "Planning"
+    planning: "Planning",
+    deep_research: "Deep Research"
   };
 
   const searchTypeIcons = {
     auto: <Sparkles className="w-4 h-4" />,
     reasoning: <BrainCircuit className="w-4 h-4" />,
-    planning: <Globe className="w-4 h-4" />
+    planning: <Globe className="w-4 h-4" />,
+    deep_research: <BookOpen className="w-4 h-4" />
   };
 
 
@@ -91,24 +94,24 @@ export const AIInputWithSearch: React.FC<AIInputWithSearchProps> = ({
                   <ScrollArea className="w-full flex items-center">
                     <div className="flex p-0 h-full items-center flex-row gap-2">
                       {selectedFiles.map((file, index) => (
-                        <div 
-                          key={index} 
+                        <div
+                          key={index}
                           className="flex items-center justify-center gap-2 bg-slate-200 dark:bg-white/5 px-3 py-1 rounded-lg  hover:opacity-80 group relative"
                         >
                           <Paperclip className="w-4 h-4 text-black/50 dark:text-white/50" />
                           <span className="text-sm text-black/70 dark:text-white/70 whitespace-nowrap">
-                          {file.fileName > 15
-                            ? file.fileName.slice(0, 15) + '...'
-                            : file.fileName}
+                            {file.fileName > 15
+                              ? file.fileName.slice(0, 15) + '...'
+                              : file.fileName}
                           </span>
                           <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setSelectedFiles(files => files.filter((_, i) => i !== index));
-                          }}
-                          className="ml-1 text-black/50 dark:text-white/50 hover:text-black dark:hover:text-white"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedFiles(files => files.filter((_, i) => i !== index));
+                            }}
+                            className="ml-1 text-black/50 dark:text-white/50 hover:text-black dark:hover:text-white"
                           >
-                          ×
+                            ×
                           </button>
                         </div>
                       ))}
@@ -203,25 +206,33 @@ export const AIInputWithSearch: React.FC<AIInputWithSearchProps> = ({
                   </button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="start" className="min-w-[150px]">
-                  <DropdownMenuItem 
+                  <DropdownMenuItem
                     className="flex items-center gap-2"
                     onClick={() => setSearchType("auto")}
                   >
                     <Sparkles className="w-4 h-4" />
                     <span>Auto</span>
                   </DropdownMenuItem>
-                  <DropdownMenuItem 
+                  <DropdownMenuItem
                     className="flex items-center gap-2"
                     onClick={() => setSearchType("reasoning")}
                   >
                     <BrainCircuit className="w-4 h-4" />
                     <span>Reasoning</span>
                   </DropdownMenuItem>
-                  <DropdownMenuItem className="flex items-center gap-2"
+                  <DropdownMenuItem
+                    className="flex items-center gap-2"
                     onClick={() => setSearchType("planning")}
                   >
                     <Globe className="w-4 h-4" />
                     <span>Planning</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    className="flex items-center gap-2"
+                    onClick={() => setSearchType("deep_research")}
+                  >
+                    <BookOpen className="w-4 h-4" />
+                    <span>Deep Research</span>
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>

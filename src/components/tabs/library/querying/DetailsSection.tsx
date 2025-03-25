@@ -46,6 +46,7 @@ import {
 import { ContainerScroll } from '../../../ui/container-scroll-animation';
 import { HoverCardPortal } from '@radix-ui/react-hover-card';
 import { MessageItem } from './MessageItem';
+import websocketManager from '@/lib/websocketManager';
 
 
 // import { w3cwebsocket as W3CWebSocket } from "websocket";
@@ -302,8 +303,6 @@ const DetailSection: React.FC<DetailsSectionProps> = ({
                 }
             });
 
-            console.log("AHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHH");
-
             const { body } = await downloadResponse.response;
             const responseText = await body.text();
             const { signedUrl } = JSON.parse(responseText);
@@ -339,346 +338,298 @@ const DetailSection: React.FC<DetailsSectionProps> = ({
     };
 
 
-    const queryAllDocuments = async (searchTerm: string, searchType: string, selectedFiles: any[]) => {
-        setLastQuery(searchTerm); // Add this line at the start of the function
+   const queryAllDocuments = async (searchTerm: string, searchType: string, selectedFiles: any[]) => {
+    setLastQuery(searchTerm);
 
-        try {
-            setIsWebSocketActive(true);
-            setIsLoading(true);
+    try {
+        setIsWebSocketActive(true);
+        setIsLoading(true);
 
-            // Only add question message if it's not a retry (i.e., if the last message isn't already this question)
-            const lastMessage = messagesState[messagesState.length - 1];
-            if (!lastMessage || lastMessage.type !== 'question' || lastMessage.content !== searchTerm) {
-                addMessage({ type: 'question', content: searchTerm });
-            }
+        // Only add question message if it's not a retry
+        const lastMessage = messagesState[messagesState.length - 1];
+        if (!lastMessage || lastMessage.type !== 'question' || lastMessage.content !== searchTerm) {
+            addMessage({ type: 'question', content: searchTerm });
+        }
 
-            setSearchResult({
-                response: '',
-                sources: {},
-                thread_id: ''
-            });
-            const bucketUuid = window.location.pathname.split('/')[2] || '';
-            const websocketHost = `${process.env.NEXT_PUBLIC_SEARCH_API_CODE}.execute-api.${process.env.NEXT_PUBLIC_REGION}.amazonaws.com`;
+        setSearchResult({
+            response: '',
+            sources: {},
+            thread_id: ''
+        });
+        
+        const bucketUuid = window.location.pathname.split('/')[2] || '';
+        
+        // Create a message handler for this specific query
+        const messageHandler = (data: any) => {
+            try {
+                console.log("WebSocket message received:", data);
+                if (data.type === 'progress') {
+                    const progressText = data.step || data.message;
+                    setProgressText(progressText);
+                    setEndThinkFound(false);
 
-            const idToken = await getIdToken();
-            if (!idToken) {
-                throw new Error('No ID token available');
-            }
+                    const currentMessages = useFileStore.getState().messages;
 
-            const params = new URLSearchParams();
-            params.append('idToken', idToken);
-
-            const websocketUrl = `wss://${websocketHost}/prod?${params.toString()}`;
-
-            const ws = new WebSocket(websocketUrl);
-
-            let result = '';
-
-            const extractSourceKeys = (sources: Record<string, any>) => {
-                return Object.keys(sources).filter(key =>
-                    // Filter out non-source properties like 'thread_id' and 'type'
-                    key !== 'thread_id' &&
-                    key !== 'type' &&
-                    !key.startsWith('[[')
-                );
-            };
-
-            return new Promise((resolve, reject) => {
-                ws.onopen = () => {
-                    if (currentThreadId) {
-                        ws.send(JSON.stringify({
-                            action: 'query',
-                            data: {
-                                thread_id: currentThreadId,
-                                collection_name: bucketUuid,
-                                query: searchTerm,
-                                use_reasoning: searchType == "reasoning" ? true : false,
-                                file_keys: selectedFiles,
-                                use_planning: searchType == "planning" ? true : false
+                    // Update messages with progress
+                    if (currentMessages.length > 0) {
+                        const lastMessage = currentMessages[currentMessages.length - 1];
+                        // Only update the message if it's an answer message
+                        if (lastMessage?.type === 'answer') {
+                            // Only update if progress text has changed
+                            if (lastMessage.progressText !== progressText) {
+                                updateLastMessage({ progressText });
                             }
-                        }));
-                    }
-                    else {
-                        ws.send(JSON.stringify({
-                            action: 'query',
-                            data: {
-                                collection_name: bucketUuid,
-                                query: searchTerm,
-                                use_reasoning: searchType == "reasoning" ? true : false,
-                                file_keys: selectedFiles,
-                                use_planning: searchType == "planning" ? true : false
-                        
-                            }
-                        }));
-                    }
-                };
-
-
-                ws.onmessage = (event) => {
-
-                    try {
-                        const data = JSON.parse(event.data);
-                        console.log("data:", data);
-                        if (data.type === 'progress') {
-                            const progressText = data.step || data.message;
-                            setProgressText(progressText);
-                            setEndThinkFound(false);
-
-                            console.log("message state:", messagesState);
-                            const currentMessages = useFileStore.getState().messages;
-
-                            // Update messages with progress
-                            if (currentMessages.length > 0) {
-                                const lastMessage = currentMessages[currentMessages.length - 1];
-                                // Only update the message if it's an answer message
-                                if (lastMessage?.type === 'answer') {
-                                    // Only update if progress text has changed
-                                    if (lastMessage.progressText !== progressText) {
-                                        console.log("UPDATED PREVIOUS MESSAGE");
-                                        updateLastMessage({ progressText });
-                                    }
-                                } else if (lastMessage?.type === 'question') {
-                                    console.log("NEW MESSAGE ADDED!!");
-                                    addMessage({
-                                        type: 'answer',
-                                        content: '',
-                                        progressText: progressText
-                                    });
-                                }
-                            } else {
-                                // Create new answer message with progress if there are no messages
-                                // This shouldn't happen normally, but is here as a safeguard
-                                // addMessage({
-                                //     type: 'answer',
-                                //     content: '',
-                                //     progressText: progressText
-                                // });
-                            }
-                        }
-
-                        if (data.type === 'batch') {
-                            // Handle batch response
-                            console.log("Batch data received:", data);
-                            const batchItems = data.items || [];
-                            
-                            if (batchItems.length > 0) {
-                                // We're interested in step_start items which contain the description
-                                const stepStartItem = batchItems.find((item: { type: string; }) => item.type === 'step_start');
-                                
-                                if (stepStartItem) {
-                                    setIsThinking(true);
-                                    const currentMessages = useFileStore.getState().messages;
-                                    
-                                    // Only update if we have an answer message already
-                                    if (currentMessages.length > 0 && 
-                                        currentMessages[currentMessages.length - 1].type === 'answer') {
-                                        
-                                        const lastMessage = currentMessages[currentMessages.length - 1];
-                                        
-                                        // Create or update batches array
-                                        const batches = lastMessage.batches || [];
-                                        
-                                        // Add the new batch with step information
-                                        batches.push({
-                                            stepNumber: stepStartItem.step_number,
-                                            totalSteps: stepStartItem.total_steps,
-                                            description: stepStartItem.description,
-                                            sources: {},
-                                            isActive: true // Mark this as the active batch
-                                        });
-
-                                        if (batches.length > 1) {
-                                            for (let i = 0; i < batches.length - 1; i++) {
-                                                batches[i].isActive = false;
-                                            }
-                                        }
-                                        
-                                        // Update the progress text to show the current step
-                                        const progressText = `Step ${stepStartItem.step_number} of ${stepStartItem.total_steps}: ${stepStartItem.description}`;
-                                        
-                                        // Update the message with all changes at once
-                                        updateLastMessage({
-                                            batches,
-                                            progressText
-                                        });
-                                    } else if (currentMessages.length > 0 && 
-                                               currentMessages[currentMessages.length - 1].type === 'question') {
-                                        // If the last message is a question, create a new answer message
-                                        const batches = [{
-                                            stepNumber: stepStartItem.step_number,
-                                            totalSteps: stepStartItem.total_steps,
-                                            description: stepStartItem.description,
-                                            sources: {},
-                                            isActive: true
-                                        }];
-                                        
-                                        const progressText = `Step ${stepStartItem.step_number} of ${stepStartItem.total_steps}: ${stepStartItem.description}`;
-                                        
-                                        addMessage({
-                                            type: 'answer',
-                                            content: '',
-                                            batches,
-                                            progressText
-                                        });
-
-                                    }
-                                }
-                            }
-                        }
-                        if (data.type === 'status') {
-                            if (data.sources) {
-                                setIsThinking(true);
-                                const currentMessages = useFileStore.getState().messages;
-                        
-                                // Only update if we have an answer message already
-                                if (currentMessages.length > 0 &&
-                                    currentMessages[currentMessages.length - 1].type === 'answer') {
-                        
-                                    const lastMessage = currentMessages[currentMessages.length - 1];
-                                    // Create sourcingSteps array if it doesn't exist
-                                    const sourcingSteps = lastMessage.sourcingSteps || [];
-                                    sourcingSteps.push(data.message);
-                        
-                                    let subSources = lastMessage.subSources || {};
-                                    
-                                    // Get the batches array and find the active batch
-                                    const batches = lastMessage.batches || [];
-                                    const activeBatchIndex = batches.findIndex(batch => batch.isActive);
-                        
-                                    if (data.sources) {
-                                        // Extract source keys directly from data.sources
-                                        const keys = Object.keys(data.sources).filter(key => key !== '[[Prototype]]');
-                                        console.log("keys:", keys);
-                        
-                                        const documentBoundsMap: Record<string, any> = {};
-                        
-                                        keys.forEach(key => {
-                                            let id = key.split('/').pop();
-                                            const final_id = id?.split("::")[0];
-                                            console.log("final_id:", final_id);
-
-                                            const fileName = id ? getFileName(final_id ?? "") : undefined;
-                                            if (fileName) {
-                                                subSources[fileName] = key;
-                                                
-                                                // If we have an active batch, add this source to it
-                                                if (activeBatchIndex !== -1) {
-                                                    if (!batches[activeBatchIndex].sources) {
-                                                        batches[activeBatchIndex].sources = {};
-                                                    }
-                                                    batches[activeBatchIndex].sources[fileName] = key;
-                                                }
-                                            }
-                        
-                                            if (data.sources[key]) {
-                                                const source = data.sources[key];
-                                                // Only save if it has the necessary coordinate information
-                                                if (source &&
-                                                    (source.bounding_box.x0 !== undefined &&
-                                                     source.bounding_box.y0 !== undefined &&
-                                                     source.bounding_box.x1 !== undefined &&
-                                                     source.bounding_box.y1 !== undefined)) {
-                        
-                                                    documentBoundsMap[key] = {
-                                                        page: source.page || 0,
-                                                        x0: source.bounding_box.x0,
-                                                        y0: source.bounding_box.y0,
-                                                        x1: source.bounding_box.x1,
-                                                        y1: source.bounding_box.y1,
-                                                        chunk_title: source.chunk_title,
-                                                        is_secondary: source.is_secondary,
-                                                        kg_properties: source.kg_properties,
-                                                        page_num: source.page_num,
-                                                        bounding_box: source.bounding_box
-                                                    };
-                                                }
-                                            }
-                                        });
-
-                                        if (Object.keys(documentBoundsMap).length > 0) {
-                                            useFileStore.getState().addMultipleDocumentBounds(documentBoundsMap);
-                                            console.log("Stored document bounds:", documentBoundsMap);
-                                        }
-                                    }
-
-                                    // Update the message with all changes at once
-                                    updateLastMessage({
-                                        sourcingSteps,
-                                        subSources,
-                                        batches,
-                                        progressText: "Generating sources..."
-                                    });
-
-
-                                }
-                            }
-                        }
-                        if (data.type === 'response') {
-
-                            if (data.thread_id) {
-                                setCurrentThreadId(data.thread_id);
-                            }
-
-                            pendingSearchResultsRef.current.push({
-                                response: data.response,
-                                sources: data.sources || {},
-                                thread_id: data.thread_id || ''
+                        } else if (lastMessage?.type === 'question') {
+                            addMessage({
+                                type: 'answer',
+                                content: '',
+                                progressText: progressText
                             });
+                        }
+                    }
+                }
 
-                            // Process the buffer if not already processing
-                            if (!processingRef.current) {
-                                processSearchResultBuffer();
+                if (data.type === 'batch') {
+                    // Handle batch response
+                    const batchItems = data.items || [];
+                    
+                    if (batchItems.length > 0) {
+                        // We're interested in step_start items which contain the description
+                        const stepStartItem = batchItems.find((item: { type: string; }) => item.type === 'step_start');
+                        
+                        if (stepStartItem) {
+                            setIsThinking(true);
+                            const currentMessages = useFileStore.getState().messages;
+                            
+                            // Only update if we have an answer message already
+                            if (currentMessages.length > 0 && 
+                                currentMessages[currentMessages.length - 1].type === 'answer') {
+                                
+                                const lastMessage = currentMessages[currentMessages.length - 1];
+                                
+                                // Create or update batches array
+                                const batches = lastMessage.batches || [];
+                                
+                                // Add the new batch with step information
+                                batches.push({
+                                    stepNumber: stepStartItem.step_number,
+                                    totalSteps: stepStartItem.total_steps,
+                                    description: stepStartItem.description,
+                                    sources: {},
+                                    isActive: true
+                                });
+
+                                if (batches.length > 1) {
+                                    for (let i = 0; i < batches.length - 1; i++) {
+                                        batches[i].isActive = false;
+                                    }
+                                }
+                                
+                                // Update the progress text to show the current step
+                                const progressText = `Step ${stepStartItem.step_number} of ${stepStartItem.total_steps}: ${stepStartItem.description}`;
+                                
+                                // Update the message with all changes at once
+                                updateLastMessage({
+                                    batches,
+                                    progressText
+                                });
+                            } else if (currentMessages.length > 0 && 
+                                       currentMessages[currentMessages.length - 1].type === 'question') {
+                                // If the last message is a question, create a new answer message
+                                const batches = [{
+                                    stepNumber: stepStartItem.step_number,
+                                    totalSteps: stepStartItem.total_steps,
+                                    description: stepStartItem.description,
+                                    sources: {},
+                                    isActive: true
+                                }];
+                                
+                                const progressText = `Step ${stepStartItem.step_number} of ${stepStartItem.total_steps}: ${stepStartItem.description}`;
+                                
+                                addMessage({
+                                    type: 'answer',
+                                    content: '',
+                                    batches,
+                                    progressText
+                                });
+                            }
+                        }
+                    }
+                }
+                
+                if (data.type === 'status') {
+                    if (data.sources) {
+                        setIsThinking(true);
+                        const currentMessages = useFileStore.getState().messages;
+                
+                        // Only update if we have an answer message already
+                        if (currentMessages.length > 0 &&
+                            currentMessages[currentMessages.length - 1].type === 'answer') {
+                
+                            const lastMessage = currentMessages[currentMessages.length - 1];
+                            // Create sourcingSteps array if it doesn't exist
+                            const sourcingSteps = lastMessage.sourcingSteps || [];
+                            sourcingSteps.push(data.message);
+                
+                            let subSources = lastMessage.subSources || {};
+                            
+                            // Get the batches array and find the active batch
+                            const batches = lastMessage.batches || [];
+                            const activeBatchIndex = batches.findIndex(batch => batch.isActive);
+                
+                            if (data.sources) {
+                                // Extract source keys directly from data.sources
+                                const keys = Object.keys(data.sources).filter(key => key !== '[[Prototype]]');
+                                
+                                const documentBoundsMap: Record<string, any> = {};
+                
+                                keys.forEach(key => {
+                                    let id = key.split('/').pop();
+                                    const final_id = id?.split("::")[0];
+
+                                    const fileName = id ? getFileName(final_id ?? "") : undefined;
+                                    if (fileName) {
+                                        subSources[fileName] = key;
+                                        
+                                        // If we have an active batch, add this source to it
+                                        if (activeBatchIndex !== -1) {
+                                            if (!batches[activeBatchIndex].sources) {
+                                                batches[activeBatchIndex].sources = {};
+                                            }
+                                            batches[activeBatchIndex].sources[fileName] = key;
+                                        }
+                                    }
+                
+                                    if (data.sources[key]) {
+                                        const source = data.sources[key];
+                                        // Only save if it has the necessary coordinate information
+                                        if (source &&
+                                            (source.bounding_box.x0 !== undefined &&
+                                             source.bounding_box.y0 !== undefined &&
+                                             source.bounding_box.x1 !== undefined &&
+                                             source.bounding_box.y1 !== undefined)) {
+                
+                                            documentBoundsMap[key] = {
+                                                page: source.page || 0,
+                                                x0: source.bounding_box.x0,
+                                                y0: source.bounding_box.y0,
+                                                x1: source.bounding_box.x1,
+                                                y1: source.bounding_box.y1,
+                                                chunk_title: source.chunk_title,
+                                                is_secondary: source.is_secondary,
+                                                kg_properties: source.kg_properties,
+                                                page_num: source.page_num,
+                                                bounding_box: source.bounding_box
+                                            };
+                                        }
+                                    }
+                                });
+
+                                if (Object.keys(documentBoundsMap).length > 0) {
+                                    useFileStore.getState().addMultipleDocumentBounds(documentBoundsMap);
+                                }
                             }
 
-
-                            // setSearchResult(prevResult => ({
-                            //     response: (prevResult?.response || '') + data.response,
-                            //     sources: data.sources || {},
-                            //     thread_id: data.thread_id || ''
-                            // }));
-
+                            // Update the message with all changes at once
+                            updateLastMessage({
+                                sourcingSteps,
+                                subSources,
+                                batches,
+                                progressText: "Generating sources..."
+                            });
                         }
-
-                        if (data.type === 'complete') {
-                            setIsWebSocketActive(false);
-                            setIsLoading(false);
-                        }
-                    } catch (error) {
-                        console.error('Error processing message:', error);
-                        setIsWebSocketActive(false);
-                        setIsLoading(false);
                     }
-                };
+                }
+                
+                if (data.type === 'response') {
+                    if (data.thread_id) {
+                        setCurrentThreadId(data.thread_id);
+                    }
 
-                ws.onerror = (error) => {
+                    pendingSearchResultsRef.current.push({
+                        response: data.response,
+                        sources: data.sources || {},
+                        thread_id: data.thread_id || ''
+                    });
+
+                    // Process the buffer if not already processing
+                    if (!processingRef.current) {
+                        processSearchResultBuffer();
+                    }
+                }
+
+                if (data.type === 'complete') {
+                    setIsWebSocketActive(false);
+                    setIsLoading(false);
+                    
+                    // Remove this handler once complete
+                    websocketManager.removeMessageHandler(messageHandler);
+                }
+                
+                if (data.type === 'error') {
+                    console.error('WebSocket error:', data.error);
                     setIsWebSocketActive(false);
                     setIsLoading(false);
                     setShowRetry(true);
-                    console.error('WebSocket Error Details:', {
-                        error,
-                        url: websocketUrl.substring(0, 100) + '...',
-                        timestamp: new Date().toISOString()
-                    });
-                    reject(new Error('WebSocket connection failed'));
-                };
-
-
-
-
-                ws.onclose = (event) => {
-                    setIsWebSocketActive(false);
-                    setIsLoading(false);
-                };
-            });
-
-        } catch (err) {
-            setIsWebSocketActive(false);
-
-            console.error('Error querying collection:', err);
-            setError('Failed to fetch search results. Please try again.');
-            setIsLoading(false);
+                    
+                    // Add error message if there is one
+                    if (data.error) {
+                        addMessage({
+                            type: 'error',
+                            content: data.error
+                        });
+                    }
+                    
+                    websocketManager.removeMessageHandler(messageHandler);
+                }
+            } catch (error) {
+                console.error('Error processing message:', error);
+                setIsWebSocketActive(false);
+                setIsLoading(false);
+            }
+        };
+        
+        // Connect to WebSocket if not already connected
+        if (!websocketManager.isConnectedTo(bucketUuid)) {
+            await websocketManager.connect(bucketUuid);
         }
-    };
+        
+        // Add the message handler
+        websocketManager.addMessageHandler(messageHandler);
+        
+        // Send the query through the manager
+        websocketManager.sendMessage({
+            action: 'query',
+            data: {
+                thread_id: currentThreadId || undefined,
+                collection_name: bucketUuid,
+                query: searchTerm,
+                use_reasoning: searchType === "reasoning",
+                file_keys: selectedFiles,
+                use_planning: searchType === "planning",
+                use_deep_search: searchType === "deep_research" // Add the deep research option
+            }
+        });
+        
+        // Return a cleanup function to remove the handler if the component unmounts
+        return () => {
+            websocketManager.removeMessageHandler(messageHandler);
+        };
+
+    } catch (err) {
+        setIsWebSocketActive(false);
+        console.error('Error querying collection:', err);
+        setError('Failed to fetch search results. Please try again.');
+        setIsLoading(false);
+        setShowRetry(true);
+        
+        // Add error message
+        addMessage({
+            type: 'error',
+            content: 'Failed to connect to the server. Please try again.'
+        });
+    }
+};
 
     const processSearchResultBuffer = () => {
         if (pendingSearchResultsRef.current.length === 0) {

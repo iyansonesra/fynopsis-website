@@ -118,18 +118,13 @@ export function IssueFilters({
 
             {/* Some filters visible on xl screens */}
             <div className="hidden xl:flex 2xl:hidden gap-2">
-                <Select>
-                    <SelectTrigger className="h-8 text-sm bg-transparent border-0 hover:bg-gray-100">
-                        <div className="flex items-center">
-                            <span>Labels</span>
-                        </div>
-                    </SelectTrigger>
-                    <SelectContent>
-                        <SelectItem value="any">Any</SelectItem>
-                        <SelectItem value="bug">Bug</SelectItem>
-                        <SelectItem value="feature">Feature</SelectItem>
-                    </SelectContent>
-                </Select>
+
+                <LabelsFilter
+                    availableTags={availableTags}
+                    selectedTags={selectedTags}
+                    onTagsChange={onTagsChange}
+                />
+
 
 
 

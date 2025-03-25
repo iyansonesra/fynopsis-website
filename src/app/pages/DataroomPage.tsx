@@ -52,12 +52,13 @@ export default function Home() {
   // Define tabs first so we can use it in initialTabIndex calculation
   const tabs: Tab[] = [
     { icon: Library, label: 'Library' },
-    { icon: Users, label: 'Users' },
-    { icon: Activity, label: 'Activity' },
+   
     // { icon: Table, label: 'Extract' },
-    { icon: Database, label: 'Deep Research' },
+    // { icon: Database, label: 'Deep Research' },
     { icon: ChartPie, label: 'Diligence' },
     { icon: MessagesSquare, label: 'Issues' }, // New tab for Issues
+    { icon: Users, label: 'Users' },
+    { icon: Activity, label: 'Activity' },
   ];
 
   // Get the active tab from URL query parameters or default to "library"
@@ -415,8 +416,8 @@ useEffect(() => {
         return <AuditLogViewer bucketId={dataroomId} />;
       // case "extract":
       //   return <TableViewer />;
-      case "deep research":
-        return <DeepResearchViewer />;
+      // case "deep research":
+      //   return <DeepResearchViewer />;
       case "diligence":
         return <DiligenceDashboardViewer />;
       case "issues":
