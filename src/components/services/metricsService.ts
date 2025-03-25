@@ -484,6 +484,8 @@ export class MetricsService {
       });
       
       await response.response;
+
+      console.log("deleting widget: ", response);
     } catch (error) {
       console.error('Error deleting widget:', error);
       throw error;

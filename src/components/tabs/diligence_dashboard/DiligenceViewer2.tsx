@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
-import { AlertCircle, BarChart2, ChevronDown, Circle, PieChart, PlusCircle, Settings, X, Save, FolderOpen, Maximize, Minimize } from 'lucide-react';
+import { AlertCircle, BarChart2, ChevronDown, Circle, PieChart, PlusCircle, Settings, X, Save, FolderOpen, Maximize, Minimize, Move } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { v4 as uuidv4 } from 'uuid';
 import { fetchMetricData, getAvailableMetrics, MetricsService, Widget, DashboardTemplate } from '../../services/metricsService';
@@ -780,12 +780,13 @@ export default function DiligenceDashboardViewer() {
     };
 
     const handleDeleteWidget = async (id: string) => {
+        console.log("DELETING WIDGET");
         try {
-            // Delete widget from backend
+            // Delete widget from backend first
             await MetricsService.deleteWidget(bucketId, id);
             
-            // Update local state
-            setWidgets(widgets.filter(widget => widget.id !== id));
+            // Once backend deletion is successful, update local state
+            setWidgets(prevWidgets => prevWidgets.filter(widget => widget.id !== id));
             
             toast({
                 title: "Success",
@@ -795,7 +796,8 @@ export default function DiligenceDashboardViewer() {
             console.error('Error deleting widget:', error);
             toast({
                 title: "Error",
-                description: "Failed to delete widget"
+                description: "Failed to delete widget",
+                variant: "destructive"
             });
         }
     };
@@ -1035,7 +1037,7 @@ const handleLayoutChange = (layout: any[]) => {
                     // cols={cols}
                     // rowHeight={rowHeight}
                     onLayoutChange={handleLayoutChange}
-                    // draggableHandle=".widget-drag-handle"
+                    draggableHandle=".widget-drag-handle"
                     // useCSSTransforms={true}
                     // compactType="vertical"
                     // preventCollision={true}      // Change to true to prevent collision during drag
@@ -1051,20 +1053,17 @@ const handleLayoutChange = (layout: any[]) => {
                         {widgets.map((widget) => (
                             <div key={widget.id}>
                                 <Card className="flex flex-col h-full overflow-hidden">
-                                    <div className="p-3 border-b bg-muted/20 flex items-center justify-between widget-drag-handle cursor-move">
+                                    <div className="p-3 border-b bg-muted/20 flex items-center justify-between cursor-default">
                                         <div className="font-medium truncate">{widget.title}</div>
                                         <div className="flex items-center space-x-1">
                                             <Button
                                                 variant="ghost"
                                                 size="icon"
-                                                className="h-7 w-7"
+                                                className="h-7 w-7 widget-drag-handle cursor-move"
                                                 onClick={() => toggleWidgetExpanded(widget.id)}
                                                 title={widget.config?.expanded ? "Minimize" : "Maximize"}
                                             >
-                                                {widget.config?.expanded ? 
-                                                    <Minimize className="h-4 w-4" /> : 
-                                                    <Maximize className="h-4 w-4" />
-                                                }
+                                               <Move className = "h-4 w-4"/>
                                             </Button>
                                             <Button
                                                 variant="ghost"
