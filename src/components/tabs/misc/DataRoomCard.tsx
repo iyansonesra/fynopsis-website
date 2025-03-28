@@ -1,5 +1,5 @@
 import React from 'react';
-import { Clock, MoreVertical, Trash2, LogOut, Edit2, Users } from 'lucide-react';
+import { Clock, MoreVertical, Trash2, LogOut, Edit2, Users, Loader2 } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -14,6 +14,7 @@ interface DataRoomCardProps {
   onClick: () => void;
   permissionLevel: string;
   sharedBy: string;
+  status?: string;
   onDelete?: () => void;
   onLeave?: () => void;
 }
@@ -24,7 +25,18 @@ interface sharedUser {
   role: string;
 }
 
-const DataRoomCard: React.FC<DataRoomCardProps> = ({ id, title, lastOpened, onClick, permissionLevel, sharedBy, onDelete, onLeave, users }) => {
+const DataRoomCard: React.FC<DataRoomCardProps> = ({ 
+  id, 
+  title, 
+  lastOpened, 
+  onClick, 
+  permissionLevel, 
+  sharedBy, 
+  onDelete, 
+  onLeave, 
+  users,
+  status = 'ready'
+}) => {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = React.useState(false);
   const [isLeaveDialogOpen, setIsLeaveDialogOpen] = React.useState(false);
   const [isRenameDialogOpen, setIsRenameDialogOpen] = React.useState(false);
@@ -32,6 +44,16 @@ const DataRoomCard: React.FC<DataRoomCardProps> = ({ id, title, lastOpened, onCl
   const [isDeleting, setIsDeleting] = React.useState(false);
   const [isUsersDialogOpen, setIsUsersDialogOpen] = React.useState(false);
 
+  const isDataroomReady = status === 'READY';
+
+  const handleCardClick = (e: React.MouseEvent) => {
+    if (isDataroomReady) {
+      onClick();
+    } else {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+  };
 
   const handleDelete = async () => {
     if (isDeleting) return;
@@ -94,9 +116,22 @@ const DataRoomCard: React.FC<DataRoomCardProps> = ({ id, title, lastOpened, onCl
 
   return (
     <>
-      <div className="bg-white dark:bg-transparent shadow-md overflow-hidden cursor-pointer hover:shadow-lg dark:hover:bg-slate-900 transition-shadow duration-300 w-full relative group border-b border-gray-200 dark:border-gray-700" onDoubleClick={onClick}>
+      <div 
+        className={`bg-white dark:bg-transparent shadow-md overflow-hidden 
+        ${isDataroomReady ? 'cursor-pointer hover:shadow-lg dark:hover:bg-slate-900' : 'cursor-default opacity-75'} 
+        transition-all duration-300 w-full relative group border-b border-gray-200 dark:border-gray-700`} 
+        onClick={handleCardClick}
+      >
+        {!isDataroomReady && (
+          <div className="absolute inset-0 bg-slate-100/50 dark:bg-slate-800/50 z-10 flex items-center justify-center">
+            <div className="bg-white dark:bg-slate-700 p-2 rounded-lg shadow-md flex items-center space-x-2">
+              <Loader2 className="h-4 w-4 animate-spin text-blue-500" />
+              <span className="text-sm font-medium text-slate-700 dark:text-slate-200">Preparing...</span>
+            </div>
+          </div>
+        )}
 
-        <div className="absolute right-2 top-2">
+        <div className="absolute right-2 top-2 z-20">
           <div className="flex flex-row items-center">
             <Button
               variant="ghost"
@@ -151,13 +186,20 @@ const DataRoomCard: React.FC<DataRoomCardProps> = ({ id, title, lastOpened, onCl
               </PopoverContent>
             </Popover>
           </div>
-
         </div>
-        <div onClick={onClick} className="p-6">
+
+        <div onClick={handleCardClick} className="p-6">
           <div className="flex items-center justify-between mb-2">
             <h2 className="text-xl font-semibold text-gray-900 dark:text-white">{title}</h2>
-
           </div>
+          
+          {!isDataroomReady && (
+            <div className="flex items-center text-sm text-amber-600 dark:text-amber-400 mb-2">
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              <span>Setting up dataroom...</span>
+            </div>
+          )}
+          
           <div className="flex items-center text-sm text-gray-500 dark:text-gray-400">
             <Clock className="mr-2 h-4 w-4" />
             <span>Last Opened: {lastOpened}</span>
@@ -166,7 +208,7 @@ const DataRoomCard: React.FC<DataRoomCardProps> = ({ id, title, lastOpened, onCl
       </div>
 
       <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-        <DialogContent className = "z-50">
+        <DialogContent className="z-50">
           <DialogHeader>
             <DialogTitle>Delete Dataroom</DialogTitle>
           </DialogHeader>
@@ -226,7 +268,7 @@ const DataRoomCard: React.FC<DataRoomCardProps> = ({ id, title, lastOpened, onCl
       </Dialog>
 
       <Dialog open={isUsersDialogOpen} onOpenChange={setIsUsersDialogOpen}>
-        <DialogContent className = "dark:bg-slate-900 dark:text-gray-200 dark:border-none">
+        <DialogContent className="dark:bg-slate-900 dark:text-gray-200 dark:border-none">
           <DialogHeader>
             <DialogTitle>Dataroom Members</DialogTitle>
           </DialogHeader>
@@ -250,7 +292,7 @@ const DataRoomCard: React.FC<DataRoomCardProps> = ({ id, title, lastOpened, onCl
             )}
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIsUsersDialogOpen(false)} className = "dark:text-gray-200 dark:bg-blue-900 dark:border-none" >
+            <Button variant="outline" onClick={() => setIsUsersDialogOpen(false)} className="dark:text-gray-200 dark:bg-blue-900 dark:border-none">
               Close
             </Button>
           </DialogFooter>

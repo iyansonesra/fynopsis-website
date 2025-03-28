@@ -55,6 +55,7 @@ type DataRoom = {
     sharedBy?: string;
     addedAt: string;
     users?: sharedUser[];
+    status?: string; // Add status field
 };
 
 type InvitedRoom = {
@@ -163,6 +164,8 @@ export default function GeneralDashboard() {
                 const responseText = await body.text();
                 const response = JSON.parse(responseText);
 
+                console.log("response for dataroom creation", response);
+
                 const newDataroom: DataRoom = {
                     bucketName: newDataroomNameExist,
                     uuid: response.uuid,
@@ -192,7 +195,7 @@ export default function GeneralDashboard() {
             if (!credentials) {
                 throw new Error('User is not authenticated');
             }
-
+    
             const restOperation = get({
                 apiName: 'S3_API',
                 path: '/get-data-rooms',
@@ -203,12 +206,13 @@ export default function GeneralDashboard() {
                     withCredentials: true
                 }
             });
-
+    
             const { body } = await restOperation.response;
             const responseText = await body.text();
             const response = JSON.parse(responseText);
-
-
+    
+            console.log("datarooms fetched", response);
+    
             // Update data rooms from the response
             const newDataRooms = response.buckets.map((room: DataRoom) => ({
                 id: room.uuid,
@@ -222,9 +226,10 @@ export default function GeneralDashboard() {
                 }),
                 permissionLevel: room.permissionLevel,
                 sharedBy: room.sharedBy,
-                users: room.users
+                users: room.users,
+                status: room.status || 'ready' // Default to 'ready' if status is not provided
             }));
-
+    
             // Update invited rooms from the response
             const newInvitedDatarooms = response.invited.map((room: InvitedRoom) => ({
                 bucketId: room.uuid,
@@ -233,10 +238,10 @@ export default function GeneralDashboard() {
                 permissionLevel: room.permissionLevel,
                 sharedAt: room.sharedAt
             }));
-
+    
             setDataRooms(newDataRooms);
             setInvitedDatarooms(newInvitedDatarooms);
-
+    
         } catch (error) {
             console.error('Error fetching data rooms:', error);
         } finally {
@@ -499,22 +504,27 @@ export default function GeneralDashboard() {
                             ) : (
                                 dataRooms.map((room) => (
                                     <div key={room.id} className="w-full">
-                                        <DataRoomCard
-                                            id={room.id || ''}
-                                            title={room.title}
-                                            users={room.users || []}
-                                            lastOpened={room.lastOpened}
-                                            permissionLevel={room.permissionLevel}
-                                            sharedBy={room.sharedBy || ''}
-                                            onClick={() => handleDataRoomClick(room.id)}
-                                            onDelete={() => {
-                                                setDataRooms(dataRooms.filter(r => r.id !== room.id));
-                                            }}
-                                            onLeave={() => {
-                                                setDataRooms(dataRooms.filter(r => r.id !== room.id));
-                                            }}
-                                        />
-                                    </div>
+                                    <DataRoomCard
+                                        id={room.id || ''}
+                                        title={room.title}
+                                        users={room.users || []}
+                                        lastOpened={room.lastOpened}
+                                        permissionLevel={room.permissionLevel}
+                                        sharedBy={room.sharedBy || ''}
+                                        status={room.status || 'ready'}
+                                        onClick={() => {
+                                            if (room.status === 'ready' || !room.status) {
+                                                handleDataRoomClick(room.id);
+                                            }
+                                        }}
+                                        onDelete={() => {
+                                            setDataRooms(dataRooms.filter(r => r.id !== room.id));
+                                        }}
+                                        onLeave={() => {
+                                            setDataRooms(dataRooms.filter(r => r.id !== room.id));
+                                        }}
+                                    />
+                                </div>
                                 ))
                             )}
                         </div>

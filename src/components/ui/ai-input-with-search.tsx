@@ -232,7 +232,7 @@ export const AIInputWithSearch: React.FC<AIInputWithSearchProps> = ({
                     onClick={() => setSearchType("deep_research")}
                   >
                     <BookOpen className="w-4 h-4" />
-                    <span>Deep Research</span>
+                    <span>Deep Search</span>
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
