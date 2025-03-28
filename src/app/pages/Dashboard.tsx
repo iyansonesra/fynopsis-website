@@ -511,9 +511,9 @@ export default function GeneralDashboard() {
                                         lastOpened={room.lastOpened}
                                         permissionLevel={room.permissionLevel}
                                         sharedBy={room.sharedBy || ''}
-                                        status={room.status || 'ready'}
+                                        status={room.status || 'READY'}
                                         onClick={() => {
-                                            if (room.status === 'ready' || !room.status) {
+                                            if (room.status === 'READY' || !room.status) {
                                                 handleDataRoomClick(room.id);
                                             }
                                         }}

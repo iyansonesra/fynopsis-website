@@ -47,8 +47,11 @@ const DataRoomCard: React.FC<DataRoomCardProps> = ({
   const isDataroomReady = status === 'READY';
 
   const handleCardClick = (e: React.MouseEvent) => {
+    console.log("CARD CLICKED")
     if (isDataroomReady) {
+      console.log("DATAROOM IS READY");
       onClick();
+
     } else {
       e.preventDefault();
       e.stopPropagation();
