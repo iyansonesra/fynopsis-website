@@ -346,6 +346,8 @@ export const AuditLogViewer: React.FC<AuditLogViewerProps> = ({ bucketId }) => {
 
             const data = (await response.body.json() as unknown) as AuditLogResponse;
 
+            console.log(data);
+
             if (reset) {
                 setEvents(data?.events || []);
             } else {
@@ -419,7 +421,7 @@ export const AuditLogViewer: React.FC<AuditLogViewerProps> = ({ bucketId }) => {
         };
 
         if (event.action === "FILE_MOVE") {
-            // return event.details.itemName;
+            return event.details.itemName;
         }
 
         return actions[event.action] || event.action;
