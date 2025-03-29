@@ -75,13 +75,14 @@ interface DocumentTags {
   confidentiality: string;
 }
 
-interface Files {
+export interface Files {
   fileId: string;
   fileName: string;
   fullPath: string;
   parentFolderId: string;
   parentFolderName: string;
   size: string;
+  isFolder?: boolean;
 }
 
 interface DocumentBounds {

@@ -29,6 +29,8 @@ import BasicPDFViewer from './PDFTest';
 import PDFHighlighterViewer from './PDFHighlight';
 import PDFHighlighterComponent from './PDFHighlight';
 import type { IHighlight } from "react-pdf-highlighter"; // Add this import
+import FolderTree from '../folder_tree/folderTree';
+
 
 interface Tab {
     id: string;
@@ -300,6 +302,20 @@ export default function Files({ setSelectedTab }: { setSelectedTab: React.Dispat
                 direction="horizontal"
                 className="bg-background flex w-full mb-2 flex-row h-full overflow-hidden font-montserrat dark:bg-darkbg"
             >
+
+                <ResizablePanel
+                    defaultSize={tabSystemPanelSize}
+                    minSize={20}
+                    maxSize={20}
+                    collapsible={true}
+                    collapsedSize={0}
+                    onResize={handleTabSystemResize}
+                >
+                    
+                    <FolderTree />
+
+                </ResizablePanel>
+                <ResizableHandle withHandle className='dark:bg-slate-900' />
 
                 <ResizablePanel
                     defaultSize={tabSystemPanelSize}
