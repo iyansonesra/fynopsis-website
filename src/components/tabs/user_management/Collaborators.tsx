@@ -139,7 +139,7 @@ const SkeletonCard: React.FC = () => {
   );
 };
 
-// Update FolderPermissionTree component to have a selection mechanism
+// Fix the recursive getAllDescendantIds function and handleHierarchicalPermissionChange function
 const FolderPermissionTree = ({ 
   folderStructure, 
   selectedPermissions, 
@@ -153,35 +153,113 @@ const FolderPermissionTree = ({
   selectedItem: string | null;
   onSelectItem: (id: string) => void;
 }) => {
+  // Completely rewritten function to recursively gather all descendant IDs (including nested folders)
+  const getAllDescendantIds = (item: FileTreeItem, items: FileTreeItem[]): string[] => {
+    // If not a folder or has no children, return empty array
+    if (item.type !== 'folder' || !item.children || item.children.length === 0) {
+      return [];
+    }
+    
+    // Start with direct children
+    let descendants: string[] = item.children.map(child => child.id);
+    
+    // Recursively add children of children
+    for (const child of item.children) {
+      if (child.type === 'folder') {
+        // Find the full child item with its children from the items array
+        const fullChildItem = findItemById(child.id, items);
+        if (fullChildItem) {
+          descendants = [...descendants, ...getAllDescendantIds(fullChildItem, items)];
+        }
+      }
+    }
+    
+    return descendants;
+  };
+
+  // Helper to find an item by ID in the folder structure
+  const findItemById = (id: string, items: FileTreeItem[]): FileTreeItem | null => {
+    for (const item of items) {
+      if (item.id === id) return item;
+      if (item.children) {
+        const found = findItemById(id, item.children);
+        if (found) return found;
+      }
+    }
+    return null;
+  };
+
+  // Completely rewritten permission change handler to fix folder deselection issues
+  const handleHierarchicalPermissionChange = (id: string, permissions: FilePermission) => {
+    console.log(`Changing permissions for ${id}:`, permissions);
+    
+    // First, find the item to check if it's a folder
+    const item = findItemById(id, folderStructure);
+    if (!item) {
+      console.error(`Item with ID ${id} not found`);
+      return;
+    }
+    
+    // First update the selected item itself
+    onPermissionChange(id, permissions);
+    
+    // If this is a folder and visibility is being turned off, update all children
+    if (item.type === 'folder' && permissions.show === false) {
+      console.log(`${id} is a folder and visibility is being turned off`);
+      
+      // Get all descendants of this folder
+      const descendantIds = getAllDescendantIds(item, folderStructure);
+      console.log(`Found ${descendantIds.length} descendants:`, descendantIds);
+      
+      // Update each descendant to also not be visible
+      descendantIds.forEach(childId => {
+        const childPermissions = selectedPermissions[childId] || {
+          show: true,
+          viewAccess: true,
+          downloadAccess: false,
+          deleteEditAccess: false,
+          requireAgreement: false,
+          viewTags: true
+        };
+        
+        console.log(`Setting child ${childId} visibility to false`);
+        onPermissionChange(childId, { 
+          ...childPermissions, 
+          show: false,
+          // Also reset other permissions for completeness
+          viewAccess: false,
+          downloadAccess: false,
+          deleteEditAccess: false,
+          requireAgreement: false,
+          viewTags: false
+        });
+      });
+    }
+  };
+
   return (
-    <div className="border rounded-md dark:border-gray-700 h-full">
+    <div className="border rounded-md overflow-auto dark:border-gray-700" style={{ maxHeight: '500px' }}>
       <div className="p-3 border-b bg-gray-50 dark:bg-gray-800 dark:border-gray-700 font-medium">
-        <span>Files & Folders</span>
+        <span className="dark:text-white">Files and Folders</span>
       </div>
-      <div className="p-2 overflow-y-auto" style={{ height: '450px' }}>
-        {folderStructure.length === 0 ? (
-          <div className="p-4 text-center text-gray-500">
-            Loading file structure...
-          </div>
-        ) : (
-          folderStructure.map((item) => (
-            <FileTreeItem 
-              key={item.id}
-              item={item} 
-              level={0}
-              selectedPermissions={selectedPermissions}
-              onPermissionChange={onPermissionChange}
-              selectedItem={selectedItem}
-              onSelectItem={onSelectItem}
-            />
-          ))
-        )}
+      <div className="p-2">
+        {folderStructure.map((item) => (
+          <FileTreeItem 
+            key={item.id} 
+            item={item} 
+            level={0} 
+            selectedPermissions={selectedPermissions}
+            onPermissionChange={handleHierarchicalPermissionChange}
+            selectedItem={selectedItem}
+            onSelectItem={onSelectItem}
+          />
+        ))}
       </div>
     </div>
   );
 };
 
-// Update FileTreeItem to support selection
+// Fix the FileTreeItem component to properly handle checkbox events
 const FileTreeItem = ({ 
   item, 
   level, 
@@ -239,12 +317,17 @@ const FileTreeItem = ({
         
         <div className="flex items-center">
           <Checkbox 
-            id={`${item.id}-show`}
+            id={`tree-${item.id}-show`}
             checked={itemPermissions.show}
             onCheckedChange={(checked) => {
-              onPermissionChange(item.id, { ...itemPermissions, show: checked as boolean });
+              const newValue = checked as boolean;
+              // Make sure to separate click event from the parent div
+              onPermissionChange(item.id, { ...itemPermissions, show: newValue });
             }}
-            onClick={(e) => e.stopPropagation()}
+            onClick={(e) => {
+              // Crucial: Stop propagation so the click doesn't reach the parent div
+              e.stopPropagation();
+            }}
           />
         </div>
       </div>
