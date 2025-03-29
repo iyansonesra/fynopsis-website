@@ -106,6 +106,14 @@ type PermissionGroup = {
   fileSpecificPermissions?: Record<string, FilePermission>;
 };
 
+// Create helper function to format role display names at the top of the file
+// Add this after the type definitions
+const formatRoleDisplay = (role: string): string => {
+  if (role === 'READ') return 'Viewer';
+  if (role === 'WRITE') return 'Editor';
+  return role.charAt(0).toUpperCase() + role.slice(1).toLowerCase();
+};
+
 // Add this component at the top (or where appropriate)
 const SkeletonCard: React.FC = () => {
   return (
@@ -260,7 +268,7 @@ const FileTreeItem = ({
   );
 };
 
-// Update the ItemPermissionsPanel component to handle null selectedItemId
+// Update the ItemPermissionsPanel component to disable and deselect other permissions when visibility is off
 const ItemPermissionsPanel: React.FC<{
   selectedItemId: string | null;
   items: any[];
@@ -285,9 +293,29 @@ const ItemPermissionsPanel: React.FC<{
   // Safe handler that ensures we have a valid ID
   const handlePermissionChange = (id: string | null, newPermissions: any) => {
     if (id) {
-      onPermissionChange(id, newPermissions);
+      // If visibility is being turned off, deselect all other permissions too
+      if (newPermissions.hasOwnProperty('show') && newPermissions.show === false) {
+        onPermissionChange(id, {
+          ...newPermissions,
+          viewAccess: false,
+          downloadAccess: false,
+          deleteEditAccess: false,
+          requireAgreement: false,
+          viewTags: false,
+          // For folders
+          allowUploads: false,
+          viewComments: false,
+          addComments: false,
+          viewContents: false
+        });
+      } else {
+        onPermissionChange(id, newPermissions);
+      }
     }
   };
+  
+  // Determine if the item is visible
+  const isVisible = itemPermissions.show !== false; // Default to true if not explicitly set to false
 
   return (
     <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-md">
@@ -301,7 +329,7 @@ const ItemPermissionsPanel: React.FC<{
           <div className="flex items-center space-x-2 mb-2">
             <Checkbox 
               id={`${selectedItemId}-show`}
-              checked={itemPermissions.show}
+              checked={isVisible}
               onCheckedChange={(checked) => 
                 handlePermissionChange(selectedItemId, { ...itemPermissions, show: checked as boolean })}
             />
@@ -317,11 +345,12 @@ const ItemPermissionsPanel: React.FC<{
             <div className="flex items-center space-x-2">
               <Checkbox 
                 id={`${selectedItemId}-view`}
-                checked={itemPermissions.viewAccess}
+                checked={isVisible && itemPermissions.viewAccess}
                 onCheckedChange={(checked) => 
                   handlePermissionChange(selectedItemId, { ...itemPermissions, viewAccess: checked as boolean })}
+                disabled={!isVisible}
               />
-              <label htmlFor={`${selectedItemId}-view`} className="text-sm">
+              <label htmlFor={`${selectedItemId}-view`} className={`text-sm ${!isVisible ? 'text-gray-400' : ''}`}>
                 View content
               </label>
             </div>
@@ -329,11 +358,12 @@ const ItemPermissionsPanel: React.FC<{
             <div className="flex items-center space-x-2">
               <Checkbox 
                 id={`${selectedItemId}-download`}
-                checked={itemPermissions.downloadAccess}
+                checked={isVisible && itemPermissions.downloadAccess}
                 onCheckedChange={(checked) => 
                   handlePermissionChange(selectedItemId, { ...itemPermissions, downloadAccess: checked as boolean })}
+                disabled={!isVisible}
               />
-              <label htmlFor={`${selectedItemId}-download`} className="text-sm">
+              <label htmlFor={`${selectedItemId}-download`} className={`text-sm ${!isVisible ? 'text-gray-400' : ''}`}>
                 Download
               </label>
             </div>
@@ -341,11 +371,12 @@ const ItemPermissionsPanel: React.FC<{
             <div className="flex items-center space-x-2">
               <Checkbox 
                 id={`${selectedItemId}-edit`}
-                checked={itemPermissions.deleteEditAccess}
+                checked={isVisible && itemPermissions.deleteEditAccess}
                 onCheckedChange={(checked) => 
                   handlePermissionChange(selectedItemId, { ...itemPermissions, deleteEditAccess: checked as boolean })}
+                disabled={!isVisible}
               />
-              <label htmlFor={`${selectedItemId}-edit`} className="text-sm">
+              <label htmlFor={`${selectedItemId}-edit`} className={`text-sm ${!isVisible ? 'text-gray-400' : ''}`}>
                 Edit/Delete
               </label>
             </div>
@@ -358,11 +389,12 @@ const ItemPermissionsPanel: React.FC<{
             <div className="flex items-center space-x-2">
               <Checkbox 
                 id={`${selectedItemId}-watermark`}
-                checked={!itemPermissions.viewAccess || (itemPermissions.requireAgreement || false)}
+                checked={isVisible && (!itemPermissions.viewAccess || (itemPermissions.requireAgreement || false))}
                 onCheckedChange={(checked) => 
                   handlePermissionChange(selectedItemId, { ...itemPermissions, requireAgreement: checked as boolean })}
+                disabled={!isVisible}
               />
-              <label htmlFor={`${selectedItemId}-watermark`} className="text-sm">
+              <label htmlFor={`${selectedItemId}-watermark`} className={`text-sm ${!isVisible ? 'text-gray-400' : ''}`}>
                 Require NDA/agreement to view
               </label>
             </div>
@@ -370,11 +402,12 @@ const ItemPermissionsPanel: React.FC<{
             <div className="flex items-center space-x-2">
               <Checkbox 
                 id={`${selectedItemId}-viewtags`}
-                checked={itemPermissions.viewTags}
+                checked={isVisible && itemPermissions.viewTags}
                 onCheckedChange={(checked) => 
                   handlePermissionChange(selectedItemId, { ...itemPermissions, viewTags: checked as boolean })}
+                disabled={!isVisible}
               />
-              <label htmlFor={`${selectedItemId}-viewtags`} className="text-sm">
+              <label htmlFor={`${selectedItemId}-viewtags`} className={`text-sm ${!isVisible ? 'text-gray-400' : ''}`}>
                 View tags
               </label>
             </div>
@@ -383,11 +416,12 @@ const ItemPermissionsPanel: React.FC<{
               <div className="flex items-center space-x-2">
                 <Checkbox 
                   id={`${selectedItemId}-uploads`}
-                  checked={itemPermissions.deleteEditAccess}
+                  checked={isVisible && itemPermissions.deleteEditAccess}
                   onCheckedChange={(checked) => 
                     handlePermissionChange(selectedItemId, { ...itemPermissions, deleteEditAccess: checked as boolean })}
+                  disabled={!isVisible}
                 />
-                <label htmlFor={`${selectedItemId}-uploads`} className="text-sm">
+                <label htmlFor={`${selectedItemId}-uploads`} className={`text-sm ${!isVisible ? 'text-gray-400' : ''}`}>
                   Allow uploads to this folder
                 </label>
               </div>
@@ -518,9 +552,14 @@ const UserManagement: React.FC<UserManagementProps> = () => {
     }
   ]);
 
-  const canModifyUserRole = (currentUserRole: Role, targetUserRole: Role) => {
+  const canModifyUserRole = (currentUserRole: Role, targetUserRole: Role, isCurrentUser: boolean = false) => {
+    // Owner cannot modify their own permission
+    if (isCurrentUser && currentUserRole === 'OWNER') {
+      return false;
+    }
+    
     if (currentUserRole === 'OWNER') {
-      return true;  // OWNER can modify any role
+      return true;  // OWNER can modify any other role
     }
     if (currentUserRole === 'ADMIN') {
       return targetUserRole !== 'OWNER' && targetUserRole !== 'ADMIN';  // ADMIN can only modify READ and WRITE roles
@@ -576,11 +615,12 @@ const UserManagement: React.FC<UserManagementProps> = () => {
   };
 
   const RoleSelect = ({ user, currentUserRole }: { user: User; currentUserRole: Role }) => {
-    const canModify = canModifyUserRole(currentUserRole, user.role as Role);
+    const isCurrentUser = user.userId === currentUser?.userId;
+    const canModify = canModifyUserRole(currentUserRole, user.role as Role, isCurrentUser);
 
     if (!canModify) {
       return <div className="text-gray-600 font-medium dark:text-white text-sm">
-        {user.role.charAt(0).toUpperCase() + user.role.slice(1).toLowerCase()}
+        {formatRoleDisplay(user.role)}
       </div>;
     }
 
@@ -588,16 +628,15 @@ const UserManagement: React.FC<UserManagementProps> = () => {
       <Select
         value={user.role}
         onValueChange={(newValue) => handleRoleChange(user.email, newValue)}
-
       >
         <SelectTrigger className="w-[140px] bg-white dark:bg-slate-800 dark:text-white dark:border-gray-700 select-none outline-none">
           <SelectValue placeholder="Select permission" />
         </SelectTrigger>
         <SelectContent className='dark:text-white dark:bg-slate-800'>
-          <SelectItem value="READ" className='dark:text-white text-sm'>Read</SelectItem>
-          <SelectItem value="WRITE" className='dark:text-white text-sm'>Write</SelectItem>
+          <SelectItem value="READ" className='dark:text-white text-sm'>Viewer</SelectItem>
+          <SelectItem value="WRITE" className='dark:text-white text-sm'>Editor</SelectItem>
           <SelectItem value="ADMIN" className='dark:text-white text-sm'>Admin</SelectItem>
-          {currentUserRole === 'OWNER' && (
+          {currentUserRole === 'OWNER' && !isCurrentUser && (
             <SelectItem value="OWNER" className='dark:text-white text-sm'>Owner</SelectItem>
           )}
         </SelectContent>
@@ -887,29 +926,19 @@ const UserManagement: React.FC<UserManagementProps> = () => {
   };
 
   const handleAllAccessChange = (checked: boolean) => {
-    setNewGroup({
-      ...newGroup,
-      allAccess: checked,
-      // If all access is enabled, update default permissions
-      ...(checked && {
-        defaultFilePerms: {
-          viewAccess: true,
-          watermarkContent: false,
-          deleteEditAccess: true,
-          viewComments: true,
-          addComments: true,
-          downloadAccess: true,
-          viewTags: true
-        },
-        defaultFolderPerms: {
-          allowUploads: true,
-          viewComments: true,
-          addComments: true,
-          viewContents: true,
-          viewTags: true
-        }
-      })
-    });
+    if (checked) {
+      // When enabling all access
+      setNewGroup({
+        ...newGroup,
+        allAccess: true,
+      });
+    } else {
+      // When disabling all access, keep current permissions
+      setNewGroup({
+        ...newGroup,
+        allAccess: false,
+      });
+    }
   };
   
   const handleFilePermissionChange = (fileId: string, permissions: FilePermission) => {
@@ -1172,8 +1201,8 @@ const UserManagement: React.FC<UserManagementProps> = () => {
                   <SelectValue placeholder="Select permission level" />
                 </SelectTrigger>
                 <SelectContent className="dark:bg-slate-800">
-                  <SelectItem value="READ" className="dark:text-white">Read</SelectItem>
-                  <SelectItem value="WRITE" className="dark:text-white">Write</SelectItem>
+                  <SelectItem value="READ" className="dark:text-white">Viewer</SelectItem>
+                  <SelectItem value="WRITE" className="dark:text-white">Editor</SelectItem>
                   <SelectItem value="ADMIN" className="dark:text-white">Admin</SelectItem>
                 </SelectContent>
               </Select>
@@ -1301,11 +1330,11 @@ const UserManagement: React.FC<UserManagementProps> = () => {
                         variant={!showSpecificPermissions ? "default" : "outline"}
                         onClick={() => {
                           setShowSpecificPermissions(false);
-                          handleAllAccessChange(true);
+                          // Don't automatically set allAccess to true
                         }}
                         className={`w-full ${!showSpecificPermissions ? 'bg-blue-600 hover:bg-blue-700 text-white' : ''}`}
                       >
-                        Full Access (All Files)
+                        General Permissions
                       </Button>
                     </div>
                     <div className="flex-1">
@@ -1314,7 +1343,10 @@ const UserManagement: React.FC<UserManagementProps> = () => {
                         variant={showSpecificPermissions ? "default" : "outline"}
                         onClick={() => {
                           setShowSpecificPermissions(true);
-                          handleAllAccessChange(false);
+                          // Only set allAccess to false if it's currently true
+                          if (newGroup.allAccess) {
+                            handleAllAccessChange(false);
+                          }
                         }}
                         className={`w-full ${showSpecificPermissions ? 'bg-blue-600 hover:bg-blue-700 text-white' : ''}`}
                       >
@@ -1326,12 +1358,12 @@ const UserManagement: React.FC<UserManagementProps> = () => {
                 
                 {!showSpecificPermissions && (
                   <p className="text-sm text-gray-500 dark:text-gray-400">
-                    Full access grants all permissions to all files and folders
+                    General permissions makes all the files visible in the dataroombut may require specific settings for viewing content or downloading
                   </p>
                 )}
                 {showSpecificPermissions && (
                   <p className="text-sm text-gray-500 dark:text-gray-400">
-                    Configure permissions for specific files and folders
+                    Configure granular permissions for specific files and folders
                   </p>
                 )}
               </div>
@@ -1358,7 +1390,7 @@ const UserManagement: React.FC<UserManagementProps> = () => {
                                 viewAccess: checked as boolean
                               }
                             })}
-                          disabled={newGroup.allAccess}
+                          disabled={false}
                         />
                         <label htmlFor="file-view-access" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
                           View files
@@ -1377,7 +1409,7 @@ const UserManagement: React.FC<UserManagementProps> = () => {
                                 downloadAccess: checked as boolean
                               }
                             })}
-                          disabled={newGroup.allAccess}
+                          disabled={false}
                         />
                         <label htmlFor="file-download" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
                           Download files
@@ -1396,7 +1428,7 @@ const UserManagement: React.FC<UserManagementProps> = () => {
                                 watermarkContent: checked as boolean
                               }
                             })}
-                          disabled={newGroup.allAccess}
+                          disabled={false}
                         />
                         <label htmlFor="file-watermark" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
                           Apply watermark to content
@@ -1415,7 +1447,7 @@ const UserManagement: React.FC<UserManagementProps> = () => {
                                 deleteEditAccess: checked as boolean
                               }
                             })}
-                          disabled={newGroup.allAccess}
+                          disabled={false}
                         />
                         <label htmlFor="file-delete-edit" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
                           Delete/edit files
@@ -1434,7 +1466,7 @@ const UserManagement: React.FC<UserManagementProps> = () => {
                                 viewComments: checked as boolean
                               }
                             })}
-                          disabled={newGroup.allAccess}
+                          disabled={false}
                         />
                         <label htmlFor="file-view-comments" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
                           View comments
@@ -1453,7 +1485,7 @@ const UserManagement: React.FC<UserManagementProps> = () => {
                                 addComments: checked as boolean
                               }
                             })}
-                          disabled={newGroup.allAccess}
+                          disabled={false}
                         />
                         <label htmlFor="file-add-comments" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
                           Add comments
@@ -1472,7 +1504,7 @@ const UserManagement: React.FC<UserManagementProps> = () => {
                                 viewTags: checked as boolean
                               }
                             })}
-                          disabled={newGroup.allAccess}
+                          disabled={false}
                         />
                         <label htmlFor="file-view-tags" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
                           View tags
@@ -1491,7 +1523,7 @@ const UserManagement: React.FC<UserManagementProps> = () => {
                                 viewContents: checked as boolean
                               }
                             })}
-                          disabled={newGroup.allAccess}
+                          disabled={false}
                         />
                         <label htmlFor="folder-view-contents" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
                           View folder contents
@@ -1510,7 +1542,7 @@ const UserManagement: React.FC<UserManagementProps> = () => {
                                 allowUploads: checked as boolean
                               }
                             })}
-                          disabled={newGroup.allAccess}
+                          disabled={false}
                         />
                         <label htmlFor="folder-allow-uploads" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
                           Allow uploads to folder
@@ -1565,6 +1597,10 @@ const UserManagement: React.FC<UserManagementProps> = () => {
                     <label htmlFor="can-query" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
                       Can query dataroom
                     </label>
+                  </div>
+                  
+                  <div className="text-xs text-amber-500 dark:text-amber-400 italic bg-amber-50 dark:bg-amber-950/30 p-2 rounded-md mb-2">
+                    Note: Queries may use data from files that users may not have access to with Specific Permissions (granular querying coming soon)
                   </div>
                   
                   <div className="flex items-center space-x-2">
@@ -1633,7 +1669,7 @@ const UserManagement: React.FC<UserManagementProps> = () => {
                             setNewGroup({...newGroup, canInviteUsers: newInviteUsers});
                           }}
                         />
-                        <label htmlFor="invite-read" className="text-sm">Read</label>
+                        <label htmlFor="invite-read" className="text-sm">Viewer</label>
                       </div>
                       
                       <div className="flex items-center space-x-2">
@@ -1651,7 +1687,7 @@ const UserManagement: React.FC<UserManagementProps> = () => {
                             setNewGroup({...newGroup, canInviteUsers: newInviteUsers});
                           }}
                         />
-                        <label htmlFor="invite-write" className="text-sm">Write</label>
+                        <label htmlFor="invite-write" className="text-sm">Editor</label>
                       </div>
                       
                       <div className="flex items-center space-x-2">
