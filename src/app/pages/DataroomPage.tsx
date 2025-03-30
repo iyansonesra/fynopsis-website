@@ -297,6 +297,8 @@ useEffect(() => {
         size: file.size || ''
       })) : [];
 
+      console.log("formattedFiles: ", formattedFiles);
+
       setSearchableFiles(formattedFiles);
 
     } catch (error) {
