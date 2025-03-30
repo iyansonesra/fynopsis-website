@@ -74,10 +74,11 @@ type FilePermission = {
   allowUploads?: boolean; // Added allowUploads
 };
 
-// Permission Group Type
+// Permission Group Type Update
 type PermissionGroup = {
   id: string;
   name: string;
+  isDefault?: boolean; // Added flag for default roles
   allAccess: boolean;
   canQuery: boolean;
   canOrganize: boolean;
@@ -106,6 +107,134 @@ type PermissionGroup = {
   };
   fileSpecificPermissions?: Record<string, FilePermission>;
 };
+
+// Define Default Role Structures (Constants) - Placed BEFORE the component
+const DEFAULT_ROLES: Array<Omit<PermissionGroup, 'id'>> = [
+  {
+    name: 'Owner',
+    isDefault: true,
+    allAccess: true,
+    // ... rest of Owner permissions (as defined before) ...
+    canQuery: true,
+    canOrganize: true,
+    canViewAuditLogs: true,
+    canInviteUsers: ['*'],
+    canUpdateUserPermissions: ['*'],
+    canCreatePermissionGroups: true,
+    canDeleteDataroom: true,
+    canUseQA: true,
+    canReadAnswerQuestions: true,
+    defaultFilePerms: {
+      viewAccess: true,
+      watermarkContent: false,
+      deleteEditAccess: true,
+      viewComments: true,
+      addComments: true,
+      downloadAccess: true,
+      viewTags: true
+    },
+    defaultFolderPerms: {
+      allowUploads: true,
+      viewComments: true,
+      addComments: true,
+      viewContents: true,
+      viewTags: true
+    }
+  },
+  {
+    name: 'Admin',
+    isDefault: true,
+    allAccess: true,
+    // ... rest of Admin permissions (as defined before) ...
+     canQuery: true,
+    canOrganize: true,
+    canViewAuditLogs: true,
+    canInviteUsers: ['READ', 'WRITE', 'ADMIN'],
+    canUpdateUserPermissions: ['READ', 'WRITE', 'ADMIN'],
+    canCreatePermissionGroups: true,
+    canDeleteDataroom: false,
+    canUseQA: true,
+    canReadAnswerQuestions: true,
+    defaultFilePerms: {
+      viewAccess: true,
+      watermarkContent: false,
+      deleteEditAccess: true,
+      viewComments: true,
+      addComments: true,
+      downloadAccess: true,
+      viewTags: true
+    },
+    defaultFolderPerms: {
+      allowUploads: true,
+      viewComments: true,
+      addComments: true,
+      viewContents: true,
+      viewTags: true
+    }
+  },
+  {
+    name: 'Editor', // WRITE
+    isDefault: true,
+    allAccess: true, 
+    // ... rest of Editor permissions (as defined before) ...
+    canQuery: true,
+    canOrganize: false,
+    canViewAuditLogs: false,
+    canInviteUsers: [],
+    canUpdateUserPermissions: [],
+    canCreatePermissionGroups: false,
+    canDeleteDataroom: false,
+    canUseQA: true,
+    canReadAnswerQuestions: true,
+    defaultFilePerms: {
+      viewAccess: true,
+      watermarkContent: false,
+      deleteEditAccess: true,
+      viewComments: true,
+      addComments: true,
+      downloadAccess: true,
+      viewTags: true
+    },
+    defaultFolderPerms: {
+      allowUploads: true,
+      viewComments: true,
+      addComments: true,
+      viewContents: true,
+      viewTags: true
+    }
+  },
+  {
+    name: 'Viewer', // READ
+    isDefault: true,
+    allAccess: true, 
+    // ... rest of Viewer permissions (as defined before) ...
+     canQuery: true,
+    canOrganize: false,
+    canViewAuditLogs: false,
+    canInviteUsers: [],
+    canUpdateUserPermissions: [],
+    canCreatePermissionGroups: false,
+    canDeleteDataroom: false,
+    canUseQA: true,
+    canReadAnswerQuestions: false,
+    defaultFilePerms: {
+      viewAccess: true,
+      watermarkContent: true,
+      deleteEditAccess: false,
+      viewComments: true,
+      addComments: false,
+      downloadAccess: false,
+      viewTags: true
+    },
+    defaultFolderPerms: {
+      allowUploads: false,
+      viewComments: true,
+      addComments: false,
+      viewContents: true,
+      viewTags: true
+    }
+  }
+];
 
 // Create helper function to format role display names at the top of the file
 // Add this after the type definitions
@@ -195,7 +324,7 @@ const FolderPermissionTree = ({
   }, [selectedItem, parentMap]);
 
   return (
-    <div className="border rounded-md overflow-auto dark:border-gray-700" style={{ maxHeight: '500px' }}>
+    <div className="border rounded-md overflow-auto dark:border-gray-700" style={{ height: '500px' }}>
       <div className="p-3 border-b bg-gray-50 dark:bg-gray-800 dark:border-gray-700 font-medium">
         <span className="dark:text-white">Files and Folders</span>
       </div>
@@ -342,7 +471,7 @@ const ItemPermissionsPanel: React.FC<{
 }> = ({ selectedItemId, items, permissions, onPermissionChange }) => {
   if (!selectedItemId) {
     return (
-      <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-md h-full flex items-center justify-center"> 
+      <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-md h-full flex items-center justify-center min-h-[500px]">
         <p className="text-center text-gray-500 dark:text-gray-400">
           Select a file or folder to view and edit its permissions
         </p>
@@ -1185,6 +1314,18 @@ const UserManagement: React.FC<UserManagementProps> = () => {
   // Add state for showing specific file permissions
   const [showSpecificPermissions, setShowSpecificPermissions] = useState(false);
 
+  // Combine default roles and custom groups for display
+  // Use the globally defined DEFAULT_ROLES constant
+  const allGroupsToDisplay: PermissionGroup[] = [
+    // Map default roles, providing a unique ID and ensuring type compatibility
+    ...DEFAULT_ROLES.map((role): PermissionGroup => ({
+      ...role,
+      id: `default-${role.name.toLowerCase()}`,
+      // Ensure properties match PermissionGroup structure if needed (though Omit handles this)
+    })),
+    ...permissionGroups // Append custom groups fetched or created
+  ];
+
   if (isLoading) {
     return (
       <div className="mx-auto px-4 py-6 flex flex-col w-full dark:bg-darkbg">
@@ -1227,7 +1368,7 @@ const UserManagement: React.FC<UserManagementProps> = () => {
     <>
       <div className="mx-auto px-4 py-6 flex flex-col w-full dark:bg-darkbg">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <div className="flex justify-between items-center mb-6">
+        <div className="flex justify-between items-center mb-6">
             <TabsList className="dark:bg-slate-800">
               <TabsTrigger value="users" className="data-[state=active]:dark:bg-slate-700">
                 <Users className="h-4 w-4 mr-2" />
@@ -1240,143 +1381,166 @@ const UserManagement: React.FC<UserManagementProps> = () => {
             </TabsList>
             
             {activeTab === 'users' ? (
-              <Button
-                onClick={() => setIsInviteDialogOpen(true)}
-                className="flex items-center gap-2 text-white"
-              >
-                <UserPlus className="h-4 w-4" />
-                Add User
-              </Button>
+          <Button
+            onClick={() => setIsInviteDialogOpen(true)}
+            className="flex items-center gap-2 text-white"
+          >
+            <UserPlus className="h-4 w-4" />
+            Add User
+          </Button>
             ) : (
               <Button
                 onClick={() => setIsCreateGroupDialogOpen(true)}
                 className="flex items-center gap-2 text-white"
               >
                 <Plus className="h-4 w-4" />
-                Create Permission Group
+                Create New Permission Group
               </Button>
             )}
-          </div>
+        </div>
           
           <TabsContent value="users" className="mt-0">
             <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden">
-              {isLoading ? (
-                // Render a few skeleton cards while loading
-                <div className="mx-auto px-4 py-6 flex flex-col w-full dark:bg-darkbg">
-                  <div className="flex justify-between items-center mb-6">
-                    {/* Header skeleton */}
-                    <div className="h-8 w-48 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
-                    <div className="h-10 w-32 bg-gray-200 dark:bg-gray-700 rounded-md animate-pulse" />
-                  </div>
+          {isLoading ? (
+            // Render a few skeleton cards while loading
+            <div className="mx-auto px-4 py-6 flex flex-col w-full dark:bg-darkbg">
+              <div className="flex justify-between items-center mb-6">
+                {/* Header skeleton */}
+                <div className="h-8 w-48 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
+                <div className="h-10 w-32 bg-gray-200 dark:bg-gray-700 rounded-md animate-pulse" />
+              </div>
 
-                  <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden">
-                    {/* Current user skeleton with blue tint */}
-                    <div className="bg-blue-50/50 dark:bg-slate-800 p-6 border-b dark:border-gray-700">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center space-x-4">
-                          <div className="rounded-full bg-blue-200/50 dark:bg-blue-900/30 h-10 w-10 animate-pulse" />
-                          <div className="space-y-2">
-                            <div className="h-5 w-40 bg-blue-200/50 dark:bg-blue-900/30 rounded animate-pulse" />
-                            <div className="h-4 w-32 bg-blue-200/50 dark:bg-blue-900/30 rounded animate-pulse" />
-                            <div className="h-3 w-24 bg-blue-200/50 dark:bg-blue-900/30 rounded animate-pulse" />
-                          </div>
-                        </div>
-                        <div className="h-8 w-[140px] bg-blue-200/50 dark:bg-blue-900/30 rounded animate-pulse" />
+              <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden">
+                {/* Current user skeleton with blue tint */}
+                <div className="bg-blue-50/50 dark:bg-slate-800 p-6 border-b dark:border-gray-700">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-4">
+                      <div className="rounded-full bg-blue-200/50 dark:bg-blue-900/30 h-10 w-10 animate-pulse" />
+                      <div className="space-y-2">
+                        <div className="h-5 w-40 bg-blue-200/50 dark:bg-blue-900/30 rounded animate-pulse" />
+                        <div className="h-4 w-32 bg-blue-200/50 dark:bg-blue-900/30 rounded animate-pulse" />
+                        <div className="h-3 w-24 bg-blue-200/50 dark:bg-blue-900/30 rounded animate-pulse" />
                       </div>
                     </div>
-
-                    {/* Other users skeletons */}
-                    <SkeletonCard />
-                    <SkeletonCard />
-                    <SkeletonCard />
+                    <div className="h-8 w-[140px] bg-blue-200/50 dark:bg-blue-900/30 rounded animate-pulse" />
                   </div>
                 </div>
-              ) :
-                users.length === 0 ? (
-                  <div className="p-6 text-center text-gray-500">No users found</div>
-                ) : (
-                  <div className="divide-y divide-gray-200 dark:divide-gray-700">
-                    {/* Current User Section */}
-                    {currentUser && (
-                      <div className="bg-blue-50 dark:bg-slate-800 p-6">
-                        <div className="flex items-center justify-between">
-                          <div className="flex-grow">
-                            <div className="flex items-center space-x-3">
-                              <div className="h-10 w-10 rounded-full bg-blue-100 dark:bg-blue-500 flex items-center justify-center">
-                                <span className="text-blue-600 font-medium dark:text-white">
-                                  {currentUser.name.charAt(0).toUpperCase()}
-                                </span>
-                              </div>
-                              <div>
-                                <p className="font-medium text-gray-900 dark:text-white">
-                                  {currentUser.name} <span className="text-blue-600 text-sm">(You)</span>
-                                </p>
-                                <p className="text-sm text-gray-500 dark:text-gray-300">{currentUser.email}</p>
-                                <p className="text-xs text-gray-400 mt-1 dark:text-gray-200">
-                                  Added: {new Date(currentUser.addedAt).toLocaleDateString()}
-                                </p>
-                              </div>
-                            </div>
+
+                {/* Other users skeletons */}
+                <SkeletonCard />
+                <SkeletonCard />
+                <SkeletonCard />
+              </div>
+            </div>
+          ) :
+            users.length === 0 ? (
+              <div className="p-6 text-center text-gray-500">No users found</div>
+            ) : (
+              <div className="divide-y divide-gray-200 dark:divide-gray-700">
+                {/* Current User Section */}
+                {currentUser && (
+                  <div className="bg-blue-50 dark:bg-slate-800 p-6">
+                    <div className="flex items-center justify-between">
+                      <div className="flex-grow">
+                        <div className="flex items-center space-x-3">
+                          <div className="h-10 w-10 rounded-full bg-blue-100 dark:bg-blue-500 flex items-center justify-center">
+                            <span className="text-blue-600 font-medium dark:text-white">
+                              {currentUser.name.charAt(0).toUpperCase()}
+                            </span>
                           </div>
-                          <div className="ml-6">
-                            <RoleSelect user={currentUser} currentUserRole={currentUser.role as Role} />
+                          <div>
+                            <p className="font-medium text-gray-900 dark:text-white">
+                              {currentUser.name} <span className="text-blue-600 text-sm">(You)</span>
+                            </p>
+                            <p className="text-sm text-gray-500 dark:text-gray-300">{currentUser.email}</p>
+                            <p className="text-xs text-gray-400 mt-1 dark:text-gray-200">
+                              Added: {new Date(currentUser.addedAt).toLocaleDateString()}
+                            </p>
                           </div>
                         </div>
                       </div>
-                    )}
-
-                    {/* Other Users Section */}
-                    {otherUsers.map((user) => (
-                      <UserCard key={user.userId} user={user} currentUserRole={currentUser?.role as Role} />
-                    ))}
+                      <div className="ml-6">
+                        <RoleSelect user={currentUser} currentUserRole={currentUser.role as Role} />
+                      </div>
+                    </div>
                   </div>
                 )}
-            </div>
+
+                {/* Other Users Section */}
+                {otherUsers.map((user) => (
+                  <UserCard key={user.userId} user={user} currentUserRole={currentUser?.role as Role} />
+                ))}
+              </div>
+            )}
+        </div>
           </TabsContent>
           
           <TabsContent value="permissionGroups" className="mt-0">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {permissionGroups.length > 0 ? (
-                permissionGroups.map(group => (
+              {allGroupsToDisplay.length > 0 ? (
+                // Map over the combined list
+                allGroupsToDisplay.map(group => (
                   <Card key={group.id} className="dark:bg-gray-800 dark:text-white">
                     <CardHeader>
-                      <CardTitle>{group.name}</CardTitle>
+                      <CardTitle className="flex items-center justify-between">
+                        <span>{group.name}</span>
+                        {/* Use the isDefault flag added to the type */}
+                        {group.isDefault && (
+                          <span className="text-xs font-normal px-2 py-0.5 rounded bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300">
+                            Default Role
+                          </span>
+                        )}
+                      </CardTitle>
                       <CardDescription className="dark:text-gray-400">
-                        {group.allAccess ? 'Full access' : 'Custom permissions'}
+                        {group.allAccess ? 'Full access by default' : 'Custom permissions defined'}
                       </CardDescription>
                     </CardHeader>
                     <CardContent>
                       <div className="text-sm dark:text-gray-300">
-                        <p>
-                          <span className="font-semibold">Access type:</span> {group.allAccess ? 'Full access' : 'Limited access'}
-                        </p>
-                        <p className="mt-1">
-                          <span className="font-semibold">Key permissions:</span>
-                        </p>
-                        <ul className="list-disc pl-5 mt-1 space-y-1">
-                          {group.canOrganize && <li>Organize files</li>}
-                          {group.canViewAuditLogs && <li>View audit logs</li>}
-                          {group.canInviteUsers.length > 0 && <li>Invite users</li>}
-                          {group.canUseQA && <li>Use Q&A</li>}
-                        </ul>
+                         <p className="mb-1">
+                           <span className="font-semibold">AI Query:</span> {group.canQuery ? 'Yes' : 'No'}
+                         </p>
+                         <p className="mb-1">
+                           <span className="font-semibold">Organize Files:</span> {group.canOrganize ? 'Yes' : 'No'}
+                         </p>
+                         <p>
+                           <span className="font-semibold">View Audit Logs:</span> {group.canViewAuditLogs ? 'Yes' : 'No'}
+                         </p>
                       </div>
                     </CardContent>
                     <CardFooter className="flex gap-2">
-                      <Button variant="outline" size="sm" className="dark:text-white">Edit</Button>
-                      <Button variant="destructive" size="sm">Delete</Button>
+                      {/* Conditionally render buttons only for non-default groups */}
+                      {!group.isDefault ? (
+                        <>
+                          <Button variant="outline" size="sm" className="dark:text-white">
+                            Edit
+                          </Button>
+                          <Button variant="destructive" size="sm">
+                            Delete
+                          </Button>
+                        </>
+                      ) : (
+                         /* For default roles, show disabled or placeholder button */
+                        <Button variant="outline" size="sm" disabled className="dark:text-gray-400 dark:border-gray-600 cursor-not-allowed">
+                          View Details (soon)
+                        </Button>
+                      )}
                     </CardFooter>
                   </Card>
                 ))
               ) : (
+                // No groups defined message
                 <div className="col-span-full p-8 bg-white dark:bg-gray-800 rounded-lg shadow text-center">
-                  <p className="text-gray-500 dark:text-gray-400 mb-4">No permission groups defined yet</p>
-                  <Button 
-                    onClick={() => setIsCreateGroupDialogOpen(true)}
-                    className="mx-auto"
-                  >
-                    <Plus className="h-4 w-4 mr-2" />
-                    Create First Permission Group
-                  </Button>
+                  <p className="text-gray-500 dark:text-gray-400 mb-4">No permission groups found</p>
+                   {(currentUser?.role === 'OWNER' || currentUser?.role === 'ADMIN') && (
+                     <Button 
+                       onClick={() => setIsCreateGroupDialogOpen(true)}
+                       className="mx-auto"
+                     >
+                       <Plus className="h-4 w-4 mr-2" />
+                       Create First Custom Group
+                     </Button>
+                   )} 
                 </div>
               )}
             </div>
@@ -1522,12 +1686,16 @@ const UserManagement: React.FC<UserManagementProps> = () => {
 
       {/* Create Permission Group Dialog */}
       <Dialog open={isCreateGroupDialogOpen} onOpenChange={setIsCreateGroupDialogOpen}>
-        <DialogContent className="max-w-5xl dark:bg-darkbg overflow-auto max-h-[90vh] p-6"> 
-          <DialogHeader>
+          {/* ... Create Group Dialog Content ... */}
+         <DialogContent className="max-w-5xl dark:bg-darkbg overflow-auto max-h-[90vh] p-6">
+           {/* ... Header, Name Input, Permission Mode Buttons ... */}
+           {/* ... The rest of the Create Group Dialog content ... */} 
+           {/* ... (This part remains unchanged) ... */} 
+            <DialogHeader>
             <DialogTitle className="text-xl font-semibold dark:text-white">Create Permission Group</DialogTitle>
-          </DialogHeader>
-          
-          <div className="py-4 space-y-6"> 
+            </DialogHeader>
+            
+            <div className="py-4 space-y-6"> 
             <div> {/* Group Name Section */} 
               <label className="text-sm font-medium dark:text-gray-200 mb-1 block">Group Name</label>
               <Input
@@ -1574,7 +1742,7 @@ const UserManagement: React.FC<UserManagementProps> = () => {
               </div>
               {!showSpecificPermissions && (
                 <p className="text-xs text-gray-500 dark:text-gray-400 pt-1">
-                  Apply a consistent set of permissions to all visible files and folders.
+                  Apply a consistent set of permissions to all files and folders in dataroom.
                 </p>
               )}
               {showSpecificPermissions && (
@@ -1592,7 +1760,7 @@ const UserManagement: React.FC<UserManagementProps> = () => {
                     General Permissions Settings
                   </AccordionTrigger>
                   <AccordionContent className="dark:text-gray-300 space-y-4 px-4 pb-4 pt-2"> {/* Adjusted padding */} 
-                    <div className="grid grid-cols-2 gap-x-6 gap-y-3"> {/* Adjusted gaps */}
+                    <div className="grid grid-cols-2 gap-x-6 gap-y-3"> {/* Adjusted gaps */} 
                       
                       {/* View files */}
                       <div className="flex items-center space-x-2"> {/* Changed from justify-between */} 
@@ -1786,7 +1954,7 @@ const UserManagement: React.FC<UserManagementProps> = () => {
                   Select specific files and folders to customize access. These settings will override the default permissions.
                 </div>
                 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4"> {/* Adjusted grid for responsiveness */} 
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 h-[500px]"> {/* Adjusted grid for responsiveness */} 
                   <FolderPermissionTree
                     folderStructure={folderStructure}
                     selectedPermissions={newGroup.fileSpecificPermissions || {}}
@@ -1888,7 +2056,7 @@ const UserManagement: React.FC<UserManagementProps> = () => {
                   <div className="pt-2"> 
                     <label className="text-xs font-medium block mb-2 dark:text-gray-300">Invite other users with roles:</label>
                     <div className="grid grid-cols-2 gap-x-6 gap-y-2"> 
-                      {/* Invite Viewer */}
+                      {/* Invite Viewer */} 
                       <div className="flex items-center space-x-2">
                         <Switch 
                           id="invite-read" 
@@ -1907,7 +2075,7 @@ const UserManagement: React.FC<UserManagementProps> = () => {
                         <label htmlFor="invite-read" className="text-xs dark:text-gray-300">Viewer</label>
                       </div>
                       
-                      {/* Invite Editor */}
+                      {/* Invite Editor */} 
                       <div className="flex items-center space-x-2">
                         <Switch 
                           id="invite-write" 
@@ -1926,7 +2094,7 @@ const UserManagement: React.FC<UserManagementProps> = () => {
                         <label htmlFor="invite-write" className="text-xs dark:text-gray-300">Editor</label>
                       </div>
                       
-                      {/* Invite Admin */}
+                      {/* Invite Admin */} 
                       <div className="flex items-center space-x-2">
                         <Switch 
                           id="invite-admin" 
@@ -1984,8 +2152,8 @@ const UserManagement: React.FC<UserManagementProps> = () => {
                 </AccordionContent>
               </AccordionItem>
             </Accordion>
-          </div>
-          
+           </div>
+           
           <DialogFooter className="pt-4"> {/* Added spacing */} 
             <Button
               variant="outline"
@@ -2004,7 +2172,7 @@ const UserManagement: React.FC<UserManagementProps> = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </>
+    </> // Closing tag for the main fragment
   );
 };
 
