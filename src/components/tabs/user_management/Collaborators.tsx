@@ -71,6 +71,7 @@ type FilePermission = {
   deleteEditAccess: boolean;
   requireAgreement: boolean;
   viewTags: boolean;
+  allowUploads?: boolean; // Added allowUploads
 };
 
 // Permission Group Type
@@ -139,103 +140,59 @@ const SkeletonCard: React.FC = () => {
   );
 };
 
-// Fix the recursive getAllDescendantIds function and handleHierarchicalPermissionChange function
-const FolderPermissionTree = ({ 
-  folderStructure, 
-  selectedPermissions, 
+// Completely rewrite the tree and permission handling to use a simpler approach
+const FolderPermissionTree = ({
+  folderStructure,
+  selectedPermissions,
   onPermissionChange,
   selectedItem,
-  onSelectItem
-}: { 
-  folderStructure: FileTreeItem[]; 
+  onSelectItem,
+  itemsMap,
+  parentMap
+}: {
+  folderStructure: FileTreeItem[];
   selectedPermissions: Record<string, FilePermission>;
-  onPermissionChange: (id: string, permissions: FilePermission) => void;
+  onPermissionChange: (id: string, permissions: Partial<FilePermission>) => void;
   selectedItem: string | null;
   onSelectItem: (id: string) => void;
+  itemsMap: Record<string, FileTreeItem>;
+  parentMap: Record<string, string | undefined>;
 }) => {
-  // Completely rewritten function to recursively gather all descendant IDs (including nested folders)
-  const getAllDescendantIds = (item: FileTreeItem, items: FileTreeItem[]): string[] => {
-    // If not a folder or has no children, return empty array
-    if (item.type !== 'folder' || !item.children || item.children.length === 0) {
-      return [];
-    }
-    
-    // Start with direct children
-    let descendants: string[] = item.children.map(child => child.id);
-    
-    // Recursively add children of children
-    for (const child of item.children) {
-      if (child.type === 'folder') {
-        // Find the full child item with its children from the items array
-        const fullChildItem = findItemById(child.id, items);
-        if (fullChildItem) {
-          descendants = [...descendants, ...getAllDescendantIds(fullChildItem, items)];
-        }
-      }
-    }
-    
-    return descendants;
-  };
+  const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set());
 
-  // Helper to find an item by ID in the folder structure
-  const findItemById = (id: string, items: FileTreeItem[]): FileTreeItem | null => {
-    for (const item of items) {
-      if (item.id === id) return item;
-      if (item.children) {
-        const found = findItemById(id, item.children);
-        if (found) return found;
+  const handleToggleExpand = (folderId: string) => {
+    setExpandedFolders(prevExpanded => {
+      const newExpanded = new Set(prevExpanded);
+      if (newExpanded.has(folderId)) {
+        newExpanded.delete(folderId);
+      } else {
+        newExpanded.add(folderId);
       }
-    }
-    return null;
+      return newExpanded;
+    });
   };
+  
+  useEffect(() => {
+    if (selectedItem && parentMap) {
+      const parentsToExpand = new Set<string>();
+      let currentParentId = parentMap[selectedItem];
+      while (currentParentId) {
+        parentsToExpand.add(currentParentId);
+        currentParentId = parentMap[currentParentId];
+      }
 
-  // Completely rewritten permission change handler to fix folder deselection issues
-  const handleHierarchicalPermissionChange = (id: string, permissions: FilePermission) => {
-    console.log(`Changing permissions for ${id}:`, permissions);
-    
-    // First, find the item to check if it's a folder
-    const item = findItemById(id, folderStructure);
-    if (!item) {
-      console.error(`Item with ID ${id} not found`);
-      return;
-    }
-    
-    // First update the selected item itself
-    onPermissionChange(id, permissions);
-    
-    // If this is a folder and visibility is being turned off, update all children
-    if (item.type === 'folder' && permissions.show === false) {
-      console.log(`${id} is a folder and visibility is being turned off`);
-      
-      // Get all descendants of this folder
-      const descendantIds = getAllDescendantIds(item, folderStructure);
-      console.log(`Found ${descendantIds.length} descendants:`, descendantIds);
-      
-      // Update each descendant to also not be visible
-      descendantIds.forEach(childId => {
-        const childPermissions = selectedPermissions[childId] || {
-          show: true,
-          viewAccess: true,
-          downloadAccess: false,
-          deleteEditAccess: false,
-          requireAgreement: false,
-          viewTags: true
-        };
-        
-        console.log(`Setting child ${childId} visibility to false`);
-        onPermissionChange(childId, { 
-          ...childPermissions, 
-          show: false,
-          // Also reset other permissions for completeness
-          viewAccess: false,
-          downloadAccess: false,
-          deleteEditAccess: false,
-          requireAgreement: false,
-          viewTags: false
+      if (parentsToExpand.size > 0) {
+        setExpandedFolders(prevExpanded => {
+          const newExpanded = new Set(prevExpanded);
+          parentsToExpand.forEach(id => newExpanded.add(id));
+          if (Array.from(parentsToExpand).some(id => !prevExpanded.has(id))) {
+            return newExpanded;
+          }
+          return prevExpanded; 
         });
-      });
+      }
     }
-  };
+  }, [selectedItem, parentMap]);
 
   return (
     <div className="border rounded-md overflow-auto dark:border-gray-700" style={{ maxHeight: '500px' }}>
@@ -244,14 +201,19 @@ const FolderPermissionTree = ({
       </div>
       <div className="p-2">
         {folderStructure.map((item) => (
-          <FileTreeItem 
+          <FileTreeItem
             key={item.id} 
-            item={item} 
-            level={0} 
+            item={item}
+            level={0}
             selectedPermissions={selectedPermissions}
-            onPermissionChange={handleHierarchicalPermissionChange}
+            onPermissionChange={onPermissionChange} 
             selectedItem={selectedItem}
             onSelectItem={onSelectItem}
+            isExpanded={expandedFolders.has(item.id)} 
+            onToggleExpand={handleToggleExpand} 
+            expandedFolders={expandedFolders} 
+            itemsMap={itemsMap}
+            parentMap={parentMap}
           />
         ))}
       </div>
@@ -259,108 +221,128 @@ const FolderPermissionTree = ({
   );
 };
 
-// Fix the FileTreeItem component to properly handle checkbox events
-const FileTreeItem = ({ 
-  item, 
-  level, 
-  selectedPermissions, 
+// FileTreeItem component update
+const FileTreeItem = ({
+  item,
+  level,
+  selectedPermissions,
   onPermissionChange,
   selectedItem,
-  onSelectItem
-}: { 
-  item: FileTreeItem; 
+  onSelectItem,
+  isExpanded, 
+  onToggleExpand, 
+  expandedFolders,
+  itemsMap,
+  parentMap
+}: {
+  item: FileTreeItem;
   level: number;
   selectedPermissions: Record<string, FilePermission>;
-  onPermissionChange: (id: string, permissions: FilePermission) => void;
+  onPermissionChange: (itemId: string, permissions: Partial<FilePermission>) => void;
   selectedItem: string | null;
   onSelectItem: (id: string) => void;
+  isExpanded: boolean; 
+  onToggleExpand: (folderId: string) => void; 
+  expandedFolders: Set<string>; 
+  itemsMap: Record<string, FileTreeItem>;
+  parentMap: Record<string, string | undefined>;
 }) => {
-  const [expanded, setExpanded] = useState(false);
-  const itemPermissions = selectedPermissions[item.id] || {
-    show: true,
-    viewAccess: true,
-    downloadAccess: false,
-    deleteEditAccess: false,
-    requireAgreement: false,
-    viewTags: true
+  const isSelectedForHighlight = selectedItem === item.id;
+  const itemPermissions = selectedPermissions[item.id] || { show: true };
+
+  const handleToggleExpandClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    onToggleExpand(item.id);
   };
-  
-  const isSelected = selectedItem === item.id;
-  
+
+  const handleSelect = () => {
+    onSelectItem(item.id);
+  };
+
+  const handleCheckboxClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    onPermissionChange(item.id, { show: !itemPermissions.show });
+  };
+
   return (
     <div className="mb-2">
-      <div 
-        className={`flex items-center mb-1 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 p-1 rounded ${isSelected ? 'bg-blue-50 dark:bg-blue-900/20 border-l-2 border-blue-500' : ''} ${expanded ? 'font-medium' : ''}`}
-        onClick={() => onSelectItem(item.id)}
+      <div
+        key={`item-${item.id}-${itemPermissions.show}`}
+        className={`flex items-center mb-1 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 p-1 rounded
+          ${isSelectedForHighlight ? 'bg-blue-50 dark:bg-blue-900/20 border-r-2 border-blue-500' : ''}
+          ${isExpanded ? 'font-medium' : ''}`}
+        onClick={handleSelect}
       >
         <div style={{ width: `${level * 12}px` }} />
+        <div className="flex items-center mr-1" onClick={(e) => e.stopPropagation()}> 
+          <div className="relative w-5 h-5"> 
+            <Checkbox
+              id={`tree-item-${item.id}`}
+              key={`checkbox-${item.id}-${itemPermissions.show}`}
+              checked={itemPermissions.show}
+              onCheckedChange={() => {}}
+              className="cursor-pointer h-4 w-4 border-gray-300 dark:border-gray-600 data-[state=checked]:bg-blue-600 data-[state=checked]:border-blue-600 data-[state=checked]:text-white"
+            />
+            <div
+              className="absolute inset-0 cursor-pointer z-10"
+              onClick={handleCheckboxClick} 
+            ></div>
+          </div>
+        </div>
         {item.children?.length ? (
-          <button 
+          <button
             className="mr-1 w-5 h-5 flex items-center justify-center text-gray-500"
-            onClick={(e) => {
-              e.stopPropagation();
-              setExpanded(!expanded);
-            }}
+            onClick={handleToggleExpandClick} 
             type="button"
           >
-            {expanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+            {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
           </button>
         ) : (
-          <div className="mr-1 w-5 h-5"></div>
+          <div className="mr-1 w-5 h-5"></div> 
         )}
-        
-        <div className="w-6 h-6 mr-2 text-gray-500">
+        <div className="w-5 h-5 mr-2 text-gray-500"> 
           {item.type === 'folder' ? <Folder className="h-4 w-4" /> : <File className="h-4 w-4" />}
         </div>
-        
-        <div className="flex-1 text-sm">{item.name}</div>
-        
-        <div className="flex items-center">
-          <Checkbox 
-            id={`tree-${item.id}-show`}
-            checked={itemPermissions.show}
-            onCheckedChange={(checked) => {
-              const newValue = checked as boolean;
-              // Make sure to separate click event from the parent div
-              onPermissionChange(item.id, { ...itemPermissions, show: newValue });
-            }}
-            onClick={(e) => {
-              // Crucial: Stop propagation so the click doesn't reach the parent div
-              e.stopPropagation();
-            }}
-          />
-        </div>
+        <div className="flex-1 text-xs mr-1">{item.name}</div>
       </div>
-      
-      {expanded && item.children && item.children.length > 0 && (
+
+      {isExpanded && item.children && item.children.length > 0 && (
         <div>
-          {item.children.map((child) => (
-            <FileTreeItem
-              key={child.id}
-              item={child}
-              level={level + 1}
-              selectedPermissions={selectedPermissions}
-              onPermissionChange={onPermissionChange}
-              selectedItem={selectedItem}
-              onSelectItem={onSelectItem}
-            />
-          ))}
+          {item.children.map((child) => {
+            const childPermissions = selectedPermissions[child.id] || { show: true };
+            return (
+              <FileTreeItem
+                key={`${child.id}-${childPermissions.show}`}
+                item={child}
+                level={level + 1}
+                selectedPermissions={selectedPermissions}
+                onPermissionChange={onPermissionChange} 
+                selectedItem={selectedItem}
+                onSelectItem={onSelectItem}
+                isExpanded={expandedFolders.has(child.id)} 
+                onToggleExpand={onToggleExpand} 
+                expandedFolders={expandedFolders} 
+                itemsMap={itemsMap}
+                parentMap={parentMap}
+              />
+            );
+          })}
         </div>
       )}
     </div>
   );
 };
 
-// Update the ItemPermissionsPanel component to disable and deselect other permissions when visibility is off
+// ItemPermissionsPanel Component Update
 const ItemPermissionsPanel: React.FC<{
   selectedItemId: string | null;
   items: any[];
   permissions: Record<string, any>;
-  onPermissionChange: (id: string, permissions: any) => void;
+  onPermissionChange: (id: string, permissions: Partial<FilePermission>) => void;
 }> = ({ selectedItemId, items, permissions, onPermissionChange }) => {
   if (!selectedItemId) {
     return (
-      <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-md">
+      <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-md h-full flex items-center justify-center"> 
         <p className="text-center text-gray-500 dark:text-gray-400">
           Select a file or folder to view and edit its permissions
         </p>
@@ -372,33 +354,19 @@ const ItemPermissionsPanel: React.FC<{
   const selectedItem = items.find((item: any) => item.id === selectedItemId) || 
                       items.flatMap((item: any) => item.children || []).find((child: any) => child.id === selectedItemId);
   const isFolder = selectedItem?.type === 'folder';
+  const isVisible = itemPermissions.show !== false;
 
-  // Safe handler that ensures we have a valid ID
-  const handlePermissionChange = (id: string | null, newPermissions: any) => {
-    if (id) {
-      // If visibility is being turned off, deselect all other permissions too
-      if (newPermissions.hasOwnProperty('show') && newPermissions.show === false) {
-        onPermissionChange(id, {
-          ...newPermissions,
-          viewAccess: false,
-          downloadAccess: false,
-          deleteEditAccess: false,
-          requireAgreement: false,
-          viewTags: false,
-          // For folders
-          allowUploads: false,
-          viewComments: false,
-          addComments: false,
-          viewContents: false
-        });
-      } else {
-        onPermissionChange(id, newPermissions);
-      }
+  const handleVisibilitySwitchChange = (checked: boolean) => {
+    if (selectedItemId) {
+      onPermissionChange(selectedItemId, { show: checked });
     }
   };
-  
-  // Determine if the item is visible
-  const isVisible = itemPermissions.show !== false; // Default to true if not explicitly set to false
+
+  const handleDetailPermissionChange = (update: Partial<FilePermission>) => {
+    if (selectedItemId) {
+      onPermissionChange(selectedItemId, update);
+    }
+  };
 
   return (
     <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-md">
@@ -410,13 +378,12 @@ const ItemPermissionsPanel: React.FC<{
         <div>
           <h4 className="text-xs uppercase text-gray-500 dark:text-gray-400 mb-2">Visibility</h4>
           <div className="flex items-center space-x-2 mb-2">
-            <Checkbox 
-              id={`${selectedItemId}-show`}
+            <Switch 
+              id={`${selectedItemId}-panel-show`}
               checked={isVisible}
-              onCheckedChange={(checked) => 
-                handlePermissionChange(selectedItemId, { ...itemPermissions, show: checked as boolean })}
+              onCheckedChange={handleVisibilitySwitchChange}
             />
-            <label htmlFor={`${selectedItemId}-show`} className="text-sm">
+            <label htmlFor={`${selectedItemId}-panel-show`} className="text-sm">
               Visible to group members
             </label>
           </div>
@@ -426,40 +393,40 @@ const ItemPermissionsPanel: React.FC<{
           <h4 className="text-xs uppercase text-gray-500 dark:text-gray-400 mb-2">Access Permissions</h4>
           <div className="space-y-2">
             <div className="flex items-center space-x-2">
-              <Checkbox 
-                id={`${selectedItemId}-view`}
+              <Switch 
+                id={`${selectedItemId}-panel-view`}
                 checked={isVisible && itemPermissions.viewAccess}
                 onCheckedChange={(checked) => 
-                  handlePermissionChange(selectedItemId, { ...itemPermissions, viewAccess: checked as boolean })}
+                  handleDetailPermissionChange({ viewAccess: checked })}
                 disabled={!isVisible}
               />
-              <label htmlFor={`${selectedItemId}-view`} className={`text-sm ${!isVisible ? 'text-gray-400' : ''}`}>
+              <label htmlFor={`${selectedItemId}-panel-view`} className={`text-sm transition-colors ${!isVisible ? 'text-gray-400 dark:text-gray-500' : 'dark:text-gray-300'}`}>
                 View content
               </label>
             </div>
             
             <div className="flex items-center space-x-2">
-              <Checkbox 
-                id={`${selectedItemId}-download`}
+              <Switch 
+                id={`${selectedItemId}-panel-download`}
                 checked={isVisible && itemPermissions.downloadAccess}
                 onCheckedChange={(checked) => 
-                  handlePermissionChange(selectedItemId, { ...itemPermissions, downloadAccess: checked as boolean })}
+                  handleDetailPermissionChange({ downloadAccess: checked })}
                 disabled={!isVisible}
               />
-              <label htmlFor={`${selectedItemId}-download`} className={`text-sm ${!isVisible ? 'text-gray-400' : ''}`}>
+              <label htmlFor={`${selectedItemId}-panel-download`} className={`text-sm transition-colors ${!isVisible ? 'text-gray-400 dark:text-gray-500' : 'dark:text-gray-300'}`}>
                 Download
               </label>
             </div>
             
             <div className="flex items-center space-x-2">
-              <Checkbox 
-                id={`${selectedItemId}-edit`}
+              <Switch 
+                id={`${selectedItemId}-panel-edit`}
                 checked={isVisible && itemPermissions.deleteEditAccess}
                 onCheckedChange={(checked) => 
-                  handlePermissionChange(selectedItemId, { ...itemPermissions, deleteEditAccess: checked as boolean })}
+                  handleDetailPermissionChange({ deleteEditAccess: checked })}
                 disabled={!isVisible}
               />
-              <label htmlFor={`${selectedItemId}-edit`} className={`text-sm ${!isVisible ? 'text-gray-400' : ''}`}>
+              <label htmlFor={`${selectedItemId}-panel-edit`} className={`text-sm transition-colors ${!isVisible ? 'text-gray-400 dark:text-gray-500' : 'dark:text-gray-300'}`}>
                 Edit/Delete
               </label>
             </div>
@@ -469,42 +436,42 @@ const ItemPermissionsPanel: React.FC<{
         <div>
           <h4 className="text-xs uppercase text-gray-500 dark:text-gray-400 mb-2">Special Settings</h4>
           <div className="space-y-2">
-            <div className="flex items-center space-x-2">
-              <Checkbox 
-                id={`${selectedItemId}-watermark`}
-                checked={isVisible && (!itemPermissions.viewAccess || (itemPermissions.requireAgreement || false))}
+             <div className="flex items-center space-x-2">
+              <Switch 
+                id={`${selectedItemId}-panel-watermark`}
+                checked={isVisible && itemPermissions.requireAgreement}
                 onCheckedChange={(checked) => 
-                  handlePermissionChange(selectedItemId, { ...itemPermissions, requireAgreement: checked as boolean })}
+                  handleDetailPermissionChange({ requireAgreement: checked })}
                 disabled={!isVisible}
               />
-              <label htmlFor={`${selectedItemId}-watermark`} className={`text-sm ${!isVisible ? 'text-gray-400' : ''}`}>
+              <label htmlFor={`${selectedItemId}-panel-watermark`} className={`text-sm transition-colors ${!isVisible ? 'text-gray-400 dark:text-gray-500' : 'dark:text-gray-300'}`}>
                 Require NDA/agreement to view
               </label>
             </div>
             
             <div className="flex items-center space-x-2">
-              <Checkbox 
-                id={`${selectedItemId}-viewtags`}
+              <Switch 
+                id={`${selectedItemId}-panel-viewtags`}
                 checked={isVisible && itemPermissions.viewTags}
                 onCheckedChange={(checked) => 
-                  handlePermissionChange(selectedItemId, { ...itemPermissions, viewTags: checked as boolean })}
+                  handleDetailPermissionChange({ viewTags: checked })}
                 disabled={!isVisible}
               />
-              <label htmlFor={`${selectedItemId}-viewtags`} className={`text-sm ${!isVisible ? 'text-gray-400' : ''}`}>
+              <label htmlFor={`${selectedItemId}-panel-viewtags`} className={`text-sm transition-colors ${!isVisible ? 'text-gray-400 dark:text-gray-500' : 'dark:text-gray-300'}`}>
                 View tags
               </label>
             </div>
             
             {isFolder && (
               <div className="flex items-center space-x-2">
-                <Checkbox 
-                  id={`${selectedItemId}-uploads`}
-                  checked={isVisible && itemPermissions.deleteEditAccess}
+                <Switch 
+                  id={`${selectedItemId}-panel-uploads`}
+                  checked={isVisible && itemPermissions.allowUploads}
                   onCheckedChange={(checked) => 
-                    handlePermissionChange(selectedItemId, { ...itemPermissions, deleteEditAccess: checked as boolean })}
+                    handleDetailPermissionChange({ allowUploads: checked })}
                   disabled={!isVisible}
                 />
-                <label htmlFor={`${selectedItemId}-uploads`} className={`text-sm ${!isVisible ? 'text-gray-400' : ''}`}>
+                <label htmlFor={`${selectedItemId}-panel-uploads`} className={`text-sm transition-colors ${!isVisible ? 'text-gray-400 dark:text-gray-500' : 'dark:text-gray-300'}`}>
                   Allow uploads to this folder
                 </label>
               </div>
@@ -634,6 +601,35 @@ const UserManagement: React.FC<UserManagementProps> = () => {
       ]
     }
   ]);
+
+  // --- Lifted State for Maps (for Create Group Dialog scope) ---
+  const [dialogItemsMap, setDialogItemsMap] = useState<Record<string, FileTreeItem>>({});
+  const [dialogChildrenMap, setDialogChildrenMap] = useState<Record<string, string[]>>({});
+  const [dialogParentMap, setDialogParentMap] = useState<Record<string, string | undefined>>({});
+
+  // Effect to build maps when folderStructure changes (within UserManagement scope)
+  useEffect(() => {
+    const itemMap: Record<string, FileTreeItem> = {};
+    const childMap: Record<string, string[]> = {};
+    const pMap: Record<string, string | undefined> = {};
+
+    const processItem = (item: FileTreeItem, parentId?: string) => {
+      itemMap[item.id] = item;
+      pMap[item.id] = parentId;
+      if (item.children && item.children.length > 0) {
+        childMap[item.id] = item.children.map(child => child.id);
+        item.children.forEach(child => processItem(child, item.id));
+      } else {
+        childMap[item.id] = [];
+      }
+    };
+    folderStructure.forEach(item => processItem(item));
+
+    setDialogItemsMap(itemMap);
+    setDialogChildrenMap(childMap);
+    setDialogParentMap(pMap);
+  }, [folderStructure]); // Rebuild maps if folder structure changes
+  // --- End Lifted State ---
 
   const canModifyUserRole = (currentUserRole: Role, targetUserRole: Role, isCurrentUser: boolean = false) => {
     // Owner cannot modify their own permission
@@ -1024,17 +1020,157 @@ const UserManagement: React.FC<UserManagementProps> = () => {
     }
   };
   
-  const handleFilePermissionChange = (fileId: string, permissions: FilePermission) => {
-    setNewGroup({
-      ...newGroup,
-      // Turn off all access when specific file permissions are set
-      allAccess: false,
-      fileSpecificPermissions: {
-        ...(newGroup.fileSpecificPermissions || {}),
-        [fileId]: permissions
+  // --- Enhanced handleFilePermissionChange with Cascade Logic & Linter Fix ---
+  const handleFilePermissionChange = (fileId: string, permissionUpdate: Partial<FilePermission>) => {
+    console.log(`handleFilePermissionChange called for ${fileId} with update:`, permissionUpdate);
+
+    // Default Permission Values (used when creating/updating to ensure type compliance)
+    const defaultPermValues: FilePermission = {
+        show: true,
+        viewAccess: true,
+        downloadAccess: false,
+        deleteEditAccess: false,
+        requireAgreement: false,
+        viewTags: true,
+        allowUploads: false,
+    };
+
+    // Check if this is purely a visibility toggle
+    const isVisibilityToggle = Object.keys(permissionUpdate).length === 1 && permissionUpdate.hasOwnProperty('show');
+    const newVisibility = permissionUpdate.show;
+
+    if (isVisibilityToggle && typeof newVisibility === 'boolean') {
+      const item = dialogItemsMap[fileId];
+      if (!item) {
+          console.error("Item not found in map for visibility toggle:", fileId);
+          return; 
       }
-    });
+
+      setNewGroup(prevState => {
+        const prevPermissions = prevState.fileSpecificPermissions || {};
+        const updates: Record<string, Partial<FilePermission>> = {}; // Store all partial updates needed
+
+        // Helper: Get descendants
+        const getAllDescendantIds = (itemId: string): string[] => {
+          // ... (same implementation as before) ...
+           const result: string[] = [];
+          const queue: string[] = [...(dialogChildrenMap[itemId] || [])];
+          while (queue.length > 0) {
+            const currentId = queue.shift()!;
+            if(currentId) {
+                result.push(currentId);
+                const children = dialogChildrenMap[currentId] || [];
+                queue.push(...children);
+            }
+          }
+          return result;
+        };
+
+        // 1. Prepare the direct update
+        const directUpdate: Partial<FilePermission> = { show: newVisibility };
+        if (!newVisibility) {
+          directUpdate.viewAccess = false;
+          directUpdate.downloadAccess = false;
+          directUpdate.deleteEditAccess = false;
+          directUpdate.requireAgreement = false;
+          directUpdate.viewTags = false;
+          directUpdate.allowUploads = false; 
+        }
+        updates[fileId] = directUpdate;
+
+        // 2. Prepare Cascade Downwards updates (if folder)
+        if (item.type === 'folder') {
+          const descendants = getAllDescendantIds(fileId);
+          console.log(`Cascading visibility ${newVisibility} to ${descendants.length} descendants`);
+          descendants.forEach(descId => {
+            const descPrevPerms = prevPermissions[descId] || {};
+            if (descPrevPerms.show !== newVisibility) { 
+              const descUpdate: Partial<FilePermission> = { show: newVisibility };
+              if (!newVisibility) {
+                descUpdate.viewAccess = false;
+                descUpdate.downloadAccess = false;
+                descUpdate.deleteEditAccess = false;
+                descUpdate.requireAgreement = false;
+                descUpdate.viewTags = false;
+                descUpdate.allowUploads = false;
+              }
+              // Add or merge the update for the descendant
+              updates[descId] = { ...(updates[descId] || {}), ...descUpdate };
+            }
+          });
+        }
+
+        // 3. Prepare Cascade Upwards updates (if showing)
+        if (newVisibility) {
+          let currentParentId = dialogParentMap[fileId];
+          while (currentParentId) {
+            const parentPrevPerms = prevPermissions[currentParentId] || {};
+            if (parentPrevPerms.show !== true) { 
+              console.log(`Auto-showing parent ${currentParentId}`);
+              // Add or merge the update for the parent
+              updates[currentParentId] = { ...(updates[currentParentId] || {}), show: true }; 
+            }
+            currentParentId = dialogParentMap[currentParentId];
+          }
+        }
+
+        // Apply all updates atomically, ensuring complete FilePermission objects
+        const nextPermissions: Record<string, FilePermission> = { ...prevPermissions }; 
+        Object.keys(updates).forEach((id) => {
+          const currentCompletePerms = prevPermissions[id] || defaultPermValues; // Start with previous or defaults
+          const partialUpdate = updates[id];
+          // Merge and ensure all fields exist, using defaults if needed after merge
+          const mergedUpdate = { ...currentCompletePerms, ...partialUpdate }; 
+          nextPermissions[id] = {
+              show: mergedUpdate.show,
+              viewAccess: mergedUpdate.viewAccess ?? defaultPermValues.viewAccess,
+              downloadAccess: mergedUpdate.downloadAccess ?? defaultPermValues.downloadAccess,
+              deleteEditAccess: mergedUpdate.deleteEditAccess ?? defaultPermValues.deleteEditAccess,
+              requireAgreement: mergedUpdate.requireAgreement ?? defaultPermValues.requireAgreement,
+              viewTags: mergedUpdate.viewTags ?? defaultPermValues.viewTags,
+              allowUploads: mergedUpdate.allowUploads ?? defaultPermValues.allowUploads,
+          };
+        });
+
+        console.log("Final updates being applied:", updates);
+        console.log("Resulting permissions state:", nextPermissions);
+
+        return {
+          ...prevState,
+          allAccess: false, 
+          fileSpecificPermissions: nextPermissions,
+        };
+      });
+
+    } else {
+      // Apply non-visibility or combined updates
+      setNewGroup(prevState => {
+          const prevSpecificPermissions = prevState.fileSpecificPermissions || {};
+          const currentCompletePerms = prevSpecificPermissions[fileId] || defaultPermValues;
+          const mergedUpdate = { ...currentCompletePerms, ...permissionUpdate };
+          // Ensure complete object even for single updates
+          const nextPermission = {
+              show: mergedUpdate.show,
+              viewAccess: mergedUpdate.viewAccess ?? defaultPermValues.viewAccess,
+              downloadAccess: mergedUpdate.downloadAccess ?? defaultPermValues.downloadAccess,
+              deleteEditAccess: mergedUpdate.deleteEditAccess ?? defaultPermValues.deleteEditAccess,
+              requireAgreement: mergedUpdate.requireAgreement ?? defaultPermValues.requireAgreement,
+              viewTags: mergedUpdate.viewTags ?? defaultPermValues.viewTags,
+              allowUploads: mergedUpdate.allowUploads ?? defaultPermValues.allowUploads,
+          };
+
+          return {
+              ...prevState,
+              allAccess: false, 
+              fileSpecificPermissions: {
+                  ...prevSpecificPermissions,
+                  [fileId]: nextPermission,
+              },
+          };
+      });
+    }
   };
+  // --- End Enhanced handleFilePermissionChange ---
 
   useEffect(() => {
     if (bucketUuid) {
@@ -1386,14 +1522,14 @@ const UserManagement: React.FC<UserManagementProps> = () => {
 
       {/* Create Permission Group Dialog */}
       <Dialog open={isCreateGroupDialogOpen} onOpenChange={setIsCreateGroupDialogOpen}>
-        <DialogContent className="max-w-5xl dark:bg-darkbg overflow-auto max-h-[90vh]">
+        <DialogContent className="max-w-5xl dark:bg-darkbg overflow-auto max-h-[90vh] p-6"> 
           <DialogHeader>
             <DialogTitle className="text-xl font-semibold dark:text-white">Create Permission Group</DialogTitle>
           </DialogHeader>
           
-          <div className="py-4">
-            <div className="mb-6">
-              <label className="text-sm font-medium dark:text-gray-200 mb-2 block">Group Name</label>
+          <div className="py-4 space-y-6"> 
+            <div> {/* Group Name Section */} 
+              <label className="text-sm font-medium dark:text-gray-200 mb-1 block">Group Name</label>
               <Input
                 value={newGroupName}
                 onChange={(e) => setNewGroupName(e.target.value)}
@@ -1402,232 +1538,238 @@ const UserManagement: React.FC<UserManagementProps> = () => {
               />
             </div>
             
-            <div className="mb-6">
-              <div className="flex flex-col space-y-4">
-                <div>
-                  <h3 className="text-sm font-medium dark:text-gray-200 mb-2">Permission Mode</h3>
-                  <div className="flex items-center space-x-4">
-                    <div className="flex-1">
-                      <Button
-                        type="button"
-                        variant={!showSpecificPermissions ? "default" : "outline"}
-                        onClick={() => {
-                          setShowSpecificPermissions(false);
-                          // Don't automatically set allAccess to true
-                        }}
-                        className={`w-full ${!showSpecificPermissions ? 'bg-blue-600 hover:bg-blue-700 text-white' : ''}`}
-                      >
-                        General Permissions
-                      </Button>
-                    </div>
-                    <div className="flex-1">
-                      <Button
-                        type="button"
-                        variant={showSpecificPermissions ? "default" : "outline"}
-                        onClick={() => {
-                          setShowSpecificPermissions(true);
-                          // Only set allAccess to false if it's currently true
-                          if (newGroup.allAccess) {
-                            handleAllAccessChange(false);
-                          }
-                        }}
-                        className={`w-full ${showSpecificPermissions ? 'bg-blue-600 hover:bg-blue-700 text-white' : ''}`}
-                      >
-                        Specific Permissions
-                      </Button>
-                    </div>
-                  </div>
+            <div className="space-y-2"> {/* Permission Mode Section */} 
+              <h3 className="text-sm font-medium dark:text-gray-200">Permission Mode</h3>
+              <div className="flex items-center space-x-4">
+                <div className="flex-1">
+                  <Button
+                    type="button"
+                    variant={!showSpecificPermissions ? "default" : "outline"}
+                    onClick={() => {
+                      setShowSpecificPermissions(false);
+                      // Reset specific permissions and selection when switching back to General
+                      setNewGroup(prev => ({ ...prev, fileSpecificPermissions: {} }));
+                      setSelectedFileId(null);
+                    }}
+                    className={`w-full ${!showSpecificPermissions ? 'bg-blue-600 hover:bg-blue-700 text-white' : 'dark:bg-slate-700 dark:text-gray-300 dark:hover:bg-slate-600 dark:border-slate-600'}`}
+                  >
+                    General File Permissions
+                  </Button>
                 </div>
-                
-                {!showSpecificPermissions && (
-                  <p className="text-sm text-gray-500 dark:text-gray-400">
-                    General permissions makes all the files visible in the dataroombut may require specific settings for viewing content or downloading
-                  </p>
-                )}
-                {showSpecificPermissions && (
-                  <p className="text-sm text-gray-500 dark:text-gray-400">
-                    Configure granular permissions for specific files and folders
-                  </p>
-                )}
+                <div className="flex-1">
+                  <Button
+                    type="button"
+                    variant={showSpecificPermissions ? "default" : "outline"}
+                    onClick={() => {
+                      setShowSpecificPermissions(true);
+                      if (newGroup.allAccess) {
+                        handleAllAccessChange(false);
+                      }
+                    }}
+                    className={`w-full ${showSpecificPermissions ? 'bg-blue-600 hover:bg-blue-700 text-white' : 'dark:bg-slate-700 dark:text-gray-300 dark:hover:bg-slate-600 dark:border-slate-600'}`}
+                  >
+                    Specific File Permissions
+                  </Button>
+                </div>
               </div>
+              {!showSpecificPermissions && (
+                <p className="text-xs text-gray-500 dark:text-gray-400 pt-1">
+                  Apply a consistent set of permissions to all visible files and folders.
+                </p>
+              )}
+              {showSpecificPermissions && (
+                <p className="text-xs text-gray-500 dark:text-gray-400 pt-1">
+                  Configure granular permissions for specific files and folders below.
+                </p>
+              )}
             </div>
             
-            {/* File Permissions Section - Only show when specific permissions are not enabled */}
+            {/* General Permissions Accordion - Only show when specific permissions are not enabled */} 
             {!showSpecificPermissions && (
-              <Accordion type="single" collapsible defaultValue="file-permissions" className="w-full mb-6">
-                <AccordionItem value="file-permissions" className="border-b dark:border-gray-700">
-                  <AccordionTrigger className="dark:text-white py-4">
-                    File Permissions
+              <Accordion type="single" collapsible defaultValue="general-permissions" className="w-full border dark:border-gray-700 rounded-md">
+                <AccordionItem value="general-permissions" className="border-b-0"> {/* Remove internal border */} 
+                  <AccordionTrigger className="dark:text-white hover:no-underline px-4 py-3 text-sm font-medium">
+                    General Permissions Settings
                   </AccordionTrigger>
-                  <AccordionContent className="dark:text-gray-300 space-y-4 px-1">
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="flex items-center space-x-2">
-                        <Checkbox 
-                          id="file-view-access" 
+                  <AccordionContent className="dark:text-gray-300 space-y-4 px-4 pb-4 pt-2"> {/* Adjusted padding */} 
+                    <div className="grid grid-cols-2 gap-x-6 gap-y-3"> {/* Adjusted gaps */}
+                      
+                      {/* View files */}
+                      <div className="flex items-center space-x-2"> {/* Changed from justify-between */} 
+                        <Switch 
+                          id="general-file-view-access" 
                           checked={newGroup.defaultFilePerms.viewAccess}
                           onCheckedChange={(checked) => 
                             setNewGroup({
                               ...newGroup, 
                               defaultFilePerms: {
                                 ...newGroup.defaultFilePerms,
-                                viewAccess: checked as boolean
+                                viewAccess: checked
                               }
                             })}
-                          disabled={false}
                         />
-                        <label htmlFor="file-view-access" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                        {/* Removed conditional styling */}
+                        <label htmlFor="general-file-view-access" className="text-xs font-medium leading-none dark:text-gray-300">
                           View files
                         </label>
                       </div>
                       
-                      <div className="flex items-center space-x-2">
-                        <Checkbox 
-                          id="file-download" 
+                      {/* Download files */}
+                      <div className="flex items-center space-x-2"> 
+                        <Switch 
+                          id="general-file-download" 
                           checked={newGroup.defaultFilePerms.downloadAccess}
                           onCheckedChange={(checked) => 
                             setNewGroup({
                               ...newGroup, 
                               defaultFilePerms: {
                                 ...newGroup.defaultFilePerms,
-                                downloadAccess: checked as boolean
+                                downloadAccess: checked
                               }
                             })}
-                          disabled={false}
                         />
-                        <label htmlFor="file-download" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                        {/* Removed conditional styling */}
+                        <label htmlFor="general-file-download" className="text-xs font-medium leading-none dark:text-gray-300">
                           Download files
                         </label>
                       </div>
                       
-                      <div className="flex items-center space-x-2">
-                        <Checkbox 
-                          id="file-watermark" 
+                      {/* Apply watermark */}
+                      <div className="flex items-center space-x-2"> 
+                        <Switch 
+                          id="general-file-watermark" 
                           checked={newGroup.defaultFilePerms.watermarkContent}
                           onCheckedChange={(checked) => 
                             setNewGroup({
                               ...newGroup, 
                               defaultFilePerms: {
                                 ...newGroup.defaultFilePerms,
-                                watermarkContent: checked as boolean
+                                watermarkContent: checked
                               }
                             })}
-                          disabled={false}
                         />
-                        <label htmlFor="file-watermark" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-                          Apply watermark to content
+                        {/* Removed conditional styling */}
+                        <label htmlFor="general-file-watermark" className="text-xs font-medium leading-none dark:text-gray-300">
+                          Apply watermark
                         </label>
                       </div>
                       
-                      <div className="flex items-center space-x-2">
-                        <Checkbox 
-                          id="file-delete-edit" 
+                      {/* Delete/edit files */}
+                      <div className="flex items-center space-x-2"> 
+                        <Switch 
+                          id="general-file-delete-edit" 
                           checked={newGroup.defaultFilePerms.deleteEditAccess}
                           onCheckedChange={(checked) => 
                             setNewGroup({
                               ...newGroup, 
                               defaultFilePerms: {
                                 ...newGroup.defaultFilePerms,
-                                deleteEditAccess: checked as boolean
+                                deleteEditAccess: checked
                               }
                             })}
-                          disabled={false}
                         />
-                        <label htmlFor="file-delete-edit" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                        {/* Removed conditional styling */}
+                        <label htmlFor="general-file-delete-edit" className="text-xs font-medium leading-none dark:text-gray-300">
                           Delete/edit files
                         </label>
                       </div>
                       
-                      <div className="flex items-center space-x-2">
-                        <Checkbox 
-                          id="file-view-comments" 
+                      {/* View comments */}
+                      <div className="flex items-center space-x-2"> 
+                        <Switch 
+                          id="general-file-view-comments" 
                           checked={newGroup.defaultFilePerms.viewComments}
                           onCheckedChange={(checked) => 
                             setNewGroup({
                               ...newGroup, 
                               defaultFilePerms: {
                                 ...newGroup.defaultFilePerms,
-                                viewComments: checked as boolean
+                                viewComments: checked
                               }
                             })}
-                          disabled={false}
                         />
-                        <label htmlFor="file-view-comments" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                        {/* Removed conditional styling */}
+                        <label htmlFor="general-file-view-comments" className="text-xs font-medium leading-none dark:text-gray-300">
                           View comments
                         </label>
                       </div>
                       
-                      <div className="flex items-center space-x-2">
-                        <Checkbox 
-                          id="file-add-comments" 
+                      {/* Add comments */}
+                      <div className="flex items-center space-x-2"> 
+                        <Switch 
+                          id="general-file-add-comments" 
                           checked={newGroup.defaultFilePerms.addComments}
                           onCheckedChange={(checked) => 
                             setNewGroup({
                               ...newGroup, 
                               defaultFilePerms: {
                                 ...newGroup.defaultFilePerms,
-                                addComments: checked as boolean
+                                addComments: checked
                               }
                             })}
-                          disabled={false}
                         />
-                        <label htmlFor="file-add-comments" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                        {/* Removed conditional styling */}
+                        <label htmlFor="general-file-add-comments" className="text-xs font-medium leading-none dark:text-gray-300">
                           Add comments
                         </label>
                       </div>
                       
-                      <div className="flex items-center space-x-2">
-                        <Checkbox 
-                          id="file-view-tags" 
+                      {/* View tags */}
+                      <div className="flex items-center space-x-2"> 
+                        <Switch 
+                          id="general-file-view-tags" 
                           checked={newGroup.defaultFilePerms.viewTags}
                           onCheckedChange={(checked) => 
                             setNewGroup({
                               ...newGroup, 
                               defaultFilePerms: {
                                 ...newGroup.defaultFilePerms,
-                                viewTags: checked as boolean
+                                viewTags: checked
                               }
                             })}
-                          disabled={false}
                         />
-                        <label htmlFor="file-view-tags" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                        {/* Removed conditional styling */}
+                        <label htmlFor="general-file-view-tags" className="text-xs font-medium leading-none dark:text-gray-300">
                           View tags
                         </label>
                       </div>
 
-                      <div className="flex items-center space-x-2">
-                        <Checkbox 
-                          id="folder-view-contents" 
+                      {/* View folder contents */}
+                      <div className="flex items-center space-x-2"> 
+                        <Switch 
+                          id="general-folder-view-contents" 
                           checked={newGroup.defaultFolderPerms.viewContents}
                           onCheckedChange={(checked) => 
                             setNewGroup({
                               ...newGroup, 
                               defaultFolderPerms: {
                                 ...newGroup.defaultFolderPerms,
-                                viewContents: checked as boolean
+                                viewContents: checked
                               }
                             })}
-                          disabled={false}
                         />
-                        <label htmlFor="folder-view-contents" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                        {/* Removed conditional styling */}
+                        <label htmlFor="general-folder-view-contents" className="text-xs font-medium leading-none dark:text-gray-300">
                           View folder contents
                         </label>
                       </div>
                       
-                      <div className="flex items-center space-x-2">
-                        <Checkbox 
-                          id="folder-allow-uploads" 
+                      {/* Allow uploads to folder */}
+                      <div className="flex items-center space-x-2"> 
+                        <Switch 
+                          id="general-folder-allow-uploads" 
                           checked={newGroup.defaultFolderPerms.allowUploads}
                           onCheckedChange={(checked) => 
                             setNewGroup({
                               ...newGroup, 
                               defaultFolderPerms: {
                                 ...newGroup.defaultFolderPerms,
-                                allowUploads: checked as boolean
+                                allowUploads: checked
                               }
                             })}
-                          disabled={false}
                         />
-                        <label htmlFor="folder-allow-uploads" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                        {/* Removed conditional styling */}
+                        <label htmlFor="general-folder-allow-uploads" className="text-xs font-medium leading-none dark:text-gray-300">
                           Allow uploads to folder
                         </label>
                       </div>
@@ -1637,108 +1779,118 @@ const UserManagement: React.FC<UserManagementProps> = () => {
               </Accordion>
             )}
             
-            {/* Specific Permissions Section - Only shown when enabled */}
+            {/* Specific Permissions Section - Only shown when enabled */} 
             {showSpecificPermissions && (
-              <div>
-                <div className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+              <div className="border dark:border-gray-700 rounded-md p-4"> {/* Added container */} 
+                <div className="text-xs text-gray-500 dark:text-gray-400 mb-4">
                   Select specific files and folders to customize access. These settings will override the default permissions.
                 </div>
                 
-                <div className="grid grid-cols-2 gap-4 mb-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4"> {/* Adjusted grid for responsiveness */} 
                   <FolderPermissionTree
                     folderStructure={folderStructure}
                     selectedPermissions={newGroup.fileSpecificPermissions || {}}
-                    onPermissionChange={handleFilePermissionChange}
+                    onPermissionChange={handleFilePermissionChange} 
                     selectedItem={selectedFileId}
                     onSelectItem={setSelectedFileId}
+                    itemsMap={dialogItemsMap}
+                    parentMap={dialogParentMap}
                   />
                   
                   <ItemPermissionsPanel
                     selectedItemId={selectedFileId}
                     items={folderStructure}
                     permissions={newGroup.fileSpecificPermissions || {}}
-                    onPermissionChange={handleFilePermissionChange}
+                    onPermissionChange={handleFilePermissionChange} 
                   />
                 </div>
               </div>
             )}
             
-            {/* Dataroom Permissions */}
-            <Accordion type="single" collapsible className="w-full">
-              <AccordionItem value="dataroom-permissions" className="border-b dark:border-gray-700">
-                <AccordionTrigger className="dark:text-white py-4">
+            {/* Dataroom Permissions Accordion */} 
+            <Accordion type="single" collapsible className="w-full border dark:border-gray-700 rounded-md">
+              <AccordionItem value="dataroom-permissions" className="border-b-0"> {/* Remove internal border */} 
+                <AccordionTrigger className="dark:text-white hover:no-underline px-4 py-3 text-sm font-medium">
                   Dataroom Permissions
                 </AccordionTrigger>
-                <AccordionContent className="dark:text-gray-300 space-y-3 px-1">
+                <AccordionContent className="dark:text-gray-300 space-y-3 px-4 pb-4 pt-2"> {/* Adjusted padding and spacing */} 
+                  {/* Can query dataroom */}
                   <div className="flex items-center space-x-2">
-                    <Checkbox 
+                    <Switch 
                       id="can-query" 
                       checked={newGroup.canQuery}
                       onCheckedChange={(checked) => 
-                        setNewGroup({...newGroup, canQuery: checked as boolean})}
+                        setNewGroup({...newGroup, canQuery: checked})}
                     />
-                    <label htmlFor="can-query" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-                      Can query dataroom
+                    <label htmlFor="can-query" className="text-xs font-medium leading-none dark:text-gray-300">
+                      AI Query dataroom
                     </label>
                   </div>
                   
-                  <div className="text-xs text-amber-500 dark:text-amber-400 italic bg-amber-50 dark:bg-amber-950/30 p-2 rounded-md mb-2">
+                  {/* ... (warning text remains the same) ... */}
+                  <div className="text-xs text-amber-600 dark:text-amber-400 italic bg-amber-50 dark:bg-amber-900/20 p-2 rounded-md my-2"> 
                     Note: Queries may use data from files that users may not have access to with Specific Permissions (granular querying coming soon)
                   </div>
                   
+                  {/* Can organize files and folders */}
                   <div className="flex items-center space-x-2">
-                    <Checkbox 
+                    <Switch 
                       id="can-organize" 
                       checked={newGroup.canOrganize}
                       onCheckedChange={(checked) => 
-                        setNewGroup({...newGroup, canOrganize: checked as boolean})}
+                        setNewGroup({...newGroup, canOrganize: checked})}
                     />
-                    <label htmlFor="can-organize" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-                      Can organize files and folders
+                    <label htmlFor="can-organize" className="text-xs font-medium leading-none dark:text-gray-300">
+                      Organize files and folders
                     </label>
                   </div>
                   
+                  {/* Can view audit logs */}
                   <div className="flex items-center space-x-2">
-                    <Checkbox 
+                    <Switch 
                       id="can-view-audit" 
                       checked={newGroup.canViewAuditLogs}
                       onCheckedChange={(checked) => 
-                        setNewGroup({...newGroup, canViewAuditLogs: checked as boolean})}
+                        setNewGroup({...newGroup, canViewAuditLogs: checked})}
                     />
-                    <label htmlFor="can-view-audit" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-                      Can view audit logs
+                    <label htmlFor="can-view-audit" className="text-xs font-medium leading-none dark:text-gray-300">
+                      View audit logs
                     </label>
                   </div>
                   
+                  {/* Can create permission groups */}
                   <div className="flex items-center space-x-2">
-                    <Checkbox 
+                    <Switch 
                       id="can-create-permission-groups" 
                       checked={newGroup.canCreatePermissionGroups}
                       onCheckedChange={(checked) => 
-                        setNewGroup({...newGroup, canCreatePermissionGroups: checked as boolean})}
+                        setNewGroup({...newGroup, canCreatePermissionGroups: checked})}
                     />
-                    <label htmlFor="can-create-permission-groups" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-                      Can create permission groups
+                    <label htmlFor="can-create-permission-groups" className="text-xs font-medium leading-none dark:text-gray-300">
+                      Create permission groups
                     </label>
                   </div>
                   
+                  {/* Can delete dataroom */}
                   <div className="flex items-center space-x-2">
-                    <Checkbox 
+                    <Switch 
                       id="can-delete-dataroom" 
                       checked={newGroup.canDeleteDataroom}
                       onCheckedChange={(checked) => 
-                        setNewGroup({...newGroup, canDeleteDataroom: checked as boolean})}
+                        setNewGroup({...newGroup, canDeleteDataroom: checked})}
                     />
-                    <label htmlFor="can-delete-dataroom" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-                      Can delete dataroom
+                    <label htmlFor="can-delete-dataroom" className="text-xs font-medium leading-none dark:text-gray-300">
+                      Delete dataroom
                     </label>
                   </div>
                   
-                  <div className="space-y-2 mt-4">
-                    <label className="text-sm font-medium block">Can invite users with roles:</label>
-                    <div className="grid grid-cols-2 gap-2">
+                  {/* Can invite users */} 
+                  <div className="pt-2"> 
+                    <label className="text-xs font-medium block mb-2 dark:text-gray-300">Invite other users with roles:</label>
+                    <div className="grid grid-cols-2 gap-x-6 gap-y-2"> 
+                      {/* Invite Viewer */}
                       <div className="flex items-center space-x-2">
-                        <Checkbox 
+                        <Switch 
                           id="invite-read" 
                           checked={newGroup.canInviteUsers.includes('READ')}
                           onCheckedChange={(checked) => {
@@ -1752,11 +1904,12 @@ const UserManagement: React.FC<UserManagementProps> = () => {
                             setNewGroup({...newGroup, canInviteUsers: newInviteUsers});
                           }}
                         />
-                        <label htmlFor="invite-read" className="text-sm">Viewer</label>
+                        <label htmlFor="invite-read" className="text-xs dark:text-gray-300">Viewer</label>
                       </div>
                       
+                      {/* Invite Editor */}
                       <div className="flex items-center space-x-2">
-                        <Checkbox 
+                        <Switch 
                           id="invite-write" 
                           checked={newGroup.canInviteUsers.includes('WRITE')}
                           onCheckedChange={(checked) => {
@@ -1770,11 +1923,12 @@ const UserManagement: React.FC<UserManagementProps> = () => {
                             setNewGroup({...newGroup, canInviteUsers: newInviteUsers});
                           }}
                         />
-                        <label htmlFor="invite-write" className="text-sm">Editor</label>
+                        <label htmlFor="invite-write" className="text-xs dark:text-gray-300">Editor</label>
                       </div>
                       
+                      {/* Invite Admin */}
                       <div className="flex items-center space-x-2">
-                        <Checkbox 
+                        <Switch 
                           id="invite-admin" 
                           checked={newGroup.canInviteUsers.includes('ADMIN')}
                           onCheckedChange={(checked) => {
@@ -1788,40 +1942,42 @@ const UserManagement: React.FC<UserManagementProps> = () => {
                             setNewGroup({...newGroup, canInviteUsers: newInviteUsers});
                           }}
                         />
-                        <label htmlFor="invite-admin" className="text-sm">Admin</label>
+                        <label htmlFor="invite-admin" className="text-xs dark:text-gray-300">Admin</label>
                       </div>
                     </div>
                   </div>
                 </AccordionContent>
               </AccordionItem>
               
-              <AccordionItem value="qa-permissions" className="border-b dark:border-gray-700">
-                <AccordionTrigger className="dark:text-white py-4">
+              <AccordionItem value="qa-permissions" className="border-b-0"> {/* Remove internal border */} 
+                <AccordionTrigger className="dark:text-white hover:no-underline px-4 py-3 text-sm font-medium">
                   Q&A Permissions
                 </AccordionTrigger>
-                <AccordionContent className="dark:text-gray-300 space-y-3 px-1">
+                <AccordionContent className="dark:text-gray-300 space-y-3 px-4 pb-4 pt-2"> {/* Adjusted padding and spacing */} 
+                  {/* Read Q&A */}
                   <div className="flex items-center space-x-2">
-                    <Checkbox 
+                    <Switch 
                       id="can-read-qa" 
                       checked={newGroup.canUseQA}
                       onCheckedChange={(checked) => 
-                        setNewGroup({...newGroup, canUseQA: checked as boolean})}
+                        setNewGroup({...newGroup, canUseQA: checked})}
                       defaultChecked={true}
                     />
-                    <label htmlFor="can-read-qa" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                    <label htmlFor="can-read-qa" className="text-xs font-medium leading-none dark:text-gray-300">
                       Read Q&A
                     </label>
                   </div>
                   
+                  {/* Answer Q&A */}
                   <div className="flex items-center space-x-2">
-                    <Checkbox 
+                    <Switch 
                       id="can-answer-qa" 
                       checked={newGroup.canReadAnswerQuestions}
                       onCheckedChange={(checked) => 
-                        setNewGroup({...newGroup, canReadAnswerQuestions: checked as boolean})}
+                        setNewGroup({...newGroup, canReadAnswerQuestions: checked})}
                       defaultChecked={true}
                     />
-                    <label htmlFor="can-answer-qa" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                    <label htmlFor="can-answer-qa" className="text-xs font-medium leading-none dark:text-gray-300">
                       Answer Q&A
                     </label>
                   </div>
@@ -1830,11 +1986,11 @@ const UserManagement: React.FC<UserManagementProps> = () => {
             </Accordion>
           </div>
           
-          <DialogFooter>
+          <DialogFooter className="pt-4"> {/* Added spacing */} 
             <Button
               variant="outline"
               onClick={() => setIsCreateGroupDialogOpen(false)}
-              className="dark:bg-transparent dark:text-white dark:hover:bg-slate-800"
+              className="dark:bg-transparent dark:text-white dark:hover:bg-slate-800 dark:border-slate-700"
             >
               Cancel
             </Button>
