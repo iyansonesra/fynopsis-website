@@ -1118,7 +1118,7 @@ const UserManagement: React.FC<UserManagementProps> = () => {
           },
           body: {
             userEmail: inviteEmail.trim(),
-            permissionLevel: inviteRole
+            permissionIdentifier: inviteRole
           },
           withCredentials: true
         },

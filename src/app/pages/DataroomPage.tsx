@@ -353,7 +353,7 @@ useEffect(() => {
             },
             body: {
               userEmail: userEmail.trim(),
-              permissionLevel: permissionLevel
+              permissionIdentifier: permissionLevel
             },
             withCredentials: true
           },
