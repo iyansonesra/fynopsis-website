@@ -1006,24 +1006,73 @@ const UserManagement: React.FC<UserManagementProps> = () => {
       const responseText = await body.text();
       const response = JSON.parse(responseText);
 
-      // Transform the users data to include invitation status
-      const transformedUsers = response.users.map((user: any) => ({
-        ...user,
-        isInvited: user.role === 'INVITED',
-        invitedRole: user.invitedRole || user.role,
-        role: user.role === 'INVITED' ? user.invitedRole : user.role
-      }));
+      // Add debugging logs
+      console.log('Raw API Response:', response);
+      console.log('Response type:', typeof response);
+      console.log('Response has users property:', response.hasOwnProperty('users'));
+      
+      // Check if response is directly an array
+      if (Array.isArray(response)) {
+        console.log('Response is an array with length:', response.length);
+        
+        // Transform the users data when response is an array
+        const transformedUsers = response.map((user: any) => ({
+          ...user,
+          isInvited: user.status === 'INVITED',
+          role: user.role,
+          invitedRole: user.invitedRole,
+          permissionInfo: user.permissionInfo || {
+            type: 'ROLE',
+            displayName: formatRoleDisplay(user.role),
+          },
+          invitedPermissionInfo: user.invitedPermissionInfo || (user.invitedRole ? {
+            type: 'ROLE',
+            displayName: formatRoleDisplay(user.invitedRole),
+          } : undefined)
+        }));
 
-      setUsers(transformedUsers);
-      if(response && transformedUsers.length > 0) {
+        setUsers(transformedUsers);
+      } 
+      // Original approach (response.users is an array)
+      else if (response.users && Array.isArray(response.users)) {
+        console.log('Using response.users with length:', response.users.length);
+        
+        // Transform the users data to include invitation status and permission info
+        const transformedUsers = response.users.map((user: any) => ({
+          ...user,
+          isInvited: user.status === 'INVITED',
+          // Keep the raw role and invitedRole for compatibility with existing code
+          role: user.role,
+          invitedRole: user.invitedRole,
+          // Store detailed permission info if available from API
+          permissionInfo: user.permissionInfo || {
+            type: 'ROLE',
+            displayName: formatRoleDisplay(user.role),
+          },
+          invitedPermissionInfo: user.invitedPermissionInfo || (user.invitedRole ? {
+            type: 'ROLE',
+            displayName: formatRoleDisplay(user.invitedRole),
+          } : undefined)
+        }));
+
+        setUsers(transformedUsers);
+      } 
+      else {
+        console.error('Unexpected response format:', response);
+        setError('Invalid response format from server');
+        setUsers([]);
+      }
+      
+      if (response || Array.isArray(response)) {
         setTimeout(() => {
           setIsLoading(false);
         }, 500);
       }
     } catch (error) {
-      setError('Failed to fetch users');
       console.error('Error fetching users:', error);
-    } finally {
+      setError('Failed to fetch users');
+      setUsers([]);
+      setIsLoading(false);
     }
   };
 
