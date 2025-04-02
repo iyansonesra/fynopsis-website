@@ -55,6 +55,7 @@ canCreatePermissionGroups: boolean;
 canDeleteDataroom: boolean;
 canUseQA: boolean;
 canReadAnswerQuestions: boolean;
+canRetryProcessing?: boolean; // Added for retry processing permission
 defaultFilePerms: {
     viewAccess: boolean;
     watermarkContent: boolean;

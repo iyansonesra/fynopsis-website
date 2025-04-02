@@ -375,9 +375,9 @@ const UserManagement: React.FC<UserManagementProps> = ({ dataroomId }) => {
       const fetchedUsers = await fetchUsers(bucketUuid);
       setUsers(fetchedUsers);
       
-      setTimeout(() => {
-        setIsLoading(false);
-      }, 500);
+        setTimeout(() => {
+          setIsLoading(false);
+        }, 500);
     } catch (error) {
       console.error('Error fetching users:', error);
       setError('Failed to fetch users');
@@ -743,7 +743,7 @@ const UserManagement: React.FC<UserManagementProps> = ({ dataroomId }) => {
     <>
       <div className="mx-auto px-4 py-6 flex flex-col w-full dark:bg-darkbg">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <div className="flex justify-between items-center mb-6">
+        <div className="flex justify-between items-center mb-6">
             <TabsList className="dark:bg-slate-800">
               <TabsTrigger value="users" className="data-[state=active]:dark:bg-slate-700">
                 <Users className="h-4 w-4 mr-2" />
@@ -756,13 +756,13 @@ const UserManagement: React.FC<UserManagementProps> = ({ dataroomId }) => {
             </TabsList>
             
             {activeTab === 'users' ? (
-              <Button
-                onClick={() => setIsInviteDialogOpen(true)}
-                className="flex items-center gap-2 text-white"
-              >
-                <UserPlus className="h-4 w-4" />
-                Add User
-              </Button>
+          <Button
+            onClick={() => setIsInviteDialogOpen(true)}
+            className="flex items-center gap-2 text-white"
+          >
+            <UserPlus className="h-4 w-4" />
+            Add User
+          </Button>
             ) : (
               <Button
                 onClick={handleOpenDialog}
@@ -772,11 +772,11 @@ const UserManagement: React.FC<UserManagementProps> = ({ dataroomId }) => {
                 Create New Permission Group
               </Button>
             )}
-          </div>
+        </div>
           
           <TabsContent value="users" className="mt-0">
-            {isLoading ? (
-              // Render a few skeleton cards while loading
+          {isLoading ? (
+            // Render a few skeleton cards while loading
               <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden">
                 {/* Current user skeleton with blue tint */}
                 <div className="bg-blue-50/50 dark:bg-slate-800 p-6 border-b dark:border-gray-700">
@@ -797,44 +797,44 @@ const UserManagement: React.FC<UserManagementProps> = ({ dataroomId }) => {
                 <SkeletonCard />
                 <SkeletonCard />
                 <SkeletonCard />
-              </div>
-            ) :
-              users.length === 0 ? (
-                <div className="p-6 text-center text-gray-500">No users found</div>
-              ) : (
+            </div>
+          ) :
+            users.length === 0 ? (
+              <div className="p-6 text-center text-gray-500">No users found</div>
+            ) : (
                 <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden">
-                  <div className="divide-y divide-gray-200 dark:divide-gray-700">
-                    {/* Current User Section */}
-                    {currentUser && (
-                      <div className="bg-blue-50 dark:bg-slate-800 p-6">
-                        <div className="flex items-center justify-between">
-                          <div className="flex-grow">
-                            <div className="flex items-center space-x-3">
-                              <div className="h-10 w-10 rounded-full bg-blue-100 dark:bg-blue-500 flex items-center justify-center">
-                                <span className="text-blue-600 font-medium dark:text-white">
-                                  {currentUser.name.charAt(0).toUpperCase()}
-                                </span>
-                              </div>
-                              <div>
-                                <p className="font-medium text-gray-900 dark:text-white">
-                                  {currentUser.name} <span className="text-blue-600 text-sm">(You)</span>
-                                </p>
-                                <p className="text-sm text-gray-500 dark:text-gray-300">{currentUser.email}</p>
-                                <p className="text-xs text-gray-400 mt-1 dark:text-gray-200">
-                                  Added: {new Date(currentUser.addedAt).toLocaleDateString()}
-                                </p>
-                              </div>
-                            </div>
+              <div className="divide-y divide-gray-200 dark:divide-gray-700">
+                {/* Current User Section */}
+                {currentUser && (
+                  <div className="bg-blue-50 dark:bg-slate-800 p-6">
+                    <div className="flex items-center justify-between">
+                      <div className="flex-grow">
+                        <div className="flex items-center space-x-3">
+                          <div className="h-10 w-10 rounded-full bg-blue-100 dark:bg-blue-500 flex items-center justify-center">
+                            <span className="text-blue-600 font-medium dark:text-white">
+                              {currentUser.name.charAt(0).toUpperCase()}
+                            </span>
                           </div>
-                          <div className="ml-6">
-                            <RoleSelect user={currentUser} currentUserRole={currentUser.role as Role} onRoleChange={handleRoleChange} currentUserEmail={currentUser.email} />
+                          <div>
+                            <p className="font-medium text-gray-900 dark:text-white">
+                              {currentUser.name} <span className="text-blue-600 text-sm">(You)</span>
+                            </p>
+                            <p className="text-sm text-gray-500 dark:text-gray-300">{currentUser.email}</p>
+                            <p className="text-xs text-gray-400 mt-1 dark:text-gray-200">
+                              Added: {new Date(currentUser.addedAt).toLocaleDateString()}
+                            </p>
                           </div>
                         </div>
                       </div>
-                    )}
+                      <div className="ml-6">
+                            <RoleSelect user={currentUser} currentUserRole={currentUser.role as Role} onRoleChange={handleRoleChange} currentUserEmail={currentUser.email} />
+                      </div>
+                    </div>
+                  </div>
+                )}
 
-                    {/* Other Users Section */}
-                    {otherUsers.map((user) => (
+                {/* Other Users Section */}
+                {otherUsers.map((user) => (
                       <UserCard 
                         key={user.userId} 
                         user={user} 
@@ -843,9 +843,9 @@ const UserManagement: React.FC<UserManagementProps> = ({ dataroomId }) => {
                         onRoleChange={handleRoleChange}
                         onRemoveUser={setUserToRemove}
                       />
-                    ))}
-                  </div>
-                </div>
+                ))}
+              </div>
+        </div>
               )
             }
           </TabsContent>
@@ -933,7 +933,7 @@ const UserManagement: React.FC<UserManagementProps> = ({ dataroomId }) => {
         isOpen={isInviteDialogOpen}
         onClose={() => {
           setIsInviteDialogOpen(false);
-          setInviteError(null);
+            setInviteError(null);
         }}
         email={inviteEmail}
         onEmailChange={(value) => setInviteEmail(value)}
@@ -962,15 +962,21 @@ const UserManagement: React.FC<UserManagementProps> = ({ dataroomId }) => {
         isOpen={isCreateGroupDialogOpen}
         onClose={() => setIsCreateGroupDialogOpen(false)}
         newGroupName={newGroupName}
-        setNewGroupName={(value) => setNewGroupName(value)}
+        setNewGroupName={setNewGroupName}
+        onNameChange={(value) => setNewGroupName(value)}
         newGroup={newGroup}
         setNewGroup={setNewGroup}
-        folderStructure={folderStructure}
+                    folderStructure={folderStructure}
         dialogItemsMap={dialogItemsMap}
         dialogParentMap={dialogParentMap}
         onFilePermissionChange={handleFilePermissionChange}
         isCreatingGroup={isCreatingGroup}
         onCreateGroup={handleCreatePermissionGroup}
+        showSpecificPermissions={showSpecificPermissions}
+        setShowSpecificPermissions={setShowSpecificPermissions}
+        selectedFileId={selectedFileId}
+        setSelectedFileId={setSelectedFileId}
+        handleAllAccessChange={handleAllAccessChange}
       />
 
       <ViewGroupDetailsDialog 
