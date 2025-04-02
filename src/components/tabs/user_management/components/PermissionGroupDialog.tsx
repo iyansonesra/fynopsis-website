@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -66,6 +66,20 @@ export const PermissionGroupDialog: React.FC<PermissionGroupDialogProps> = ({
   const [internalShowSpecificPermissions, setInternalShowSpecificPermissions] = useState(false);
   const [activeTab, setActiveTab] = useState<TabType>('general');
 
+  // Ensure allAccess is true by default when opening the dialog
+  useEffect(() => {
+    if (isOpen) {
+      // Default to general access mode ON and appropriate tab
+      if (!newGroup.allAccess) {
+        setNewGroup(prev => ({
+          ...prev,
+          allAccess: true
+        }));
+      }
+      setActiveTab('general');
+    }
+  }, [isOpen]);
+
   // Use external or internal state
   const selectedFileId = externalSelectedFileId !== undefined ? externalSelectedFileId : internalSelectedFileId;
   const showSpecificPermissions = externalShowSpecificPermissions !== undefined ? externalShowSpecificPermissions : internalShowSpecificPermissions;
@@ -95,9 +109,7 @@ export const PermissionGroupDialog: React.FC<PermissionGroupDialogProps> = ({
         allAccess: true,
       });
       // If enabling all access, switch to general tab
-      if (activeTab === 'specific') {
-        setActiveTab('general');
-      }
+      setActiveTab('general');
       setShowSpecificPermissions(false);
     } else {
       // When disabling all access, keep current permissions
@@ -105,6 +117,9 @@ export const PermissionGroupDialog: React.FC<PermissionGroupDialogProps> = ({
         ...newGroup,
         allAccess: false,
       });
+      // When turning off allAccess, switch to specific tab
+      setActiveTab('specific');
+      setShowSpecificPermissions(true);
     }
   };
   
@@ -123,24 +138,26 @@ export const PermissionGroupDialog: React.FC<PermissionGroupDialogProps> = ({
 
   // Switch to specific file permissions tab
   const switchToSpecificPermissions = () => {
-    setActiveTab('specific');
-    setShowSpecificPermissions(true);
-    // When switching to specific permissions, ensure allAccess is false
     if (newGroup.allAccess) {
+      // If trying to switch to specific while allAccess is true, 
+      // we need to toggle the mode first
       handleAllAccessChange(false);
+    } else {
+      setActiveTab('specific');
+      setShowSpecificPermissions(true);
     }
   };
 
   // Navigate to a tab
   const navigateToTab = (tab: TabType) => {
-    setActiveTab(tab);
-    // If navigating to specific tab, ensure we're in specific permissions mode
-    if (tab === 'specific') {
-      setShowSpecificPermissions(true);
-      if (newGroup.allAccess) {
-        handleAllAccessChange(false);
-      }
+    // If trying to navigate to general tab but allAccess is false, 
+    // or to specific tab but allAccess is true, don't allow it
+    if ((tab === 'general' && !newGroup.allAccess) ||
+        (tab === 'specific' && newGroup.allAccess)) {
+      return;
     }
+
+    setActiveTab(tab);
   };
 
   return (
@@ -194,20 +211,31 @@ export const PermissionGroupDialog: React.FC<PermissionGroupDialogProps> = ({
                     variant="ghost"
                     className={cn(
                       "w-full justify-start rounded-md text-sm font-medium",
-                      activeTab === 'general' && "bg-gray-100 dark:bg-gray-800"
+                      activeTab === 'general' && "bg-gray-100 dark:bg-gray-800",
+                      !newGroup.allAccess && "opacity-50 cursor-not-allowed"
                     )}
                     onClick={() => navigateToTab('general')}
+                    disabled={!newGroup.allAccess}
                   >
                     <FileText className="mr-2 h-4 w-4" />
                     File Permissions
+                    {!newGroup.allAccess && (
+                      <AlertCircle className="ml-1 h-3 w-3 text-yellow-500" />
+                    )}
                   </Button>
+                  {!newGroup.allAccess && activeTab === 'general' && (
+                    <p className="text-xs text-yellow-500 ml-8 mt-1">
+                      Enable general access first
+                    </p>
+                  )}
                 </li>
                 <li>
                   <Button
                     variant="ghost"
                     className={cn(
                       "w-full justify-start rounded-md text-sm font-medium",
-                      activeTab === 'specific' && "bg-gray-100 dark:bg-gray-800"
+                      activeTab === 'specific' && "bg-gray-100 dark:bg-gray-800",
+                      newGroup.allAccess && "opacity-50 cursor-not-allowed"
                     )}
                     onClick={switchToSpecificPermissions}
                     disabled={newGroup.allAccess}
@@ -270,7 +298,7 @@ export const PermissionGroupDialog: React.FC<PermissionGroupDialogProps> = ({
           {/* Right Content Area */}
           <div className="overflow-auto p-6">
             {/* General File Permissions Tab */}
-            {activeTab === 'general' && (
+            {activeTab === 'general' && newGroup.allAccess && (
               <div className="space-y-6">
                 <h3 className="text-lg font-medium">File & Folder Permissions</h3>
                 <p className="text-sm text-gray-500 dark:text-gray-400">
@@ -488,61 +516,76 @@ export const PermissionGroupDialog: React.FC<PermissionGroupDialogProps> = ({
               </div>
             )}
             
-            {/* Specific File Permissions Tab */}
-            {activeTab === 'specific' && (
+            {/* When General Access is off but we're still on general tab */}
+            {activeTab === 'general' && !newGroup.allAccess && (
+              <div className="flex flex-col items-center justify-center h-[500px] border dark:border-gray-700 rounded-md">
+                <div className="text-center p-8">
+                  <div className="bg-gray-100 dark:bg-gray-800 h-12 w-12 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <FileText className="h-6 w-6 text-gray-400" />
+                  </div>
+                  <h3 className="text-lg font-medium mb-2">General access mode is disabled</h3>
+                  <p className="text-sm text-gray-500 dark:text-gray-400 max-w-md">
+                    General file permissions are only available when General Access Mode is enabled.
+                  </p>
+                  <Button 
+                    className="mt-4"
+                    onClick={() => handleAllAccessChange(true)}
+                  >
+                    Enable General Access Mode
+                  </Button>
+                </div>
+              </div>
+            )}
+            
+            {/* Specific File Permissions Tab - only shown when General Access is OFF */}
+            {activeTab === 'specific' && !newGroup.allAccess && (
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
                   <h3 className="text-lg font-medium">Specific File & Folder Permissions</h3>
-                  {newGroup.allAccess && (
-                    <div className="flex items-center text-yellow-600 bg-yellow-50 dark:bg-yellow-900/20 dark:text-yellow-400 px-3 py-1 rounded-md text-sm">
-                      <AlertCircle className="h-4 w-4 mr-2" />
-                      <span>Disable general access mode first</span>
-                    </div>
-                  )}
                 </div>
                 
                 <p className="text-sm text-gray-500 dark:text-gray-400">
                   Configure access permissions for specific files and folders. These settings override the general permissions.
                 </p>
                 
-                {!newGroup.allAccess ? (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 h-[400px]">
-                    <FolderPermissionTree
-                      folderStructure={folderStructure}
-                      selectedPermissions={newGroup.fileIdAccess || {}}
-                      onPermissionChange={onFilePermissionChange} 
-                      selectedItem={selectedFileId}
-                      onSelectItem={setSelectedFileId}
-                      itemsMap={dialogItemsMap}
-                      parentMap={dialogParentMap}
-                    />
-                    <ItemPermissionsPanel
-                      selectedItemId={selectedFileId}
-                      items={Object.values(dialogItemsMap)}
-                      permissions={newGroup.fileIdAccess || {}}
-                      onPermissionChange={onFilePermissionChange}
-                    />
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 h-[400px]">
+                  <FolderPermissionTree
+                    folderStructure={folderStructure}
+                    selectedPermissions={newGroup.fileIdAccess || {}}
+                    onPermissionChange={onFilePermissionChange} 
+                    selectedItem={selectedFileId}
+                    onSelectItem={setSelectedFileId}
+                    itemsMap={dialogItemsMap}
+                    parentMap={dialogParentMap}
+                  />
+                  <ItemPermissionsPanel
+                    selectedItemId={selectedFileId}
+                    items={Object.values(dialogItemsMap)}
+                    permissions={newGroup.fileIdAccess || {}}
+                    onPermissionChange={onFilePermissionChange}
+                  />
+                </div>
+              </div>
+            )}
+            
+            {/* When we try to show specific tab but General Access is ON */}
+            {activeTab === 'specific' && newGroup.allAccess && (
+              <div className="flex flex-col items-center justify-center h-[500px] border dark:border-gray-700 rounded-md">
+                <div className="text-center p-8">
+                  <div className="bg-gray-100 dark:bg-gray-800 h-12 w-12 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <FolderOpen className="h-6 w-6 text-gray-400" />
                   </div>
-                ) : (
-                  <div className="flex flex-col items-center justify-center h-[400px] border dark:border-gray-700 rounded-md">
-                    <div className="text-center p-8">
-                      <div className="bg-gray-100 dark:bg-gray-800 h-12 w-12 rounded-full flex items-center justify-center mx-auto mb-4">
-                        <FileIcon className="h-6 w-6 text-gray-400" />
-                      </div>
-                      <h3 className="text-lg font-medium mb-2">General access mode is active</h3>
-                      <p className="text-sm text-gray-500 dark:text-gray-400 max-w-md">
-                        To configure specific file and folder permissions, disable the general access mode in the sidebar.
-                      </p>
-                      <Button 
-                        className="mt-4"
-                        variant="outline"
-                        onClick={() => handleAllAccessChange(false)}
-                      >
-                        Disable General Access Mode
-                      </Button>
-                    </div>
-                  </div>
-                )}
+                  <h3 className="text-lg font-medium mb-2">General access mode is enabled</h3>
+                  <p className="text-sm text-gray-500 dark:text-gray-400 max-w-md">
+                    Specific file permissions are only available when General Access Mode is disabled.
+                  </p>
+                  <Button 
+                    className="mt-4"
+                    onClick={() => handleAllAccessChange(false)}
+                  >
+                    Disable General Access Mode
+                  </Button>
+                </div>
               </div>
             )}
             
@@ -738,6 +781,20 @@ export const PermissionGroupDialog: React.FC<PermissionGroupDialogProps> = ({
                     </div>
                     
                     <div className="flex items-center justify-between">
+                      <label className="text-sm">Can retry processing</label>
+                      <Switch 
+                        checked={newGroup.canRetryProcessing !== false} // Default to true if not explicitly set
+                        onCheckedChange={(checked) => {
+                          // Add the property explicitly to the object
+                          setNewGroup({
+                            ...newGroup, 
+                            canRetryProcessing: checked
+                          });
+                        }}
+                      />
+                    </div>
+                    
+                    <div className="flex items-center justify-between">
                       <label className="text-sm">Can delete dataroom</label>
                       <Switch 
                         checked={newGroup.canDeleteDataroom}
@@ -783,20 +840,6 @@ export const PermissionGroupDialog: React.FC<PermissionGroupDialogProps> = ({
                         checked={newGroup.canReadAnswerQuestions}
                         onCheckedChange={(checked) => 
                           setNewGroup({...newGroup, canReadAnswerQuestions: checked})}
-                      />
-                    </div>
-                    
-                    <div className="flex items-center justify-between">
-                      <label className="text-sm">Can retry processing</label>
-                      <Switch 
-                        checked={newGroup.canRetryProcessing !== false} // Default to true if not explicitly set
-                        onCheckedChange={(checked) => {
-                          // Add the property explicitly to the object
-                          setNewGroup({
-                            ...newGroup, 
-                            canRetryProcessing: checked
-                          });
-                        }}
                       />
                     </div>
                   </div>
