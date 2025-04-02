@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { get, post } from '@aws-amplify/api';
 import {
   Select,
@@ -31,6 +31,8 @@ import {
 } from "@/components/ui/accordion";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
+import { useToast } from "@/components/ui/use-toast";
+import { Amplify } from 'aws-amplify';
 
 // Update the User type to include invitation status
 type User = {
@@ -97,15 +99,42 @@ type PermissionGroup = {
     addComments: boolean;
     downloadAccess: boolean;
     viewTags: boolean;
+    canQuery: boolean;
+    isVisible: boolean;
   };
   defaultFolderPerms: {
     allowUploads: boolean;
-    viewComments: boolean;
+    createFolders: boolean;
     addComments: boolean;
+    viewComments: boolean;
     viewContents: boolean;
     viewTags: boolean;
+    canQuery: boolean;
+    isVisible: boolean;
+    inheritFileAccess?: {
+      viewAccess: boolean;
+      watermarkContent: boolean;
+      deleteEditAccess: boolean;
+      viewComments: boolean;
+      addComments: boolean;
+      downloadAccess: boolean;
+      viewTags: boolean;
+      canQuery: boolean;
+      isVisible: boolean;
+    };
+    inheritFolderAccess?: {
+      allowUploads: boolean;
+      createFolders: boolean;
+      addComments: boolean;
+      viewComments: boolean;
+      viewContents: boolean;
+      viewTags: boolean;
+      canQuery: boolean;
+      isVisible: boolean;
+    };
   };
-  fileSpecificPermissions?: Record<string, FilePermission>;
+  folderIdAccess?: Record<string, any>;
+  fileIdAccess?: Record<string, any>;
 };
 
 // Define Default Role Structures (Constants) - Placed BEFORE the component
@@ -114,7 +143,6 @@ const DEFAULT_ROLES: Array<Omit<PermissionGroup, 'id'>> = [
     name: 'Owner',
     isDefault: true,
     allAccess: true,
-    // ... rest of Owner permissions (as defined before) ...
     canQuery: true,
     canOrganize: true,
     canViewAuditLogs: true,
@@ -131,22 +159,49 @@ const DEFAULT_ROLES: Array<Omit<PermissionGroup, 'id'>> = [
       viewComments: true,
       addComments: true,
       downloadAccess: true,
-      viewTags: true
+      viewTags: true,
+      canQuery: true,
+      isVisible: true
     },
     defaultFolderPerms: {
       allowUploads: true,
-      viewComments: true,
+      createFolders: true,
       addComments: true,
+      viewComments: true,
       viewContents: true,
-      viewTags: true
-    }
+      viewTags: true,
+      canQuery: true,
+      isVisible: true,
+      inheritFileAccess: {
+        viewAccess: true,
+        watermarkContent: false,
+        deleteEditAccess: true,
+        viewComments: true,
+        addComments: true,
+        downloadAccess: true,
+        viewTags: true,
+        canQuery: true,
+        isVisible: true
+      },
+      inheritFolderAccess: {
+        allowUploads: true,
+        createFolders: true,
+        addComments: true,
+        viewComments: true,
+        viewContents: true,
+        viewTags: true,
+        canQuery: true,
+        isVisible: true
+      }
+    },
+    folderIdAccess: {},
+    fileIdAccess: {}
   },
   {
     name: 'Admin',
     isDefault: true,
     allAccess: true,
-    // ... rest of Admin permissions (as defined before) ...
-     canQuery: true,
+    canQuery: true,
     canOrganize: true,
     canViewAuditLogs: true,
     canInviteUsers: ['READ', 'WRITE', 'ADMIN'],
@@ -162,21 +217,48 @@ const DEFAULT_ROLES: Array<Omit<PermissionGroup, 'id'>> = [
       viewComments: true,
       addComments: true,
       downloadAccess: true,
-      viewTags: true
+      viewTags: true,
+      canQuery: true,
+      isVisible: true
     },
     defaultFolderPerms: {
       allowUploads: true,
-      viewComments: true,
+      createFolders: true,
       addComments: true,
+      viewComments: true,
       viewContents: true,
-      viewTags: true
-    }
+      viewTags: true,
+      canQuery: true,
+      isVisible: true,
+      inheritFileAccess: {
+        viewAccess: true,
+        watermarkContent: false,
+        deleteEditAccess: true,
+        viewComments: true,
+        addComments: true,
+        downloadAccess: true,
+        viewTags: true,
+        canQuery: true,
+        isVisible: true
+      },
+      inheritFolderAccess: {
+        allowUploads: true,
+        createFolders: true,
+        addComments: true,
+        viewComments: true,
+        viewContents: true,
+        viewTags: true,
+        canQuery: true,
+        isVisible: true
+      }
+    },
+    folderIdAccess: {},
+    fileIdAccess: {}
   },
   {
     name: 'Editor', // WRITE
     isDefault: true,
     allAccess: true, 
-    // ... rest of Editor permissions (as defined before) ...
     canQuery: true,
     canOrganize: false,
     canViewAuditLogs: false,
@@ -193,22 +275,49 @@ const DEFAULT_ROLES: Array<Omit<PermissionGroup, 'id'>> = [
       viewComments: true,
       addComments: true,
       downloadAccess: true,
-      viewTags: true
+      viewTags: true,
+      canQuery: true,
+      isVisible: true
     },
     defaultFolderPerms: {
       allowUploads: true,
-      viewComments: true,
+      createFolders: true,
       addComments: true,
+      viewComments: true,
       viewContents: true,
-      viewTags: true
-    }
+      viewTags: true,
+      canQuery: true,
+      isVisible: true,
+      inheritFileAccess: {
+        viewAccess: true,
+        watermarkContent: false,
+        deleteEditAccess: true,
+        viewComments: true,
+        addComments: true,
+        downloadAccess: true,
+        viewTags: true,
+        canQuery: true,
+        isVisible: true
+      },
+      inheritFolderAccess: {
+        allowUploads: true,
+        createFolders: true,
+        addComments: true,
+        viewComments: true,
+        viewContents: true,
+        viewTags: true,
+        canQuery: true,
+        isVisible: true
+      }
+    },
+    folderIdAccess: {},
+    fileIdAccess: {}
   },
   {
     name: 'Viewer', // READ
     isDefault: true,
-    allAccess: true, 
-    // ... rest of Viewer permissions (as defined before) ...
-     canQuery: true,
+    allAccess: true,
+    canQuery: true,
     canOrganize: false,
     canViewAuditLogs: false,
     canInviteUsers: [],
@@ -224,15 +333,43 @@ const DEFAULT_ROLES: Array<Omit<PermissionGroup, 'id'>> = [
       viewComments: true,
       addComments: false,
       downloadAccess: false,
-      viewTags: true
+      viewTags: true,
+      canQuery: true,
+      isVisible: true
     },
     defaultFolderPerms: {
       allowUploads: false,
-      viewComments: true,
+      createFolders: false,
       addComments: false,
+      viewComments: true,
       viewContents: true,
-      viewTags: true
-    }
+      viewTags: true,
+      canQuery: true,
+      isVisible: true,
+      inheritFileAccess: {
+        viewAccess: true,
+        watermarkContent: true,
+        deleteEditAccess: false,
+        viewComments: true,
+        addComments: false,
+        downloadAccess: false,
+        viewTags: true,
+        canQuery: true,
+        isVisible: true
+      },
+      inheritFolderAccess: {
+        allowUploads: false,
+        createFolders: false,
+        addComments: false,
+        viewComments: true,
+        viewContents: true,
+        viewTags: true,
+        canQuery: true,
+        isVisible: true
+      }
+    },
+    folderIdAccess: {},
+    fileIdAccess: {}
   }
 ];
 
@@ -612,7 +749,7 @@ const ItemPermissionsPanel: React.FC<{
   );
 };
 
-const UserManagement: React.FC<UserManagementProps> = () => {
+const UserManagement: React.FC<UserManagementProps> = ({ dataroomId }) => {
   const [users, setUsers] = useState<User[]>([]);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [otherUsers, setOtherUsers] = useState<User[]>([]);
@@ -631,6 +768,57 @@ const UserManagement: React.FC<UserManagementProps> = () => {
   const pathname = usePathname() || '';
   const pathArray = pathname.split('/');
   const bucketUuid = pathArray[2] || '';
+
+  const { toast } = useToast(); // Initialize toast
+  const [customPermissionGroups, setCustomPermissionGroups] = useState<PermissionGroup[]>([]);
+  const [isLoadingGroups, setIsLoadingGroups] = useState<boolean>(false);
+  const [groupsError, setGroupsError] = useState<string | null>(null);
+  
+  // Add a useEffect to fetch permission groups when the component mounts
+  useEffect(() => {
+    if (bucketUuid) {
+      fetchUsers();
+      fetchPermissionLevel();
+      fetchPermissionGroups(); // Add this to load permission groups
+    }
+  }, [bucketUuid]);
+  
+  // Function to fetch permission groups
+  const fetchPermissionGroups = async () => {
+    if (!bucketUuid) return;
+    setIsLoadingGroups(true);
+    try {
+      const restOperation = get({
+        apiName: 'S3_API',
+        path: `/share-folder/${bucketUuid}/permission-groups`,
+        options: { 
+          headers: { 'Content-Type': 'application/json' },
+          withCredentials: true 
+        }
+      });
+      
+      const response = await restOperation.response;
+      const groups = await response.body.json();
+      
+      console.log("Fetched Permission Groups:", groups);
+      
+      if (Array.isArray(groups)) {
+        setPermissionGroups(groups as PermissionGroup[]);
+      } else {
+        console.error("Unexpected response format:", groups);
+        setPermissionGroups([]);
+      }
+    } catch (error) {
+      console.error('Error fetching permission groups:', error);
+      toast({
+        title: "Error",
+        description: "Failed to fetch permission groups.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoadingGroups(false);
+    }
+  };
 
   // Permission group state variables
   const [permissionGroups, setPermissionGroups] = useState<PermissionGroup[]>([]);
@@ -656,16 +844,43 @@ const UserManagement: React.FC<UserManagementProps> = () => {
       viewComments: true,
       addComments: false,
       downloadAccess: false,
-      viewTags: true
+      viewTags: true,
+      canQuery: true,
+      isVisible: true
     },
     defaultFolderPerms: {
       allowUploads: false,
-      viewComments: true,
+      createFolders: false,
       addComments: false,
+      viewComments: true,
       viewContents: true,
-      viewTags: true
+      viewTags: true,
+      canQuery: true,
+      isVisible: true,
+      inheritFileAccess: {
+        viewAccess: true,
+        watermarkContent: false,
+        deleteEditAccess: false,
+        viewComments: true,
+        addComments: false,
+        downloadAccess: false,
+        viewTags: true,
+        canQuery: true,
+        isVisible: true
+      },
+      inheritFolderAccess: {
+        allowUploads: false,
+        createFolders: false,
+        addComments: false,
+        viewComments: true,
+        viewContents: true,
+        viewTags: true,
+        canQuery: true,
+        isVisible: true
+      }
     },
-    fileSpecificPermissions: {}
+    folderIdAccess: {},
+    fileIdAccess: {}
   });
   const [activeTab, setActiveTab] = useState('users');
   
@@ -1144,48 +1359,133 @@ const UserManagement: React.FC<UserManagementProps> = () => {
     }
   };
 
-  const handleCreatePermissionGroup = () => {
-    // For now, just add to local state
-    const newGroupWithId = {
-      ...newGroup,
-      id: `group_${Date.now()}`,
-      name: newGroupName
-    };
-    
-    setPermissionGroups([...permissionGroups, newGroupWithId]);
-    setIsCreateGroupDialogOpen(false);
-    setNewGroupName('');
-    setNewGroup({
-      id: '',
-      name: '',
-      allAccess: false,
-      canQuery: true,
-      canOrganize: false,
-      canViewAuditLogs: false,
-      canInviteUsers: [],
-      canUpdateUserPermissions: [],
-      canCreatePermissionGroups: false,
-      canDeleteDataroom: false,
-      canUseQA: true,
-      canReadAnswerQuestions: true,
-      defaultFilePerms: {
-        viewAccess: true,
-        watermarkContent: false,
-        deleteEditAccess: false,
-        viewComments: true,
-        addComments: false,
-        downloadAccess: false,
-        viewTags: true
-      },
-      defaultFolderPerms: {
-        allowUploads: false,
-        viewComments: true,
-        addComments: false,
-        viewContents: true,
-        viewTags: true
-      },
-      fileSpecificPermissions: {}
-    });
+  const [isCreatingGroup, setIsCreatingGroup] = useState(false);
+
+  const handleCreatePermissionGroup = async () => {
+    if (!newGroupName.trim() || !bucketUuid) return;
+    setIsCreatingGroup(true);
+    try {
+      // Map frontend state to the backend expected structure
+      const backendPermissionsPayload = {
+        // General dataroom permissions
+        allAccess: newGroup.allAccess,
+        canQueryEntireDataroom: newGroup.canQuery,
+        canOrganize: newGroup.canOrganize,
+        canViewAuditLogs: newGroup.canViewAuditLogs,
+        canInviteUsers: newGroup.canInviteUsers,
+        canUpdateUserPermissions: newGroup.canUpdateUserPermissions,
+        canCreatePermissionGroups: newGroup.canCreatePermissionGroups,
+        canDeleteDataroom: newGroup.canDeleteDataroom,
+        canReadQA: newGroup.canUseQA,
+        canAnswerQA: newGroup.canReadAnswerQuestions,
+        canRetryProcessing: true, // Default to true 
+        
+        // Default file permissions
+        defaultFilePerms: {
+          ...newGroup.defaultFilePerms
+        },
+        
+        // Default folder permissions with complete nested structure
+        defaultFolderPerms: {
+          // Direct folder permissions
+          allowUploads: newGroup.defaultFolderPerms.allowUploads,
+          createFolders: newGroup.defaultFolderPerms.createFolders,
+          addComments: newGroup.defaultFolderPerms.addComments,
+          viewComments: newGroup.defaultFolderPerms.viewComments,
+          viewContents: newGroup.defaultFolderPerms.viewContents,
+          viewTags: newGroup.defaultFolderPerms.viewTags,
+          canQuery: newGroup.defaultFolderPerms.canQuery,
+          isVisible: newGroup.defaultFolderPerms.isVisible,
+          
+          // Nested permissions for inheritance
+          inheritFileAccess: {
+            ...newGroup.defaultFolderPerms.inheritFileAccess || newGroup.defaultFilePerms // Fallback to defaultFilePerms if not set
+          },
+          inheritFolderAccess: {
+            ...(newGroup.defaultFolderPerms.inheritFolderAccess || {
+              // If not explicitly set, copy the direct folder permissions
+              allowUploads: newGroup.defaultFolderPerms.allowUploads,
+              createFolders: newGroup.defaultFolderPerms.createFolders,
+              addComments: newGroup.defaultFolderPerms.addComments,
+              viewComments: newGroup.defaultFolderPerms.viewComments,
+              viewContents: newGroup.defaultFolderPerms.viewContents,
+              viewTags: newGroup.defaultFolderPerms.viewTags,
+              canQuery: newGroup.defaultFolderPerms.canQuery,
+              isVisible: newGroup.defaultFolderPerms.isVisible
+            })
+          }
+        },
+        
+        // Empty folder and file specific access maps
+        folderIdAccess: newGroup.folderIdAccess || {},
+        fileIdAccess: newGroup.fileIdAccess || {}
+      };
+
+      const restOperation = post({
+        apiName: 'S3_API',
+        path: `/share-folder/${bucketUuid}/permission-groups`,
+        options: {
+          body: {
+            groupName: newGroupName,
+            permissions: backendPermissionsPayload
+          },
+          headers: { 'Content-Type': 'application/json' },
+          withCredentials: true
+        }
+      });
+
+      const response = await restOperation.response;
+      const result = await response.body.json();
+
+      toast({
+        title: "Success",
+        description: `Permission group "${newGroupName}" created successfully.`
+      });
+
+      // Reset state and close dialog
+      setIsCreateGroupDialogOpen(false);
+      setNewGroupName('');
+      setNewGroup({
+        id: '', name: '', allAccess: false, canQuery: true, canOrganize: false,
+        canViewAuditLogs: false, canInviteUsers: [], canUpdateUserPermissions: [],
+        canCreatePermissionGroups: false, canDeleteDataroom: false, canUseQA: true,
+        canReadAnswerQuestions: true,
+        defaultFilePerms: {
+          viewAccess: true, watermarkContent: false, deleteEditAccess: false, 
+          viewComments: true, addComments: false, downloadAccess: false, 
+          viewTags: true, canQuery: true, isVisible: true
+        },
+        defaultFolderPerms: {
+          allowUploads: false, createFolders: false, addComments: false, 
+          viewComments: true, viewContents: true, viewTags: true, 
+          canQuery: true, isVisible: true,
+          inheritFileAccess: {
+            viewAccess: true, watermarkContent: false, deleteEditAccess: false, 
+            viewComments: true, addComments: false, downloadAccess: false, 
+            viewTags: true, canQuery: true, isVisible: true
+          },
+          inheritFolderAccess: {
+            allowUploads: false, createFolders: false, addComments: false, 
+            viewComments: true, viewContents: true, viewTags: true, 
+            canQuery: true, isVisible: true
+          }
+        },
+        folderIdAccess: {},
+        fileIdAccess: {}
+      });
+      
+      // Refresh the permission groups list
+      await fetchPermissionGroups();
+    } catch (error) {
+      console.error("Error creating permission group:", error);
+      toast({
+        title: "Error",
+        description: "Failed to create permission group.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsCreatingGroup(false);
+    }
   };
 
   const handleAllAccessChange = (checked: boolean) => {
@@ -1204,10 +1504,10 @@ const UserManagement: React.FC<UserManagementProps> = () => {
     }
   };
   
-  // --- Enhanced handleFilePermissionChange with Cascade Logic & Linter Fix ---
+  // --- Enhanced handleFilePermissionChange with Cascade Logic ---
   const handleFilePermissionChange = (fileId: string, permissionUpdate: Partial<FilePermission>) => {
     console.log(`handleFilePermissionChange called for ${fileId} with update:`, permissionUpdate);
-
+  
     // Default Permission Values (used when creating/updating to ensure type compliance)
     const defaultPermValues: FilePermission = {
         show: true,
@@ -1218,118 +1518,117 @@ const UserManagement: React.FC<UserManagementProps> = () => {
         viewTags: true,
         allowUploads: false,
     };
-
+  
     // Check if this is purely a visibility toggle
     const isVisibilityToggle = Object.keys(permissionUpdate).length === 1 && permissionUpdate.hasOwnProperty('show');
     const newVisibility = permissionUpdate.show;
-
+  
     if (isVisibilityToggle && typeof newVisibility === 'boolean') {
       const item = dialogItemsMap[fileId];
       if (!item) {
           console.error("Item not found in map for visibility toggle:", fileId);
           return; 
       }
-
+  
       setNewGroup(prevState => {
-        const prevPermissions = prevState.fileSpecificPermissions || {};
-        const updates: Record<string, Partial<FilePermission>> = {}; // Store all partial updates needed
-
-        // Helper: Get descendants
-        const getAllDescendantIds = (itemId: string): string[] => {
-          // ... (same implementation as before) ...
-           const result: string[] = [];
-          const queue: string[] = [...(dialogChildrenMap[itemId] || [])];
-          while (queue.length > 0) {
-            const currentId = queue.shift()!;
-            if(currentId) {
-                result.push(currentId);
-                const children = dialogChildrenMap[currentId] || [];
-                queue.push(...children);
-            }
-          }
-          return result;
-        };
-
-        // 1. Prepare the direct update
-        const directUpdate: Partial<FilePermission> = { show: newVisibility };
-        if (!newVisibility) {
-          directUpdate.viewAccess = false;
-          directUpdate.downloadAccess = false;
-          directUpdate.deleteEditAccess = false;
-          directUpdate.requireAgreement = false;
-          directUpdate.viewTags = false;
-          directUpdate.allowUploads = false; 
-        }
-        updates[fileId] = directUpdate;
-
-        // 2. Prepare Cascade Downwards updates (if folder)
-        if (item.type === 'folder') {
-          const descendants = getAllDescendantIds(fileId);
-          console.log(`Cascading visibility ${newVisibility} to ${descendants.length} descendants`);
-          descendants.forEach(descId => {
-            const descPrevPerms = prevPermissions[descId] || {};
-            if (descPrevPerms.show !== newVisibility) { 
-              const descUpdate: Partial<FilePermission> = { show: newVisibility };
-              if (!newVisibility) {
-                descUpdate.viewAccess = false;
-                descUpdate.downloadAccess = false;
-                descUpdate.deleteEditAccess = false;
-                descUpdate.requireAgreement = false;
-                descUpdate.viewTags = false;
-                descUpdate.allowUploads = false;
+          const prevPermissions = prevState.fileIdAccess || {};
+          const updates: Record<string, Partial<FilePermission>> = {}; // Store all partial updates needed
+  
+          // Helper: Get descendants
+          const getAllDescendantIds = (itemId: string): string[] => {
+            const result: string[] = [];
+            const queue: string[] = [...(dialogChildrenMap[itemId] || [])];
+            while (queue.length > 0) {
+              const currentId = queue.shift()!;
+              if(currentId) {
+                  result.push(currentId);
+                  const children = dialogChildrenMap[currentId] || [];
+                  queue.push(...children);
               }
-              // Add or merge the update for the descendant
-              updates[descId] = { ...(updates[descId] || {}), ...descUpdate };
             }
-          });
-        }
-
-        // 3. Prepare Cascade Upwards updates (if showing)
-        if (newVisibility) {
-          let currentParentId = dialogParentMap[fileId];
-          while (currentParentId) {
-            const parentPrevPerms = prevPermissions[currentParentId] || {};
-            if (parentPrevPerms.show !== true) { 
-              console.log(`Auto-showing parent ${currentParentId}`);
-              // Add or merge the update for the parent
-              updates[currentParentId] = { ...(updates[currentParentId] || {}), show: true }; 
-            }
-            currentParentId = dialogParentMap[currentParentId];
+            return result;
+          };
+  
+          // 1. Prepare the direct update
+          const directUpdate: Partial<FilePermission> = { show: newVisibility };
+          if (!newVisibility) {
+            directUpdate.viewAccess = false;
+            directUpdate.downloadAccess = false;
+            directUpdate.deleteEditAccess = false;
+            directUpdate.requireAgreement = false;
+            directUpdate.viewTags = false;
+            directUpdate.allowUploads = false; 
           }
-        }
-
-        // Apply all updates atomically, ensuring complete FilePermission objects
-        const nextPermissions: Record<string, FilePermission> = { ...prevPermissions }; 
-        Object.keys(updates).forEach((id) => {
-          const currentCompletePerms = prevPermissions[id] || defaultPermValues; // Start with previous or defaults
-          const partialUpdate = updates[id];
-          // Merge and ensure all fields exist, using defaults if needed after merge
-          const mergedUpdate = { ...currentCompletePerms, ...partialUpdate }; 
-          nextPermissions[id] = {
-              show: mergedUpdate.show,
-              viewAccess: mergedUpdate.viewAccess ?? defaultPermValues.viewAccess,
-              downloadAccess: mergedUpdate.downloadAccess ?? defaultPermValues.downloadAccess,
-              deleteEditAccess: mergedUpdate.deleteEditAccess ?? defaultPermValues.deleteEditAccess,
-              requireAgreement: mergedUpdate.requireAgreement ?? defaultPermValues.requireAgreement,
-              viewTags: mergedUpdate.viewTags ?? defaultPermValues.viewTags,
-              allowUploads: mergedUpdate.allowUploads ?? defaultPermValues.allowUploads,
+          updates[fileId] = directUpdate;
+         
+          // 2. Prepare Cascade Downwards updates (if folder)
+          if (item.type === 'folder') {
+            const descendants = getAllDescendantIds(fileId);
+            console.log(`Cascading visibility ${newVisibility} to ${descendants.length} descendants`);
+            descendants.forEach(descId => {
+              const descPrevPerms = prevPermissions[descId] || {};
+              if (descPrevPerms.show !== newVisibility) { 
+                const descUpdate: Partial<FilePermission> = { show: newVisibility };
+                if (!newVisibility) {
+                  descUpdate.viewAccess = false;
+                  descUpdate.downloadAccess = false;
+                  descUpdate.deleteEditAccess = false;
+                  descUpdate.requireAgreement = false;
+                  descUpdate.viewTags = false;
+                  descUpdate.allowUploads = false;
+                }
+                // Add or merge the update for the descendant
+                updates[descId] = { ...(updates[descId] || {}), ...descUpdate };
+              }
+            });
+         }
+         
+          // 3. Prepare Cascade Upwards updates (if showing)
+          if (newVisibility) {
+            let currentParentId = dialogParentMap[fileId];
+            while (currentParentId) {
+              const parentPrevPerms = prevPermissions[currentParentId] || {};
+              if (parentPrevPerms.show !== true) { 
+                console.log(`Auto-showing parent ${currentParentId}`);
+                // Add or merge the update for the parent
+                updates[currentParentId] = { ...(updates[currentParentId] || {}), show: true }; 
+              }
+              currentParentId = dialogParentMap[currentParentId];
+            }
+          }
+  
+          // Apply all updates atomically, ensuring complete FilePermission objects
+          const nextPermissions: Record<string, FilePermission> = { ...prevPermissions }; 
+          Object.keys(updates).forEach((id) => {
+            const currentCompletePerms = prevPermissions[id] || defaultPermValues; // Start with previous or defaults
+            const partialUpdate = updates[id];
+            // Merge and ensure all fields exist, using defaults if needed after merge
+            const mergedUpdate = { ...currentCompletePerms, ...partialUpdate }; 
+            nextPermissions[id] = {
+                show: mergedUpdate.show,
+                viewAccess: mergedUpdate.viewAccess ?? defaultPermValues.viewAccess,
+                downloadAccess: mergedUpdate.downloadAccess ?? defaultPermValues.downloadAccess,
+                deleteEditAccess: mergedUpdate.deleteEditAccess ?? defaultPermValues.deleteEditAccess,
+                requireAgreement: mergedUpdate.requireAgreement ?? defaultPermValues.requireAgreement,
+                viewTags: mergedUpdate.viewTags ?? defaultPermValues.viewTags,
+                allowUploads: mergedUpdate.allowUploads ?? defaultPermValues.allowUploads,
+            };
+          });
+  
+          console.log("Final updates being applied:", updates);
+          console.log("Resulting permissions state:", nextPermissions);
+  
+          return {
+            ...prevState,
+            allAccess: false, 
+            fileIdAccess: nextPermissions,
           };
         });
-
-        console.log("Final updates being applied:", updates);
-        console.log("Resulting permissions state:", nextPermissions);
-
-        return {
-          ...prevState,
-          allAccess: false, 
-          fileSpecificPermissions: nextPermissions,
-        };
-      });
-
+  
     } else {
       // Apply non-visibility or combined updates
       setNewGroup(prevState => {
-          const prevSpecificPermissions = prevState.fileSpecificPermissions || {};
+          const prevSpecificPermissions = prevState.fileIdAccess || {};
           const currentCompletePerms = prevSpecificPermissions[fileId] || defaultPermValues;
           const mergedUpdate = { ...currentCompletePerms, ...permissionUpdate };
           // Ensure complete object even for single updates
@@ -1341,12 +1640,12 @@ const UserManagement: React.FC<UserManagementProps> = () => {
               requireAgreement: mergedUpdate.requireAgreement ?? defaultPermValues.requireAgreement,
               viewTags: mergedUpdate.viewTags ?? defaultPermValues.viewTags,
               allowUploads: mergedUpdate.allowUploads ?? defaultPermValues.allowUploads,
-          };
-
+           };
+         
           return {
               ...prevState,
               allAccess: false, 
-              fileSpecificPermissions: {
+              fileIdAccess: {
                   ...prevSpecificPermissions,
                   [fileId]: nextPermission,
               },
@@ -1387,6 +1686,12 @@ const UserManagement: React.FC<UserManagementProps> = () => {
       isOpen: true,
       group: group
     });
+  };
+
+  const handleOpenDialog = () => {
+    // Reset specific permissions and selection when opening dialog
+    setNewGroup(prev => ({ ...prev, fileIdAccess: {} }));
+    setIsCreateGroupDialogOpen(true);
   };
 
   if (isLoading) {
@@ -1453,7 +1758,7 @@ const UserManagement: React.FC<UserManagementProps> = () => {
           </Button>
             ) : (
               <Button
-                onClick={() => setIsCreateGroupDialogOpen(true)}
+                onClick={handleOpenDialog}
                 className="flex items-center gap-2 text-white"
               >
                 <Plus className="h-4 w-4" />
@@ -1784,7 +2089,7 @@ const UserManagement: React.FC<UserManagementProps> = () => {
                     onClick={() => {
                       setShowSpecificPermissions(false);
                       // Reset specific permissions and selection when switching back to General
-                      setNewGroup(prev => ({ ...prev, fileSpecificPermissions: {} }));
+                      setNewGroup(prev => ({ ...prev, fileIdAccess: {} }));
                       setSelectedFileId(null);
                     }}
                     className={`w-full ${!showSpecificPermissions ? 'bg-blue-600 hover:bg-blue-700 text-white' : 'dark:bg-slate-700 dark:text-gray-300 dark:hover:bg-slate-600 dark:border-slate-600'}`}
@@ -1921,10 +2226,13 @@ const UserManagement: React.FC<UserManagementProps> = () => {
                               defaultFilePerms: {
                                 ...newGroup.defaultFilePerms,
                                 viewComments: checked
+                              },
+                              defaultFolderPerms: {
+                                ...newGroup.defaultFolderPerms,
+                                viewComments: checked
                               }
                             })}
                         />
-                        {/* Removed conditional styling */}
                         <label htmlFor="general-file-view-comments" className="text-xs font-medium leading-none dark:text-gray-300">
                           View comments
                         </label>
@@ -1941,10 +2249,13 @@ const UserManagement: React.FC<UserManagementProps> = () => {
                               defaultFilePerms: {
                                 ...newGroup.defaultFilePerms,
                                 addComments: checked
+                              },
+                              defaultFolderPerms: {
+                                ...newGroup.defaultFolderPerms,
+                                addComments: checked
                               }
                             })}
                         />
-                        {/* Removed conditional styling */}
                         <label htmlFor="general-file-add-comments" className="text-xs font-medium leading-none dark:text-gray-300">
                           Add comments
                         </label>
@@ -1961,32 +2272,36 @@ const UserManagement: React.FC<UserManagementProps> = () => {
                               defaultFilePerms: {
                                 ...newGroup.defaultFilePerms,
                                 viewTags: checked
+                              },
+                              defaultFolderPerms: {
+                                ...newGroup.defaultFolderPerms,
+                                viewTags: checked
                               }
                             })}
                         />
-                        {/* Removed conditional styling */}
                         <label htmlFor="general-file-view-tags" className="text-xs font-medium leading-none dark:text-gray-300">
                           View tags
                         </label>
                       </div>
 
-                      {/* View folder contents */}
+                      {/* View folder contents - REMOVED since always true for general permissions */}
+                      
+                      {/* Create folders */}
                       <div className="flex items-center space-x-2"> 
                         <Switch 
-                          id="general-folder-view-contents" 
-                          checked={newGroup.defaultFolderPerms.viewContents}
+                          id="general-folder-create-folders" 
+                          checked={newGroup.defaultFolderPerms.createFolders}
                           onCheckedChange={(checked) => 
                             setNewGroup({
                               ...newGroup, 
                               defaultFolderPerms: {
                                 ...newGroup.defaultFolderPerms,
-                                viewContents: checked
+                                createFolders: checked
                               }
                             })}
                         />
-                        {/* Removed conditional styling */}
-                        <label htmlFor="general-folder-view-contents" className="text-xs font-medium leading-none dark:text-gray-300">
-                          View folder contents
+                        <label htmlFor="general-folder-create-folders" className="text-xs font-medium leading-none dark:text-gray-300">
+                          Create folders
                         </label>
                       </div>
                       
@@ -2004,7 +2319,6 @@ const UserManagement: React.FC<UserManagementProps> = () => {
                               }
                             })}
                         />
-                        {/* Removed conditional styling */}
                         <label htmlFor="general-folder-allow-uploads" className="text-xs font-medium leading-none dark:text-gray-300">
                           Allow uploads to folder
                         </label>
@@ -2025,7 +2339,7 @@ const UserManagement: React.FC<UserManagementProps> = () => {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 h-[500px]"> {/* Adjusted grid for responsiveness */} 
                   <FolderPermissionTree
                     folderStructure={folderStructure}
-                    selectedPermissions={newGroup.fileSpecificPermissions || {}}
+                    selectedPermissions={newGroup.fileIdAccess || {}}
                     onPermissionChange={handleFilePermissionChange} 
                     selectedItem={selectedFileId}
                     onSelectItem={setSelectedFileId}
@@ -2036,7 +2350,7 @@ const UserManagement: React.FC<UserManagementProps> = () => {
                   <ItemPermissionsPanel
                     selectedItemId={selectedFileId}
                     items={folderStructure}
-                    permissions={newGroup.fileSpecificPermissions || {}}
+                    permissions={newGroup.fileIdAccess || {}}
                     onPermissionChange={handleFilePermissionChange} 
                   />
                 </div>

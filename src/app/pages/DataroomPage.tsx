@@ -279,6 +279,7 @@ useEffect(() => {
       const { body } = await restOperation.response;
       const responseText = await body.text();
       const response = JSON.parse(responseText);
+      console.log("response: ", response);
       interface FileResponse {
         fileId?: string;
         fileName?: string;
