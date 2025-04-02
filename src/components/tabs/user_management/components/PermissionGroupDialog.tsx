@@ -828,7 +828,7 @@ export const PermissionGroupDialog: React.FC<PermissionGroupDialogProps> = ({
                 <div className="border dark:border-gray-700 rounded-md p-6">
                   <div className="space-y-4">
                     <div className="flex items-center justify-between">
-                      <label className="text-sm">Can query dataroom</label>
+                      <label className="text-sm">Can AI query dataroom</label>
                       <Switch 
                         checked={newGroup.canQuery}
                         onCheckedChange={(checked) => 
@@ -876,12 +876,15 @@ export const PermissionGroupDialog: React.FC<PermissionGroupDialogProps> = ({
                       />
                     </div>
                     
-                    <div className="flex items-center justify-between">
-                      <label className="text-sm">Can delete dataroom</label>
+                    <div className="flex items-center justify-between opacity-50">
+                      <div>
+                        <label className="text-sm">Can delete dataroom</label>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">Only dataroom owners can delete datarooms</p>
+                      </div>
                       <Switch 
-                        checked={newGroup.canDeleteDataroom}
-                        onCheckedChange={(checked) => 
-                          setNewGroup({...newGroup, canDeleteDataroom: checked})}
+                        checked={false}
+                        onCheckedChange={() => {}}
+                        disabled={true}
                       />
                     </div>
                     
