@@ -1,5 +1,4 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { get, post } from '@aws-amplify/api';
 import {
   Select,
   SelectContent,
@@ -33,345 +32,21 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/components/ui/use-toast";
 import { Amplify } from 'aws-amplify';
-
-// Update the User type to include invitation status
-type User = {
-  userId: string;
-  email: string;
-  name: string;
-  role: string;
-  addedAt: string;
-  isInvited?: boolean;
-  invitedRole?: string; // The role they will have after accepting
-};
-
-type TransferOwnershipDialog = {
-  isOpen: boolean;
-  targetUser: User | null;
-};
-
-interface UserManagementProps {
-  dataroomId: string;
-}
-
-type Role = 'READ' | 'WRITE' | 'ADMIN' | 'OWNER';
-
-// File/Folder type for tree structure
-type FileTreeItem = {
-  id: string;
-  name: string;
-  type: 'file' | 'folder';
-  children?: FileTreeItem[];
-  parentId?: string;
-};
-
-// File/Folder permission type
-type FilePermission = {
-  show: boolean;
-  viewAccess: boolean;
-  downloadAccess: boolean;
-  deleteEditAccess: boolean;
-  requireAgreement: boolean;
-  viewTags: boolean;
-  allowUploads?: boolean; // Added allowUploads
-};
-
-// Permission Group Type Update
-type PermissionGroup = {
-  id: string;
-  name: string;
-  isDefault?: boolean; // Added flag for default roles
-  allAccess: boolean;
-  canQuery: boolean;
-  canOrganize: boolean;
-  canViewAuditLogs: boolean;
-  canInviteUsers: string[];
-  canUpdateUserPermissions: string[];
-  canCreatePermissionGroups: boolean;
-  canDeleteDataroom: boolean;
-  canUseQA: boolean;
-  canReadAnswerQuestions: boolean;
-  defaultFilePerms: {
-    viewAccess: boolean;
-    watermarkContent: boolean;
-    deleteEditAccess: boolean;
-    viewComments: boolean;
-    addComments: boolean;
-    downloadAccess: boolean;
-    viewTags: boolean;
-    canQuery: boolean;
-    isVisible: boolean;
-  };
-  defaultFolderPerms: {
-    allowUploads: boolean;
-    createFolders: boolean;
-    addComments: boolean;
-    viewComments: boolean;
-    viewContents: boolean;
-    viewTags: boolean;
-    canQuery: boolean;
-    isVisible: boolean;
-    inheritFileAccess?: {
-      viewAccess: boolean;
-      watermarkContent: boolean;
-      deleteEditAccess: boolean;
-      viewComments: boolean;
-      addComments: boolean;
-      downloadAccess: boolean;
-      viewTags: boolean;
-      canQuery: boolean;
-      isVisible: boolean;
-    };
-    inheritFolderAccess?: {
-      allowUploads: boolean;
-      createFolders: boolean;
-      addComments: boolean;
-      viewComments: boolean;
-      viewContents: boolean;
-      viewTags: boolean;
-      canQuery: boolean;
-      isVisible: boolean;
-    };
-  };
-  folderIdAccess?: Record<string, any>;
-  fileIdAccess?: Record<string, any>;
-};
-
-// Define Default Role Structures (Constants) - Placed BEFORE the component
-const DEFAULT_ROLES: Array<Omit<PermissionGroup, 'id'>> = [
-  {
-    name: 'Owner',
-    isDefault: true,
-    allAccess: true,
-    canQuery: true,
-    canOrganize: true,
-    canViewAuditLogs: true,
-    canInviteUsers: ['*'],
-    canUpdateUserPermissions: ['*'],
-    canCreatePermissionGroups: true,
-    canDeleteDataroom: true,
-    canUseQA: true,
-    canReadAnswerQuestions: true,
-    defaultFilePerms: {
-      viewAccess: true,
-      watermarkContent: false,
-      deleteEditAccess: true,
-      viewComments: true,
-      addComments: true,
-      downloadAccess: true,
-      viewTags: true,
-      canQuery: true,
-      isVisible: true
-    },
-    defaultFolderPerms: {
-      allowUploads: true,
-      createFolders: true,
-      addComments: true,
-      viewComments: true,
-      viewContents: true,
-      viewTags: true,
-      canQuery: true,
-      isVisible: true,
-      inheritFileAccess: {
-        viewAccess: true,
-        watermarkContent: false,
-        deleteEditAccess: true,
-        viewComments: true,
-        addComments: true,
-        downloadAccess: true,
-        viewTags: true,
-        canQuery: true,
-        isVisible: true
-      },
-      inheritFolderAccess: {
-        allowUploads: true,
-        createFolders: true,
-        addComments: true,
-        viewComments: true,
-        viewContents: true,
-        viewTags: true,
-        canQuery: true,
-        isVisible: true
-      }
-    },
-    folderIdAccess: {},
-    fileIdAccess: {}
-  },
-  {
-    name: 'Admin',
-    isDefault: true,
-    allAccess: true,
-    canQuery: true,
-    canOrganize: true,
-    canViewAuditLogs: true,
-    canInviteUsers: ['READ', 'WRITE', 'ADMIN'],
-    canUpdateUserPermissions: ['READ', 'WRITE', 'ADMIN'],
-    canCreatePermissionGroups: true,
-    canDeleteDataroom: false,
-    canUseQA: true,
-    canReadAnswerQuestions: true,
-    defaultFilePerms: {
-      viewAccess: true,
-      watermarkContent: false,
-      deleteEditAccess: true,
-      viewComments: true,
-      addComments: true,
-      downloadAccess: true,
-      viewTags: true,
-      canQuery: true,
-      isVisible: true
-    },
-    defaultFolderPerms: {
-      allowUploads: true,
-      createFolders: true,
-      addComments: true,
-      viewComments: true,
-      viewContents: true,
-      viewTags: true,
-      canQuery: true,
-      isVisible: true,
-      inheritFileAccess: {
-        viewAccess: true,
-        watermarkContent: false,
-        deleteEditAccess: true,
-        viewComments: true,
-        addComments: true,
-        downloadAccess: true,
-        viewTags: true,
-        canQuery: true,
-        isVisible: true
-      },
-      inheritFolderAccess: {
-        allowUploads: true,
-        createFolders: true,
-        addComments: true,
-        viewComments: true,
-        viewContents: true,
-        viewTags: true,
-        canQuery: true,
-        isVisible: true
-      }
-    },
-    folderIdAccess: {},
-    fileIdAccess: {}
-  },
-  {
-    name: 'Editor', // WRITE
-    isDefault: true,
-    allAccess: true, 
-    canQuery: true,
-    canOrganize: false,
-    canViewAuditLogs: false,
-    canInviteUsers: [],
-    canUpdateUserPermissions: [],
-    canCreatePermissionGroups: false,
-    canDeleteDataroom: false,
-    canUseQA: true,
-    canReadAnswerQuestions: true,
-    defaultFilePerms: {
-      viewAccess: true,
-      watermarkContent: false,
-      deleteEditAccess: true,
-      viewComments: true,
-      addComments: true,
-      downloadAccess: true,
-      viewTags: true,
-      canQuery: true,
-      isVisible: true
-    },
-    defaultFolderPerms: {
-      allowUploads: true,
-      createFolders: true,
-      addComments: true,
-      viewComments: true,
-      viewContents: true,
-      viewTags: true,
-      canQuery: true,
-      isVisible: true,
-      inheritFileAccess: {
-        viewAccess: true,
-        watermarkContent: false,
-        deleteEditAccess: true,
-        viewComments: true,
-        addComments: true,
-        downloadAccess: true,
-        viewTags: true,
-        canQuery: true,
-        isVisible: true
-      },
-      inheritFolderAccess: {
-        allowUploads: true,
-        createFolders: true,
-        addComments: true,
-        viewComments: true,
-        viewContents: true,
-        viewTags: true,
-        canQuery: true,
-        isVisible: true
-      }
-    },
-    folderIdAccess: {},
-    fileIdAccess: {}
-  },
-  {
-    name: 'Viewer', // READ
-    isDefault: true,
-    allAccess: true,
-    canQuery: true,
-    canOrganize: false,
-    canViewAuditLogs: false,
-    canInviteUsers: [],
-    canUpdateUserPermissions: [],
-    canCreatePermissionGroups: false,
-    canDeleteDataroom: false,
-    canUseQA: true,
-    canReadAnswerQuestions: false,
-    defaultFilePerms: {
-      viewAccess: true,
-      watermarkContent: true,
-      deleteEditAccess: false,
-      viewComments: true,
-      addComments: false,
-      downloadAccess: false,
-      viewTags: true,
-      canQuery: true,
-      isVisible: true
-    },
-    defaultFolderPerms: {
-      allowUploads: false,
-      createFolders: false,
-      addComments: false,
-      viewComments: true,
-      viewContents: true,
-      viewTags: true,
-      canQuery: true,
-      isVisible: true,
-      inheritFileAccess: {
-        viewAccess: true,
-        watermarkContent: true,
-        deleteEditAccess: false,
-        viewComments: true,
-        addComments: false,
-        downloadAccess: false,
-        viewTags: true,
-        canQuery: true,
-        isVisible: true
-      },
-      inheritFolderAccess: {
-        allowUploads: false,
-        createFolders: false,
-        addComments: false,
-        viewComments: true,
-        viewContents: true,
-        viewTags: true,
-        canQuery: true,
-        isVisible: true
-      }
-    },
-    folderIdAccess: {},
-    fileIdAccess: {}
-  }
-];
+import type { FilePermission, FileTreeItem as FileTreeItemType, User, UserManagementProps, TransferOwnershipDialog, PermissionGroup, Role } from './CollaboratorsTypes';
+import { DEFAULT_ROLES } from './CollaboratorsTypes';
+import { FolderPermissionTree } from './PermissionFolderTree';
+import { ItemPermissionsPanel } from './PermissionFolderTree';
+// Import service functions
+import { 
+  fetchUsers, 
+  fetchPermissionLevel, 
+  fetchPermissionGroups,
+  changeUserPermission,
+  transferOwnership,
+  removeUser,
+  inviteUser,
+  createPermissionGroup
+} from '../../services/userService';
 
 // Create helper function to format role display names at the top of the file
 // Add this after the type definitions
@@ -406,349 +81,6 @@ const SkeletonCard: React.FC = () => {
   );
 };
 
-// Completely rewrite the tree and permission handling to use a simpler approach
-const FolderPermissionTree = ({
-  folderStructure,
-  selectedPermissions,
-  onPermissionChange,
-  selectedItem,
-  onSelectItem,
-  itemsMap,
-  parentMap
-}: {
-  folderStructure: FileTreeItem[];
-  selectedPermissions: Record<string, FilePermission>;
-  onPermissionChange: (id: string, permissions: Partial<FilePermission>) => void;
-  selectedItem: string | null;
-  onSelectItem: (id: string) => void;
-  itemsMap: Record<string, FileTreeItem>;
-  parentMap: Record<string, string | undefined>;
-}) => {
-  const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set());
-
-  const handleToggleExpand = (folderId: string) => {
-    setExpandedFolders(prevExpanded => {
-      const newExpanded = new Set(prevExpanded);
-      if (newExpanded.has(folderId)) {
-        newExpanded.delete(folderId);
-      } else {
-        newExpanded.add(folderId);
-      }
-      return newExpanded;
-    });
-  };
-  
-  useEffect(() => {
-    if (selectedItem && parentMap) {
-      const parentsToExpand = new Set<string>();
-      let currentParentId = parentMap[selectedItem];
-      while (currentParentId) {
-        parentsToExpand.add(currentParentId);
-        currentParentId = parentMap[currentParentId];
-      }
-
-      if (parentsToExpand.size > 0) {
-        setExpandedFolders(prevExpanded => {
-          const newExpanded = new Set(prevExpanded);
-          parentsToExpand.forEach(id => newExpanded.add(id));
-          if (Array.from(parentsToExpand).some(id => !prevExpanded.has(id))) {
-            return newExpanded;
-          }
-          return prevExpanded; 
-        });
-      }
-    }
-  }, [selectedItem, parentMap]);
-
-  return (
-    <div className="border rounded-md overflow-auto dark:border-gray-700" style={{ height: '500px' }}>
-      <div className="p-3 border-b bg-gray-50 dark:bg-gray-800 dark:border-gray-700 font-medium">
-        <span className="dark:text-white">Files and Folders</span>
-      </div>
-      <div className="p-2">
-        {folderStructure.map((item) => (
-          <FileTreeItem
-            key={item.id} 
-            item={item}
-            level={0}
-            selectedPermissions={selectedPermissions}
-            onPermissionChange={onPermissionChange} 
-            selectedItem={selectedItem}
-            onSelectItem={onSelectItem}
-            isExpanded={expandedFolders.has(item.id)} 
-            onToggleExpand={handleToggleExpand} 
-            expandedFolders={expandedFolders} 
-            itemsMap={itemsMap}
-            parentMap={parentMap}
-          />
-        ))}
-      </div>
-    </div>
-  );
-};
-
-// FileTreeItem component update
-const FileTreeItem = ({
-  item,
-  level,
-  selectedPermissions,
-  onPermissionChange,
-  selectedItem,
-  onSelectItem,
-  isExpanded, 
-  onToggleExpand, 
-  expandedFolders,
-  itemsMap,
-  parentMap
-}: {
-  item: FileTreeItem;
-  level: number;
-  selectedPermissions: Record<string, FilePermission>;
-  onPermissionChange: (itemId: string, permissions: Partial<FilePermission>) => void;
-  selectedItem: string | null;
-  onSelectItem: (id: string) => void;
-  isExpanded: boolean; 
-  onToggleExpand: (folderId: string) => void; 
-  expandedFolders: Set<string>; 
-  itemsMap: Record<string, FileTreeItem>;
-  parentMap: Record<string, string | undefined>;
-}) => {
-  const isSelectedForHighlight = selectedItem === item.id;
-  const itemPermissions = selectedPermissions[item.id] || { show: true };
-
-  const handleToggleExpandClick = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    onToggleExpand(item.id);
-  };
-
-  const handleSelect = () => {
-    onSelectItem(item.id);
-  };
-
-  const handleCheckboxClick = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    onPermissionChange(item.id, { show: !itemPermissions.show });
-  };
-
-  return (
-    <div className="mb-2">
-      <div
-        key={`item-${item.id}-${itemPermissions.show}`}
-        className={`flex items-center mb-1 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 p-1 rounded
-          ${isSelectedForHighlight ? 'bg-blue-50 dark:bg-blue-900/20 border-r-2 border-blue-500' : ''}
-          ${isExpanded ? 'font-medium' : ''}`}
-        onClick={handleSelect}
-      >
-        <div style={{ width: `${level * 12}px` }} />
-        <div className="flex items-center mr-1" onClick={(e) => e.stopPropagation()}> 
-          <div className="relative w-5 h-5"> 
-            <Checkbox
-              id={`tree-item-${item.id}`}
-              key={`checkbox-${item.id}-${itemPermissions.show}`}
-              checked={itemPermissions.show}
-              onCheckedChange={() => {}}
-              className="cursor-pointer h-4 w-4 border-gray-300 dark:border-gray-600 data-[state=checked]:bg-blue-600 data-[state=checked]:border-blue-600 data-[state=checked]:text-white"
-            />
-            <div
-              className="absolute inset-0 cursor-pointer z-10"
-              onClick={handleCheckboxClick} 
-            ></div>
-          </div>
-        </div>
-        {item.children?.length ? (
-          <button
-            className="mr-1 w-5 h-5 flex items-center justify-center text-gray-500"
-            onClick={handleToggleExpandClick} 
-            type="button"
-          >
-            {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-          </button>
-        ) : (
-          <div className="mr-1 w-5 h-5"></div> 
-        )}
-        <div className="w-5 h-5 mr-2 text-gray-500"> 
-          {item.type === 'folder' ? <Folder className="h-4 w-4" /> : <File className="h-4 w-4" />}
-        </div>
-        <div className="flex-1 text-xs mr-1">{item.name}</div>
-      </div>
-
-      {isExpanded && item.children && item.children.length > 0 && (
-        <div>
-          {item.children.map((child) => {
-            const childPermissions = selectedPermissions[child.id] || { show: true };
-            return (
-              <FileTreeItem
-                key={`${child.id}-${childPermissions.show}`}
-                item={child}
-                level={level + 1}
-                selectedPermissions={selectedPermissions}
-                onPermissionChange={onPermissionChange} 
-                selectedItem={selectedItem}
-                onSelectItem={onSelectItem}
-                isExpanded={expandedFolders.has(child.id)} 
-                onToggleExpand={onToggleExpand} 
-                expandedFolders={expandedFolders} 
-                itemsMap={itemsMap}
-                parentMap={parentMap}
-              />
-            );
-          })}
-        </div>
-      )}
-    </div>
-  );
-};
-
-// ItemPermissionsPanel Component Update
-const ItemPermissionsPanel: React.FC<{
-  selectedItemId: string | null;
-  items: any[];
-  permissions: Record<string, any>;
-  onPermissionChange: (id: string, permissions: Partial<FilePermission>) => void;
-}> = ({ selectedItemId, items, permissions, onPermissionChange }) => {
-  if (!selectedItemId) {
-    return (
-      <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-md h-full flex items-center justify-center min-h-[500px]">
-        <p className="text-center text-gray-500 dark:text-gray-400">
-          Select a file or folder to view and edit its permissions
-        </p>
-      </div>
-    );
-  }
-
-  const itemPermissions = permissions[selectedItemId] || {};
-  const selectedItem = items.find((item: any) => item.id === selectedItemId) || 
-                      items.flatMap((item: any) => item.children || []).find((child: any) => child.id === selectedItemId);
-  const isFolder = selectedItem?.type === 'folder';
-  const isVisible = itemPermissions.show !== false;
-
-  const handleVisibilitySwitchChange = (checked: boolean) => {
-    if (selectedItemId) {
-      onPermissionChange(selectedItemId, { show: checked });
-    }
-  };
-
-  const handleDetailPermissionChange = (update: Partial<FilePermission>) => {
-    if (selectedItemId) {
-      onPermissionChange(selectedItemId, update);
-    }
-  };
-
-  return (
-    <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-md">
-      <h3 className="font-medium text-sm mb-3 dark:text-white">
-        {selectedItem?.name || 'Item'} Permissions
-      </h3>
-      
-      <div className="space-y-4">
-        <div>
-          <h4 className="text-xs uppercase text-gray-500 dark:text-gray-400 mb-2">Visibility</h4>
-          <div className="flex items-center space-x-2 mb-2">
-            <Switch 
-              id={`${selectedItemId}-panel-show`}
-              checked={isVisible}
-              onCheckedChange={handleVisibilitySwitchChange}
-            />
-            <label htmlFor={`${selectedItemId}-panel-show`} className="text-sm">
-              Visible to group members
-            </label>
-          </div>
-        </div>
-        
-        <div>
-          <h4 className="text-xs uppercase text-gray-500 dark:text-gray-400 mb-2">Access Permissions</h4>
-          <div className="space-y-2">
-            <div className="flex items-center space-x-2">
-              <Switch 
-                id={`${selectedItemId}-panel-view`}
-                checked={isVisible && itemPermissions.viewAccess}
-                onCheckedChange={(checked) => 
-                  handleDetailPermissionChange({ viewAccess: checked })}
-                disabled={!isVisible}
-              />
-              <label htmlFor={`${selectedItemId}-panel-view`} className={`text-sm transition-colors ${!isVisible ? 'text-gray-400 dark:text-gray-500' : 'dark:text-gray-300'}`}>
-                View content
-              </label>
-            </div>
-            
-            <div className="flex items-center space-x-2">
-              <Switch 
-                id={`${selectedItemId}-panel-download`}
-                checked={isVisible && itemPermissions.downloadAccess}
-                onCheckedChange={(checked) => 
-                  handleDetailPermissionChange({ downloadAccess: checked })}
-                disabled={!isVisible}
-              />
-              <label htmlFor={`${selectedItemId}-panel-download`} className={`text-sm transition-colors ${!isVisible ? 'text-gray-400 dark:text-gray-500' : 'dark:text-gray-300'}`}>
-                Download
-              </label>
-            </div>
-            
-            <div className="flex items-center space-x-2">
-              <Switch 
-                id={`${selectedItemId}-panel-edit`}
-                checked={isVisible && itemPermissions.deleteEditAccess}
-                onCheckedChange={(checked) => 
-                  handleDetailPermissionChange({ deleteEditAccess: checked })}
-                disabled={!isVisible}
-              />
-              <label htmlFor={`${selectedItemId}-panel-edit`} className={`text-sm transition-colors ${!isVisible ? 'text-gray-400 dark:text-gray-500' : 'dark:text-gray-300'}`}>
-                Edit/Delete
-              </label>
-            </div>
-          </div>
-        </div>
-        
-        <div>
-          <h4 className="text-xs uppercase text-gray-500 dark:text-gray-400 mb-2">Special Settings</h4>
-          <div className="space-y-2">
-             <div className="flex items-center space-x-2">
-              <Switch 
-                id={`${selectedItemId}-panel-watermark`}
-                checked={isVisible && itemPermissions.requireAgreement}
-                onCheckedChange={(checked) => 
-                  handleDetailPermissionChange({ requireAgreement: checked })}
-                disabled={!isVisible}
-              />
-              <label htmlFor={`${selectedItemId}-panel-watermark`} className={`text-sm transition-colors ${!isVisible ? 'text-gray-400 dark:text-gray-500' : 'dark:text-gray-300'}`}>
-                Require NDA/agreement to view
-              </label>
-            </div>
-            
-            <div className="flex items-center space-x-2">
-              <Switch 
-                id={`${selectedItemId}-panel-viewtags`}
-                checked={isVisible && itemPermissions.viewTags}
-                onCheckedChange={(checked) => 
-                  handleDetailPermissionChange({ viewTags: checked })}
-                disabled={!isVisible}
-              />
-              <label htmlFor={`${selectedItemId}-panel-viewtags`} className={`text-sm transition-colors ${!isVisible ? 'text-gray-400 dark:text-gray-500' : 'dark:text-gray-300'}`}>
-                View tags
-              </label>
-            </div>
-            
-            {isFolder && (
-              <div className="flex items-center space-x-2">
-                <Switch 
-                  id={`${selectedItemId}-panel-uploads`}
-                  checked={isVisible && itemPermissions.allowUploads}
-                  onCheckedChange={(checked) => 
-                    handleDetailPermissionChange({ allowUploads: checked })}
-                  disabled={!isVisible}
-                />
-                <label htmlFor={`${selectedItemId}-panel-uploads`} className={`text-sm transition-colors ${!isVisible ? 'text-gray-400 dark:text-gray-500' : 'dark:text-gray-300'}`}>
-                  Allow uploads to this folder
-                </label>
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-};
-
 const UserManagement: React.FC<UserManagementProps> = ({ dataroomId }) => {
   const [users, setUsers] = useState<User[]>([]);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
@@ -774,40 +106,13 @@ const UserManagement: React.FC<UserManagementProps> = ({ dataroomId }) => {
   const [isLoadingGroups, setIsLoadingGroups] = useState<boolean>(false);
   const [groupsError, setGroupsError] = useState<string | null>(null);
   
-  // Add a useEffect to fetch permission groups when the component mounts
-  useEffect(() => {
-    if (bucketUuid) {
-      fetchUsers();
-      fetchPermissionLevel();
-      fetchPermissionGroups(); // Add this to load permission groups
-    }
-  }, [bucketUuid]);
-  
-  // Function to fetch permission groups
-  const fetchPermissionGroups = async () => {
+  // Use the service function to fetch permission groups
+  const loadPermissionGroups = async () => {
     if (!bucketUuid) return;
     setIsLoadingGroups(true);
     try {
-      const restOperation = get({
-        apiName: 'S3_API',
-        path: `/share-folder/${bucketUuid}/permission-groups`,
-        options: { 
-          headers: { 'Content-Type': 'application/json' },
-          withCredentials: true 
-        }
-      });
-      
-      const response = await restOperation.response;
-      const groups = await response.body.json();
-      
-      console.log("Fetched Permission Groups:", groups);
-      
-      if (Array.isArray(groups)) {
-        setPermissionGroups(groups as PermissionGroup[]);
-      } else {
-        console.error("Unexpected response format:", groups);
-        setPermissionGroups([]);
-      }
+      const groups = await fetchPermissionGroups(bucketUuid);
+      setPermissionGroups(groups);
     } catch (error) {
       console.error('Error fetching permission groups:', error);
       toast({
@@ -815,10 +120,20 @@ const UserManagement: React.FC<UserManagementProps> = ({ dataroomId }) => {
         description: "Failed to fetch permission groups.",
         variant: "destructive"
       });
+      setGroupsError('Failed to fetch permission groups');
     } finally {
       setIsLoadingGroups(false);
     }
   };
+
+  // Add a useEffect to fetch data when the component mounts
+  useEffect(() => {
+    if (bucketUuid) {
+      loadUsers();
+      loadPermissionLevel();
+      loadPermissionGroups(); // Load permission groups
+    }
+  }, [bucketUuid]);
 
   // Permission group state variables
   const [permissionGroups, setPermissionGroups] = useState<PermissionGroup[]>([]);
@@ -891,7 +206,7 @@ const UserManagement: React.FC<UserManagementProps> = ({ dataroomId }) => {
   });
   
   // Sample folder structure - this would come from an API in production
-  const [folderStructure, setFolderStructure] = useState<FileTreeItem[]>([
+  const [folderStructure, setFolderStructure] = useState<FileTreeItemType[]>([
     {
       id: 'folder1',
       name: 'Financials',
@@ -953,27 +268,27 @@ const UserManagement: React.FC<UserManagementProps> = ({ dataroomId }) => {
   ]);
 
   // --- Lifted State for Maps (for Create Group Dialog scope) ---
-  const [dialogItemsMap, setDialogItemsMap] = useState<Record<string, FileTreeItem>>({});
+  const [dialogItemsMap, setDialogItemsMap] = useState<Record<string, FileTreeItemType>>({});
   const [dialogChildrenMap, setDialogChildrenMap] = useState<Record<string, string[]>>({});
   const [dialogParentMap, setDialogParentMap] = useState<Record<string, string | undefined>>({});
 
   // Effect to build maps when folderStructure changes (within UserManagement scope)
   useEffect(() => {
-    const itemMap: Record<string, FileTreeItem> = {};
+    const itemMap: Record<string, FileTreeItemType> = {};
     const childMap: Record<string, string[]> = {};
     const pMap: Record<string, string | undefined> = {};
 
-    const processItem = (item: FileTreeItem, parentId?: string) => {
+    const processItem = (item: FileTreeItemType, parentId?: string) => {
       itemMap[item.id] = item;
       pMap[item.id] = parentId;
       if (item.children && item.children.length > 0) {
-        childMap[item.id] = item.children.map(child => child.id);
-        item.children.forEach(child => processItem(child, item.id));
+        childMap[item.id] = item.children.map((child: FileTreeItemType) => child.id);
+        item.children.forEach((child: FileTreeItemType) => processItem(child, item.id));
       } else {
         childMap[item.id] = [];
       }
     };
-    folderStructure.forEach(item => processItem(item));
+    folderStructure.forEach((item: FileTreeItemType) => processItem(item));
 
     setDialogItemsMap(itemMap);
     setDialogChildrenMap(childMap);
@@ -1006,6 +321,7 @@ const UserManagement: React.FC<UserManagementProps> = ({ dataroomId }) => {
     return false;  // Other roles cannot remove anyone
   };
 
+  // Use the service to handle role changes
   const handleRoleChange = (userEmail: string, newRole: string) => {
     if (newRole === 'OWNER' && currentUser?.role === 'OWNER') {
       setOwnerTransfer({
@@ -1013,33 +329,44 @@ const UserManagement: React.FC<UserManagementProps> = ({ dataroomId }) => {
         targetUser: users.find(u => u.email === userEmail) || null
       });
     } else {
-      changeUserPermission(userEmail, newRole);
+      handleChangePermission(userEmail, newRole);
     }
   };
 
+  // Use the service to handle permission changes
+  const handleChangePermission = async (userEmail: string, newRole: string) => {
+    try {
+      await changeUserPermission(bucketUuid, userEmail, newRole);
+      await loadUsers(); // Refresh the user list
+    } catch (error) {
+      console.error('Error changing user permission:', error);
+      toast({
+        title: "Error",
+        description: "Failed to change user permission.",
+        variant: "destructive"
+      });
+    }
+  };
+
+  // Use the service to handle ownership transfer
   const handleOwnershipTransfer = async () => {
     if (!ownerTransfer.targetUser) return;
 
     try {
-      const restOperation = post({
-        apiName: 'S3_API',
-        path: `/share-folder/${bucketUuid}/transfer-ownership`,
-        options: {
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: {
-            newOwnerEmail: ownerTransfer.targetUser.email
-          },
-          withCredentials: true
-        },
-      });
-
-      await restOperation.response;
+      await transferOwnership(bucketUuid, ownerTransfer.targetUser.email);
       setOwnerTransfer({ isOpen: false, targetUser: null });
-      await fetchUsers(); // Refresh user list
+      await loadUsers(); // Refresh user list
+      toast({
+        title: "Success",
+        description: "Ownership transferred successfully."
+      });
     } catch (error) {
       console.error('Error transferring ownership:', error);
+      toast({
+        title: "Error",
+        description: "Failed to transfer ownership.",
+        variant: "destructive"
+      });
     }
   };
 
@@ -1073,27 +400,23 @@ const UserManagement: React.FC<UserManagementProps> = ({ dataroomId }) => {
     );
   };
 
+  // Use the service to handle user removal
   const handleRemoveUser = async (user: User) => {
     try {
-      const restOperation = post({
-        apiName: 'S3_API',
-        path: `/share-folder/${bucketUuid}/remove-user`,
-        options: {
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: {
-            userEmail: user.email
-          },
-          withCredentials: true
-        },
-      });
-
-      await restOperation.response;
+      await removeUser(bucketUuid, user.email);
       setUserToRemove(null);
-      await fetchUsers(); // Refresh the user list
+      await loadUsers(); // Refresh the user list
+      toast({
+        title: "Success",
+        description: `User ${user.name} has been removed.`
+      });
     } catch (error) {
       console.error('Error removing user:', error);
+      toast({
+        title: "Error",
+        description: "Failed to remove user.",
+        variant: "destructive"
+      });
     }
   };
 
@@ -1153,34 +476,14 @@ const UserManagement: React.FC<UserManagementProps> = ({ dataroomId }) => {
     </div>
   );
 
-  const fetchPermissionLevel = async () => {
-
+  // Use the service to load current user permissions
+  const loadPermissionLevel = async () => {
     try {
-      const restOperation = get({
-        apiName: 'S3_API',
-        path: `/share-folder/${bucketUuid}/get-permissions`,
-        options: {
-          headers: {
-            'Content-Type': 'application/json'
-          },
-        },
-      });
-
-      const { body } = await restOperation.response;
-      const responseText = await body.text();
-      const response = JSON.parse(responseText);
-      const permissions = {
-        role: response.role,
-        sharedBy: response.sharedBy,
-        addedAt: response.addedAt
-      };
-      setUsers(response);
-     
+      const permissions = await fetchPermissionLevel(bucketUuid);
+      // You can use the permissions if needed
     } catch (error) {
-      setError('Failed to fetch users');
-      console.error('Error fetching users:', error);
-    } finally {
-      // setIsLoading(false);
+      setError('Failed to fetch permissions');
+      console.error('Error fetching permissions:', error);
     }
   };
 
@@ -1200,89 +503,18 @@ const UserManagement: React.FC<UserManagementProps> = ({ dataroomId }) => {
     fetchAttributes();
   }, [users]);
 
-  // Update the fetch users function to transform the data
-  const fetchUsers = async () => {
+  // Use the service to load users
+  const loadUsers = async () => {
     setIsLoading(true);
     setError(null);
 
     try {
-      const restOperation = get({
-        apiName: 'S3_API',
-        path: `/share-folder/${bucketUuid}/get-all-users`,
-        options: {
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          withCredentials: true
-        },
-      });
-
-      const { body } = await restOperation.response;
-      const responseText = await body.text();
-      const response = JSON.parse(responseText);
-
-      // Add debugging logs
-      console.log('Raw API Response:', response);
-      console.log('Response type:', typeof response);
-      console.log('Response has users property:', response.hasOwnProperty('users'));
+      const fetchedUsers = await fetchUsers(bucketUuid);
+      setUsers(fetchedUsers);
       
-      // Check if response is directly an array
-      if (Array.isArray(response)) {
-        console.log('Response is an array with length:', response.length);
-        
-        // Transform the users data when response is an array
-        const transformedUsers = response.map((user: any) => ({
-          ...user,
-          isInvited: user.status === 'INVITED',
-          role: user.role,
-          invitedRole: user.invitedRole,
-          permissionInfo: user.permissionInfo || {
-            type: 'ROLE',
-            displayName: formatRoleDisplay(user.role),
-          },
-          invitedPermissionInfo: user.invitedPermissionInfo || (user.invitedRole ? {
-            type: 'ROLE',
-            displayName: formatRoleDisplay(user.invitedRole),
-          } : undefined)
-        }));
-
-        setUsers(transformedUsers);
-      } 
-      // Original approach (response.users is an array)
-      else if (response.users && Array.isArray(response.users)) {
-        console.log('Using response.users with length:', response.users.length);
-        
-        // Transform the users data to include invitation status and permission info
-        const transformedUsers = response.users.map((user: any) => ({
-          ...user,
-          isInvited: user.status === 'INVITED',
-          // Keep the raw role and invitedRole for compatibility with existing code
-          role: user.role,
-          invitedRole: user.invitedRole,
-          // Store detailed permission info if available from API
-          permissionInfo: user.permissionInfo || {
-            type: 'ROLE',
-            displayName: formatRoleDisplay(user.role),
-          },
-          invitedPermissionInfo: user.invitedPermissionInfo || (user.invitedRole ? {
-            type: 'ROLE',
-            displayName: formatRoleDisplay(user.invitedRole),
-          } : undefined)
-        }));
-
-        setUsers(transformedUsers);
-      } 
-      else {
-        console.error('Unexpected response format:', response);
-        setError('Invalid response format from server');
-        setUsers([]);
-      }
-      
-      if (response || Array.isArray(response)) {
-        setTimeout(() => {
-          setIsLoading(false);
-        }, 500);
-      }
+      setTimeout(() => {
+        setIsLoading(false);
+      }, 500);
     } catch (error) {
       console.error('Error fetching users:', error);
       setError('Failed to fetch users');
@@ -1291,69 +523,30 @@ const UserManagement: React.FC<UserManagementProps> = ({ dataroomId }) => {
     }
   };
 
-  const changeUserPermission = async (userEmail: string, newPermissionLevel: string) => {
-    try {
-      const restOperation = post({
-        apiName: 'S3_API',
-        path: `/share-folder/${bucketUuid}/change-user-permissions`,
-        options: {
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: {
-            userEmail,
-            newPermissionLevel
-          },
-          withCredentials: true
-        },
-      });
-
-      const { body } = await restOperation.response;
-      const responseText = await body.text();
-      const response = JSON.parse(responseText);
-
-      await fetchUsers();
-
-    } catch (error) {
-      console.error('Error changing user permissions:', error);
-    }
-  };
-
+  // Use the service to handle user invitation
   const handleInviteUser = async () => {
     if (!inviteEmail.trim() || isInviting) return;
     setIsInviting(true);
     setInviteError(null);
     try {
-      const restOperation = post({
-        apiName: 'S3_API',
-        path: `/share-folder/${bucketUuid}/invite-user`,
-        options: {
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: {
-            userEmail: inviteEmail.trim(),
-            permissionIdentifier: inviteRole
-          },
-          withCredentials: true
-        },
-      });
-
-      const { statusCode, body } = await restOperation.response;
-      
-      if (statusCode >= 400) {
-        const responseText = await body.text();
-        const response = JSON.parse(responseText);
-        throw new Error(response.message || 'Failed to invite user');
-      }
+      await inviteUser(bucketUuid, inviteEmail, inviteRole);
       
       setIsInviteDialogOpen(false);
       setInviteEmail('');
       setInviteRole('READ');
-      await fetchUsers(); // Refresh the user list
+      await loadUsers(); // Refresh the user list
+      toast({
+        title: "Success",
+        description: `Invitation sent to ${inviteEmail}.`
+      });
     } catch (error) {
       console.error('Error inviting user:', error);
       setInviteError(error instanceof Error ? error.message : 'Failed to invite user');
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to invite user.",
+        variant: "destructive"
+      });
     } finally {
       setIsInviting(false);
     }
@@ -1361,81 +554,12 @@ const UserManagement: React.FC<UserManagementProps> = ({ dataroomId }) => {
 
   const [isCreatingGroup, setIsCreatingGroup] = useState(false);
 
+  // Use the service to handle permission group creation
   const handleCreatePermissionGroup = async () => {
     if (!newGroupName.trim() || !bucketUuid) return;
     setIsCreatingGroup(true);
     try {
-      // Map frontend state to the backend expected structure
-      const backendPermissionsPayload = {
-        // General dataroom permissions
-        allAccess: newGroup.allAccess,
-        canQueryEntireDataroom: newGroup.canQuery,
-        canOrganize: newGroup.canOrganize,
-        canViewAuditLogs: newGroup.canViewAuditLogs,
-        canInviteUsers: newGroup.canInviteUsers,
-        canUpdateUserPermissions: newGroup.canUpdateUserPermissions,
-        canCreatePermissionGroups: newGroup.canCreatePermissionGroups,
-        canDeleteDataroom: newGroup.canDeleteDataroom,
-        canReadQA: newGroup.canUseQA,
-        canAnswerQA: newGroup.canReadAnswerQuestions,
-        canRetryProcessing: true, // Default to true 
-        
-        // Default file permissions
-        defaultFilePerms: {
-          ...newGroup.defaultFilePerms
-        },
-        
-        // Default folder permissions with complete nested structure
-        defaultFolderPerms: {
-          // Direct folder permissions
-          allowUploads: newGroup.defaultFolderPerms.allowUploads,
-          createFolders: newGroup.defaultFolderPerms.createFolders,
-          addComments: newGroup.defaultFolderPerms.addComments,
-          viewComments: newGroup.defaultFolderPerms.viewComments,
-          viewContents: newGroup.defaultFolderPerms.viewContents,
-          viewTags: newGroup.defaultFolderPerms.viewTags,
-          canQuery: newGroup.defaultFolderPerms.canQuery,
-          isVisible: newGroup.defaultFolderPerms.isVisible,
-          
-          // Nested permissions for inheritance
-          inheritFileAccess: {
-            ...newGroup.defaultFolderPerms.inheritFileAccess || newGroup.defaultFilePerms // Fallback to defaultFilePerms if not set
-          },
-          inheritFolderAccess: {
-            ...(newGroup.defaultFolderPerms.inheritFolderAccess || {
-              // If not explicitly set, copy the direct folder permissions
-              allowUploads: newGroup.defaultFolderPerms.allowUploads,
-              createFolders: newGroup.defaultFolderPerms.createFolders,
-              addComments: newGroup.defaultFolderPerms.addComments,
-              viewComments: newGroup.defaultFolderPerms.viewComments,
-              viewContents: newGroup.defaultFolderPerms.viewContents,
-              viewTags: newGroup.defaultFolderPerms.viewTags,
-              canQuery: newGroup.defaultFolderPerms.canQuery,
-              isVisible: newGroup.defaultFolderPerms.isVisible
-            })
-          }
-        },
-        
-        // Empty folder and file specific access maps
-        folderIdAccess: newGroup.folderIdAccess || {},
-        fileIdAccess: newGroup.fileIdAccess || {}
-      };
-
-      const restOperation = post({
-        apiName: 'S3_API',
-        path: `/share-folder/${bucketUuid}/permission-groups`,
-        options: {
-          body: {
-            groupName: newGroupName,
-            permissions: backendPermissionsPayload
-          },
-          headers: { 'Content-Type': 'application/json' },
-          withCredentials: true
-        }
-      });
-
-      const response = await restOperation.response;
-      const result = await response.body.json();
+      await createPermissionGroup(bucketUuid, newGroupName, newGroup);
 
       toast({
         title: "Success",
@@ -1475,7 +599,7 @@ const UserManagement: React.FC<UserManagementProps> = ({ dataroomId }) => {
       });
       
       // Refresh the permission groups list
-      await fetchPermissionGroups();
+      await loadPermissionGroups();
     } catch (error) {
       console.error("Error creating permission group:", error);
       toast({
@@ -1657,8 +781,8 @@ const UserManagement: React.FC<UserManagementProps> = ({ dataroomId }) => {
 
   useEffect(() => {
     if (bucketUuid) {
-      fetchUsers();
-      fetchPermissionLevel();
+      loadUsers();
+      loadPermissionLevel();
     }
   }, [bucketUuid]);
 
