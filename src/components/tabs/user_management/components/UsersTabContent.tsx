@@ -3,7 +3,7 @@ import { UserPlus } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { SkeletonCard } from './SkeletonCard';
-import { UserCard } from './UserCard';
+import { UserCard, RoleSelect } from './UserCard';
 import { InviteUserDialog } from './InviteUserDialog';
 import { RemoveUserDialog } from './RemoveUserDialog';
 import { TransferOwnershipDialog } from './TransferOwnershipDialog';
@@ -15,7 +15,7 @@ interface UsersTabContentProps {
   currentUser: User | null;
   otherUsers: User[];
   onInviteUser: () => Promise<void>;
-  onRemoveUser: (user: User) => Promise<void>;
+  onRemoveUser: (user: User) => Promise<void> | void;
   onTransferOwnership: () => Promise<void>;
   onRoleChange: (userEmail: string, newRole: string) => void;
   
@@ -63,6 +63,10 @@ export const UsersTabContent: React.FC<UsersTabContentProps> = ({
   ownerTransfer,
   setOwnerTransfer
 }) => {
+  if (otherUsers.length === 0 && !isLoading) {
+    return <div className="p-6 text-center text-gray-500">No users found</div>;
+  }
+
   return (
     <div className="space-y-4">
       <Card>
@@ -94,28 +98,33 @@ export const UsersTabContent: React.FC<UsersTabContentProps> = ({
             <div className="divide-y dark:divide-gray-700">
               {/* Current User */}
               {currentUser && (
-                <div className="p-6">
+                <div className="bg-blue-50 dark:bg-slate-800 p-6">
                   <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-3">
-                      <div className="h-10 w-10 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center">
-                        <span className="font-medium text-blue-800 dark:text-blue-200">
-                          {currentUser.name.charAt(0).toUpperCase()}
-                        </span>
-                      </div>
-                      <div>
-                        <p className="font-medium text-gray-900 dark:text-white">{currentUser.name} <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full dark:bg-blue-900/50 dark:text-blue-200">You</span></p>
-                        <p className="text-sm text-gray-500 dark:text-gray-300">{currentUser.email}</p>
-                        <p className="text-xs text-gray-400 mt-1 dark:text-gray-200">
-                          Added: {new Date(currentUser.addedAt).toLocaleDateString()}
-                        </p>
+                    <div className="flex-grow">
+                      <div className="flex items-center space-x-3">
+                        <div className="h-10 w-10 rounded-full bg-blue-100 dark:bg-blue-500 flex items-center justify-center">
+                          <span className="text-blue-600 font-medium dark:text-white">
+                            {currentUser.name.charAt(0).toUpperCase()}
+                          </span>
+                        </div>
+                        <div>
+                          <p className="font-medium text-gray-900 dark:text-white">
+                            {currentUser.name} <span className="text-blue-600 text-sm">(You)</span>
+                          </p>
+                          <p className="text-sm text-gray-500 dark:text-gray-300">{currentUser.email}</p>
+                          <p className="text-xs text-gray-400 mt-1 dark:text-gray-200">
+                            Added: {new Date(currentUser.addedAt).toLocaleDateString()}
+                          </p>
+                        </div>
                       </div>
                     </div>
                     <div className="ml-6">
-                      <div className="text-gray-600 font-medium dark:text-white text-sm">
-                        {currentUser.role === 'OWNER' ? 'Owner' : 
-                         currentUser.role === 'ADMIN' ? 'Admin' : 
-                         currentUser.role === 'WRITE' ? 'Editor' : 'Viewer'}
-                      </div>
+                      <RoleSelect 
+                        user={currentUser} 
+                        currentUserRole={currentUser.role as Role} 
+                        onRoleChange={onRoleChange}
+                        currentUserEmail={currentUser.email} 
+                      />
                     </div>
                   </div>
                 </div>
@@ -129,7 +138,7 @@ export const UsersTabContent: React.FC<UsersTabContentProps> = ({
                   currentUserRole={currentUser?.role as Role} 
                   currentUserEmail={currentUser?.email || null}
                   onRoleChange={onRoleChange}
-                  onRemoveUser={setUserToRemove}
+                  onRemoveUser={onRemoveUser}
                 />
               ))}
             </div>
@@ -154,7 +163,7 @@ export const UsersTabContent: React.FC<UsersTabContentProps> = ({
         isOpen={!!userToRemove}
         onClose={() => setUserToRemove(null)}
         user={userToRemove}
-        onConfirm={onRemoveUser}
+        onConfirm={async (user) => await Promise.resolve(onRemoveUser(user))}
       />
 
       <TransferOwnershipDialog
