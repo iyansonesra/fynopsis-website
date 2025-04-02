@@ -601,12 +601,38 @@ export const PermissionGroupDialog: React.FC<PermissionGroupDialogProps> = ({
                   {/* Can invite users section */}
                   <div className="space-y-3">
                     <h4 className="text-sm font-medium">Can invite users with roles:</h4>
-                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                    
+                    {/* Any Role toggle */}
+                    <div className="flex items-center justify-between p-2 bg-gray-50 dark:bg-gray-800 rounded-md">
+                      <div>
+                        <label htmlFor="invite-any-role" className="text-sm font-medium">Any Role</label>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">Allow inviting users with any role</p>
+                      </div>
+                      <Switch 
+                        id="invite-any-role" 
+                        checked={newGroup.canInviteUsers.includes('*')}
+                        onCheckedChange={(checked) => {
+                          if (checked) {
+                            // Enable wildcard - any role
+                            setNewGroup({...newGroup, canInviteUsers: ['*']});
+                          } else {
+                            // Disable wildcard, clear selection
+                            setNewGroup({...newGroup, canInviteUsers: []});
+                          }
+                        }}
+                      />
+                    </div>
+                    
+                    {/* Specific roles selection */}
+                    <div className={`grid grid-cols-2 sm:grid-cols-3 gap-4 ${newGroup.canInviteUsers.includes('*') ? 'opacity-50' : ''}`}>
                       <div className="flex items-center space-x-2">
                         <Switch 
                           id="invite-read" 
-                          checked={newGroup.canInviteUsers.includes('READ')}
+                          checked={newGroup.canInviteUsers.includes('*') || newGroup.canInviteUsers.includes('READ')}
                           onCheckedChange={(checked) => {
+                            // Don't allow changes if wildcard is set
+                            if (newGroup.canInviteUsers.includes('*')) return;
+                            
                             const newInviteUsers = [...newGroup.canInviteUsers];
                             if (checked) {
                               if (!newInviteUsers.includes('READ')) newInviteUsers.push('READ');
@@ -616,6 +642,7 @@ export const PermissionGroupDialog: React.FC<PermissionGroupDialogProps> = ({
                             }
                             setNewGroup({...newGroup, canInviteUsers: newInviteUsers});
                           }}
+                          disabled={newGroup.canInviteUsers.includes('*')}
                         />
                         <label htmlFor="invite-read" className="text-sm">Viewer</label>
                       </div>
@@ -623,8 +650,11 @@ export const PermissionGroupDialog: React.FC<PermissionGroupDialogProps> = ({
                       <div className="flex items-center space-x-2">
                         <Switch 
                           id="invite-write" 
-                          checked={newGroup.canInviteUsers.includes('WRITE')}
+                          checked={newGroup.canInviteUsers.includes('*') || newGroup.canInviteUsers.includes('WRITE')}
                           onCheckedChange={(checked) => {
+                            // Don't allow changes if wildcard is set
+                            if (newGroup.canInviteUsers.includes('*')) return;
+                            
                             const newInviteUsers = [...newGroup.canInviteUsers];
                             if (checked) {
                               if (!newInviteUsers.includes('WRITE')) newInviteUsers.push('WRITE');
@@ -634,6 +664,7 @@ export const PermissionGroupDialog: React.FC<PermissionGroupDialogProps> = ({
                             }
                             setNewGroup({...newGroup, canInviteUsers: newInviteUsers});
                           }}
+                          disabled={newGroup.canInviteUsers.includes('*')}
                         />
                         <label htmlFor="invite-write" className="text-sm">Editor</label>
                       </div>
@@ -641,8 +672,11 @@ export const PermissionGroupDialog: React.FC<PermissionGroupDialogProps> = ({
                       <div className="flex items-center space-x-2">
                         <Switch 
                           id="invite-admin" 
-                          checked={newGroup.canInviteUsers.includes('ADMIN')}
+                          checked={newGroup.canInviteUsers.includes('*') || newGroup.canInviteUsers.includes('ADMIN')}
                           onCheckedChange={(checked) => {
+                            // Don't allow changes if wildcard is set
+                            if (newGroup.canInviteUsers.includes('*')) return;
+                            
                             const newInviteUsers = [...newGroup.canInviteUsers];
                             if (checked) {
                               if (!newInviteUsers.includes('ADMIN')) newInviteUsers.push('ADMIN');
@@ -652,10 +686,17 @@ export const PermissionGroupDialog: React.FC<PermissionGroupDialogProps> = ({
                             }
                             setNewGroup({...newGroup, canInviteUsers: newInviteUsers});
                           }}
+                          disabled={newGroup.canInviteUsers.includes('*')}
                         />
                         <label htmlFor="invite-admin" className="text-sm">Admin</label>
                       </div>
                     </div>
+                    
+                    {newGroup.canInviteUsers.includes('*') && (
+                      <p className="text-xs text-blue-500 dark:text-blue-400 italic">
+                        Users with this permission group can invite users with any role
+                      </p>
+                    )}
                   </div>
                   
                   <Separator />
@@ -663,12 +704,38 @@ export const PermissionGroupDialog: React.FC<PermissionGroupDialogProps> = ({
                   {/* Can update user permissions section */}
                   <div className="space-y-3">
                     <h4 className="text-sm font-medium">Can update permissions for:</h4>
-                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                    
+                    {/* Any Role toggle */}
+                    <div className="flex items-center justify-between p-2 bg-gray-50 dark:bg-gray-800 rounded-md">
+                      <div>
+                        <label htmlFor="update-any-role" className="text-sm font-medium">Any Role</label>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">Allow updating permissions for any role</p>
+                      </div>
+                      <Switch 
+                        id="update-any-role" 
+                        checked={newGroup.canUpdateUserPermissions.includes('*')}
+                        onCheckedChange={(checked) => {
+                          if (checked) {
+                            // Enable wildcard - any role
+                            setNewGroup({...newGroup, canUpdateUserPermissions: ['*']});
+                          } else {
+                            // Disable wildcard, clear selection
+                            setNewGroup({...newGroup, canUpdateUserPermissions: []});
+                          }
+                        }}
+                      />
+                    </div>
+                    
+                    {/* Specific roles selection */}
+                    <div className={`grid grid-cols-2 sm:grid-cols-3 gap-4 ${newGroup.canUpdateUserPermissions.includes('*') ? 'opacity-50' : ''}`}>
                       <div className="flex items-center space-x-2">
                         <Switch 
                           id="update-read" 
-                          checked={newGroup.canUpdateUserPermissions.includes('READ')}
+                          checked={newGroup.canUpdateUserPermissions.includes('*') || newGroup.canUpdateUserPermissions.includes('READ')}
                           onCheckedChange={(checked) => {
+                            // Don't allow changes if wildcard is set
+                            if (newGroup.canUpdateUserPermissions.includes('*')) return;
+                            
                             const newUpdateUsers = [...newGroup.canUpdateUserPermissions];
                             if (checked) {
                               if (!newUpdateUsers.includes('READ')) newUpdateUsers.push('READ');
@@ -678,6 +745,7 @@ export const PermissionGroupDialog: React.FC<PermissionGroupDialogProps> = ({
                             }
                             setNewGroup({...newGroup, canUpdateUserPermissions: newUpdateUsers});
                           }}
+                          disabled={newGroup.canUpdateUserPermissions.includes('*')}
                         />
                         <label htmlFor="update-read" className="text-sm">Viewers</label>
                       </div>
@@ -685,8 +753,11 @@ export const PermissionGroupDialog: React.FC<PermissionGroupDialogProps> = ({
                       <div className="flex items-center space-x-2">
                         <Switch 
                           id="update-write" 
-                          checked={newGroup.canUpdateUserPermissions.includes('WRITE')}
+                          checked={newGroup.canUpdateUserPermissions.includes('*') || newGroup.canUpdateUserPermissions.includes('WRITE')}
                           onCheckedChange={(checked) => {
+                            // Don't allow changes if wildcard is set
+                            if (newGroup.canUpdateUserPermissions.includes('*')) return;
+                            
                             const newUpdateUsers = [...newGroup.canUpdateUserPermissions];
                             if (checked) {
                               if (!newUpdateUsers.includes('WRITE')) newUpdateUsers.push('WRITE');
@@ -696,6 +767,7 @@ export const PermissionGroupDialog: React.FC<PermissionGroupDialogProps> = ({
                             }
                             setNewGroup({...newGroup, canUpdateUserPermissions: newUpdateUsers});
                           }}
+                          disabled={newGroup.canUpdateUserPermissions.includes('*')}
                         />
                         <label htmlFor="update-write" className="text-sm">Editors</label>
                       </div>
@@ -703,8 +775,11 @@ export const PermissionGroupDialog: React.FC<PermissionGroupDialogProps> = ({
                       <div className="flex items-center space-x-2">
                         <Switch 
                           id="update-admin" 
-                          checked={newGroup.canUpdateUserPermissions.includes('ADMIN')}
+                          checked={newGroup.canUpdateUserPermissions.includes('*') || newGroup.canUpdateUserPermissions.includes('ADMIN')}
                           onCheckedChange={(checked) => {
+                            // Don't allow changes if wildcard is set
+                            if (newGroup.canUpdateUserPermissions.includes('*')) return;
+                            
                             const newUpdateUsers = [...newGroup.canUpdateUserPermissions];
                             if (checked) {
                               if (!newUpdateUsers.includes('ADMIN')) newUpdateUsers.push('ADMIN');
@@ -714,17 +789,24 @@ export const PermissionGroupDialog: React.FC<PermissionGroupDialogProps> = ({
                             }
                             setNewGroup({...newGroup, canUpdateUserPermissions: newUpdateUsers});
                           }}
+                          disabled={newGroup.canUpdateUserPermissions.includes('*')}
                         />
                         <label htmlFor="update-admin" className="text-sm">Admins</label>
                       </div>
                     </div>
+                    
+                    {newGroup.canUpdateUserPermissions.includes('*') && (
+                      <p className="text-xs text-blue-500 dark:text-blue-400 italic">
+                        Users with this permission group can update permissions for any role
+                      </p>
+                    )}
                   </div>
                   
                   <Separator />
                   
                   {/* Can create permission groups */}
                   <div className="flex items-center justify-between">
-                    <label className="text-sm">Can create permission groups</label>
+                    <label className="text-sm">Can create/edit permission groups</label>
                     <Switch 
                       checked={newGroup.canCreatePermissionGroups}
                       onCheckedChange={(checked) => 
