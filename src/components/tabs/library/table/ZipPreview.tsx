@@ -124,7 +124,7 @@ const ZipPreview: React.FC<ZipPreviewProps> = ({ items, onUpload, onCancel }) =>
             </div>
             </div>
 
-            <div className="flex justify-end items-center  p-4 mt-auto">
+            {/* <div className="flex justify-end items-center  p-4 mt-auto">
             <div className="space-x-2">
                 <button
                 onClick={onCancel}
@@ -139,7 +139,7 @@ const ZipPreview: React.FC<ZipPreviewProps> = ({ items, onUpload, onCancel }) =>
                 Upload ZIP
                 </button>
             </div>
-            </div>
+            </div> */}
         </div>
     );
 };

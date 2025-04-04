@@ -104,7 +104,13 @@ const PDFViewer: React.FC<PDFViewerProps> = ({
   const fileType = getFileType(name);
   const viewerUrl = getViewerUrl(documentUrl);
   const isOfficeFile = ['xlsx', 'xls', 'csv'].includes(fileType);
-  const isPdfFile = documentUrl.includes('pdf');
+  const isPdfFile = fileType === 'pdf';
+
+  console.log("documenturl", documentUrl);
+  console.log("doc name", name);
+  console.log("file type", fileType);
+  console.log("isPdfFile", isPdfFile);
+  console.log("bounding boxes", boundingBoxes);
 
   // useEffect(() => {
   //   // Skip iframe loading checks for PDF files as they're handled by PDFHighlighter

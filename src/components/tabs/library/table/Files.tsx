@@ -262,24 +262,18 @@ export default function Files({ setSelectedTab }: { setSelectedTab: React.Dispat
             const existingTab = tabs.find(tab => tab.title === file.name);
 
             console.log("file url", file.s3Url);
+            console.log("file name", file.name);
 
             if (existingTab) {
                 // Just activate the existing tab
+                console.log("existing tab", existingTab);
                 setActiveTabId(existingTab.id);
             } else {
+                console.log("new tab", newTabId);
                 addTab({
                     id: newTabId,
                     title: file.name,
                     content: (
-                        // <PDFViewer 
-                        //   documentUrl={file.s3Url} 
-                        //   containerId={`pdf-viewer-${file.id}`}
-                        //   tabId={newTabId}  // Add this prop
-                        //   name={file.name}
-                        // />
-                        // <PDFHighlighterComponent
-                        //     documentUrl={file.s3Url}
-                        // />
                         <PDFViewer
                             documentUrl={file.s3Url}
                             containerId={`pdf-viewer-${file.id}`}

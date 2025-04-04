@@ -381,6 +381,9 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
   };
 
   const moveFile = async (ids: string[], folderId: string) => {
+    console.log('Moving file:', ids, folderId);
+    console.log('Bucket UUID:', bucketUuid);
+    
     try {
       const response = await post({
         apiName: 'S3_API',
