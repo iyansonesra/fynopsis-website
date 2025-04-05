@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Clock, Star } from 'lucide-react';
 import { FileItem, Folder, useFileStore } from '@/components/services/HotkeyService';
 import { useRouter, usePathname } from 'next/navigation';
+import { post } from 'aws-amplify/api';
 
 import { FilesystemItem } from './tree-item';
 import { useTabStore } from '@/components/tabStore';
@@ -19,6 +20,31 @@ type Node = {
     path?: string;   // Add path information
     isFolder?: boolean; // Indicate if it's a folder
     parentFolderId?: string; // Add parent folder ID
+    draggedItem?: {
+        id: string;
+        name: string;
+        isFolder: boolean;
+        path?: string;
+    };
+};
+
+type MoveResponse = {
+    message: string;
+    results: {
+        failed: any[];
+        successful: Array<{
+            itemId: string;
+            itemName: string;
+            oldParentId: string;
+            oldParentName: string;
+            newParentId: string;
+        }>;
+        summary: {
+            failed: number;
+            succeeded: number;
+            total: number;
+        };
+    };
 };
 
 // Function to build folder structure from folders and files
@@ -148,7 +174,89 @@ const FolderTree: React.FC<FolderTreeProps> = () => {
 
     const handleNodeSelect = async (node: Node) => {
         if (node.isFolder && node.id) {
-            // Navigate to the folder
+            // If this is a drop event (contains draggedItem)
+            if (node.draggedItem) {
+                console.log('Moving item:', node.draggedItem);
+                const draggedItem = node.draggedItem;
+                console.log('Moving item:', draggedItem);
+                console.log('Moving item:', node.id);
+                try {
+                    // Call the API to move the item
+                    const response = await post({
+                        apiName: 'S3_API',
+                        path: `/s3/${bucketUuid}/move-url`,
+                        options: {
+                            withCredentials: true,
+                            body: {
+                                fileIds: [draggedItem.id],
+                                newParentFolderId: node.id,
+                                
+                            }
+                        }
+                    });
+
+                    const { body } = await response.response;
+                    const result = await body.json() as MoveResponse;
+                    console.log('Moving item:', result);
+                    if (result.results.successful.length > 0) {
+                        // Function to remove a node from its current location
+                        const removeNode = (nodes: Node[], targetId: string): { updatedNodes: Node[], removedNode: Node | null } => {
+                            for (let i = 0; i < nodes.length; i++) {
+                                if (nodes[i].id === targetId) {
+                                    const removedNode = nodes[i];
+                                    nodes.splice(i, 1);
+                                    return { updatedNodes: nodes, removedNode };
+                                }
+                                if (nodes[i].nodes) {
+                                    const { updatedNodes, removedNode } = removeNode(nodes[i].nodes!, targetId);
+                                    if (removedNode) {
+                                        nodes[i].nodes = updatedNodes;
+                                        return { updatedNodes: nodes, removedNode };
+                                    }
+                                }
+                            }
+                            return { updatedNodes: nodes, removedNode: null };
+                        };
+
+                        // Function to add a node to its new location
+                        const addNode = (nodes: Node[], targetFolderId: string, nodeToAdd: Node): Node[] => {
+                            return nodes.map(node => {
+                                if (node.id === targetFolderId) {
+                                    return {
+                                        ...node,
+                                        nodes: [...(node.nodes || []), nodeToAdd]
+                                    };
+                                }
+                                if (node.nodes) {
+                                    return {
+                                        ...node,
+                                        nodes: addNode(node.nodes, targetFolderId, nodeToAdd)
+                                    };
+                                }
+                                return node;
+                            });
+                        };
+
+                        // Remove the node from its current location
+                        const { updatedNodes, removedNode } = removeNode(folderStructure, draggedItem.id);
+                        
+                        if (removedNode) {
+                            // Add the node to its new location
+                            const updatedStructure = addNode(updatedNodes, node.id || 'ROOT', {
+                                ...removedNode,
+                                parentFolderId: node.id || 'ROOT'
+                            });
+                            
+                            setFolderStructure(updatedStructure);
+                        }
+                    }
+                } catch (error) {
+                    console.error('Error moving item:', error);
+                }
+                return;
+            }
+
+            // Original folder navigation code
             const segments = pathname.split('/');
             segments.pop();  // Remove the last segment
             segments.push(node.id === 'ROOT' ? 'home' : node.id); // Add the new folder ID

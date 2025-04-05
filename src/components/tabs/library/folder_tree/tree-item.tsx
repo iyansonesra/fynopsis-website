@@ -30,6 +30,19 @@ type Node = {
     id?: string
     path?: string
     isFolder?: boolean
+    draggedItem?: {
+        id: string;
+        name: string;
+        isFolder: boolean;
+        path?: string;
+    }
+}
+
+type DraggedItem = {
+    id: string;
+    name: string;
+    isFolder: boolean;
+    path?: string;
 }
 
 interface FilesystemItemProps {
@@ -234,6 +247,63 @@ export function FilesystemItem({
         setShowContextMenu(false);
     }, [node, onSelect, isOpen, toggleNode]);
 
+    const handleDragStart = useCallback((e: React.DragEvent) => {
+        e.stopPropagation();
+        // Set the data being dragged
+        e.dataTransfer.setData('text/plain', JSON.stringify({
+            id: node.id,
+            name: node.name,
+            isFolder: node.isFolder,
+            path: node.path
+        }));
+        // Add visual feedback
+        e.currentTarget.classList.add('opacity-50');
+    }, [node]);
+
+    const handleDragEnd = useCallback((e: React.DragEvent) => {
+        e.stopPropagation();
+        // Remove visual feedback
+        e.currentTarget.classList.remove('opacity-50');
+    }, []);
+
+    const handleDragOver = useCallback((e: React.DragEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+        // Only allow dropping on folders
+        if (node.isFolder) {
+            e.currentTarget.classList.add('bg-slate-200', 'dark:bg-slate-700');
+        }
+    }, [node.isFolder]);
+
+    const handleDragLeave = useCallback((e: React.DragEvent) => {
+        e.stopPropagation();
+        e.currentTarget.classList.remove('bg-slate-200', 'dark:bg-slate-700');
+    }, []);
+
+    const handleDrop = useCallback((e: React.DragEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+        e.currentTarget.classList.remove('bg-slate-200', 'dark:bg-slate-700');
+
+        // Only allow dropping on folders
+        if (!node.isFolder) return;
+
+        try {
+            const draggedData = JSON.parse(e.dataTransfer.getData('text/plain')) as DraggedItem;
+            // Don't allow dropping a folder into itself or its children
+            if (draggedData.id === node.id || node.path?.startsWith(draggedData.path + '/')) {
+                return;
+            }
+
+            // Call the parent's onDrop handler if it exists
+            if (onSelect) {
+                onSelect({ ...node, draggedItem: draggedData });
+            }
+        } catch (error) {
+            console.error('Error handling drop:', error);
+        }
+    }, [node, onSelect]);
+
     const ChildrenList = useCallback(() => {
         const children = node.nodes?.map((childNode) => (
             <FilesystemItem
@@ -285,6 +355,12 @@ export function FilesystemItem({
                                 onClick={handleClick}
                                 onMouseEnter={handleMouseEnter}
                                 onMouseLeave={handleMouseLeave}
+                                draggable={true}
+                                onDragStart={handleDragStart}
+                                onDragEnd={handleDragEnd}
+                                onDragOver={handleDragOver}
+                                onDragLeave={handleDragLeave}
+                                onDrop={handleDrop}
                             >
                                 <div className="flex-shrink-0 flex items-center gap-1.5">
                                     {node.name !== "Home" && node.nodes && node.nodes.length > 0 && (
@@ -336,7 +412,7 @@ export function FilesystemItem({
                             onMouseLeave={() => setShowPopover(false)}
                         >
                             <div className="break-keep whitespace-nowrap">
-                                {node.name}
+                                {node.id || 'No ID'}
                             </div>
                         </PopoverContent>
                     </Popover>
