@@ -89,6 +89,11 @@ const buildFolderStructure = (folders: Folder[], files: FileItem[]): Node[] => {
 
     // Then, add files to their parent folders
     files.forEach((file) => {
+        // Skip files with empty names
+        if (!file.fileName || file.fileName.trim() === '') {
+            return;
+        }
+
         const pathParts = file.fullPath.split('/').filter(part => part !== 'Root' && part !== '');
         let currentLevel = root;
         let parentId = 'ROOT';

@@ -396,7 +396,7 @@ export function FilesystemItem({
 
                                     {(node.isFolder) ? (
                                         <div></div>
-                                    ) : node.name.toLowerCase().endsWith('.pdf') ? (
+                                    ) : node.name?.toLowerCase().endsWith('.pdf') ? (
                                         <FaFilePdf className={`ml-[22px] w-4 h-4 text-red-500 flex-shrink-0`} />
                                     ) : (
                                         <File className="ml-[22px] w-4 h-4 text-gray-900 flex-shrink-0" />

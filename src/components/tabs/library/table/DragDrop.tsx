@@ -573,7 +573,7 @@ const DragDropOverlay: React.FC<DragDropOverlayProps> = ({
           {upload.isZip && (
             <button
               onClick={() => handleZipPreview(upload.file)}
-              className="opacity-0 group-hover:opacity-100 transition-opacity text-blue-500 hover:text-blue-700 flex"
+              className="opacity-0 group-hover:opacity-100 transition-opacity text-blue-500 hover:text-blue-700 flex gap-2 "
             >
               <Archive className="h-4 w-4" />
               <span>Show structure</span>
@@ -671,7 +671,7 @@ const DragDropOverlay: React.FC<DragDropOverlayProps> = ({
         
         <div className="flex h-[600px]">
           {/* Main content area */}
-          <div className="flex-1 pr-4 relative">
+          <div className="flex-1 relative overflow-hidden">
             <div className="h-full flex flex-col">
               {/* File list - only shown when there are files */}
               {Object.keys(fileUploads).length > 0 && (
@@ -707,31 +707,39 @@ const DragDropOverlay: React.FC<DragDropOverlayProps> = ({
               
               {/* Dropzone - always present but visually hidden when files exist */}
               {renderDropzoneContent()}
+
+              {/* ZIP Preview Overlay */}
+              {showZipPreview && (
+                <div className="absolute inset-0 bg-white dark:bg-darkbg rounded-lg shadow-lg transform transition-transform duration-300 ease-in-out z-50 flex flex-col"
+                     style={{ 
+                       transform: showZipPreview ? 'translateX(0)' : 'translateX(-100%)',
+                       left: '0',
+                       right: 'auto',
+                       width: '100%'
+                     }}>
+                  <div className="flex justify-between items-center p-4 border-b">
+                    <button
+                      onClick={() => setShowZipPreview(false)}
+                      className="text-gray-500 hover:text-gray-700 flex items-center space-x-1"
+                    >
+                      <ChevronRight className="h-4 w-4 rotate-180" />
+                      <span>Back</span>
+                    </button>
+                  </div>
+                  <div className="flex-1 p-4 min-h-0">
+                    <ZipPreview
+                      items={zipPreviewItems}
+                      onUpload={() => {
+                        setShowZipPreview(false);
+                        handleZipUploadConfirm();
+                      }}
+                      onCancel={() => setShowZipPreview(false)}
+                    />
+                  </div>
+                </div>
+              )}
             </div>
           </div>
-
-          {/* ZIP Preview Side Panel */}
-          {showZipPreview && (
-            <div className={`w-1/3 border-l pl-4 transform transition-transform duration-300 ${showZipPreview ? 'translate-x-0' : 'translate-x-full'}`}>
-              <div className="flex justify-between items-center mb-4">
-                <button
-                  onClick={() => setShowZipPreview(false)}
-                  className="text-gray-500 hover:text-gray-700 flex items-center space-x-1"
-                >
-                  <span>Close Preview</span>
-                  <ChevronRight className="h-4 w-4" />
-                </button>
-              </div>
-              <ZipPreview
-                items={zipPreviewItems}
-                onUpload={() => {
-                  setShowZipPreview(false);
-                  handleZipUploadConfirm();
-                }}
-                onCancel={() => setShowZipPreview(false)}
-              />
-            </div>
-          )}
         </div>
       </div>
     </div>

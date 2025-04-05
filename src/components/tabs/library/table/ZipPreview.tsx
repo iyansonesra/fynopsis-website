@@ -103,7 +103,7 @@ const ZipPreview: React.FC<ZipPreviewProps> = ({ items, onUpload, onCancel }) =>
                             <File className="w-4 h-4 ml-1 text-gray-500" />
                         </>
                     )}
-                    <span className="ml-2">{node.name}</span>
+                    <span className="ml-2 truncate" title={node.name}>{node.name}</span>
                 </div>
                 {node.isDirectory && isExpanded && node.children.map(child => renderTreeNode(child))}
             </div>
@@ -113,33 +113,13 @@ const ZipPreview: React.FC<ZipPreviewProps> = ({ items, onUpload, onCancel }) =>
     const tree = buildTree(items);
 
     return (
-        <div className="space-y-4 min-h-[400px] flex flex-col">
-            <div className="rounded-lg max-h-[400px] overflow-y-auto flex-grow">
+        <div className="h-full flex flex-col">
             <h3 className="text-lg font-semibold dark:text-gray-200 mb-2">ZIP Contents Preview</h3>
-
-            <div className="h-[300px]">
-                <ScrollArea className="h-full">
+            <ScrollArea className="flex-1">
+                <div className="pr-4">
                     {tree.map(node => renderTreeNode(node))}
-                </ScrollArea>
-            </div>
-            </div>
-
-            {/* <div className="flex justify-end items-center  p-4 mt-auto">
-            <div className="space-x-2">
-                <button
-                onClick={onCancel}
-                className="px-4 py-2 text-gray-600 hover:text-gray-800 border rounded"
-                >
-                Cancel
-                </button>
-                <button
-                onClick={onUpload}
-                className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
-                >
-                Upload ZIP
-                </button>
-            </div>
-            </div> */}
+                </div>
+            </ScrollArea>
         </div>
     );
 };
