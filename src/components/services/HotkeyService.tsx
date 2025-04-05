@@ -75,7 +75,7 @@ interface DocumentTags {
   confidentiality: string;
 }
 
-export interface Files {
+export interface FileItem {
   fileId: string;
   fileName: string;
   fullPath: string;
@@ -83,6 +83,29 @@ export interface Files {
   parentFolderName: string;
   size: string;
   isFolder?: boolean;
+  batchStatus?: string;
+  contentType?: string;
+  documentSummary?: string;
+  documentTitle?: string;
+  id?: string;
+  lastModified?: string;
+  name?: string;
+  tags?: string;
+  tagsList?: string;
+  uploadedBy?: string;
+  uploadedByEmail?: string;
+}
+
+export interface Folder {
+  fullPath: string;
+  id: string;
+  isFolder: true;
+  lastModified: string;
+  name: string;
+  parentFolderId: string;
+  parentFolderName: string;
+  uploadedBy: string;
+  uploadedByEmail: string;
 }
 
 interface DocumentBounds {
@@ -101,10 +124,12 @@ interface DocumentBounds {
 interface FileStore {
   cutFiles: FileNode[]; 
   setCutFiles: (files: FileNode[]) => void;
-  searchableFiles: Files[];
-  setSearchableFiles: (files: Files[]) => void;
+  searchableFiles: FileItem[];
+  setSearchableFiles: (files: FileItem[]) => void;
+  searchableFolders: Folder[];
+  setSearchableFolders: (folders: Folder[]) => void;
   getFileName: (id: string) => string;
-  getFile: (id: string) => Files | null;
+  getFile: (id: string) => FileItem | null;
   showDetailsView: boolean;
   setShowDetailsView: (show: boolean) => void;
   selectedFile: FileNode | null;
@@ -150,6 +175,8 @@ export const useFileStore = create<FileStore>((set, get) => ({
   setCutFiles: (files) => set({ cutFiles: files }),
   searchableFiles: [],
   setSearchableFiles: (files) => set({ searchableFiles: files }),
+  searchableFolders: [],
+  setSearchableFolders: (folders) => set({ searchableFolders: folders }),
   getFileName: (id) => {
     const file = get().searchableFiles.find(file => file.fileId === id);
     return file ? file.fileName : '';

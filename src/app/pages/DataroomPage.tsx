@@ -25,7 +25,7 @@ import { Separator } from '@radix-ui/react-separator';
 import { TagDisplay } from '@/components/tabs/library/table/TagsHover';
 import { AuditLogViewer } from '@/components/tabs/audit_log/AuditLogViewer';
 import Link from 'next/link';
-import { useFileStore } from '@/components/services/HotkeyService';
+import { useFileStore, FileItem, Folder } from '@/components/services/HotkeyService';
 // import TableViewer from '@/components/tabs/library/table/TableViewer';
 import DeepResearchViewer from '@/components/tabs/deep_research/DeepResearchViewer';
 import DiligenceDashboardViewer from '@/components/tabs/diligence_dashboard/DiligenceViewer2';
@@ -52,7 +52,7 @@ export default function Home() {
   // Define tabs first so we can use it in initialTabIndex calculation
   const tabs: Tab[] = [
     { icon: Library, label: 'Library' },
-   
+
     // { icon: Table, label: 'Extract' },
     // { icon: Database, label: 'Deep Research' },
     { icon: ChartPie, label: 'Diligence' },
@@ -84,15 +84,15 @@ export default function Home() {
   const params = useParams();
   const [hasPermission, setHasPermission] = useState<boolean>(true);
   const dataroomId = Array.isArray(params?.id) ? params.id[0] : params?.id ?? '';
-  const { setSearchableFiles } = useFileStore();
+  const { setSearchableFiles, setSearchableFolders } = useFileStore();
   const [familyName, setFamilyName] = useState('');
   const [givenName, setGivenName] = useState('');
   const [shouldAnimate, setShouldAnimate] = useState(false);
   const { toast } = useToast();
-  
+
   // WebSocket connection state
   const [wsConnected, setWsConnected] = useState(false);
-  
+
   // Add force render counter for issue navigation
   const [forceRender, setForceRender] = useState(0);
 
@@ -111,25 +111,25 @@ export default function Home() {
     // Only update if we're changing tabs
     if (activeTab !== index) {
       const tabName = tabs[index].label.toLowerCase();
-      
+
       // Enable animations now that user is clicking
       if (!shouldAnimate) {
         setShouldAnimate(true);
       }
-      
+
       // If switching to a tab other than issues, clear any active issue
       if (tabName !== 'issues' && activeIssueId !== null) {
         prevIssueIdRef.current = null;
         setActiveIssueId(null);
       }
-      
+
       setActiveTab(index);
       setSelectedTab(tabName);
 
       // Update URL query parameter without full page navigation
       const params = new URLSearchParams(searchParams.toString());
       params.set('tab', tabName);
-      
+
       // Also remove any issueId query param when switching tabs
       if (tabName !== 'issues') {
         params.delete('issueId');
@@ -148,95 +148,95 @@ export default function Home() {
   }, [initialTabIndex, activeTab, setActiveTab]);
 
 
-useEffect(() => {
-  // Skip if pathname not ready or if the pathname hasn't changed since last check
-  if (!pathname || pathname === prevPathRef.current) return;
-  
-  // Update the previous pathname ref
-  prevPathRef.current = pathname;
+  useEffect(() => {
+    // Skip if pathname not ready or if the pathname hasn't changed since last check
+    if (!pathname || pathname === prevPathRef.current) return;
 
-  // Check for issueId in query parameters
-  const issueIdParam = searchParams.get('issueId');
-  
-  // Parse the URL path to determine active tab
-  const pathArray = pathname.split('/');
-  
-  // Extract tab from URL (ignoring any issue IDs in the path)
-  let tabFromUrl = 'library'; // Default
-  if (pathArray.length >= 4) {
-    tabFromUrl = pathArray[3].toLowerCase();
-    
-    // Special case: if we're on the issues tab and there's an issueId in query params
-    if (tabFromUrl === 'issues' && issueIdParam && activeIssueId !== issueIdParam) {
-      prevIssueIdRef.current = activeIssueId;
-      setActiveIssueId(issueIdParam);
+    // Update the previous pathname ref
+    prevPathRef.current = pathname;
+
+    // Check for issueId in query parameters
+    const issueIdParam = searchParams.get('issueId');
+
+    // Parse the URL path to determine active tab
+    const pathArray = pathname.split('/');
+
+    // Extract tab from URL (ignoring any issue IDs in the path)
+    let tabFromUrl = 'library'; // Default
+    if (pathArray.length >= 4) {
+      tabFromUrl = pathArray[3].toLowerCase();
+
+      // Special case: if we're on the issues tab and there's an issueId in query params
+      if (tabFromUrl === 'issues' && issueIdParam && activeIssueId !== issueIdParam) {
+        prevIssueIdRef.current = activeIssueId;
+        setActiveIssueId(issueIdParam);
+      }
     }
-  }
-  
-  // Find the tab index
-  const tabIndex = tabs.findIndex(tab => tab.label.toLowerCase() === tabFromUrl);
-  
-  // Only update if we found a valid tab and it's different from current
-  if (tabIndex !== -1 && tabIndex !== activeTab) {
-    setActiveTab(tabIndex);
-  }
-  
-  // Only update selected tab name if it's different
-  if (tabFromUrl !== selectedTab && (tabIndex !== -1 || tabFromUrl === 'library')) {
-    setSelectedTab(tabFromUrl);
-  }
-  
-}, [pathname, tabs, activeIssueId, searchParams]); // Add searchParams to dependencies
 
-// Update handleBackFromIssue to preserve the issuesActiveTab state
-const handleBackFromIssue = () => {
-  // First update the URL to remove the issueId query param
-  const url = new URL(window.location.href);
-  url.searchParams.delete('issueId');
-  window.history.pushState({}, '', url.toString());
-  
-  // Create a small delay to ensure the URL change is registered first
-  setTimeout(() => {
-    // Reset issue tracking to prevent loops
-    prevIssueIdRef.current = null;
-    
-    // Clear the active issue ID - this should trigger a re-render
-    setActiveIssueId(null);
-    
-    // Force a re-render immediately
-    setForceRender(prev => prev + 1);
-    
-    // Note: We no longer need to reset issuesActiveTab - it's preserved in the store
-  }, 0);
-};
+    // Find the tab index
+    const tabIndex = tabs.findIndex(tab => tab.label.toLowerCase() === tabFromUrl);
 
+    // Only update if we found a valid tab and it's different from current
+    if (tabIndex !== -1 && tabIndex !== activeTab) {
+      setActiveTab(tabIndex);
+    }
+
+    // Only update selected tab name if it's different
+    if (tabFromUrl !== selectedTab && (tabIndex !== -1 || tabFromUrl === 'library')) {
+      setSelectedTab(tabFromUrl);
+    }
+
+  }, [pathname, tabs, activeIssueId, searchParams]); // Add searchParams to dependencies
+
+  // Update handleBackFromIssue to preserve the issuesActiveTab state
+  const handleBackFromIssue = () => {
+    // First update the URL to remove the issueId query param
+    const url = new URL(window.location.href);
+    url.searchParams.delete('issueId');
+    window.history.pushState({}, '', url.toString());
+
+    // Create a small delay to ensure the URL change is registered first
+    setTimeout(() => {
+      // Reset issue tracking to prevent loops
+      prevIssueIdRef.current = null;
+
+      // Clear the active issue ID - this should trigger a re-render
+      setActiveIssueId(null);
+
+      // Force a re-render immediately
+      setForceRender(prev => prev + 1);
+
+      // Note: We no longer need to reset issuesActiveTab - it's preserved in the store
+    }, 0);
+  };
 
 
 
 
-useEffect(() => {
-  // Skip if refs aren't ready
-  if (!tabRefs.current || tabRefs.current.length === 0) return;
-  
-  // Determine which tab index to use (activeTab might be null on first load)
-  console.log("activeTab: ", activeTab);
-  console.log("checking if its null: ", activeTab !== null);
-  const currentTab = activeTab !== null ? activeTab : initialTabIndex;
-  
-  // Only update if we have a valid index and the ref exists
-  if (currentTab >= 0 && 
-      currentTab < tabs.length && 
+
+  useEffect(() => {
+    // Skip if refs aren't ready
+    if (!tabRefs.current || tabRefs.current.length === 0) return;
+
+    // Determine which tab index to use (activeTab might be null on first load)
+    console.log("activeTab: ", activeTab);
+    console.log("checking if its null: ", activeTab !== null);
+    const currentTab = activeTab !== null ? activeTab : initialTabIndex;
+
+    // Only update if we have a valid index and the ref exists
+    if (currentTab >= 0 &&
+      currentTab < tabs.length &&
       tabRefs.current[currentTab]) {
-    
-    const tabElement = tabRefs.current[currentTab];
-    if (tabElement) {
-      setIndicatorStyle({
-        top: `${tabElement.offsetTop}px`,
-        height: `${tabElement.offsetHeight}px`,
-      });
+
+      const tabElement = tabRefs.current[currentTab];
+      if (tabElement) {
+        setIndicatorStyle({
+          top: `${tabElement.offsetTop}px`,
+          height: `${tabElement.offsetHeight}px`,
+        });
+      }
     }
-  }
-}, [activeTab, tabs.length, initialTabIndex]);
+  }, [activeTab, tabs.length, initialTabIndex]);
 
   useEffect(() => {
     if (user) {
@@ -258,53 +258,68 @@ useEffect(() => {
   }, []);
 
   const fetchSearchableFiles = async () => {
-
-    interface Files {
-      fileId: string;
-      fileName: string;
-      fullPath: string;
-      parentFolderId: string;
-      parentFolderName: string;
-      size: string;
-    }
-
-
     try {
       const restOperation = get({
         apiName: 'S3_API',
         path: `/s3/${bucketUuid}/get-file-keys`,
       });
-      // await restOperation.response; // Wait for response to confirm permissions
 
       const { body } = await restOperation.response;
       const responseText = await body.text();
       const response = JSON.parse(responseText);
       console.log("response: ", response);
-      interface FileResponse {
-        fileId?: string;
-        fileName?: string;
-        fullPath?: string;
-        parentFolderId?: string;
-        parentFolderName?: string;
-        size?: string;
-      }
 
-      const formattedFiles: Files[] = response.files ? response.files.map((file: FileResponse): Files => ({
-        fileId: file.fileId || '',
-        fileName: file.fileName || '',
-        fullPath: file.fullPath || '',
-        parentFolderId: file.parentFolderId || '',
-        parentFolderName: file.parentFolderName || '',
-        size: file.size || ''
-      })) : [];
+      // Process files
+      const formattedFiles: FileItem[] = [];
+      const formattedFolders: Folder[] = [];
+
+      response.items?.forEach((item: any) => {
+        if (item.isFolder) {
+          formattedFolders.push({
+            fullPath: item.fullPath || '',
+            id: item.id || '',
+            isFolder: true,
+            lastModified: item.lastModified || '',
+            name: item.name || '',
+            parentFolderId: item.parentFolderId || '',
+            parentFolderName: item.parentFolderName || '',
+            uploadedBy: item.uploadedBy || '',
+            uploadedByEmail: item.uploadedByEmail || ''
+          });
+        } else {
+          formattedFiles.push({
+            fileId: item.id || '',
+            fileName: item.name || '',
+            fullPath: item.fullPath || '',
+            parentFolderId: item.parentFolderId || '',
+            parentFolderName: item.parentFolderName || '',
+            size: item.size || '',
+            batchStatus: item.batchStatus || '',
+            contentType: item.contentType || '',
+            documentSummary: item.documentSummary || '',
+            documentTitle: item.documentTitle || '',
+            id: item.id || '',
+            lastModified: item.lastModified || '',
+            name: item.name || '',
+            tags: item.tags || '',
+            tagsList: item.tagsList || '',
+            uploadedBy: item.uploadedBy || '',
+            uploadedByEmail: item.uploadedByEmail || '',
+            isFolder: false
+          });
+        }
+      });
 
       console.log("formattedFiles: ", formattedFiles);
+      console.log("formattedFolders: ", formattedFolders);
 
       setSearchableFiles(formattedFiles);
+      setSearchableFolders(formattedFolders);
 
     } catch (error) {
       console.error('Error fetching searchable files:', error);
       setSearchableFiles([]);
+      setSearchableFolders([]);
     }
   }
 
@@ -399,14 +414,14 @@ useEffect(() => {
     // First check if we should render the issue detail
     if (activeIssueId && selectedTab.toLowerCase() === 'issues') {
       return (
-        <IssueDetail 
-          issueId={activeIssueId} 
-          onBack={handleBackFromIssue} 
-          key={`issue-${activeIssueId}-${forceRender}`} 
+        <IssueDetail
+          issueId={activeIssueId}
+          onBack={handleBackFromIssue}
+          key={`issue-${activeIssueId}-${forceRender}`}
         />
       );
     }
-    
+
     // Otherwise render the appropriate tab content
     switch (selectedTab.toLowerCase()) {
       case "library":
@@ -424,7 +439,7 @@ useEffect(() => {
       case "diligence":
         return <DiligenceDashboardViewer />;
       case "issues":
-        return <Issues key={`issues-list-${forceRender}-${issuesActiveTab}`} />; 
+        return <Issues key={`issues-list-${forceRender}-${issuesActiveTab}`} />;
       default:
         return <Files setSelectedTab={setSelectedTab} />;
     }
@@ -445,16 +460,16 @@ useEffect(() => {
   // Initialize WebSocket connection when the component mounts
   // useEffect(() => {
   //   if (!dataroomId) return;
-    
+
   //   console.log('Connecting to WebSocket for dataroom:', dataroomId);
-    
+
   //   // Check if already connected to this dataroom
   //   if (websocketManager.isConnectedTo(dataroomId)) {
   //     console.log('Already connected to WebSocket for dataroom:', dataroomId);
   //     setWsConnected(true);
   //     return;
   //   }
-    
+
   //   // Connect to the WebSocket
   //   websocketManager.connect(dataroomId)
   //     .then(() => {
@@ -464,17 +479,17 @@ useEffect(() => {
   //     .catch(error => {
   //       console.error('Error connecting to WebSocket:', error);
   //     });
-    
+
   //   // Set up a handler for file update messages
   //   const handleFileUpdate = (message: FileUpdateMessage) => {
   //     // Don't show notifications for our own actions
   //     if (message.data.userEmail === userAttributes?.email) {
   //       return;
   //     }
-      
+
   //     // Process the message
   //     let toastMessage = '';
-      
+
   //     switch (message.type) {
   //       case 'FILE_UPLOADED':
   //         toastMessage = `File "${message.data.fileName}" uploaded by ${message.data.uploadedBy || 'a user'}`;
@@ -505,7 +520,7 @@ useEffect(() => {
   //           toastMessage = `Update: ${message.type}`;
   //         }
   //     }
-      
+
   //     if (toastMessage) {
   //       toast({
   //         title: "File Update",
@@ -514,22 +529,22 @@ useEffect(() => {
   //       });
   //     }
   //   };
-    
+
   //   // Register the handler
   //   websocketManager.addMessageHandler(handleFileUpdate);
-    
+
   //   // Set up ping interval to keep the connection alive
   //   const pingInterval = setInterval(() => {
   //     if (websocketManager.isConnectedTo(dataroomId)) {
   //       websocketManager.sendMessage({ action: 'ping' });
   //     }
   //   }, 45000); // Every 45 seconds
-    
+
   //   // Clean up
   //   return () => {
   //     clearInterval(pingInterval);
   //     websocketManager.removeMessageHandler(handleFileUpdate);
-      
+
   //     // We still retain the connection when navigating away from the room
   //     if (dataroomId) {
   //       console.log('Releasing WebSocket connection reference');
@@ -564,7 +579,7 @@ useEffect(() => {
           />
           <div className="relative flex flex-col items-center">
 
-          {activeTab !== null && (
+            {activeTab !== null && (
               <div
                 className={`absolute left-0 w-full bg-blue-300 rounded-xl ${shouldAnimate ? 'transition-all duration-300 ease-in-out' : 'transition-none'} z-20`}
                 style={{
