@@ -26,6 +26,17 @@ type Node = {
         isFolder: boolean;
         path?: string;
     };
+    // File attributes
+    fileId?: string;
+    fileName?: string;
+    fullPath?: string;
+    parentFolderName?: string;
+    size?: string;
+    batchStatus?: string;
+    contentType?: string;
+    lastModified?: string;
+    uploadedBy?: string;
+    uploadedByEmail?: string;
 };
 
 type MoveResponse = {
@@ -108,7 +119,18 @@ const buildFolderStructure = (folders: Folder[], files: FileItem[]): Node[] => {
                 id: file.fileId,
                 path: file.fullPath,
                 isFolder: false,
-                parentFolderId: file.parentFolderId || parentId
+                parentFolderId: file.parentFolderId || parentId,
+                // Add all file attributes
+                fileId: file.fileId,
+                fileName: file.fileName,
+                fullPath: file.fullPath,
+                parentFolderName: file.parentFolderName,
+                size: file.size,
+                batchStatus: file.batchStatus,
+                contentType: file.contentType,
+                lastModified: file.lastModified,
+                uploadedBy: file.uploadedBy,
+                uploadedByEmail: file.uploadedByEmail
             };
         }
     });
@@ -116,11 +138,11 @@ const buildFolderStructure = (folders: Folder[], files: FileItem[]): Node[] => {
     // Add numbering to nodes recursively
     const addNumbering = (nodes: Node[], prefix: string): Node[] => {
         return nodes.map((node, index) => {
-            const currentNumber = `${prefix}${index + 1}`;
+            const currentNumber = prefix ? `${prefix}.${index + 1}` : `${index + 1}`;
             return {
                 ...node,
                 numbering: currentNumber,
-                nodes: node.nodes ? addNumbering(node.nodes, `${currentNumber}.`) : [],
+                nodes: node.nodes ? addNumbering(node.nodes, currentNumber) : [],
             };
         });
     };
@@ -128,22 +150,30 @@ const buildFolderStructure = (folders: Folder[], files: FileItem[]): Node[] => {
     // Convert the root object to an array and add numbering
     const convertToArray = (obj: Record<string, Node>): Node[] => {
         return addNumbering(
-            Object.values(obj).map((node) => ({
-                name: node.name,
-                id: node.id,
-                path: node.path,
-                isFolder: node.isFolder,
-                parentFolderId: node.parentFolderId,
-                nodes: node.nodes ? convertToArray(node.nodes as unknown as Record<string, Node>) : [],
-            })),
-            '1.'
+            Object.values(obj)
+                .sort((a, b) => {
+                    // First sort by type (folders before files)
+                    if (a.isFolder !== b.isFolder) {
+                        return a.isFolder ? -1 : 1;
+                    }
+                    // Then sort alphabetically within each group
+                    return a.name.localeCompare(b.name);
+                })
+                .map((node) => ({
+                    name: node.name,
+                    id: node.id,
+                    path: node.path,
+                    isFolder: node.isFolder,
+                    parentFolderId: node.parentFolderId,
+                    nodes: node.nodes ? convertToArray(node.nodes as unknown as Record<string, Node>) : [],
+                })),
+            ''
         );
     };
 
     // Wrap everything under "Home"
     return [{
         name: 'Home',
-        numbering: '1',
         id: 'ROOT',
         path: '/',
         isFolder: true,
@@ -224,7 +254,14 @@ const FolderTree: React.FC<FolderTreeProps> = () => {
                                 if (node.id === targetFolderId) {
                                     return {
                                         ...node,
-                                        nodes: [...(node.nodes || []), nodeToAdd]
+                                        nodes: [...(node.nodes || []), nodeToAdd].sort((a, b) => {
+                                            // First sort by type (folders before files)
+                                            if (a.isFolder !== b.isFolder) {
+                                                return a.isFolder ? -1 : 1;
+                                            }
+                                            // Then sort alphabetically within each group
+                                            return a.name.localeCompare(b.name);
+                                        })
                                     };
                                 }
                                 if (node.nodes) {

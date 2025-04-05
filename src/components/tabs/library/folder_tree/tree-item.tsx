@@ -36,6 +36,7 @@ type Node = {
         isFolder: boolean;
         path?: string;
     }
+    parentFolderId?: string
 }
 
 type DraggedItem = {
@@ -269,35 +270,61 @@ export function FilesystemItem({
     const handleDragOver = useCallback((e: React.DragEvent) => {
         e.preventDefault();
         e.stopPropagation();
-        // Only allow dropping on folders
-        if (node.isFolder) {
-            e.currentTarget.classList.add('bg-slate-200', 'dark:bg-slate-700');
+
+        // Only show highlight when dragging over a file (to indicate its parent folder)
+        if (!node.isFolder) {
+            // Find the parent folder's container element
+            const parentContainer = e.currentTarget.closest('li')?.parentElement;
+            if (parentContainer) {
+                parentContainer.classList.add('bg-slate-200', 'dark:bg-slate-700');
+            }
         }
-    }, [node.isFolder]);
+    }, [node]);
 
     const handleDragLeave = useCallback((e: React.DragEvent) => {
         e.stopPropagation();
-        e.currentTarget.classList.remove('bg-slate-200', 'dark:bg-slate-700');
+        // Remove highlight from all containers
+        const containers = document.querySelectorAll('ul.pl-3');
+        containers.forEach(container => {
+            container.classList.remove('bg-slate-200', 'dark:bg-slate-700');
+        });
     }, []);
 
     const handleDrop = useCallback((e: React.DragEvent) => {
         e.preventDefault();
         e.stopPropagation();
-        e.currentTarget.classList.remove('bg-slate-200', 'dark:bg-slate-700');
-
-        // Only allow dropping on folders
-        if (!node.isFolder) return;
+        
+        // Clear any remaining highlights
+        const containers = document.querySelectorAll('ul.pl-3');
+        containers.forEach(container => {
+            container.classList.remove('bg-slate-200', 'dark:bg-slate-700');
+        });
 
         try {
             const draggedData = JSON.parse(e.dataTransfer.getData('text/plain')) as DraggedItem;
-            // Don't allow dropping a folder into itself or its children
-            if (draggedData.id === node.id || node.path?.startsWith(draggedData.path + '/')) {
-                return;
+            
+            // Find the nearest parent folder
+            let targetNode = node;
+            while (targetNode && !targetNode.isFolder) {
+                if (!targetNode.parentFolderId || targetNode.parentFolderId === 'ROOT') break;
+                targetNode = {
+                    ...targetNode,
+                    id: targetNode.parentFolderId,
+                    isFolder: true
+                };
             }
 
-            // Call the parent's onDrop handler if it exists
-            if (onSelect) {
-                onSelect({ ...node, draggedItem: draggedData });
+            // If we found a valid folder to drop into
+            if (targetNode.isFolder) {
+                // Don't allow dropping a folder into itself or its children
+                if (draggedData.id === targetNode.id || targetNode.path?.startsWith(draggedData.path + '/')) {
+                    return;
+                }
+
+                // Call the parent's onDrop handler with the target folder
+                if (onSelect) {
+                    onSelect({ ...targetNode, draggedItem: draggedData });
+                }
             }
         } catch (error) {
             console.error('Error handling drop:', error);
@@ -412,7 +439,7 @@ export function FilesystemItem({
                             onMouseLeave={() => setShowPopover(false)}
                         >
                             <div className="break-keep whitespace-nowrap">
-                                {node.id || 'No ID'}
+                                {node.name || 'No ID'}
                             </div>
                         </PopoverContent>
                     </Popover>
