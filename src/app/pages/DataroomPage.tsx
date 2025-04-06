@@ -26,6 +26,7 @@ import { TagDisplay } from '@/components/tabs/library/table/TagsHover';
 import { AuditLogViewer } from '@/components/tabs/audit_log/AuditLogViewer';
 import Link from 'next/link';
 import { useFileStore, FileItem, Folder } from '@/components/services/HotkeyService';
+import { useTabStore } from '@/components/tabStore';
 // import TableViewer from '@/components/tabs/library/table/TableViewer';
 import DeepResearchViewer from '@/components/tabs/deep_research/DeepResearchViewer';
 import DiligenceDashboardViewer from '@/components/tabs/diligence_dashboard/DiligenceViewer2';
@@ -69,7 +70,62 @@ export default function Home() {
 
   // Initialize activeTab based on the default tab from URL
   const initialTabIndex = tabs.findIndex(tab => tab.label.toLowerCase() === defaultTab);
-  const { activeTab, setActiveTab, activeIssueId, setActiveIssueId, issuesActiveTab } = useFileStore();
+  const { activeTab, setActiveTab, activeIssueId, setActiveIssueId, issuesActiveTab, setIssuesActiveTab, clearMessages, 
+    setSearchableFiles, setSearchableFolders, setCutFiles, setShowDetailsView, setSelectedFile, 
+    setPendingSelectFileId, documentBounds, setDocumentBounds, setTabSystemPanelSize, 
+    setDetailSectionPanelSize, setLastQuery, setCurrentThreadId, resetAccordionValues } = useFileStore();
+  
+  // Get tabStore functions
+  const { setTabs, setActiveTabId, tabs: tabStoreTabs } = useTabStore();
+
+  // Function to reset all relevant state when switching datarooms
+  const resetDataroomState = () => {
+    console.log("Resetting dataroom state");
+    clearMessages();
+    setSearchableFiles([]);
+    setSearchableFolders([]);
+    setCutFiles([]);
+    setShowDetailsView(false);
+    setSelectedFile(null);
+    setPendingSelectFileId(null);
+    // Clear document bounds
+    Object.keys(documentBounds).forEach(id => {
+      // Create an empty DocumentBounds object instead of null
+      setDocumentBounds(id, {
+        page: 0,
+        x0: 0,
+        y0: 0,
+        x1: 0,
+        y1: 0
+      });
+    });
+    // Reset tab-related state
+    setActiveTab(0);
+    setActiveIssueId(null);
+    setIssuesActiveTab('open');
+    setTabSystemPanelSize(75);
+    setDetailSectionPanelSize(25);
+    setLastQuery('');
+    setCurrentThreadId('');
+    resetAccordionValues();
+    
+    // Clear tabStore but preserve the "All Files" tab
+    const allFilesTab = tabStoreTabs.find(tab => tab.title === "All Files");
+    if (allFilesTab) {
+      console.log("allFilesTab: ", allFilesTab);
+      setTabs([allFilesTab]);
+      setActiveTabId(allFilesTab.id);
+    } else {
+      console.log("no allFilesTab");
+      setTabs([]);
+      setActiveTabId('');
+    }
+  };
+
+  // Clear messages when the DataroomPage component mounts
+  useEffect(() => {
+    resetDataroomState();
+  }, []);
 
   const [indicatorStyle, setIndicatorStyle] = useState<IndicatorStyle>({} as IndicatorStyle);
   const tabRefs = useRef<(HTMLDivElement | null)[]>([]);
@@ -84,7 +140,7 @@ export default function Home() {
   const params = useParams();
   const [hasPermission, setHasPermission] = useState<boolean>(true);
   const dataroomId = Array.isArray(params?.id) ? params.id[0] : params?.id ?? '';
-  const { setSearchableFiles, setSearchableFolders } = useFileStore();
+  const { setSearchableFiles: setSearchableFilesInStore, setSearchableFolders: setSearchableFoldersInStore } = useFileStore();
   const [familyName, setFamilyName] = useState('');
   const [givenName, setGivenName] = useState('');
   const [shouldAnimate, setShouldAnimate] = useState(false);
@@ -254,7 +310,8 @@ export default function Home() {
   useEffect(() => {
     fetchPermissionLevel();
     fetchSearchableFiles();
-
+    console.log("clearing messages");
+    resetDataroomState();
   }, []);
 
   const fetchSearchableFiles = async () => {
@@ -310,7 +367,7 @@ export default function Home() {
         }
       });
 
-      console.log("formattedFiles: ", formattedFiles);
+      console.log("wowwwwwww: ", formattedFiles);
       console.log("formattedFolders: ", formattedFolders);
 
       setSearchableFiles(formattedFiles);
