@@ -446,7 +446,7 @@ export default function QuestionBank() {
               placeholder="Search questions..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-8 pr-24"
+              className="pl-8 pr-24 outline-none select-none"
             />
             <Popover open={isTagFilterOpen} onOpenChange={setIsTagFilterOpen}>
               <PopoverTrigger asChild>
