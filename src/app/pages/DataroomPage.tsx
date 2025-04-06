@@ -4,7 +4,7 @@
 import logo from './../assets/fynopsis_noBG.png'
 import React, { useState, useEffect, useRef } from "react"
 import { useAuthenticator } from '@aws-amplify/ui-react';
-import { Clipboard, LucideIcon, Activity, Table, Database, ChartPie } from "lucide-react";
+import { Clipboard, LucideIcon, Activity, Table, Database, ChartPie, HelpCircle } from "lucide-react";
 
 import { fetchUserAttributes, FetchUserAttributesOutput } from 'aws-amplify/auth';
 import { CircularProgress } from "@mui/material";
@@ -34,7 +34,7 @@ import { Issues } from '@/components/tabs/issues/QuestionAndAnswer';
 import { IssueDetail } from '@/components/tabs/issues/issueDetail';
 import websocketManager, { FileUpdateMessage } from '@/lib/websocketManager';
 import { useToast } from "@/components/ui/use-toast";
-
+import QATable from '@/components/tabs/question_answers/QATable';
 
 type IndicatorStyle = {
   top: string;
@@ -58,6 +58,7 @@ export default function Home() {
     // { icon: Database, label: 'Deep Research' },
     { icon: ChartPie, label: 'Diligence' },
     { icon: MessagesSquare, label: 'Issues' }, // New tab for Issues
+    { icon: HelpCircle, label: 'Q&A' }, // New tab for Q&A
     { icon: Users, label: 'Users' },
     { icon: Activity, label: 'Activity' },
   ];
@@ -110,7 +111,9 @@ export default function Home() {
     resetAccordionValues();
     
     // Clear tabStore but preserve the "All Files" tab
-    const allFilesTab = tabStoreTabs.find(tab => tab.title === "All Files");
+    // console.log("tabStoreTabs: ", tabStoreTabs);
+    if (tabStoreTabs.length > 0) {
+      const allFilesTab = tabStoreTabs.find(tab => tab.title === "All Files");
     if (allFilesTab) {
       console.log("allFilesTab: ", allFilesTab);
       setTabs([allFilesTab]);
@@ -119,6 +122,7 @@ export default function Home() {
       console.log("no allFilesTab");
       setTabs([]);
       setActiveTabId('');
+    }
     }
   };
 
@@ -497,6 +501,8 @@ export default function Home() {
         return <DiligenceDashboardViewer />;
       case "issues":
         return <Issues key={`issues-list-${forceRender}-${issuesActiveTab}`} />;
+      case "q&a":
+        return <QATable />;
       default:
         return <Files setSelectedTab={setSelectedTab} />;
     }
