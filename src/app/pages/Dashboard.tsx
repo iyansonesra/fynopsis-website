@@ -9,6 +9,7 @@ import {
     LucideIcon,
     Library,
     Clipboard,
+    ListChecks,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -33,6 +34,7 @@ import { post, get, del } from 'aws-amplify/api';
 import { fetchAuthSession } from 'aws-amplify/auth';
 import { Separator } from "@radix-ui/react-separator";
 import QuestionBank from "./dashboard_components/QuestionBank";
+import ChecklistBank from "./dashboard_components/ChecklistBank";
 
 
 
@@ -120,6 +122,7 @@ export default function GeneralDashboard() {
     const tabs: Tab[] = [
         { icon: Library, label: 'Library' },
         { icon: Clipboard, label: 'Question Bank' },
+        { icon: ListChecks, label: 'Checklist Bank' },
     ];
 
     function signIn(): void {
@@ -533,8 +536,10 @@ export default function GeneralDashboard() {
                                     )}
                                 </div>
                             </>
-                        ) : (
+                        ) : selectedTab === 'question bank' ? (
                             <QuestionBank />
+                        ) : (
+                            <ChecklistBank />
                         )}
                     </div>
 

@@ -4,11 +4,28 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Plus, Trash2, Search, X, Tag, Pencil } from "lucide-react";
+import { Plus, Trash2, Search, X, Tag, Edit2, Check, ChevronDown, ChevronUp } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Command, CommandInput, CommandList, CommandItem, CommandEmpty } from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
+  ColumnDef,
+  flexRender,
+  getCoreRowModel,
+  useReactTable,
+  getSortedRowModel,
+  SortingState,
+  getFilteredRowModel,
+} from "@tanstack/react-table";
 
 type Question = {
   id: string;
@@ -21,8 +38,6 @@ type Question = {
 export default function QuestionBank() {
   const [questions, setQuestions] = useState<Question[]>([]);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
-  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
-  const [editingQuestion, setEditingQuestion] = useState<Question | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [newQuestion, setNewQuestion] = useState({
@@ -34,6 +49,8 @@ export default function QuestionBank() {
   const [isTagPopoverOpen, setIsTagPopoverOpen] = useState(false);
   const [isTagFilterOpen, setIsTagFilterOpen] = useState(false);
   const [tagFilterSearch, setTagFilterSearch] = useState("");
+  const [sorting, setSorting] = useState<SortingState>([]);
+  const [editingQuestion, setEditingQuestion] = useState<Question | null>(null);
   const tagInputRef = useRef<HTMLInputElement>(null);
   const tagDropdownRef = useRef<HTMLDivElement>(null);
 
@@ -46,6 +63,264 @@ export default function QuestionBank() {
     return Array.from(tags).sort();
   }, [questions]);
 
+  // Define table columns
+  const columns: ColumnDef<Question>[] = [
+    {
+      accessorKey: "title",
+      header: ({ column }) => {
+        return (
+          <Button
+            variant="ghost"
+            onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+            className="flex items-center gap-1"
+          >
+            Title
+            {column.getIsSorted() === "asc" ? (
+              <ChevronUp className="h-4 w-4" />
+            ) : column.getIsSorted() === "desc" ? (
+              <ChevronDown className="h-4 w-4" />
+            ) : null}
+          </Button>
+        );
+      },
+      cell: ({ row }) => {
+        const question = row.original;
+        const isEditing = editingQuestion?.id === question.id;
+        
+        return isEditing ? (
+          <Input
+            value={editingQuestion.title}
+            onChange={(e) => setEditingQuestion({...editingQuestion, title: e.target.value})}
+            className="w-full"
+          />
+        ) : (
+          <div>{question.title}</div>
+        );
+      },
+    },
+    {
+      accessorKey: "description",
+      header: ({ column }) => {
+        return (
+          <div className="flex items-center">
+            <span>Description</span>
+            <div
+              onMouseDown={(e) => {
+                const startX = e.pageX;
+                const startWidth = column.getSize();
+                const handleMouseMove = (e: MouseEvent) => {
+                  const newWidth = startWidth + (e.pageX - startX);
+                  (column as any).setSize(Math.max(250, newWidth));
+                };
+                const handleMouseUp = () => {
+                  document.removeEventListener('mousemove', handleMouseMove);
+                  document.removeEventListener('mouseup', handleMouseUp);
+                };
+                document.addEventListener('mousemove', handleMouseMove);
+                document.addEventListener('mouseup', handleMouseUp);
+              }}
+              onTouchStart={(e) => {
+                const startX = e.touches[0].pageX;
+                const startWidth = column.getSize();
+                const handleTouchMove = (e: TouchEvent) => {
+                  const newWidth = startWidth + (e.touches[0].pageX - startX);
+                  (column as any).setSize(Math.max(250, newWidth));
+                };
+                const handleTouchEnd = () => {
+                  document.removeEventListener('touchmove', handleTouchMove);
+                  document.removeEventListener('touchend', handleTouchEnd);
+                };
+                document.addEventListener('touchmove', handleTouchMove);
+                document.addEventListener('touchend', handleTouchEnd);
+              }}
+              className="absolute right-0 top-0 h-full w-1 cursor-col-resize select-none touch-none"
+            >
+              <div className="absolute right-0 top-0 h-full w-1 bg-border hover:bg-primary/50 transition-colors" />
+            </div>
+          </div>
+        );
+      },
+      cell: ({ row }) => {
+        const question = row.original;
+        const isEditing = editingQuestion?.id === question.id;
+        
+        return isEditing ? (
+          <Textarea
+            value={editingQuestion.description || ""}
+            onChange={(e) => setEditingQuestion({...editingQuestion, description: e.target.value})}
+            className="w-full"
+          />
+        ) : (
+          <div className="whitespace-pre-wrap break-words">{question.description || "-"}</div>
+        );
+      },
+      size: 250,
+    },
+    {
+      accessorKey: "tags",
+      header: ({ column }) => {
+        return (
+          <div className="flex items-center">
+            <span>Tags</span>
+            <div
+              onMouseDown={(e) => {
+                const startX = e.pageX;
+                const startWidth = column.getSize();
+                const handleMouseMove = (e: MouseEvent) => {
+                  const newWidth = startWidth + (e.pageX - startX);
+                  (column as any).setSize(Math.max(180, newWidth));
+                };
+                const handleMouseUp = () => {
+                  document.removeEventListener('mousemove', handleMouseMove);
+                  document.removeEventListener('mouseup', handleMouseUp);
+                };
+                document.addEventListener('mousemove', handleMouseMove);
+                document.addEventListener('mouseup', handleMouseUp);
+              }}
+              onTouchStart={(e) => {
+                const startX = e.touches[0].pageX;
+                const startWidth = column.getSize();
+                const handleTouchMove = (e: TouchEvent) => {
+                  const newWidth = startWidth + (e.touches[0].pageX - startX);
+                  (column as any).setSize(Math.max(180, newWidth));
+                };
+                const handleTouchEnd = () => {
+                  document.removeEventListener('touchmove', handleTouchMove);
+                  document.removeEventListener('touchend', handleTouchEnd);
+                };
+                document.addEventListener('touchmove', handleTouchMove);
+                document.addEventListener('touchend', handleTouchEnd);
+              }}
+              className="absolute right-0 top-0 h-full w-1 cursor-col-resize select-none touch-none"
+            >
+              <div className="absolute right-0 top-0 h-full w-1 bg-border hover:bg-primary/50 transition-colors" />
+            </div>
+          </div>
+        );
+      },
+      cell: ({ row }) => {
+        const question = row.original;
+        const isEditing = editingQuestion?.id === question.id;
+        
+        return isEditing ? (
+          <div className="flex flex-wrap gap-1">
+            {editingQuestion.tags.map(tag => (
+              <Badge key={tag} variant="secondary" className="cursor-pointer" onClick={() => {
+                setEditingQuestion({
+                  ...editingQuestion,
+                  tags: editingQuestion.tags.filter(t => t !== tag)
+                });
+              }}>
+                {tag} <X className="ml-1 h-3 w-3" />
+              </Badge>
+            ))}
+            <Input
+              placeholder="Add tag..."
+              className="w-24 h-6 text-xs"
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  const newTag = e.currentTarget.value.trim();
+                  if (newTag && !editingQuestion.tags.includes(newTag)) {
+                    setEditingQuestion({
+                      ...editingQuestion,
+                      tags: [...editingQuestion.tags, newTag]
+                    });
+                    e.currentTarget.value = '';
+                  }
+                }
+              }}
+            />
+          </div>
+        ) : (
+          <div className="flex flex-wrap gap-1 max-w-full">
+            {question.tags.map(tag => (
+              <Badge key={tag} variant="outline" className="text-xs whitespace-nowrap">
+                {tag}
+              </Badge>
+            ))}
+          </div>
+        );
+      },
+      size: 180,
+    },
+    {
+      accessorKey: "createdAt",
+      header: ({ column }) => {
+        return (
+          <Button
+            variant="ghost"
+            onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+            className="flex items-center gap-1"
+          >
+            Created At
+            {column.getIsSorted() === "asc" ? (
+              <ChevronUp className="h-4 w-4" />
+            ) : column.getIsSorted() === "desc" ? (
+              <ChevronDown className="h-4 w-4" />
+            ) : null}
+          </Button>
+        );
+      },
+      cell: ({ row }) => {
+        return new Date(row.original.createdAt).toLocaleDateString();
+      },
+    },
+    {
+      id: "actions",
+      header: "Actions",
+      cell: ({ row }) => {
+        const question = row.original;
+        const isEditing = editingQuestion?.id === question.id;
+        
+        return (
+          <div className="flex items-center gap-2">
+            {isEditing ? (
+              <>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => {
+                    setQuestions(questions.map(q => 
+                      q.id === editingQuestion.id ? editingQuestion : q
+                    ));
+                    setEditingQuestion(null);
+                  }}
+                >
+                  <Check className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setEditingQuestion(null)}
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </>
+            ) : (
+              <>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setEditingQuestion(question)}
+                >
+                  <Edit2 className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => handleDeleteQuestion(question.id)}
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </>
+            )}
+          </div>
+        );
+      },
+    },
+  ];
+
   // Filter questions based on search query and selected tags
   const filteredQuestions = useMemo(() => {
     return questions.filter(question => {
@@ -56,6 +331,20 @@ export default function QuestionBank() {
       return matchesSearch && matchesTags;
     });
   }, [questions, searchQuery, selectedTags]);
+
+  // Initialize table
+  const table = useReactTable({
+    data: filteredQuestions,
+    columns,
+    getCoreRowModel: getCoreRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+    getFilteredRowModel: getFilteredRowModel(),
+    onSortingChange: setSorting,
+    state: {
+      sorting,
+      globalFilter: searchQuery,
+    },
+  });
 
   // Filter tag suggestions based on input
   const filteredTagSuggestions = useMemo(() => {
@@ -115,21 +404,6 @@ export default function QuestionBank() {
 
   const handleRemoveFilterTag = (tagToRemove: string) => {
     setSelectedTags(selectedTags.filter(tag => tag !== tagToRemove));
-  };
-
-  const handleEditQuestion = (question: Question) => {
-    setEditingQuestion(question);
-    setIsEditDialogOpen(true);
-  };
-
-  const handleUpdateQuestion = () => {
-    if (editingQuestion) {
-      setQuestions(questions.map(q => 
-        q.id === editingQuestion.id ? editingQuestion : q
-      ));
-      setIsEditDialogOpen(false);
-      setEditingQuestion(null);
-    }
   };
 
   // Focus tag input when popover opens
@@ -231,45 +505,47 @@ export default function QuestionBank() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {filteredQuestions.map((question) => (
-          <Card key={question.id}>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-lg font-medium">{question.title}</CardTitle>
-              <div className="flex gap-2">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => handleEditQuestion(question)}
-                >
-                  <Pencil className="h-4 w-4" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => handleDeleteQuestion(question.id)}
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
-              </div>
-            </CardHeader>
-            <CardContent>
-              {question.description && (
-                <p className="text-sm text-muted-foreground">{question.description}</p>
-              )}
-              <div className="flex flex-wrap gap-1 mt-2">
-                {question.tags.map(tag => (
-                  <Badge key={tag} variant="outline" className="text-xs">
-                    {tag}
-                  </Badge>
+      <div className="rounded-md border">
+        <Table>
+          <TableHeader>
+            {table.getHeaderGroups().map((headerGroup) => (
+              <TableRow key={headerGroup.id}>
+                {headerGroup.headers.map((header) => (
+                  <TableHead key={header.id}>
+                    {header.isPlaceholder
+                      ? null
+                      : flexRender(
+                          header.column.columnDef.header,
+                          header.getContext()
+                        )}
+                  </TableHead>
                 ))}
-              </div>
-              <p className="text-xs text-muted-foreground mt-2">
-                Added: {new Date(question.createdAt).toLocaleDateString()}
-              </p>
-            </CardContent>
-          </Card>
-        ))}
+              </TableRow>
+            ))}
+          </TableHeader>
+          <TableBody>
+            {table.getRowModel().rows?.length ? (
+              table.getRowModel().rows.map((row) => (
+                <TableRow
+                  key={row.id}
+                  data-state={row.getIsSelected() && "selected"}
+                >
+                  {row.getVisibleCells().map((cell) => (
+                    <TableCell key={cell.id}>
+                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                    </TableCell>
+                  ))}
+                </TableRow>
+              ))
+            ) : (
+              <TableRow>
+                <TableCell colSpan={columns.length} className="h-24 text-center">
+                  No questions found.
+                </TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
       </div>
 
       <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
@@ -289,7 +565,7 @@ export default function QuestionBank() {
               placeholder="Question Title"
               value={newQuestion.title}
               onChange={(e) => setNewQuestion({ ...newQuestion, title: e.target.value })}
-              className="focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:outline-none min-h-[40px] resize-none border border-border/50 overflow-hidden"
+              className="focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:outline-none min-h-[40px] resize-none border border-border/50"
               style={{ height: 'auto' }}
               onInput={(e) => {
                 const target = e.target as HTMLTextAreaElement;
@@ -377,150 +653,6 @@ export default function QuestionBank() {
               Cancel
             </Button>
             <Button onClick={handleAddQuestion}>Add Question</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-        <DialogContent 
-          onInteractOutside={(e) => {
-            e.preventDefault();
-          }}
-          onEscapeKeyDown={(e) => {
-            e.preventDefault();
-          }}
-        >
-          <DialogHeader>
-            <DialogTitle>Edit Question</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            <Textarea
-              placeholder="Question Title"
-              value={editingQuestion?.title || ""}
-              onChange={(e) => setEditingQuestion(prev => prev ? {...prev, title: e.target.value} : null)}
-              className="focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:outline-none min-h-[40px] resize-none border border-border/50 overflow-hidden"
-              style={{ height: 'auto' }}
-              onInput={(e) => {
-                const target = e.target as HTMLTextAreaElement;
-                target.style.height = 'auto';
-                target.style.height = target.scrollHeight + 'px';
-              }}
-            />
-            <Textarea
-              placeholder="Question Description (optional)"
-              value={editingQuestion?.description || ""}
-              onChange={(e) => setEditingQuestion(prev => prev ? {...prev, description: e.target.value} : null)}
-              className="focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:outline-none"
-            />
-            <div className="space-y-2">
-              <div className="relative">
-                <div className="flex gap-2" ref={tagDropdownRef}>
-                  <Input
-                    ref={tagInputRef}
-                    placeholder="Add tags..."
-                    value={newTagInput}
-                    onChange={(e) => setNewTagInput(e.target.value)}
-                    onFocus={() => setIsTagPopoverOpen(true)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') {
-                        e.preventDefault();
-                        if (editingQuestion) {
-                          const tagToAdd = newTagInput.trim();
-                          if (tagToAdd && !editingQuestion.tags.includes(tagToAdd)) {
-                            setEditingQuestion({
-                              ...editingQuestion,
-                              tags: [...editingQuestion.tags, tagToAdd],
-                            });
-                            setNewTagInput("");
-                          }
-                        }
-                      }
-                    }}
-                    className="focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:outline-none"
-                  />
-                  <Button onClick={() => {
-                    if (editingQuestion) {
-                      const tagToAdd = newTagInput.trim();
-                      if (tagToAdd && !editingQuestion.tags.includes(tagToAdd)) {
-                        setEditingQuestion({
-                          ...editingQuestion,
-                          tags: [...editingQuestion.tags, tagToAdd],
-                        });
-                        setNewTagInput("");
-                      }
-                    }
-                  }}>Add</Button>
-                </div>
-                {isTagPopoverOpen && (
-                  <div 
-                    className="absolute top-full left-0 mt-1 w-[200px] bg-popover text-popover-foreground shadow-md rounded-md border border-border z-50"
-                  >
-                    <div className="flex flex-col max-h-[200px] overflow-y-auto p-1">
-                      {filteredTagSuggestions.length === 0 ? (
-                        <div className="p-2 text-sm text-muted-foreground">No tags found.</div>
-                      ) : (
-                        filteredTagSuggestions.map((tag) => (
-                          <button
-                            key={tag}
-                            data-tag-item
-                            className="flex items-center justify-between w-full px-2 py-1.5 text-sm rounded-sm hover:bg-accent hover:text-accent-foreground cursor-pointer"
-                            onClick={(e) => {
-                              e.preventDefault();
-                              e.stopPropagation();
-                              if (editingQuestion && !editingQuestion.tags.includes(tag)) {
-                                setEditingQuestion({
-                                  ...editingQuestion,
-                                  tags: [...editingQuestion.tags, tag],
-                                });
-                              }
-                            }}
-                          >
-                            <span>{tag}</span>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="h-6 w-6 p-0"
-                              onClick={(e) => {
-                                e.preventDefault();
-                                e.stopPropagation();
-                                if (editingQuestion && !editingQuestion.tags.includes(tag)) {
-                                  setEditingQuestion({
-                                    ...editingQuestion,
-                                    tags: [...editingQuestion.tags, tag],
-                                  });
-                                }
-                              }}
-                            >
-                              <Plus className="h-4 w-4" />
-                            </Button>
-                          </button>
-                        ))
-                      )}
-                    </div>
-                  </div>
-                )}
-              </div>
-              <div className="flex flex-wrap gap-1">
-                {editingQuestion?.tags.map(tag => (
-                  <Badge key={tag} variant="secondary" className="cursor-pointer" onClick={() => {
-                    if (editingQuestion) {
-                      setEditingQuestion({
-                        ...editingQuestion,
-                        tags: editingQuestion.tags.filter(t => t !== tag),
-                      });
-                    }
-                  }}>
-                    {tag} <X className="ml-1 h-3 w-3" />
-                  </Badge>
-                ))}
-              </div>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>
-              Cancel
-            </Button>
-            <Button onClick={handleUpdateQuestion}>Save Changes</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
