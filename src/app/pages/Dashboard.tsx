@@ -120,9 +120,6 @@ export default function GeneralDashboard() {
     const [isAccepting, setIsAccepting] = useState(false);
 
     const tabs: Tab[] = [
-        { icon: Library, label: 'Library' },
-        { icon: Clipboard, label: 'Question Bank' },
-        { icon: ListChecks, label: 'Checklist Bank' },
     ];
 
     function signIn(): void {
