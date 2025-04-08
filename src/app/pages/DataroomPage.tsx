@@ -68,6 +68,9 @@ export default function Home() {
   const [selectedTab, setSelectedTab] = useState(defaultTab);
   const { user, signOut } = useAuthenticator((context) => [context.user]);
   const [userAttributes, setUserAttributes] = useState<FetchUserAttributesOutput | null>(null);
+  // Add state for permission details
+  const [permissionDetails, setPermissionDetails] = useState<any>(null);
+  const [isLoadingPermissions, setIsLoadingPermissions] = useState(true);
 
   // Initialize activeTab based on the default tab from URL
   const initialTabIndex = tabs.findIndex(tab => tab.label.toLowerCase() === defaultTab);
@@ -78,6 +81,64 @@ export default function Home() {
   
   // Get tabStore functions
   const { setTabs, setActiveTabId, tabs: tabStoreTabs } = useTabStore();
+
+  // Filtered tabs based on permissions
+  const [filteredTabs, setFilteredTabs] = useState(tabs);
+
+  // Function to filter tabs based on user permissions
+  const getFilteredTabs = (permissions: any) => {
+    // Library tab is always accessible
+    if (!permissions) return [tabs[0]];
+    
+    return tabs.filter(tab => {
+      const tabName = tab.label.toLowerCase();
+      
+      switch (tabName) {
+        case 'library':
+          // Library is always visible
+          return true;
+        case 'diligence':
+          return permissions.canAccessDiligenceDashboard !== false;
+        case 'issues':
+          return permissions.canAccessIssuesPanel !== false;
+        case 'q&a':
+          return permissions.canAccessQuestionairePanel !== false;
+        case 'users':
+          return permissions.canAccessUserManagementPanel === true;
+        case 'activity':
+          return permissions.canAccessAuditLogsPanel === true;
+        default:
+          return false;
+      }
+    });
+  };
+
+  // Update filtered tabs when permissions change
+  useEffect(() => {
+    if (permissionDetails) {
+      const newFilteredTabs = getFilteredTabs(permissionDetails);
+      setFilteredTabs(newFilteredTabs);
+      
+      // If current tab is not in filtered tabs, switch to library tab
+      const currentTabName = selectedTab.toLowerCase();
+      const hasAccess = newFilteredTabs.some(tab => tab.label.toLowerCase() === currentTabName);
+      
+      if (!hasAccess) {
+        const libraryTabIndex = newFilteredTabs.findIndex(tab => tab.label.toLowerCase() === 'library');
+        if (libraryTabIndex !== -1) {
+          setActiveTab(libraryTabIndex);
+          setSelectedTab('library');
+          
+          // Update URL query parameter without full page navigation
+          const params = new URLSearchParams(searchParams.toString());
+          params.set('tab', 'library');
+          const pathname = window.location.pathname;
+          const newUrl = `${pathname}?${params.toString()}`;
+          window.history.pushState({}, '', newUrl);
+        }
+      }
+    }
+  }, [permissionDetails]);
 
   // Function to reset all relevant state when switching datarooms
   const resetDataroomState = () => {
@@ -170,7 +231,7 @@ export default function Home() {
   function handleTabClick(index: number): void {
     // Only update if we're changing tabs
     if (activeTab !== index) {
-      const tabName = tabs[index].label.toLowerCase();
+      const tabName = filteredTabs[index].label.toLowerCase();
 
       // Enable animations now that user is clicking
       if (!shouldAnimate) {
@@ -233,8 +294,8 @@ export default function Home() {
       }
     }
 
-    // Find the tab index
-    const tabIndex = tabs.findIndex(tab => tab.label.toLowerCase() === tabFromUrl);
+    // Find the tab index in filtered tabs
+    const tabIndex = filteredTabs.findIndex(tab => tab.label.toLowerCase() === tabFromUrl);
 
     // Only update if we found a valid tab and it's different from current
     if (tabIndex !== -1 && tabIndex !== activeTab) {
@@ -246,7 +307,7 @@ export default function Home() {
       setSelectedTab(tabFromUrl);
     }
 
-  }, [pathname, tabs, activeIssueId, searchParams]); // Add searchParams to dependencies
+  }, [pathname, filteredTabs, activeIssueId, searchParams]); // Changed tabs to filteredTabs
 
   // Update handleBackFromIssue to preserve the issuesActiveTab state
   const handleBackFromIssue = () => {
@@ -285,18 +346,18 @@ export default function Home() {
 
     // Only update if we have a valid index and the ref exists
     if (currentTab >= 0 &&
-      currentTab < tabs.length &&
+      currentTab < filteredTabs.length &&
       tabRefs.current[currentTab]) {
 
       const tabElement = tabRefs.current[currentTab];
-      if (tabElement) {
+      if (tabElement) { 
         setIndicatorStyle({
           top: `${tabElement.offsetTop}px`,
           height: `${tabElement.offsetHeight}px`,
         });
       }
     }
-  }, [activeTab, tabs.length, initialTabIndex]);
+  }, [activeTab, filteredTabs.length, initialTabIndex]); // Changed tabs.length to filteredTabs.length
 
   useEffect(() => {
     if (user) {
@@ -386,6 +447,7 @@ export default function Home() {
 
   const fetchPermissionLevel = async () => {
     try {
+      setIsLoadingPermissions(true);
       const restOperation = get({
         apiName: 'S3_API',
         path: `/share-folder/${bucketUuid}/get-permissions`,
@@ -393,15 +455,32 @@ export default function Home() {
           headers: { 'Content-Type': 'application/json' },
         },
       });
-      // await restOperation.response; // Wait for response to confirm permissions
 
       const { body } = await restOperation.response;
       const responseText = await body.text();
       const response = JSON.parse(responseText);
 
+      console.log("Permission response:", response);
+      
+      // Store the full permission details
+      setPermissionDetails(response.permissionDetails);
+      
+      // Log detailed permissions
+      console.log("User role:", response.role);
+      console.log("Permission details:", response.permissionDetails);
+      
+      // Default file and folder permissions
+      if (response.permissionDetails) {
+        console.log("File permissions:", response.permissionDetails.defaultFilePerms);
+        console.log("Folder permissions:", response.permissionDetails.defaultFolderPerms);
+      }
+
       setHasPermission(true);
+      setIsLoadingPermissions(false);
     } catch (error) {
+      console.error("Error fetching permissions:", error);
       setHasPermission(false);
+      setIsLoadingPermissions(false);
     }
   };
 
@@ -474,6 +553,17 @@ export default function Home() {
   const renderSelectedScreen = () => {
     // First check if we should render the issue detail
     if (activeIssueId && selectedTab.toLowerCase() === 'issues') {
+      // Check if user has permission to access issues panel
+      if (permissionDetails && permissionDetails.canAccessIssuesPanel === false) {
+        return (
+          <div className="grid h-screen place-items-center">
+            <div className="flex flex-col items-center gap-4">
+              <h2 className="text-xl font-semibold">You don't have permission to access this panel</h2>
+            </div>
+          </div>
+        );
+      }
+
       return (
         <IssueDetail
           issueId={activeIssueId}
@@ -490,18 +580,68 @@ export default function Home() {
       case "form":
         return <ExcelViewer />;
       case "users":
+        // Check if user has permission to access user management panel
+        if (permissionDetails && permissionDetails.canAccessUserManagementPanel === false) {
+          return (
+            <div className="grid h-screen place-items-center">
+              <div className="flex flex-col items-center gap-4">
+                <h2 className="text-xl font-semibold">You don't have permission to access user management</h2>
+              </div>
+            </div>
+          );
+        }
         return <UserManagement dataroomId={''} />;
       case "activity":
-        return <AuditLogViewer bucketId={dataroomId} />;
+        // Check if user has permission to access audit logs panel
+        if (permissionDetails && permissionDetails.canAccessAuditLogsPanel === false) {
+          return (
+            <div className="grid h-screen place-items-center">
+              <div className="flex flex-col items-center gap-4">
+                <h2 className="text-xl font-semibold">You don't have permission to access activity logs</h2>
+              </div>
+            </div>
+          );
+        }
+        return <AuditLogViewer bucketId={dataroomId} permissionDetails={permissionDetails} />;
       // case "extract":
       //   return <TableViewer />;
       // case "deep research":
       //   return <DeepResearchViewer />;
       case "diligence":
+        // Check if user has permission to access diligence dashboard
+        if (permissionDetails && permissionDetails.canAccessDiligenceDashboard === false) {
+          return (
+            <div className="grid h-screen place-items-center">
+              <div className="flex flex-col items-center gap-4">
+                <h2 className="text-xl font-semibold">You don't have permission to access the diligence dashboard</h2>
+              </div>
+            </div>
+          );
+        }
         return <DiligenceDashboardViewer />;
       case "issues":
+        // Check if user has permission to access issues panel
+        if (permissionDetails && permissionDetails.canAccessIssuesPanel === false) {
+          return (
+            <div className="grid h-screen place-items-center">
+              <div className="flex flex-col items-center gap-4">
+                <h2 className="text-xl font-semibold">You don't have permission to access issues</h2>
+              </div>
+            </div>
+          );
+        }
         return <Issues key={`issues-list-${forceRender}-${issuesActiveTab}`} />;
       case "q&a":
+        // Check if user has permission to access questionnaire panel
+        if (permissionDetails && permissionDetails.canAccessQuestionairePanel === false) {
+          return (
+            <div className="grid h-screen place-items-center">
+              <div className="flex flex-col items-center gap-4">
+                <h2 className="text-xl font-semibold">You don't have permission to access Q&A</h2>
+              </div>
+            </div>
+          );
+        }
         return <QATable />;
       default:
         return <Files setSelectedTab={setSelectedTab} />;
@@ -520,101 +660,16 @@ export default function Home() {
     router.push('/dashboard');
   };
 
-  // Initialize WebSocket connection when the component mounts
-  // useEffect(() => {
-  //   if (!dataroomId) return;
-
-  //   console.log('Connecting to WebSocket for dataroom:', dataroomId);
-
-  //   // Check if already connected to this dataroom
-  //   if (websocketManager.isConnectedTo(dataroomId)) {
-  //     console.log('Already connected to WebSocket for dataroom:', dataroomId);
-  //     setWsConnected(true);
-  //     return;
-  //   }
-
-  //   // Connect to the WebSocket
-  //   websocketManager.connect(dataroomId)
-  //     .then(() => {
-  //       setWsConnected(true);
-  //       console.log('WebSocket connected successfully');
-  //     })
-  //     .catch(error => {
-  //       console.error('Error connecting to WebSocket:', error);
-  //     });
-
-  //   // Set up a handler for file update messages
-  //   const handleFileUpdate = (message: FileUpdateMessage) => {
-  //     // Don't show notifications for our own actions
-  //     if (message.data.userEmail === userAttributes?.email) {
-  //       return;
-  //     }
-
-  //     // Process the message
-  //     let toastMessage = '';
-
-  //     switch (message.type) {
-  //       case 'FILE_UPLOADED':
-  //         toastMessage = `File "${message.data.fileName}" uploaded by ${message.data.uploadedBy || 'a user'}`;
-  //         break;
-  //       case 'FILE_DELETED':
-  //         toastMessage = `File "${message.data.fileName}" deleted by ${message.data.uploadedBy || 'a user'}`;
-  //         break;
-  //       case 'FILE_MOVED':
-  //         toastMessage = `File "${message.data.fileName}" moved by ${message.data.uploadedBy || 'a user'}`;
-  //         break;
-  //       case 'FILE_RENAMED':
-  //         toastMessage = `File renamed to "${message.data.fileName}" by ${message.data.uploadedBy || 'a user'}`;
-  //         break;
-  //       case 'FILE_TAG_UPDATED':
-  //         toastMessage = `Tags updated for "${message.data.fileName}" by ${message.data.uploadedBy || 'a user'}`;
-  //         break;
-  //       case 'BATCH_STATUS_UPDATED':
-  //         toastMessage = `Processing status updated for "${message.data.fileName}"`;
-  //         break;
-  //       case 'FOLDER_CREATED':
-  //         toastMessage = `Folder "${message.data.fileName}" created by ${message.data.uploadedBy || 'a user'}`;
-  //         break;
-  //       case 'pong':
-  //         // Don't display toast for pong messages
-  //         break;
-  //       default:
-  //         if (message.type && message.type !== 'ping') {
-  //           toastMessage = `Update: ${message.type}`;
-  //         }
-  //     }
-
-  //     if (toastMessage) {
-  //       toast({
-  //         title: "File Update",
-  //         description: toastMessage,
-  //         duration: 4000,
-  //       });
-  //     }
-  //   };
-
-  //   // Register the handler
-  //   websocketManager.addMessageHandler(handleFileUpdate);
-
-  //   // Set up ping interval to keep the connection alive
-  //   const pingInterval = setInterval(() => {
-  //     if (websocketManager.isConnectedTo(dataroomId)) {
-  //       websocketManager.sendMessage({ action: 'ping' });
-  //     }
-  //   }, 45000); // Every 45 seconds
-
-  //   // Clean up
-  //   return () => {
-  //     clearInterval(pingInterval);
-  //     websocketManager.removeMessageHandler(handleFileUpdate);
-
-  //     // We still retain the connection when navigating away from the room
-  //     if (dataroomId) {
-  //       console.log('Releasing WebSocket connection reference');
-  //       websocketManager.release();
-  //     }
-  //   };
-  // }, [dataroomId, userAttributes?.email, toast]);
+  if (isLoadingPermissions) {
+    return (
+      <div className="grid h-screen place-items-center">
+        <div className="flex flex-col items-center gap-4">
+          <CircularProgress />
+          <p>Loading permissions...</p>
+        </div>
+      </div>
+    );
+  }
 
   if (!hasPermission) {
     return (
@@ -651,7 +706,7 @@ export default function Home() {
                 }}
               />
             )}
-            {tabs.map((tab, index) => (
+            {filteredTabs.map((tab, index) => (
               <div
                 key={tab.label}
                 ref={(el) => { tabRefs.current[index] = el }}
@@ -663,6 +718,7 @@ export default function Home() {
               </div>
             ))}
           </div>
+
 
 
           {/* <TagDisplay tags={['lol', 'wow', 'cool']} /> */}
@@ -734,9 +790,14 @@ export default function Home() {
           </DialogContent>
         </Dialog>
         <div className="flex items-center flex-col gap-3">
-          <Button onClick={() => setIsShareDialogOpen(true)} className="flex justify-center items-center">
-            <Share size={24} />
-          </Button>
+          {/* Only show share button if user has permission to invite users */}
+          {permissionDetails && 
+           (Array.isArray(permissionDetails.canInviteUsers) && 
+            permissionDetails.canInviteUsers.length > 0) && (
+            <Button onClick={() => setIsShareDialogOpen(true)} className="flex justify-center items-center">
+              <Share size={24} />
+            </Button>
+          )}
           <Popover>
             <PopoverTrigger className='bg-sky-600 h-10 aspect-square rounded-full flex items-center justify-center text-white'>
               {userAttributes?.given_name && userAttributes?.family_name
