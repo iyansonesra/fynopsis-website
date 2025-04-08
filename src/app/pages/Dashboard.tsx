@@ -431,29 +431,6 @@ export default function GeneralDashboard() {
                 <div className="w-20 bg-slate-900 h-full flex flex-col items-center justify-between pt-4 pb-6">
                     <div className="">
                         <img src={logo.src} alt="logo" className="h-14 w-auto mb-8" />
-                        <div className="relative flex flex-col items-center">
-                            {activeTab !== null && (
-                                <div
-                                    className="absolute left-0 w-full bg-blue-300 rounded-xl transition-all duration-300 ease-in-out z-0"
-                                    style={{
-                                        top: `${tabRefs.current[activeTab]?.offsetTop || 0}px`,
-                                        height: `${tabRefs.current[activeTab]?.offsetHeight || 0}px`
-                                    }}
-                                />
-                            )}
-                            {tabs.map((tab, index) => (
-                                <div
-                                    key={tab.label}
-                                    ref={(el) => { tabRefs.current[index] = el }}
-                                    className={`relative z-10 p-2 mb-4 cursor-pointer ${activeTab === index ? 'text-slate-900' : 'text-white'
-                                        }`}
-                                    onClick={() => handleTabClick(index)}
-                                >
-                                    <tab.icon size={24} />
-                                </div>
-                            ))}
-                        </div>
-
                     </div>
 
                     <Popover>
@@ -487,57 +464,51 @@ export default function GeneralDashboard() {
 
                 <div className="flex-1 overflow-hidden flex flex-row dark:bg-darkbg">
                     <div className="flex-[2] px-4 py-4">
-                        {selectedTab === 'library' ? (
-                            <>
-                                <div className="flex justify-between items-center mb-4">
-                                    <div className="flex flex-row gap-2 items-center ml-2">
-                                        <Library className="w-6 h-6 dark:text-gray-200" />
-                                        <h1 className="font-semibold text-xl dark:text-white">Your Datarooms</h1>
+                        <>
+                            <div className="flex justify-between items-center mb-4">
+                                <div className="flex flex-row gap-2 items-center ml-2">
+                                    <Library className="w-6 h-6 dark:text-gray-200" />
+                                    <h1 className="font-semibold text-xl dark:text-white">Your Datarooms</h1>
+                                </div>
+                                <Button onClick={() => setIsAddDialogOpen(true)}>
+                                    <Plus className="mr-2 h-4 w-4" /> Add Dataroom
+                                </Button>
+                            </div>
+                            <div className="flex flex-col">
+                                {isLoading ? (
+                                    <div className="flex flex-col gap-2">
+                                        <SkeletonCard />
+                                        <SkeletonCard />
+                                        <SkeletonCard />
                                     </div>
-                                    <Button onClick={() => setIsAddDialogOpen(true)}>
-                                        <Plus className="mr-2 h-4 w-4" /> Add Dataroom
-                                    </Button>
-                                </div>
-                                <div className="flex flex-col">
-                                    {isLoading ? (
-                                        <div className="flex flex-col gap-2">
-                                            <SkeletonCard />
-                                            <SkeletonCard />
-                                            <SkeletonCard />
+                                ) : (
+                                    dataRooms.map((room) => (
+                                        <div key={room.id} className="w-full">
+                                            <DataRoomCard
+                                                id={room.id || ''}
+                                                title={room.title}
+                                                users={room.users || []}
+                                                lastOpened={room.lastOpened}
+                                                permissionLevel={room.permissionLevel}
+                                                sharedBy={room.sharedBy || ''}
+                                                status={room.status || 'READY'}
+                                                onClick={() => {
+                                                    if (room.status === 'READY' || !room.status) {
+                                                        handleDataRoomClick(room.id);
+                                                    }
+                                                }}
+                                                onDelete={() => {
+                                                    setDataRooms(dataRooms.filter(r => r.id !== room.id));
+                                                }}
+                                                onLeave={() => {
+                                                    setDataRooms(dataRooms.filter(r => r.id !== room.id));
+                                                }}
+                                            />
                                         </div>
-                                    ) : (
-                                        dataRooms.map((room) => (
-                                            <div key={room.id} className="w-full">
-                                                <DataRoomCard
-                                                    id={room.id || ''}
-                                                    title={room.title}
-                                                    users={room.users || []}
-                                                    lastOpened={room.lastOpened}
-                                                    permissionLevel={room.permissionLevel}
-                                                    sharedBy={room.sharedBy || ''}
-                                                    status={room.status || 'READY'}
-                                                    onClick={() => {
-                                                        if (room.status === 'READY' || !room.status) {
-                                                            handleDataRoomClick(room.id);
-                                                        }
-                                                    }}
-                                                    onDelete={() => {
-                                                        setDataRooms(dataRooms.filter(r => r.id !== room.id));
-                                                    }}
-                                                    onLeave={() => {
-                                                        setDataRooms(dataRooms.filter(r => r.id !== room.id));
-                                                    }}
-                                                />
-                                            </div>
-                                        ))
-                                    )}
-                                </div>
-                            </>
-                        ) : selectedTab === 'question bank' ? (
-                            <QuestionBank />
-                        ) : (
-                            <ChecklistBank />
-                        )}
+                                    ))
+                                )}
+                            </div>
+                        </>
                     </div>
 
                     {selectedTab === 'library' && (
