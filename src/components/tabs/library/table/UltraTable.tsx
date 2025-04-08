@@ -1,4 +1,4 @@
-import React, { use, useRef, useState, useEffect } from 'react';
+import React, { use, useRef, useState, useEffect, useMemo } from 'react';
 import {
   DndContext,
   closestCenter,
@@ -24,6 +24,18 @@ import {
   Plus, RefreshCcw, Upload, Search, Download, Pencil, Trash,
   RotateCcw
 } from 'lucide-react';
+import { 
+  FaFilePdf, 
+  FaFileWord, 
+  FaFileExcel, 
+  FaFilePowerpoint, 
+  FaFileImage, 
+  FaFileArchive, 
+  FaFileAlt, 
+  FaFileCode,
+  FaFileAudio,
+  FaFileVideo
+} from 'react-icons/fa';
 import { Input } from '../../../ui/input';
 import DragDropOverlay from './DragDrop';
 import { v4 as uuidv4 } from 'uuid';
@@ -110,7 +122,8 @@ interface ResizableHeaderProps {
 
 
 interface FileSystemProps {
-  onFileSelect: (file: FileNode) => void;
+  onFileSelect: (file: FileNode, fileChunk?: string) => void;
+  permissionDetails?: any;
 }
 
 interface DateInfo {
@@ -129,8 +142,44 @@ interface DocumentTags {
   confidentiality: string;
 }
 
+// Add interface for FileTypeIcon props
+interface FileTypeIconProps {
+  fileName: string;
+  className?: string;
+}
 
-export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
+const FileTypeIcon = ({ fileName, className = "" }: FileTypeIconProps) => {
+  // Convert to lowercase for case-insensitive comparison
+  const lowerFileName = fileName.toLowerCase();
+  
+  // Check file extension
+  if (lowerFileName.endsWith('.pdf')) {
+    return <FaFilePdf className={`mr-2 h-4 w-4 text-red-500 ${className}`} />;
+  } else if (lowerFileName.match(/\.(docx?|rtf|odt)$/)) {
+    return <FaFileWord className={`mr-2 h-4 w-4 text-blue-600 ${className}`} />;
+  } else if (lowerFileName.match(/\.(xlsx?|csv|xlsm|ods)$/)) { 
+    return <FaFileExcel className={`mr-2 h-4 w-4 text-green-600 ${className}`} />;
+  } else if (lowerFileName.match(/\.(pptx?|pps|odp)$/)) {
+    return <FaFilePowerpoint className={`mr-2 h-4 w-4 text-orange-600 ${className}`} />;
+  } else if (lowerFileName.match(/\.(jpe?g|png|gif|bmp|svg|webp)$/)) {
+    return <FaFileImage className={`mr-2 h-4 w-4 text-purple-500 ${className}`} />;
+  } else if (lowerFileName.match(/\.(zip|rar|7z|tar|gz)$/)) {
+    return <FaFileArchive className={`mr-2 h-4 w-4 text-amber-600 ${className}`} />;
+  } else if (lowerFileName.match(/\.(mp3|wav|ogg|flac|aac)$/)) {
+    return <FaFileAudio className={`mr-2 h-4 w-4 text-blue-400 ${className}`} />;
+  } else if (lowerFileName.match(/\.(mp4|mov|avi|mkv|wmv|flv)$/)) {
+    return <FaFileVideo className={`mr-2 h-4 w-4 text-pink-500 ${className}`} />;
+  } else if (lowerFileName.match(/\.(html?|css|jsx?|tsx?|py|java|php|rb|c|cpp|go)$/)) {
+    return <FaFileCode className={`mr-2 h-4 w-4 text-gray-600 ${className}`} />;
+  } else if (lowerFileName.match(/\.(txt|md|json|xml|log)$/)) {
+    return <FaFileAlt className={`mr-2 h-4 w-4 text-gray-500 ${className}`} />;
+  } else {
+    // Default file icon
+    return <FileIcon className={`mr-2 h-4 w-4 ${className}`} />;
+  }
+};
+
+export function FileSystem({ onFileSelect, permissionDetails }: FileSystemProps) {
   const [tableData, setTableData] = useState<FileNode[]>([]);
   const pathname = usePathname() || '';
   const pathArray = pathname.split('/');
@@ -1215,7 +1264,7 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
                 }} className="flex flex-row">
                   {item.isFolder ?
                     <FolderIcon className="mr-2 h-4 w-4 dark:text-white" /> :
-                    <FileIcon className="mr-2 h-4 w-4 dark:text-white" />
+                    <FileTypeIcon fileName={item.name} className="dark:text-white" />
                   }
                 </div>
                 <div style={{
@@ -1321,18 +1370,46 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
                   <button onClick={(e) => e.stopPropagation()}>⋮</button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent>
-                  <DropdownMenuItem
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleDownload();
-                      setOpenDropdownId(null);
-                    }}
-                    className="text-black"
-                  >
-                    <Download className="mr-2 h-4 w-4" />
-
-                    Download
-                  </DropdownMenuItem>
+                  {item.isFolder ? (
+                    // Folder options
+                    <DropdownMenuItem
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDoubleClick(); // Use the same handler as double-click
+                        setOpenDropdownId(null);
+                      }}
+                      className="text-black"
+                    >
+                      <Folder className="mr-2 h-4 w-4" />
+                      Open
+                    </DropdownMenuItem>
+                  ) : (
+                    // File options
+                    <>
+                      <DropdownMenuItem
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDoubleClick(); // Use the same handler as double-click
+                          setOpenDropdownId(null);
+                        }}
+                        className="text-black"
+                      >
+                        <FileTypeIcon fileName={item.name} />
+                        View
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDownload();
+                          setOpenDropdownId(null);
+                        }}
+                        className="text-black"
+                      >
+                        <Download className="mr-2 h-4 w-4" />
+                        Download
+                      </DropdownMenuItem>
+                    </>
+                  )}
                   <DropdownMenuItem
                     onClick={(e) => {
                       e.stopPropagation();
@@ -1342,7 +1419,6 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
                     className="text-black"
                   >
                     <Pencil className="mr-2 h-4 w-4" />
-
                     Rename
                   </DropdownMenuItem>
                   {item.status === 'FAILED' && !item.isFolder && (
@@ -1355,11 +1431,9 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
                       className="text-black"
                     >
                       <RotateCcw className="mr-2 h-4 w-4" />
-
                       Retry Processing
                     </DropdownMenuItem>
                   )}
-
                   <DropdownMenuItem
                     onClick={(e) => {
                       e.stopPropagation();
@@ -1371,7 +1445,6 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
                     <Trash className="mr-2 h-4 w-4" />
                     Delete
                   </DropdownMenuItem>
-
                 </DropdownMenuContent>
               </DropdownMenu>
             </td>
@@ -1379,10 +1452,23 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
 
         </ContextMenuTrigger>
         <ContextMenuContent>
-          <ContextMenuItem onClick={handleDownload}>
-            <Download className="mr-2 h-4 w-4" />
-            Download
-          </ContextMenuItem>
+          {item.isFolder ? (
+            <ContextMenuItem onClick={() => handleDoubleClick()}>
+              <Folder className="mr-2 h-4 w-4" />
+              Open
+            </ContextMenuItem>
+          ) : (
+            <>
+              <ContextMenuItem onClick={() => handleDoubleClick()}>
+                <FileTypeIcon fileName={item.name} />
+                View
+              </ContextMenuItem>
+              <ContextMenuItem onClick={() => handleDownload()}>
+                <Download className="mr-2 h-4 w-4" />
+                Download
+              </ContextMenuItem>
+            </>
+          )}
           <ContextMenuItem onClick={handleRename}>
             <Pencil className="mr-2 h-4 w-4" />
             Rename
@@ -1742,10 +1828,12 @@ th {
                 <span>Create Folder</span>
               </DropdownMenuItem>
 
-              <DropdownMenuItem onClick={() => setShowFileOrganizer(true)} className="flex items-center gap-2 dark:hover:text-gray-400">
-                <Folder size={16} />
-                <span>Organize Documents</span>
-              </DropdownMenuItem>
+              {(!permissionDetails || permissionDetails.canOrganize !== false) && (
+                <DropdownMenuItem onClick={() => setShowFileOrganizer(true)} className="flex items-center gap-2 dark:hover:text-gray-400">
+                  <Folder size={16} />
+                  <span>Organize Documents</span>
+                </DropdownMenuItem>
+              )}
             </DropdownMenuContent>
           </DropdownMenu>
           {showFileOrganizer && (
@@ -1826,7 +1914,7 @@ th {
                               }}
                               className="px-4 py-2 text-sm bg-transparent cursor-pointer hover:bg-slate-200 dark:hover:bg-slate-700 dark:text-white flex items-center"
                             >
-                              <FileIcon className="mr-2 h-4 w-4" />
+                              <FileTypeIcon fileName={file.fileName} />
                               <div className="flex flex-col overflow-hidden">
                                 <span className="truncate">
                                   {highlightMatch(file.fileName, searchValue)}

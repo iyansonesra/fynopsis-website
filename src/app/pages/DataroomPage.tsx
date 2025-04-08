@@ -104,9 +104,11 @@ export default function Home() {
         case 'q&a':
           return permissions.canAccessQuestionairePanel !== false;
         case 'users':
-          return permissions.canAccessUserManagementPanel === true;
+          return permissions.canAccessUserManagementPanel === true && 
+                 permissions.canViewUsers !== false;
         case 'activity':
-          return permissions.canAccessAuditLogsPanel === true;
+          return permissions.canAccessAuditLogsPanel === true && 
+                 permissions.canViewAuditLogs !== false;
         default:
           return false;
       }
@@ -576,7 +578,7 @@ export default function Home() {
     // Otherwise render the appropriate tab content
     switch (selectedTab.toLowerCase()) {
       case "library":
-        return <Files setSelectedTab={setSelectedTab} />;
+        return <Files setSelectedTab={setSelectedTab} permissionDetails={permissionDetails} />;
       case "form":
         return <ExcelViewer />;
       case "users":
@@ -590,6 +592,16 @@ export default function Home() {
             </div>
           );
         }
+        // Also check if user has permission to view users
+        if (permissionDetails && permissionDetails.canViewUsers === false) {
+          return (
+            <div className="grid h-screen place-items-center">
+              <div className="flex flex-col items-center gap-4">
+                <h2 className="text-xl font-semibold">You don't have permission to view users</h2>
+              </div>
+            </div>
+          );
+        }
         return <UserManagement dataroomId={''} />;
       case "activity":
         // Check if user has permission to access audit logs panel
@@ -598,6 +610,16 @@ export default function Home() {
             <div className="grid h-screen place-items-center">
               <div className="flex flex-col items-center gap-4">
                 <h2 className="text-xl font-semibold">You don't have permission to access activity logs</h2>
+              </div>
+            </div>
+          );
+        }
+        // Also check if user has permission to view audit logs
+        if (permissionDetails && permissionDetails.canViewAuditLogs === false) {
+          return (
+            <div className="grid h-screen place-items-center">
+              <div className="flex flex-col items-center gap-4">
+                <h2 className="text-xl font-semibold">You don't have permission to view activity logs</h2>
               </div>
             </div>
           );
