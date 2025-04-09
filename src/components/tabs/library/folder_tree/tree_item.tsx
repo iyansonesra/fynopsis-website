@@ -189,7 +189,7 @@ export function FilesystemItem({
                                 animate={{ height: "auto" }}
                                 exit={{ height: 0 }}
                                 transition={{ type: "spring", bounce: 0, duration: 0.4 }}
-                                className="pl-6 overflow-hidden flex flex-col justify-end"
+                                className="pl-3 overflow-hidden flex flex-col justify-end"
                                 onAnimationComplete={() => {
                                     // Reset animation flag after animation completes
                                     setShouldAnimate(false);
@@ -204,7 +204,7 @@ export function FilesystemItem({
             
             // If not animating but still open, render without animation
             if (isOpen) {
-                return <ul className="pl-6">{children}</ul>;
+                return <ul className="pl-3">{children}</ul>;
             }
             
             return null;
@@ -217,7 +217,6 @@ export function FilesystemItem({
             onClick={handleClick}
             onContextMenu={handleContextMenu}
         >
-            {/* Hide Chevron for "Home" */}
             {node.name !== "Home" && node.nodes && node.nodes.length > 0 && (
                 <ChevronIcon />
             )}
@@ -230,7 +229,7 @@ export function FilesystemItem({
                 <File className="ml-[22px] w-4 h-4 text-gray-900" />
             )}
 
-            <span className="relative select-none">
+            <span className="relative select-none text-xs">
                 {node.name !== "Home" && (
                     <span className="text-gray-400 select-none">{node.numbering}</span>
                 )}{"  "}
@@ -249,7 +248,7 @@ export function FilesystemItem({
 
             {/* Always show children for "Home" */}
             {node.name === "Home" ? (
-                <ul className="pl-6">
+                <ul className="pl-3">
                     {node.nodes?.map((childNode) => (
                         <FilesystemItem
                             node={childNode}

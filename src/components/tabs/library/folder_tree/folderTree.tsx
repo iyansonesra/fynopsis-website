@@ -28,6 +28,7 @@ const FolderTree: React.FC<FolderTreeProps> = () => {
     const bucketUuid = pathArray[2] || '';
 
     const searchableFiles = useFileStore((state) => state.searchableFiles);
+    console.log("searchable fules", searchableFiles);
     const setSelectedFile = useFileStore((state) => state.setSelectedFile);
     const setShowDetailsView = useFileStore((state) => state.setShowDetailsView);
     const { addTab, setActiveTabId, tabs } = useTabStore();
@@ -133,6 +134,7 @@ const FolderTree: React.FC<FolderTreeProps> = () => {
     }, [openNode, searchableFiles]);
 
     const handleNodeSelect = async (node: Node) => {
+        console.log('Selected node:', node);
         if (node.isFolder && node.id) {
             // Navigate to the folder
             const segments = pathname.split('/');
