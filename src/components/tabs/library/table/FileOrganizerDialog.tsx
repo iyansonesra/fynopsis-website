@@ -701,6 +701,7 @@ export const FileOrganizerDialog: React.FC<FileOrganizerDialogProps> = ({ bucket
   const [schema, setSchema] = useState<string>('');
   const shouldRename = true;
   const shouldReorder = true;
+  const [filenameSchema, setFilenameSchema] = useState<string>('');
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const [schemaStatus, setSchemaStatus] = useState<SchemaStatus>('NO_SCHEMA');
   const [schemaError, setSchemaError] = useState<string>();
@@ -825,15 +826,22 @@ export const FileOrganizerDialog: React.FC<FileOrganizerDialogProps> = ({ bucket
     setIsLoading(true);
    
     try {
+      const requestBody: any = {
+        schema,
+        should_rename: true,
+        should_reorder: true,
+      };
+
+      // Only include filename_schema if it has a value
+      if (filenameSchema.trim()) {
+        requestBody.filename_schema = filenameSchema.trim();
+      }
+
       const response = await post({
         apiName: 'S3_API',
         path: `/s3/${bucketId}/organize-dataroom-preview`,
         options: {
-          body: {
-            schema,
-            should_rename: true,
-            should_reorder: true,
-          }
+          body: requestBody
         }
       }).response;
 
@@ -1236,39 +1244,51 @@ export const FileOrganizerDialog: React.FC<FileOrganizerDialogProps> = ({ bucket
             <FolderTreeEditor onSchemaChange={setSchema} />
           </DndProvider>
         </div>
-        <div className="flex items-center justify-between space-x-4 px-4">
-          <div>
-            {undoSchemaId && (
-              <Button
-                variant="outline"
-                onClick={handleUndo}
-                disabled={isUndoing || isApplying || isCancelling}
-              >
-                {isUndoing ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Undoing...
-                  </>
-                ) : (
-                  <>
-                    <RotateCcw className="mr-2 h-4 w-4" />
-                    Undo Last Organization
-                  </>
-                )}
-              </Button>
-            )}
+        <div className="space-y-4 px-4">
+          <div className="flex items-center gap-2">
+            <Label htmlFor="filename-schema" className="text-sm">Filename Schema (Optional):</Label>
+            <Input 
+              id="filename-schema"
+              value={filenameSchema}
+              onChange={(e) => setFilenameSchema(e.target.value)}
+              placeholder="Enter filename schema"
+              className="max-w-sm"
+            />
           </div>
-          
-          <Button onClick={handlePreview} disabled={isLoading}>
-            {isLoading ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Generating Preview
-              </>
-            ) : (
-              'Preview Changes'
-            )}
-          </Button>
+          <div className="flex items-center justify-between space-x-4">
+            <div>
+              {undoSchemaId && (
+                <Button
+                  variant="outline"
+                  onClick={handleUndo}
+                  disabled={isUndoing || isApplying || isCancelling}
+                >
+                  {isUndoing ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Undoing...
+                    </>
+                  ) : (
+                    <>
+                      <RotateCcw className="mr-2 h-4 w-4" />
+                      Undo Last Organization
+                    </>
+                  )}
+                </Button>
+              )}
+            </div>
+            
+            <Button onClick={handlePreview} disabled={isLoading}>
+              {isLoading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Generating Preview
+                </>
+              ) : (
+                'Preview Changes'
+              )}
+            </Button>
+          </div>
         </div>
 
       </div>

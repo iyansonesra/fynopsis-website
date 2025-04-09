@@ -49,7 +49,7 @@ export const metadata: Metadata = {
   description: "The First Ever AI-Native Data Room",
   icons: {
     icon: [
-      { url: '/favicon.ico', sizes: 'any' },
+      { url: '/fynopsis_noBG.png', sizes: 'any' },
     ],
   },
   openGraph: {

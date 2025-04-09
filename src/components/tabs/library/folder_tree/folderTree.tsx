@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { Clock, Star } from 'lucide-react';
-import { Files, useFileStore } from '@/components/services/HotkeyService';
+import { FileItem, Folder, useFileStore } from '@/components/services/HotkeyService';
 import { useRouter, usePathname } from 'next/navigation';
+import { post } from 'aws-amplify/api';
 
-import { FilesystemItem } from './tree_item';
+import { FilesystemItem } from './tree-item';
 import { useTabStore } from '@/components/tabStore';
 import { get } from 'aws-amplify/api';
 import PDFViewer from '../table/PDFViewer';
@@ -18,6 +19,172 @@ type Node = {
     id?: string;     // Add ID for file/folder
     path?: string;   // Add path information
     isFolder?: boolean; // Indicate if it's a folder
+    parentFolderId?: string; // Add parent folder ID
+    draggedItem?: {
+        id: string;
+        name: string;
+        isFolder: boolean;
+        path?: string;
+    };
+    // File attributes
+    fileId?: string;
+    fileName?: string;
+    fullPath?: string;
+    parentFolderName?: string;
+    size?: string;
+    batchStatus?: string;
+    contentType?: string;
+    lastModified?: string;
+    uploadedBy?: string;
+    uploadedByEmail?: string;
+};
+
+type MoveResponse = {
+    message: string;
+    results: {
+        failed: any[];
+        successful: Array<{
+            itemId: string;
+            itemName: string;
+            oldParentId: string;
+            oldParentName: string;
+            newParentId: string;
+        }>;
+        summary: {
+            failed: number;
+            succeeded: number;
+            total: number;
+        };
+    };
+};
+
+// Function to build folder structure from folders and files
+const buildFolderStructure = (folders: Folder[], files: FileItem[]): Node[] => {
+    const root: Record<string, Node> = {};
+
+    // First, build the folder structure
+    folders.forEach((folder) => {
+        const pathParts = folder.fullPath.split('/').filter(part => part !== 'Root' && part !== '');
+        let currentLevel = root;
+        let parentId = 'ROOT'; // Start with ROOT as parent
+
+        pathParts.forEach((part, index) => {
+            if (!currentLevel[part]) {
+                currentLevel[part] = {
+                    name: part,
+                    nodes: [],
+                    id: index === pathParts.length - 1 ? folder.id : undefined,
+                    path: pathParts.slice(0, index + 1).join('/'),
+                    isFolder: true,
+                    parentFolderId: parentId
+                };
+            }
+
+            if (index < pathParts.length - 1) {
+                parentId = currentLevel[part].id || parentId; // Update parent ID for next level
+                currentLevel = currentLevel[part].nodes as unknown as Record<string, Node>;
+            }
+        });
+    });
+
+    // Then, add files to their parent folders
+    files.forEach((file) => {
+        // Skip files with empty names
+        if (!file.fileName || file.fileName.trim() === '') {
+            return;
+        }
+
+        const pathParts = file.fullPath.split('/').filter(part => part !== 'Root' && part !== '');
+        let currentLevel = root;
+        let parentId = 'ROOT';
+
+        // Navigate to the parent folder
+        for (let i = 0; i < pathParts.length - 1; i++) {
+            const part = pathParts[i];
+            if (!currentLevel[part]) {
+                // Create parent folder if it doesn't exist
+                currentLevel[part] = {
+                    name: part,
+                    nodes: [],
+                    path: pathParts.slice(0, i + 1).join('/'),
+                    isFolder: true,
+                    parentFolderId: parentId
+                };
+            }
+            parentId = currentLevel[part].id || parentId;
+            currentLevel = currentLevel[part].nodes as unknown as Record<string, Node>;
+        }
+
+        // Add the file to the current level
+        const fileName = pathParts[pathParts.length - 1];
+        if (!currentLevel[fileName]) {
+            currentLevel[fileName] = {
+                name: fileName,
+                nodes: [],
+                id: file.fileId,
+                path: file.fullPath,
+                isFolder: false,
+                parentFolderId: file.parentFolderId || parentId,
+                // Add all file attributes
+                fileId: file.fileId,
+                fileName: file.fileName,
+                fullPath: file.fullPath,
+                parentFolderName: file.parentFolderName,
+                size: file.size,
+                batchStatus: file.batchStatus,
+                contentType: file.contentType,
+                lastModified: file.lastModified,
+                uploadedBy: file.uploadedBy,
+                uploadedByEmail: file.uploadedByEmail
+            };
+        }
+    });
+
+    // Add numbering to nodes recursively
+    const addNumbering = (nodes: Node[], prefix: string): Node[] => {
+        return nodes.map((node, index) => {
+            const currentNumber = prefix ? `${prefix}.${index + 1}` : `${index + 1}`;
+            return {
+                ...node,
+                numbering: currentNumber,
+                nodes: node.nodes ? addNumbering(node.nodes, currentNumber) : [],
+            };
+        });
+    };
+
+    // Convert the root object to an array and add numbering
+    const convertToArray = (obj: Record<string, Node>): Node[] => {
+        return addNumbering(
+            Object.values(obj)
+                .sort((a, b) => {
+                    // First sort by type (folders before files)
+                    if (a.isFolder !== b.isFolder) {
+                        return a.isFolder ? -1 : 1;
+                    }
+                    // Then sort alphabetically within each group
+                    return a.name.localeCompare(b.name);
+                })
+                .map((node) => ({
+                    name: node.name,
+                    id: node.id,
+                    path: node.path,
+                    isFolder: node.isFolder,
+                    parentFolderId: node.parentFolderId,
+                    nodes: node.nodes ? convertToArray(node.nodes as unknown as Record<string, Node>) : [],
+                })),
+            ''
+        );
+    };
+
+    // Wrap everything under "Home"
+    return [{
+        name: 'Home',
+        id: 'ROOT',
+        path: '/',
+        isFolder: true,
+        parentFolderId: undefined,
+        nodes: convertToArray(root),
+    }];
 };
 
 const FolderTree: React.FC<FolderTreeProps> = () => {
@@ -28,115 +195,110 @@ const FolderTree: React.FC<FolderTreeProps> = () => {
     const bucketUuid = pathArray[2] || '';
 
     const searchableFiles = useFileStore((state) => state.searchableFiles);
-    console.log("searchable fules", searchableFiles);
+    const searchableFolders = useFileStore((state) => state.searchableFolders);
     const setSelectedFile = useFileStore((state) => state.setSelectedFile);
     const setShowDetailsView = useFileStore((state) => state.setShowDetailsView);
     const { addTab, setActiveTabId, tabs } = useTabStore();
     const { openNode } = useFolderTreeStore();
 
     useEffect(() => {
-        // Function to build folder structure from file paths
         openNode('ROOT');
-
-        const buildFolderStructure = (files: Files[]): Node[] => {
-            const root: Record<string, Node> = {};
-
-            files.forEach((file) => {
-                // Add logging to debug the path
-                console.log('Processing file path:', file.fullPath);
-                
-                const pathParts = file.fullPath.split('/'); // Split path into parts
-                
-                // Log path parts to see what we're working with
-                console.log('Path parts:', pathParts);
-                
-                let currentLevel = root;
-            
-                pathParts.forEach((part, index) => {
-                    if (part === 'Root') return; // Skip "Root" during path processing
-                    
-                    // Log current part and index for debugging
-                    console.log(`Processing part: "${part}" at index ${index} of ${pathParts.length-1}`);
-            
-                    if (!currentLevel[part]) {
-                        // Check if this is a file by looking at the extension
-                        const isFile = part.includes('.') && index === pathParts.length - 1;
-                        
-                        currentLevel[part] = {
-                            name: part,
-                            nodes: [],
-                            id: isFile ? file.fileId : undefined,
-                            path: pathParts.slice(0, index + 1).join('/'),
-                            isFolder: !isFile // More reliable check for files
-                        };
-                    }
-            
-                    if (index === pathParts.length - 1) {
-                        // Final part should be a file - force the correct properties
-                        currentLevel[part].nodes = currentLevel[part].nodes || [];
-                        currentLevel[part].id = file.fileId;
-                        currentLevel[part].isFolder = false;
-                        
-                        // Log that we identified a file
-                        console.log(`Marked "${part}" as a file with ID ${file.fileId}`);
-                    } else {
-                        // Otherwise, it's a folder
-                        if (file.parentFolderId && pathParts[index] === part) {
-                            currentLevel[part].id = file.parentFolderId;
-                        }
-                        currentLevel = currentLevel[part].nodes as unknown as Record<string, Node>;
-                    }
-                });
-            });
-
-            // Add numbering to nodes recursively
-            const addNumbering = (nodes: Node[], prefix: string): Node[] => {
-                return nodes.map((node, index) => {
-                    const currentNumber = `${prefix}${index + 1}`;
-                    return {
-                        ...node,
-                        numbering: currentNumber, // Add the numbering attribute
-                        nodes: node.nodes ? addNumbering(node.nodes, `${currentNumber}.`) : [],
-                    };
-                });
-            };
-
-            // Convert the root object to an array and add numbering
-            const convertToArray = (obj: Record<string, Node>): Node[] => {
-                return addNumbering(
-                    Object.values(obj).map((node) => ({
-                        name: node.name,
-                        id: node.id,
-                        path: node.path,
-                        isFolder: node.isFolder,
-                        nodes: node.nodes ? convertToArray(node.nodes as unknown as Record<string, Node>) : [],
-                    })),
-                    '1.'
-                );
-            };
-
-            // Wrap everything under "Home"
-            return [
-                {
-                    name: 'Home',
-                    numbering: '1',
-                    id: 'ROOT', // Root folder ID
-                    path: '/',
-                    isFolder: true,
-                    nodes: convertToArray(root),
-                },
-            ];
-        };
-
-        // Build folder structure and update state
-        const folderTree = buildFolderStructure(searchableFiles);
+        const folderTree = buildFolderStructure(searchableFolders, searchableFiles);
         setFolderStructure(folderTree);
-    }, [openNode, searchableFiles]);
+    }, [openNode, searchableFiles, searchableFolders]);
 
     const handleNodeSelect = async (node: Node) => {
-        console.log('Selected node:', node);
         if (node.isFolder && node.id) {
-            // Navigate to the folder
+            // If this is a drop event (contains draggedItem)
+            if (node.draggedItem) {
+                console.log('Moving item:', node.draggedItem);
+                const draggedItem = node.draggedItem;
+                console.log('Moving item:', draggedItem);
+                console.log('Moving item:', node.id);
+                try {
+                    // Call the API to move the item
+                    const response = await post({
+                        apiName: 'S3_API',
+                        path: `/s3/${bucketUuid}/move-url`,
+                        options: {
+                            withCredentials: true,
+                            body: {
+                                fileIds: [draggedItem.id],
+                                newParentFolderId: node.id,
+                                
+                            }
+                        }
+                    });
+
+                    const { body } = await response.response;
+                    const result = await body.json() as MoveResponse;
+                    console.log('Moving item:', result);
+                    if (result.results.successful.length > 0) {
+                        // Function to remove a node from its current location
+                        const removeNode = (nodes: Node[], targetId: string): { updatedNodes: Node[], removedNode: Node | null } => {
+                            for (let i = 0; i < nodes.length; i++) {
+                                if (nodes[i].id === targetId) {
+                                    const removedNode = nodes[i];
+                                    nodes.splice(i, 1);
+                                    return { updatedNodes: nodes, removedNode };
+                                }
+                                if (nodes[i].nodes) {
+                                    const { updatedNodes, removedNode } = removeNode(nodes[i].nodes!, targetId);
+                                    if (removedNode) {
+                                        nodes[i].nodes = updatedNodes;
+                                        return { updatedNodes: nodes, removedNode };
+                                    }
+                                }
+                            }
+                            return { updatedNodes: nodes, removedNode: null };
+                        };
+
+                        // Function to add a node to its new location
+                        const addNode = (nodes: Node[], targetFolderId: string, nodeToAdd: Node): Node[] => {
+                            return nodes.map(node => {
+                                if (node.id === targetFolderId) {
+                                    return {
+                                        ...node,
+                                        nodes: [...(node.nodes || []), nodeToAdd].sort((a, b) => {
+                                            // First sort by type (folders before files)
+                                            if (a.isFolder !== b.isFolder) {
+                                                return a.isFolder ? -1 : 1;
+                                            }
+                                            // Then sort alphabetically within each group
+                                            return a.name.localeCompare(b.name);
+                                        })
+                                    };
+                                }
+                                if (node.nodes) {
+                                    return {
+                                        ...node,
+                                        nodes: addNode(node.nodes, targetFolderId, nodeToAdd)
+                                    };
+                                }
+                                return node;
+                            });
+                        };
+
+                        // Remove the node from its current location
+                        const { updatedNodes, removedNode } = removeNode(folderStructure, draggedItem.id);
+                        
+                        if (removedNode) {
+                            // Add the node to its new location
+                            const updatedStructure = addNode(updatedNodes, node.id || 'ROOT', {
+                                ...removedNode,
+                                parentFolderId: node.id || 'ROOT'
+                            });
+                            
+                            setFolderStructure(updatedStructure);
+                        }
+                    }
+                } catch (error) {
+                    console.error('Error moving item:', error);
+                }
+                return;
+            }
+
+            // Original folder navigation code
             const segments = pathname.split('/');
             segments.pop();  // Remove the last segment
             segments.push(node.id === 'ROOT' ? 'home' : node.id); // Add the new folder ID
@@ -221,7 +383,6 @@ const FolderTree: React.FC<FolderTreeProps> = () => {
                         <FilesystemItem
                             node={node}
                             key={node.name}
-                            animated
                             onSelect={handleNodeSelect}
                         />
                     ))}

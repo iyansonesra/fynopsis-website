@@ -40,6 +40,7 @@ interface AuditEvent {
 
 interface AuditLogViewerProps {
     bucketId: string;
+    permissionDetails?: any;
 }
 
 interface AuditLogResponse {
@@ -318,7 +319,7 @@ const SortableItem = React.memo<{
 SortableItem.displayName = 'SortableItem';
 
 
-export const AuditLogViewer: React.FC<AuditLogViewerProps> = ({ bucketId }) => {
+export const AuditLogViewer: React.FC<AuditLogViewerProps> = ({ bucketId, permissionDetails }) => {
     const [events, setEvents] = useState<AuditEvent[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
@@ -427,6 +428,9 @@ export const AuditLogViewer: React.FC<AuditLogViewerProps> = ({ bucketId }) => {
         return actions[event.action] || event.action;
     };
 
+    // Check if user can export audit logs
+    const canExportAuditLogs = permissionDetails?.canExportAuditLogs !== false;
+
     return (
         <div className="flex flex-col h-full p-4 gap-4 w-full">
             <div className="flex items-center justify-between gap-4 pr-8">
@@ -480,10 +484,12 @@ export const AuditLogViewer: React.FC<AuditLogViewerProps> = ({ bucketId }) => {
                             />
                         </PopoverContent>
                     </Popover>
-                    <Button onClick={handleExport}>
-                        <Download className="mr-2 h-4 w-4" />
-                        Export
-                    </Button>
+                    {canExportAuditLogs && (
+                        <Button onClick={handleExport}>
+                            <Download className="mr-2 h-4 w-4" />
+                            Export
+                        </Button>
+                    )}
                 </div>
             </div>
 

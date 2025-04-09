@@ -99,7 +99,10 @@ interface DocumentBounds {
     bounding_box?: any;
 }
 
-export default function Files({ setSelectedTab }: { setSelectedTab: React.Dispatch<React.SetStateAction<string>> }) {
+export default function Files({ setSelectedTab, permissionDetails }: { 
+    setSelectedTab: React.Dispatch<React.SetStateAction<string>>,
+    permissionDetails?: any
+}) {
     const [showFolderTree, setShowFolderTree] = useState(true);
     const [folderViewWidth, setFolderViewWidth] = useState('54%');
 
@@ -134,10 +137,10 @@ export default function Files({ setSelectedTab }: { setSelectedTab: React.Dispat
             addTab({
                 id: 'all-files',
                 title: 'All Files',
-                content: <FileSystem onFileSelect={handleFileSelect} />
+                content: <FileSystem onFileSelect={handleFileSelect} permissionDetails={permissionDetails} />
             });
         }
-    }, []);
+    }, [permissionDetails]);
 
     useEffect(() => {
         if (!showFolderTree && !showDetailsView) {
@@ -262,24 +265,18 @@ export default function Files({ setSelectedTab }: { setSelectedTab: React.Dispat
             const existingTab = tabs.find(tab => tab.title === file.name);
 
             console.log("file url", file.s3Url);
+            console.log("file name", file.name);
 
             if (existingTab) {
                 // Just activate the existing tab
+                console.log("existing tab", existingTab);
                 setActiveTabId(existingTab.id);
             } else {
+                console.log("new tab", newTabId);
                 addTab({
                     id: newTabId,
                     title: file.name,
                     content: (
-                        // <PDFViewer 
-                        //   documentUrl={file.s3Url} 
-                        //   containerId={`pdf-viewer-${file.id}`}
-                        //   tabId={newTabId}  // Add this prop
-                        //   name={file.name}
-                        // />
-                        // <PDFHighlighterComponent
-                        //     documentUrl={file.s3Url}
-                        // />
                         <PDFViewer
                             documentUrl={file.s3Url}
                             containerId={`pdf-viewer-${file.id}`}
