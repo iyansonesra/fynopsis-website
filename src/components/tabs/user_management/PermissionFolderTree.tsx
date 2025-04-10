@@ -200,7 +200,7 @@ export const FileTreeItem = ({
 export const ItemPermissionsPanel: React.FC<{
     selectedItemId: string | null;
     items: any[];
-    permissions: Record<string, any>;
+    permissions: Record<string, FilePermission>;
     onPermissionChange: (id: string, permissions: Partial<FilePermission>) => void;
   }> = ({ selectedItemId, items, permissions, onPermissionChange }) => {
     if (!selectedItemId) {

@@ -13,6 +13,7 @@ import type { FilePermission, FileTreeItem as FileTreeItemType, PermissionGroup 
 import { FolderPermissionTree } from '../PermissionFolderTree';
 import { ItemPermissionsPanel } from '../PermissionFolderTree';
 import { cn } from "@/lib/utils";
+import FolderTree, { Node } from '../static_folder_tree/static-folder-tree';
 
 interface PermissionGroupDialogProps {
   isOpen: boolean;
@@ -65,6 +66,7 @@ export const PermissionGroupDialog: React.FC<PermissionGroupDialogProps> = ({
   const [internalSelectedFileId, setInternalSelectedFileId] = useState<string | null>(null);
   const [internalShowSpecificPermissions, setInternalShowSpecificPermissions] = useState(false);
   const [activeTab, setActiveTab] = useState<TabType>('general');
+  const [permissionsMap, setPermissionsMap] = useState<Record<string, FilePermission>>({});
 
   // Ensure allAccess is true by default when opening the dialog
   useEffect(() => {
@@ -158,6 +160,111 @@ export const PermissionGroupDialog: React.FC<PermissionGroupDialogProps> = ({
     }
 
     setActiveTab(tab);
+  };
+
+  // Handle permission changes for a specific node
+  const handlePermissionChange = (id: string, permissions: Partial<FilePermission>) => {
+    if (!id) return;
+    
+    setPermissionsMap(prev => {
+      const newPermissions = { ...prev };
+      
+      // Update the current node's permissions
+      newPermissions[id] = {
+        ...newPermissions[id],
+        ...permissions
+      };
+
+      // If this is a folder, propagate the changes to all visible children
+      const node = dialogItemsMap[id];
+      if (node?.type === 'folder') {
+        // Get all child nodes recursively
+        const getAllChildren = (currentNode: FileTreeItemType): FileTreeItemType[] => {
+          const children: FileTreeItemType[] = [];
+          if (currentNode.children) {
+            currentNode.children.forEach(child => {
+              children.push(child);
+              children.push(...getAllChildren(child));
+            });
+          }
+          return children;
+        };
+
+        const allChildren = getAllChildren(node);
+        
+        // Update permissions for all visible children
+        allChildren.forEach(child => {
+          if (child.id) {
+            const childId = child.id as string;
+            // Only update if the child is visible
+            if (newPermissions[childId]?.show !== false) {
+              // Apply the same permission changes to the child
+              Object.keys(permissions).forEach(key => {
+                if (key !== 'show') {  // Don't override show property
+                  newPermissions[childId] = {
+                    ...newPermissions[childId],
+                    [key]: permissions[key as keyof FilePermission]
+                  };
+                }
+              });
+            }
+          }
+        });
+      }
+
+      return newPermissions;
+    });
+  };
+
+  // Handle node selection from the folder tree
+  const handleNodeSelect = (node: Node & { show?: boolean }) => {
+    if (node.id) {
+      setSelectedFileId(node.id);
+      
+      // Initialize or update permissions for the node
+      const nodeId = node.id as string;
+      setPermissionsMap(prev => ({
+        ...prev,
+        [nodeId]: {
+          ...prev[nodeId],
+          viewAccess: prev[nodeId]?.viewAccess ?? false,
+          downloadAccess: prev[nodeId]?.downloadAccess ?? false,
+          deleteEditAccess: prev[nodeId]?.deleteEditAccess ?? false,
+          show: node.show ?? prev[nodeId]?.show ?? true
+        }
+      }));
+
+      // If this is a folder, update all children's visibility
+      if (node.isFolder) {
+        // Get all child nodes recursively
+        const getAllChildren = (currentNode: Node): Node[] => {
+          const children: Node[] = [];
+          if (currentNode.nodes) {
+            currentNode.nodes.forEach(child => {
+              children.push(child);
+              children.push(...getAllChildren(child));
+            });
+          }
+          return children;
+        };
+
+        const allChildren = getAllChildren(node);
+        
+        // Update permissions for all children
+        allChildren.forEach(child => {
+          if (child.id) {
+            const childId = child.id as string;
+            setPermissionsMap(prev => ({
+              ...prev,
+              [childId]: {
+                ...prev[childId],
+                show: node.show ?? prev[childId]?.show ?? true
+              }
+            }));
+          }
+        });
+      }
+    }
   };
 
   return (
@@ -549,20 +656,12 @@ export const PermissionGroupDialog: React.FC<PermissionGroupDialogProps> = ({
                 </p>
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 h-[400px]">
-                  <FolderPermissionTree
-                    folderStructure={folderStructure}
-                    selectedPermissions={newGroup.fileIdAccess || {}}
-                    onPermissionChange={onFilePermissionChange} 
-                    selectedItem={selectedFileId}
-                    onSelectItem={setSelectedFileId}
-                    itemsMap={dialogItemsMap}
-                    parentMap={dialogParentMap}
-                  />
+                  <FolderTree onNodeSelect={handleNodeSelect} />
                   <ItemPermissionsPanel
                     selectedItemId={selectedFileId}
                     items={Object.values(dialogItemsMap)}
-                    permissions={newGroup.fileIdAccess || {}}
-                    onPermissionChange={onFilePermissionChange}
+                    permissions={permissionsMap}
+                    onPermissionChange={handlePermissionChange}
                   />
                 </div>
               </div>

@@ -1,0 +1,410 @@
+"use client"
+
+import { useState, useCallback, memo, useEffect } from "react"
+import { ChevronRight, Folder, File, MoreHorizontal } from "lucide-react"
+import { AnimatePresence, motion } from "framer-motion"
+import { useFolderTreeStore } from '@/components/services/treeStateStore';
+import { FaFilePdf } from "react-icons/fa";
+import { get, post } from 'aws-amplify/api';
+import { usePathname } from 'next/navigation';
+
+// Import shadcn components
+import {
+    ContextMenu,
+    ContextMenuContent,
+    ContextMenuItem,
+    ContextMenuTrigger,
+} from "@/components/ui/context-menu"
+import {
+    Popover,
+    PopoverContent,
+    PopoverTrigger,
+} from "@/components/ui/popover"
+import { Input } from "@/components/ui/input"
+import { Checkbox } from "@/components/ui/checkbox"
+import React from "react"
+
+type Node = {
+    name: string
+    nodes?: Node[]
+    numbering?: string
+    id?: string
+    path?: string
+    isFolder?: boolean
+    parentFolderId?: string
+}
+
+type DraggedItem = {
+    id: string;
+    name: string;
+    isFolder: boolean;
+    path?: string;
+}
+
+interface FilesystemItemProps {
+    node: Node
+    animated?: boolean
+    onSelect?: (node: Node) => void
+    onCheckboxSelect?: (node: Node, isSelected: boolean) => void
+    isCheckboxSelected?: boolean
+    isNodeSelected?: boolean
+    selectedItems?: Set<string>
+    selectedNodeId?: string | null
+}
+
+export function FilesystemItem({
+    node,
+    animated = false,
+    onSelect,
+    onCheckboxSelect,
+    isCheckboxSelected = false,
+    isNodeSelected = false,
+    selectedItems = new Set(),
+    selectedNodeId = null
+}: FilesystemItemProps) {
+    const { isNodeOpen, toggleNode } = useFolderTreeStore();
+    const isOpen = node.id ? isNodeOpen(node.id) : false;
+    const [showContextMenu, setShowContextMenu] = useState(false);
+    const [showPopover, setShowPopover] = useState(false);
+    const [isRenaming, setIsRenaming] = useState(false);
+    const [newName, setNewName] = useState(node.name);
+    const lastClickTimeRef = React.useRef<number>(0);
+    const popoverTimeout = React.useRef<NodeJS.Timeout>();
+    const pathname = usePathname();
+    const bucketUuid = pathname?.split('/')[2] || '';
+    
+    // Track previous open state to determine if animation should play
+    const [prevOpenState, setPrevOpenState] = useState(isOpen);
+    const [shouldAnimate, setShouldAnimate] = useState(false);
+
+    const handleMouseEnter = () => {
+        if (!isRenaming) {  // Only show popover if not renaming
+            popoverTimeout.current = setTimeout(() => {
+                setShowPopover(true);
+            }, 600);
+        }
+    };
+
+    const handleMouseLeave = () => {
+        if (popoverTimeout.current) {
+            clearTimeout(popoverTimeout.current);
+        }
+        setShowPopover(false);
+    };
+
+    const handleDownload = async () => {
+        if (!node.isFolder && node.id) {
+            try {
+                const downloadResponse = await get({
+                    apiName: 'S3_API',
+                    path: `/s3/${bucketUuid}/download-url`,
+                    options: {
+                        withCredentials: true,
+                        queryParams: { fileId: node.id }
+                    }
+                });
+                const { body } = await downloadResponse.response;
+                const responseText = await body.text();
+                const { signedUrl } = JSON.parse(responseText);
+
+                // Create temporary link and trigger download
+                const link = document.createElement('a');
+                link.href = signedUrl;
+                link.download = node.name;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            } catch (error) {
+                console.error('Error getting presigned URL:', error);
+            }
+        }
+    };
+
+    const handleRename = async (newFileName: string) => {
+        if (!node.id) return;
+
+        // Get file extension if it exists
+        const lastDotIndex = node.name.lastIndexOf('.');
+        const extension = lastDotIndex !== -1 ? node.name.slice(lastDotIndex) : '';
+        const finalName = extension ? newFileName + extension : newFileName;
+
+        try {
+            const response = await post({
+                apiName: 'S3_API',
+                path: `/s3/${bucketUuid}/rename-object`,
+                options: {
+                    withCredentials: true,
+                    body: {
+                        fileId: node.id,
+                        newName: finalName
+                    }
+                }
+            });
+
+            const { body } = await response.response;
+            const result = await body.json() as { newName: string };
+
+            if (result && result.newName) {
+                // Update the node name in the tree
+                node.name = result.newName;
+                setNewName(result.newName);
+            }
+        } catch (error) {
+            console.error('Error renaming file:', error);
+        } finally {
+            setIsRenaming(false);
+        }
+    };
+
+    const handleRenameSubmit = (e: React.KeyboardEvent<HTMLInputElement>) => {
+        if (e.key === 'Enter') {
+            const input = e.currentTarget;
+            const newValue = input.value;
+            if (newValue && newValue !== node.name) {
+                handleRename(newValue);
+            } else {
+                setIsRenaming(false);
+            }
+        } else if (e.key === 'Escape') {
+            setIsRenaming(false);
+            setNewName(node.name);
+        }
+    };
+
+    useEffect(() => {
+        // Only trigger animation if the state actually changed
+        if (prevOpenState !== isOpen) {
+            setShouldAnimate(true);
+            setPrevOpenState(isOpen);
+        }
+    }, [isOpen, prevOpenState]);
+
+    const handleContextMenu = useCallback((e: React.MouseEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+        
+        if (node.isFolder || node.nodes) {
+            setShowContextMenu(true);
+        }
+    }, [node]);
+
+    const closeContextMenu = useCallback(() => {
+        setShowContextMenu(false);
+    }, []);
+
+    const ChevronIcon = useCallback(() =>
+        animated ? (
+            <motion.span
+                animate={{ rotate: isOpen ? 90 : 0 }}
+                transition={{ type: "spring", bounce: 0, duration: 0.4 }}
+                className="flex"
+            >
+                <ChevronRight className="size-4 text-gray-500" />
+            </motion.span>
+        ) : (
+            <ChevronRight
+                className={`size-4 text-gray-500 ${isOpen ? "rotate-90" : ""}`}
+            />
+        ), [isOpen, animated]);
+
+    const handleCheckboxChange = useCallback((checked: boolean) => {
+        if (onCheckboxSelect) {
+            onCheckboxSelect(node, checked);
+        }
+    }, [node, onCheckboxSelect]);
+
+    const handleCheckboxClick = useCallback((e: React.MouseEvent) => {
+        e.stopPropagation();
+    }, []);
+
+    const handleChevronClick = useCallback((e: React.MouseEvent) => {
+        e.stopPropagation();
+        if (node.id) {
+            toggleNode(node.id);
+        }
+    }, [node, toggleNode]);
+
+    const handleItemClick = useCallback((e: React.MouseEvent<HTMLDivElement, MouseEvent>): void => {
+        // If currently renaming, don't handle any clicks
+        if (isRenaming) {
+            return;
+        }
+
+        // Select the node when clicking anywhere on it
+        if (onSelect) {
+            onSelect(node);
+        }
+    }, [node, onSelect, isRenaming]);
+
+    const handleOpenFolder = useCallback((e: React.MouseEvent) => {
+        e.stopPropagation();
+
+        // For folders, call onSelect WITHOUT toggling isOpen
+        if ((node.isFolder || node.nodes) && onSelect) {
+            // Force open the folder if it's not already open
+            if (!isOpen && node.id) {
+                toggleNode(node.id);
+            }
+            onSelect(node);
+        }
+        
+        // Close context menu after action
+        setShowContextMenu(false);
+    }, [node, onSelect, isOpen, toggleNode]);
+
+    const ChildrenList = useCallback(() => {
+        const children = node.nodes?.map((childNode) => (
+            <FilesystemItem
+                node={childNode}
+                key={childNode.name}
+                animated={animated}
+                onSelect={onSelect}
+                onCheckboxSelect={onCheckboxSelect}
+                isCheckboxSelected={childNode.id ? selectedItems.has(childNode.id) : false}
+                isNodeSelected={childNode.id === selectedNodeId}
+                selectedItems={selectedItems}
+                selectedNodeId={selectedNodeId}
+            />
+        ));
+    
+        if (animated && shouldAnimate) {
+            return (
+                <AnimatePresence>
+                    {isOpen && (
+                        <motion.ul
+                            initial={{ height: 0 }}
+                            animate={{ height: "auto" }}
+                            exit={{ height: 0 }}
+                            transition={{ type: "spring", bounce: 0, duration: 0.4 }}
+                            className="pl-3 overflow-hidden flex flex-col justify-end"
+                            onAnimationComplete={() => {
+                                setShouldAnimate(false);
+                            }}
+                        >
+                            {children}
+                        </motion.ul>
+                    )}
+                </AnimatePresence>
+            );
+        }
+        
+        if (isOpen) {
+            return <ul className="pl-3">{children}</ul>;
+        }
+        
+        return null;
+    }, [node.nodes, isOpen, animated, onSelect, shouldAnimate, onCheckboxSelect, selectedItems, selectedNodeId]);
+
+    return (
+        <li key={node.name} className="mb-1">
+            <ContextMenu>
+                <ContextMenuTrigger>
+                    <Popover open={showPopover && !isRenaming}>
+                        <PopoverTrigger asChild>
+                            <div
+                                className={`group flex items-center gap-1.5 py-1 px-2 text-sm whitespace-nowrap rounded cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 relative select-none overflow-hidden ${
+                                    isNodeSelected ? 'bg-blue-50 dark:bg-blue-900 border-r-4 border-blue-500' : ''
+                                }`}
+                                onClick={handleItemClick}
+                                onMouseEnter={handleMouseEnter}
+                                onMouseLeave={handleMouseLeave}
+                            >
+                                <div className="flex-shrink-0 flex items-center gap-1.5">
+                                    <div onClick={handleCheckboxClick}>
+                                        <Checkbox
+                                            checked={isCheckboxSelected}
+                                            onCheckedChange={handleCheckboxChange}
+                                            className="mr-2"
+                                        />
+                                    </div>
+                                    {node.name !== "Home" && node.nodes && node.nodes.length > 0 && (
+                                        <div onClick={handleChevronClick} className="cursor-pointer">
+                                            <ChevronIcon />
+                                        </div>
+                                    )}
+
+                                    {(node.isFolder) ? (
+                                        <div></div>
+                                    ) : node.name?.toLowerCase().endsWith('.pdf') ? (
+                                        <FaFilePdf className={`ml-[22px] w-4 h-4 text-red-500 flex-shrink-0`} />
+                                    ) : (
+                                        <File className="ml-[22px] w-4 h-4 text-gray-900 flex-shrink-0" />
+                                    )}
+                                </div>
+
+                                <span className="relative select-none min-w-0 flex-1">
+                                    <div className="flex items-center overflow-hidden">
+                                        {node.name !== "Home" && (
+                                            <span className="text-gray-400 select-none flex-shrink-0">{node.numbering}</span>
+                                        )}
+                                        {isRenaming ? (
+                                            <Input
+                                                className="h-6 ml-1"
+                                                value={newName.split('.')[0]} // Show name without extension
+                                                onChange={(e) => setNewName(e.target.value)}
+                                                onKeyDown={handleRenameSubmit}
+                                                onBlur={() => {
+                                                    setIsRenaming(false);
+                                                    setNewName(node.name);
+                                                }}
+                                                autoFocus
+                                            />
+                                        ) : (
+                                            <span className="ml-1 select-none truncate">
+                                                {node.name}
+                                            </span>
+                                        )}
+                                    </div>
+                                </span>
+                            </div>
+                        </PopoverTrigger>
+                        <PopoverContent 
+                            className="p-2 text-sm w-fit min-w-[100px]" 
+                            side="top" 
+                            align="center"
+                            alignOffset={0}
+                            sideOffset={5}
+                            onMouseEnter={() => setShowPopover(true)}
+                            onMouseLeave={() => setShowPopover(false)}
+                        >
+                            <div className="break-keep whitespace-nowrap">
+                                {node.name || 'No ID'}
+                            </div>
+                        </PopoverContent>
+                    </Popover>
+                </ContextMenuTrigger>
+                {!node.isFolder && (
+                    <ContextMenuContent className="w-48">
+                        <ContextMenuItem onClick={handleDownload}>
+                            Download
+                        </ContextMenuItem>
+                        <ContextMenuItem onClick={() => setIsRenaming(true)}>
+                            Rename
+                        </ContextMenuItem>
+                    </ContextMenuContent>
+                )}
+            </ContextMenu>
+
+            {/* Always show children for "Home" */}
+            {node.name === "Home" ? (
+                <ul className="pl-3">
+                    {node.nodes?.map((childNode) => (
+                        <FilesystemItem
+                            node={childNode}
+                            key={childNode.name}
+                            animated={animated}
+                            onSelect={onSelect}
+                            onCheckboxSelect={onCheckboxSelect}
+                            isCheckboxSelected={childNode.id ? selectedItems.has(childNode.id) : false}
+                            isNodeSelected={childNode.id === selectedNodeId}
+                            selectedItems={selectedItems}
+                            selectedNodeId={selectedNodeId}
+                        />
+                    ))}
+                </ul>
+            ) : (
+                <ChildrenList />
+            )}
+        </li>
+    )
+}
