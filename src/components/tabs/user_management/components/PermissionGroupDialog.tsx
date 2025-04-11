@@ -36,9 +36,19 @@ interface PermissionGroupDialogProps {
   setSelectedFileId?: (id: string | null) => void;
   // Optional additional handler
   handleAllAccessChange?: (checked: boolean) => void;
+  // Available permission groups for user management section
+  availablePermissionGroups?: Record<string, RoleInfo>;
 }
 
 type TabType = 'general' | 'specific' | 'user' | 'dataroom' | 'qa' | 'audit' | 'diligence' | 'questionnaire';
+
+// Define RoleInfo interface locally to avoid import issues
+interface RoleInfo {
+  id: string;
+  name: string;
+  type: 'ROLE' | 'GROUP';
+  description?: string;
+}
 
 export const PermissionGroupDialog: React.FC<PermissionGroupDialogProps> = ({
   isOpen,
@@ -60,7 +70,9 @@ export const PermissionGroupDialog: React.FC<PermissionGroupDialogProps> = ({
   selectedFileId: externalSelectedFileId,
   setSelectedFileId: externalSetSelectedFileId,
   // Optional additional handler
-  handleAllAccessChange: externalHandleAllAccessChange
+  handleAllAccessChange: externalHandleAllAccessChange,
+  // Available permission groups for user management section
+  availablePermissionGroups
 }) => {
   // Initialize internal state, using external state if provided
   const [internalSelectedFileId, setInternalSelectedFileId] = useState<string | null>(null);
@@ -947,6 +959,29 @@ export const PermissionGroupDialog: React.FC<PermissionGroupDialogProps> = ({
                         />
                         <label htmlFor="invite-admin" className="text-sm">Admin</label>
                       </div>
+                      
+                      {/* Custom Permission Groups */}
+                      {availablePermissionGroups && Object.entries(availablePermissionGroups)
+                        .filter(([id, info]) => info.type === 'GROUP' && id !== newGroup.id) // Filter out standard roles and self
+                        .map(([id, info]) => (
+                          <div key={id} className="flex items-center space-x-2">
+                            <Switch 
+                              id={`invite-group-${id}`} 
+                              checked={newGroup.canInviteUsers?.includes('*') || newGroup.canInviteUsers?.includes(id)}
+                              onCheckedChange={(checked) => {
+                                if (newGroup.canInviteUsers?.includes('*')) return;
+                                const current = newGroup.canInviteUsers || [];
+                                const next = checked 
+                                  ? [...current.filter(r => r !== id), id] 
+                                  : current.filter(r => r !== id);
+                                setNewGroup(prev => ({...prev, canInviteUsers: next }));
+                              }}
+                              disabled={newGroup.canInviteUsers?.includes('*')}
+                            />
+                            <label htmlFor={`invite-group-${id}`} className="text-sm">{info.name}</label>
+                          </div>
+                        ))
+                      }
                     </div>
                     
                     {newGroup.canInviteUsers?.includes('*') && (
@@ -1033,6 +1068,29 @@ export const PermissionGroupDialog: React.FC<PermissionGroupDialogProps> = ({
                         />
                         <label htmlFor="update-admin" className="text-sm">Admins</label>
                       </div>
+                      
+                      {/* Custom Permission Groups */}
+                      {availablePermissionGroups && Object.entries(availablePermissionGroups)
+                        .filter(([id, info]) => info.type === 'GROUP' && id !== newGroup.id) // Filter out standard roles and self
+                        .map(([id, info]) => (
+                          <div key={id} className="flex items-center space-x-2">
+                            <Switch 
+                              id={`update-group-${id}`} 
+                              checked={newGroup.canUpdateUserPermissions?.includes('*') || newGroup.canUpdateUserPermissions?.includes(id)}
+                              onCheckedChange={(checked) => {
+                                if (newGroup.canUpdateUserPermissions?.includes('*')) return;
+                                const current = newGroup.canUpdateUserPermissions || [];
+                                const next = checked 
+                                  ? [...current.filter(r => r !== id), id] 
+                                  : current.filter(r => r !== id);
+                                setNewGroup(prev => ({...prev, canUpdateUserPermissions: next }));
+                              }}
+                              disabled={newGroup.canUpdateUserPermissions?.includes('*')}
+                            />
+                            <label htmlFor={`update-group-${id}`} className="text-sm">{info.name}</label>
+                          </div>
+                        ))
+                      }
                     </div>
                     
                     {newGroup.canUpdateUserPermissions?.includes('*') && (
@@ -1120,13 +1178,38 @@ export const PermissionGroupDialog: React.FC<PermissionGroupDialogProps> = ({
                            onCheckedChange={(checked) => {
                             if (newGroup.canRemoveUsers?.includes('*')) return;
                             const current = newGroup.canRemoveUsers || [];
-                            const next = checked ? [...current, 'ADMIN'] : current.filter(r => r !== 'ADMIN');
-                            setNewGroup({...newGroup, canRemoveUsers: next });
+                            const next = checked 
+                              ? [...current.filter(r => r !== 'ADMIN'), 'ADMIN'] 
+                              : current.filter(r => r !== 'ADMIN');
+                            setNewGroup(prev => ({...prev, canRemoveUsers: next }));
                           }}
                           disabled={newGroup.canRemoveUsers?.includes('*')}
                         />
                         <label htmlFor="remove-admin" className="text-sm">Admin</label>
                       </div>
+                      
+                      {/* Custom Permission Groups */}
+                      {availablePermissionGroups && Object.entries(availablePermissionGroups)
+                        .filter(([id, info]) => info.type === 'GROUP' && id !== newGroup.id) // Filter out standard roles and self
+                        .map(([id, info]) => (
+                          <div key={id} className="flex items-center space-x-2">
+                            <Switch 
+                              id={`remove-group-${id}`} 
+                              checked={newGroup.canRemoveUsers?.includes('*') || newGroup.canRemoveUsers?.includes(id)}
+                              onCheckedChange={(checked) => {
+                                if (newGroup.canRemoveUsers?.includes('*')) return;
+                                const current = newGroup.canRemoveUsers || [];
+                                const next = checked 
+                                  ? [...current.filter(r => r !== id), id] 
+                                  : current.filter(r => r !== id);
+                                setNewGroup(prev => ({...prev, canRemoveUsers: next }));
+                              }}
+                              disabled={newGroup.canRemoveUsers?.includes('*')}
+                            />
+                            <label htmlFor={`remove-group-${id}`} className="text-sm">{info.name}</label>
+                          </div>
+                        ))
+                      }
                     </div>
                     
                     {newGroup.canRemoveUsers?.includes('*') && (
