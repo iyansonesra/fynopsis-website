@@ -32,6 +32,7 @@ type Node = {
     path?: string
     isFolder?: boolean
     parentFolderId?: string
+    isCustomized?: boolean
 }
 
 type DraggedItem = {
@@ -79,6 +80,9 @@ export function FilesystemItem({
     const [newName, setNewName] = useState(node.name);
     const lastClickTimeRef = React.useRef<number>(0);
     const popoverTimeout = React.useRef<NodeJS.Timeout>();
+
+    // Check if this item has custom permissions
+    const hasCustomPermissions = node.isCustomized === true;
 
     const handleMouseEnter = () => {
         // No need to implement handleMouseEnter as it's not used in the new ChildrenList component
@@ -357,7 +361,10 @@ export function FilesystemItem({
                         onMouseLeave={handleMouseLeave}
                         onClick={handleItemClick}
                     >
-                        <div className="flex items-center flex-grow min-w-0">
+                        <div className="flex items-center flex-grow min-w-0 relative">
+                            {hasCustomPermissions && !node.isFolder && (
+                                <div className="absolute w-2 h-2 rounded-full bg-yellow-400 left-0 top-1/2 transform -translate-y-1/2 -translate-x-3"></div>
+                            )}
                             {(node.nodes && node.nodes.length > 0 || node.isFolder) && (
                                 <div onClick={handleChevronClick} className="pr-1 cursor-pointer">
                                     <ChevronIcon />

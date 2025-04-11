@@ -52,6 +52,10 @@ deleteAccess?: boolean;
 // Folder-specific permissions (used in PermissionFolderTree)
 folderPerms?: FolderPermission;
 childFilePerms?: Partial<FilePermission>;
+// Track if a file has custom permissions that override its parent folder
+isCustomized?: boolean;
+// Track child files for parent-child relationships
+childFiles?: string[];
 };
 
 // Folder-specific Permission Type (Optional, but helps clarity)

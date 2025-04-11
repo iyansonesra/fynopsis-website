@@ -9,6 +9,8 @@ import { useTabStore } from '@/components/tabStore';
 import { get } from 'aws-amplify/api';
 import PDFViewer from '@/components/tabs/library/table/PDFViewer';
 import { useFolderTreeStore } from '@/components/services/treeStateStore';
+import { Checkbox } from '@/components/ui/checkbox';
+import { FaFolder, FaFile } from 'react-icons/fa';
 
 interface FolderTreeProps {
     onNodeSelect?: (node: Node) => void;
@@ -35,6 +37,7 @@ export type Node = {
     lastModified?: string;
     uploadedBy?: string;
     uploadedByEmail?: string;
+    isCustomized?: boolean; // Add isCustomized property
 };
 
 type MoveResponse = {
@@ -274,6 +277,9 @@ const FolderTree: React.FC<FolderTreeProps> = ({ onNodeSelect }) => {
         const childIds = getAllNodeIds(node);
         const nodeId = node.id || (node.path ? `${node.path}/${node.name}` : node.name);
         
+        // Update the selected node ID to highlight this item
+        setSelectedNodeId(nodeId);
+        
         // First, update the current node's visibility in memory
         node.show = isSelected;
 
@@ -336,10 +342,33 @@ const FolderTree: React.FC<FolderTreeProps> = ({ onNodeSelect }) => {
                 });
             }
             
-            // If it's a folder, update all children recursively
+            // If it's a folder, only update direct file children, not subfolder children
             if (currentNode.nodes) {
                 currentNode.nodes.forEach(child => {
-                    updateNodeAndChildren(child, visibility);
+                    // Only update the child if it's a file, not a folder
+                    if (!child.isFolder && !child.nodes) {
+                        // Update files only
+                        child.show = visibility;
+                        
+                        // Notify permissions panel about the file
+                        if (onNodeSelect && child.id) {
+                            onNodeSelect({
+                                ...child,
+                                show: visibility
+                            });
+                        }
+                    } else if (child.isFolder === true) {
+                        // For folder children, just update the visibilityMap entry but don't recursively update their children
+                        child.show = visibility;
+                        
+                        // Notify permissions panel about the subfolder
+                        if (onNodeSelect && child.id) {
+                            onNodeSelect({
+                                ...child,
+                                show: visibility
+                            });
+                        }
+                    }
                 });
             }
         };
@@ -359,10 +388,12 @@ const FolderTree: React.FC<FolderTreeProps> = ({ onNodeSelect }) => {
         
         // Pass the complete node (including its current visibility state) to the item permissions panel
         if (onNodeSelect) {
-            // Ensure we pass the current visibility state
+            // Ensure we pass the current visibility state and custom permissions flag
             const nodeToPass = {
                 ...node,
-                show: node.show !== undefined ? node.show : isNodeCheckboxSelected(node)
+                show: node.show !== undefined ? node.show : isNodeCheckboxSelected(node),
+                isCustomized: node.isCustomized, // Preserve the custom permissions flag
+                isFolder: node.isFolder || (node.nodes && node.nodes.length > 0) // Make sure isFolder is properly set
             };
             onNodeSelect(nodeToPass);
         }
@@ -370,9 +401,15 @@ const FolderTree: React.FC<FolderTreeProps> = ({ onNodeSelect }) => {
 
     // Function to check if a node is selected by checkbox - directly tied to visibility
     const isNodeCheckboxSelected = (node: Node): boolean => {
-        // If the node has a 'show' property, prioritize that value
-        if (node.hasOwnProperty('show')) {
-            return (node as any).show === true;
+        // If the node has explicit visibility properties, prioritize those values
+        if (node.hasOwnProperty('show') || node.hasOwnProperty('isVisible')) {
+            // Check both show and isVisible properties where available
+            const showValue = node.hasOwnProperty('show') ? (node as any).show : true;
+            const isVisibleValue = node.hasOwnProperty('isVisible') ? (node as any).isVisible : true;
+            
+            // Consider a node visible if both show and isVisible are true
+            // or if only one property exists and it's true
+            return showValue && isVisibleValue;
         }
         
         // Otherwise fall back to the selectedItems set

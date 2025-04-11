@@ -113,6 +113,7 @@ export const FileTreeItem = ({
   }) => {
     const isSelectedForHighlight = selectedItem === item.id;
     const itemPermissions = selectedPermissions[item.id] || { show: true };
+    const isCustomized = itemPermissions.isCustomized === true;
   
     const handleToggleExpandClick = (e: React.MouseEvent) => {
       e.stopPropagation();
@@ -125,7 +126,11 @@ export const FileTreeItem = ({
   
     const handleCheckboxClick = (e: React.MouseEvent) => {
       e.stopPropagation();
+      // First, update the permission
       onPermissionChange(item.id, { show: !itemPermissions.show });
+      
+      // Then select the item to show its permissions panel
+      onSelectItem(item.id);
     };
   
     return (
@@ -138,7 +143,11 @@ export const FileTreeItem = ({
           onClick={handleSelect}
         >
           <div style={{ width: `${level * 12}px` }} />
-          <div className="flex items-center mr-1" onClick={(e) => e.stopPropagation()}> 
+          <div className="flex items-center mr-1 relative" onClick={(e) => e.stopPropagation()}>
+            {/* Custom permission indicator */}
+            {isCustomized && item.type === 'file' && (
+              <div className="absolute w-2 h-2 rounded-full bg-yellow-400 left-0 top-1/2 transform -translate-y-1/2 -translate-x-3"></div>
+            )}
             <div className="relative w-5 h-5"> 
               <Checkbox
                 id={`tree-item-${item.id}`}
@@ -203,13 +212,37 @@ export const ItemPermissionsPanel: React.FC<{
     selectedItemName: string | null;
     permissions: Record<string, FilePermission>;
     onPermissionChange: (id: string, permissions: Partial<FilePermission>) => void;
+    itemsMap?: Record<string, FileTreeItemType>;
+    parentMap?: Record<string, string | undefined>;
   }> = ({ 
     selectedItemId, 
     selectedItemIsFolder,
     selectedItemName,
     permissions, 
-    onPermissionChange 
+    onPermissionChange,
+    itemsMap,
+    parentMap
   }) => {
+    // Track which files have custom permissions that override their parent folder's settings
+    const [customPermissionFiles, setCustomPermissionFiles] = useState<Set<string>>(new Set());
+    
+    // Initialize customPermissionFiles from permissions when component mounts
+    useEffect(() => {
+      // Find all files marked as customized and add them to the set
+      const customizedFiles = new Set<string>();
+      
+      Object.entries(permissions).forEach(([id, perm]) => {
+        // Consider a file customized if it has the isCustomized flag explicitly set to true
+        if (perm.isCustomized === true) {
+          customizedFiles.add(id);
+          console.log(`Found custom file: ${id}`, perm);
+        }
+      });
+      
+      console.log(`Initialized ${customizedFiles.size} custom permission files`);
+      setCustomPermissionFiles(customizedFiles);
+    }, [permissions]);
+    
     if (!selectedItemId) {
       return (
         <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-md h-full flex items-center justify-center min-h-[500px]">
@@ -221,10 +254,31 @@ export const ItemPermissionsPanel: React.FC<{
     }
   
     const itemPermissions = permissions[selectedItemId] || {};
-    
     const isFolder = selectedItemIsFolder === true;
     const isVisible = itemPermissions.isVisible !== false;
-  
+    const isCustomFile = !isFolder && (customPermissionFiles.has(selectedItemId) || itemPermissions.isCustomized === true);
+    
+    // Find the parent folder using the parentMap
+    const getParentFolderId = (): string | null => {
+      if (!selectedItemId || !parentMap) return null;
+      return parentMap[selectedItemId] || null;
+    };
+    
+    // Get the parent folder's childFilePerms
+    const getParentFolderChildFilePerms = (): Partial<FilePermission> | null => {
+      const parentId = getParentFolderId();
+      if (!parentId) return null;
+      
+      const parentPerms = permissions[parentId];
+      if (!parentPerms) return null;
+      
+      // Log parent folder permissions for debugging
+      console.log(`Getting parent folder ${parentId} childFilePerms:`, parentPerms.childFilePerms);
+      
+      return parentPerms?.childFilePerms || null;
+    };
+
+    // Define default templates for file and folder permissions
     const DEFAULT_FILE_PERMISSIONS = {
       viewAccess: true,
       watermarkContent: false, 
@@ -255,19 +309,69 @@ export const ItemPermissionsPanel: React.FC<{
       renameContents: false,
       deleteContents: false
     };
-  
+
     const handleVisibilitySwitchChange = (checked: boolean) => {
       if (selectedItemId) {
-        onPermissionChange(selectedItemId, { 
-          isVisible: checked,
-          show: checked
-        });
+        if (!isFolder) {
+          // For files, we need to respect whether it's a custom file or not
+          if (isCustomFile) {
+            // If it's already a custom file, just update the visibility
+            handleFilePermissionChange({ 
+              isVisible: checked,
+              show: checked
+            });
+          } else {
+            // If it's not a custom file yet, make it one when changing visibility
+            // This is important - changing visibility should make it a custom file
+            handleFilePermissionChange({ 
+              isVisible: checked,
+              show: checked,
+              isCustomized: true
+            });
+            
+            // Also add it to our set of custom files
+            setCustomPermissionFiles(prev => {
+              const newSet = new Set(prev);
+              newSet.add(selectedItemId);
+              return newSet;
+            });
+          }
+        } else {
+          // For folders, update visibility and apply to child files
+          onPermissionChange(selectedItemId, { 
+            isVisible: checked,
+            show: checked,
+            // Also update childFilePerms to ensure inheritance works properly
+            childFilePerms: {
+              ...(itemPermissions.childFilePerms || {}),
+              isVisible: checked,
+              show: checked
+            }
+          });
+        }
       }
     };
   
     const handleFilePermissionChange = (update: Partial<FilePermission>) => {
       if (selectedItemId && !isFolder) {
-        onPermissionChange(selectedItemId, update);
+        // Mark this file as having custom permissions - always do this when any permission changes
+        // This ensures that even changes to the 'show' field will mark the file as customized
+        const wasAlreadyCustomized = customPermissionFiles.has(selectedItemId) || itemPermissions.isCustomized === true;
+        
+        if (!wasAlreadyCustomized) {
+          // Add to our tracked set of custom permission files
+          setCustomPermissionFiles(prev => {
+            const newSet = new Set(prev);
+            newSet.add(selectedItemId);
+            return newSet;
+          });
+        }
+        
+        // Always set the isCustomized flag to true in the permissions object
+        onPermissionChange(selectedItemId, {
+          ...update,
+          isCustomized: true
+        });
       }
     };
 
@@ -284,40 +388,119 @@ export const ItemPermissionsPanel: React.FC<{
 
     const handleChildFilePermissionChange = (update: Partial<FilePermission>) => {
       if (selectedItemId && isFolder) {
+        // Ensure we merge the update with the *current* childFilePerms template,
+        // using defaults only if the template doesn't exist yet.
+        const currentChildPerms = itemPermissions.childFilePerms || {}; // Start with existing or empty
+        const newChildPerms = {
+          ...DEFAULT_FILE_PERMISSIONS, // Start with base defaults
+          ...currentChildPerms,       // Override with current template values
+          ...update                  // Apply the specific change
+        };
+
         onPermissionChange(selectedItemId, { 
-          childFilePerms: {
-            ...(itemPermissions.childFilePerms || DEFAULT_FILE_PERMISSIONS),
-            ...update
-          }
+          childFilePerms: newChildPerms
         });
       }
     };
+    
+    // Function to reset custom file permissions and use parent folder's settings
+    const resetToFolderDefaults = () => {
+      if (!selectedItemId || isFolder) return;
+      
+      // First, find the parent folder
+      const parentFolderId = parentMap?.[selectedItemId];
+      
+      // Remove the file from the custom permissions set
+      setCustomPermissionFiles(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(selectedItemId);
+        return newSet;
+      });
+      
+      // Get the parent folder's permissions to apply
+      let parentChildFilePerms: Partial<FilePermission> | null = null;
+      
+      // If we have a parent ID and it has permissions with childFilePerms set
+      if (parentFolderId && permissions[parentFolderId]?.childFilePerms) {
+        parentChildFilePerms = permissions[parentFolderId].childFilePerms;
+      }
+      
+      // Reset the custom flag and apply parent folder's permissions
+      const resetPerms: Partial<FilePermission> = {
+        isCustomized: false,
+        // Explicitly reset visibility to match parent folder's settings
+        isVisible: parentChildFilePerms?.isVisible !== undefined ? parentChildFilePerms.isVisible : true,
+        show: parentChildFilePerms?.show !== undefined ? parentChildFilePerms.show : true,
+      };
+      
+      // Add all other permissions from parent's childFilePerms if available
+      if (parentChildFilePerms) {
+        // Copy specific permissions from parent
+        if (parentChildFilePerms.viewAccess !== undefined) resetPerms.viewAccess = parentChildFilePerms.viewAccess;
+        if (parentChildFilePerms.watermarkContent !== undefined) resetPerms.watermarkContent = parentChildFilePerms.watermarkContent;
+        if (parentChildFilePerms.deleteAccess !== undefined) resetPerms.deleteAccess = parentChildFilePerms.deleteAccess;
+        if (parentChildFilePerms.editAccess !== undefined) resetPerms.editAccess = parentChildFilePerms.editAccess;
+        if (parentChildFilePerms.viewComments !== undefined) resetPerms.viewComments = parentChildFilePerms.viewComments;
+        if (parentChildFilePerms.addComments !== undefined) resetPerms.addComments = parentChildFilePerms.addComments;
+        if (parentChildFilePerms.downloadAccess !== undefined) resetPerms.downloadAccess = parentChildFilePerms.downloadAccess;
+        if (parentChildFilePerms.viewTags !== undefined) resetPerms.viewTags = parentChildFilePerms.viewTags;
+        if (parentChildFilePerms.addTags !== undefined) resetPerms.addTags = parentChildFilePerms.addTags;
+        if (parentChildFilePerms.canQuery !== undefined) resetPerms.canQuery = parentChildFilePerms.canQuery;
+        if (parentChildFilePerms.moveAccess !== undefined) resetPerms.moveAccess = parentChildFilePerms.moveAccess;
+        if (parentChildFilePerms.renameAccess !== undefined) resetPerms.renameAccess = parentChildFilePerms.renameAccess;
+      }
+      
+      // Update the file's permissions
+      onPermissionChange(selectedItemId, resetPerms);
+    };
 
+    // Helper functions to get current permissions
     const getFilePermission = (key: keyof typeof DEFAULT_FILE_PERMISSIONS) => {
       if (!isFolder) {
+        // If this is a customized file, get its direct permissions
+        if (isCustomFile) {
+          // Directly return the file's permission or the default if not set
           return itemPermissions[key] !== undefined ? itemPermissions[key] : DEFAULT_FILE_PERMISSIONS[key];
+        }
+        
+        // If NOT customized, strictly inherit from parent or global defaults
+        const parentChildFilePerms = getParentFolderChildFilePerms();
+        if (parentChildFilePerms && parentChildFilePerms[key] !== undefined) {
+          // Inherit from parent's template
+          return parentChildFilePerms[key];
+        }
+        
+        // If parent template doesn't have the key, fall back to global default
+        return DEFAULT_FILE_PERMISSIONS[key];
       }
+      
+      // This case should not be reached for files, but return default as a safety measure
       return DEFAULT_FILE_PERMISSIONS[key]; 
     };
 
     const getFolderPermission = (key: keyof typeof DEFAULT_FOLDER_PERMISSIONS) => {
-        if (!isFolder) return DEFAULT_FOLDER_PERMISSIONS[key];
-        const folderPerms = itemPermissions.folderPerms;
-        if (!folderPerms) return DEFAULT_FOLDER_PERMISSIONS[key];
-        return folderPerms[key] !== undefined ? folderPerms[key] : DEFAULT_FOLDER_PERMISSIONS[key];
+      if (!isFolder) return DEFAULT_FOLDER_PERMISSIONS[key];
+      const folderPerms = itemPermissions.folderPerms;
+      if (!folderPerms) return DEFAULT_FOLDER_PERMISSIONS[key];
+      return folderPerms[key] !== undefined ? folderPerms[key] : DEFAULT_FOLDER_PERMISSIONS[key];
     };
 
     const getChildFilePermission = (key: keyof typeof DEFAULT_FILE_PERMISSIONS) => {
-        if (!isFolder) return DEFAULT_FILE_PERMISSIONS[key];
-        const childPerms = itemPermissions.childFilePerms;
-        if (!childPerms) return DEFAULT_FILE_PERMISSIONS[key];
-        return childPerms[key] !== undefined ? childPerms[key] : DEFAULT_FILE_PERMISSIONS[key];
+      if (!isFolder) return DEFAULT_FILE_PERMISSIONS[key];
+      const childPerms = itemPermissions.childFilePerms;
+      if (!childPerms) return DEFAULT_FILE_PERMISSIONS[key];
+      return childPerms[key] !== undefined ? childPerms[key] : DEFAULT_FILE_PERMISSIONS[key];
     };
   
     return (
       <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-md h-full overflow-auto min-h-[600px]">
         <h3 className="font-medium text-sm mb-3 dark:text-white">
-           {selectedItemName || 'Item'} Permissions {isFolder ? '(Folder)' : '(File)'}
+          {selectedItemName || 'Item'} Permissions {isFolder ? '(Folder)' : '(File)'}
+          {isCustomFile && (
+            <span className="ml-2 px-2 py-0.5 text-xs bg-yellow-100 text-yellow-800 rounded-full">
+              Custom
+            </span>
+          )}
         </h3>
         
         <div className="space-y-4">
@@ -334,47 +517,78 @@ export const ItemPermissionsPanel: React.FC<{
               </label>
             </div>
           </div>
-          
+
+          {/* FILE PERMISSIONS */}
           {!isFolder && (
             <>
-          <div>
+              {/* Custom permissions banner for files */}
+              {isCustomFile ? (
+                <div className="mb-4 bg-yellow-50 border border-yellow-200 rounded-md p-3">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h4 className="text-sm font-medium text-yellow-800">Custom File Permissions</h4>
+                      <p className="text-xs text-yellow-600">This file has custom permissions that override folder defaults</p>
+                    </div>
+                    <button 
+                      onClick={resetToFolderDefaults}
+                      className="px-2 py-1 text-xs bg-yellow-100 text-yellow-800 hover:bg-yellow-200 rounded-md"
+                    >
+                      Reset to Folder Defaults
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="mb-4 bg-blue-50 border border-blue-200 rounded-md p-3">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h4 className="text-sm font-medium text-blue-800">Inheriting Folder Permissions</h4>
+                      <p className="text-xs text-blue-600">This file follows the parent folder's default file permissions</p>
+                    </div>
+                    <p className="text-xs text-blue-600">
+                      Edit any setting to customize
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              <div>
                 <h4 className="text-xs uppercase text-gray-500 dark:text-gray-400 mb-2">File Access Permissions</h4>
-            <div className="space-y-2">
-              <div className="flex items-center space-x-2">
-                <Switch 
-                  id={`${selectedItemId}-panel-view`}
+                <div className="space-y-2">
+                  <div className="flex items-center space-x-2">
+                    <Switch 
+                      id={`${selectedItemId}-panel-view`}
                       checked={isVisible && getFilePermission('viewAccess')}
-                  onCheckedChange={(checked) => 
+                      onCheckedChange={(checked) => 
                         handleFilePermissionChange({ viewAccess: checked })}
-                  disabled={!isVisible}
-                />
-                <label htmlFor={`${selectedItemId}-panel-view`} className={`text-sm transition-colors ${!isVisible ? 'text-gray-400 dark:text-gray-500' : 'dark:text-gray-300'}`}>
-                  View content
-                </label>
-              </div>
-              
-              <div className="flex items-center space-x-2">
-                <Switch 
-                  id={`${selectedItemId}-panel-download`}
+                      disabled={!isVisible}
+                    />
+                    <label htmlFor={`${selectedItemId}-panel-view`} className={`text-sm transition-colors ${!isVisible ? 'text-gray-400 dark:text-gray-500' : 'dark:text-gray-300'}`}>
+                      View content
+                    </label>
+                  </div>
+                  
+                  <div className="flex items-center space-x-2">
+                    <Switch 
+                      id={`${selectedItemId}-panel-download`}
                       checked={isVisible && getFilePermission('downloadAccess')}
-                  onCheckedChange={(checked) => 
+                      onCheckedChange={(checked) => 
                         handleFilePermissionChange({ downloadAccess: checked })}
-                  disabled={!isVisible}
-                />
-                <label htmlFor={`${selectedItemId}-panel-download`} className={`text-sm transition-colors ${!isVisible ? 'text-gray-400 dark:text-gray-500' : 'dark:text-gray-300'}`}>
-                  Download
-                </label>
-              </div>
-              
-              <div className="flex items-center space-x-2">
-                <Switch 
-                  id={`${selectedItemId}-panel-edit`}
+                      disabled={!isVisible}
+                    />
+                    <label htmlFor={`${selectedItemId}-panel-download`} className={`text-sm transition-colors ${!isVisible ? 'text-gray-400 dark:text-gray-500' : 'dark:text-gray-300'}`}>
+                      Download
+                    </label>
+                  </div>
+                  
+                  <div className="flex items-center space-x-2">
+                    <Switch 
+                      id={`${selectedItemId}-panel-edit`}
                       checked={isVisible && getFilePermission('editAccess')}
-                  onCheckedChange={(checked) => 
+                      onCheckedChange={(checked) => 
                         handleFilePermissionChange({ editAccess: checked })}
-                  disabled={!isVisible}
-                />
-                <label htmlFor={`${selectedItemId}-panel-edit`} className={`text-sm transition-colors ${!isVisible ? 'text-gray-400 dark:text-gray-500' : 'dark:text-gray-300'}`}>
+                      disabled={!isVisible}
+                    />
+                    <label htmlFor={`${selectedItemId}-panel-edit`} className={`text-sm transition-colors ${!isVisible ? 'text-gray-400 dark:text-gray-500' : 'dark:text-gray-300'}`}>
                       Edit
                     </label>
                   </div>
@@ -402,40 +616,40 @@ export const ItemPermissionsPanel: React.FC<{
                     />
                     <label htmlFor={`${selectedItemId}-panel-move`} className={`text-sm transition-colors ${!isVisible ? 'text-gray-400 dark:text-gray-500' : 'dark:text-gray-300'}`}>
                       Move file
-                </label>
+                    </label>
+                  </div>
+                </div>
               </div>
-            </div>
-          </div>
-          
-          <div>
+              
+              <div>
                 <h4 className="text-xs uppercase text-gray-500 dark:text-gray-400 mb-2">File Special Settings</h4>
-            <div className="space-y-2">
-               <div className="flex items-center space-x-2">
-                <Switch 
-                  id={`${selectedItemId}-panel-watermark`}
+                <div className="space-y-2">
+                  <div className="flex items-center space-x-2">
+                    <Switch 
+                      id={`${selectedItemId}-panel-watermark`}
                       checked={isVisible && getFilePermission('watermarkContent')}
-                  onCheckedChange={(checked) => 
+                      onCheckedChange={(checked) => 
                         handleFilePermissionChange({ watermarkContent: checked })}
-                  disabled={!isVisible}
-                />
-                <label htmlFor={`${selectedItemId}-panel-watermark`} className={`text-sm transition-colors ${!isVisible ? 'text-gray-400 dark:text-gray-500' : 'dark:text-gray-300'}`}>
+                      disabled={!isVisible}
+                    />
+                    <label htmlFor={`${selectedItemId}-panel-watermark`} className={`text-sm transition-colors ${!isVisible ? 'text-gray-400 dark:text-gray-500' : 'dark:text-gray-300'}`}>
                       Apply watermark
-                </label>
-              </div>
-              
-              <div className="flex items-center space-x-2">
-                <Switch 
-                  id={`${selectedItemId}-panel-viewtags`}
+                    </label>
+                  </div>
+                  
+                  <div className="flex items-center space-x-2">
+                    <Switch 
+                      id={`${selectedItemId}-panel-viewtags`}
                       checked={isVisible && getFilePermission('viewTags')}
-                  onCheckedChange={(checked) => 
+                      onCheckedChange={(checked) => 
                         handleFilePermissionChange({ viewTags: checked })}
-                  disabled={!isVisible}
-                />
-                <label htmlFor={`${selectedItemId}-panel-viewtags`} className={`text-sm transition-colors ${!isVisible ? 'text-gray-400 dark:text-gray-500' : 'dark:text-gray-300'}`}>
-                  View tags
-                </label>
-              </div>
-              
+                      disabled={!isVisible}
+                    />
+                    <label htmlFor={`${selectedItemId}-panel-viewtags`} className={`text-sm transition-colors ${!isVisible ? 'text-gray-400 dark:text-gray-500' : 'dark:text-gray-300'}`}>
+                      View tags
+                    </label>
+                  </div>
+                  
                   <div className="flex items-center space-x-2">
                     <Switch 
                       id={`${selectedItemId}-panel-addtags`}
@@ -492,6 +706,7 @@ export const ItemPermissionsPanel: React.FC<{
             </>
           )}
 
+          {/* FOLDER PERMISSIONS */}
           {isFolder && (
             <>
               <div>
@@ -614,17 +829,17 @@ export const ItemPermissionsPanel: React.FC<{
                     </label>
                   </div>
 
-                <div className="flex items-center space-x-2">
-                  <Switch 
+                  <div className="flex items-center space-x-2">
+                    <Switch 
                       id={`${selectedItemId}-panel-folder-canquery`}
                       checked={isVisible && getFolderPermission('canQuery')}
-                    onCheckedChange={(checked) => 
+                      onCheckedChange={(checked) => 
                         handleFolderPermissionChange({ canQuery: checked })}
-                    disabled={!isVisible}
-                  />
+                      disabled={!isVisible}
+                    />
                     <label htmlFor={`${selectedItemId}-panel-folder-canquery`} className={`text-sm transition-colors ${!isVisible ? 'text-gray-400 dark:text-gray-500' : 'dark:text-gray-300'}`}>
                       AI Query Content
-                  </label>
+                    </label>
                   </div>
                 </div>
               </div>
@@ -777,8 +992,8 @@ export const ItemPermissionsPanel: React.FC<{
                       Move files
                     </label>
                   </div>
-            </div>
-          </div>
+                </div>
+              </div>
             </>
           )}
         </div>

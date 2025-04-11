@@ -836,6 +836,8 @@ export const PermissionGroupDialog: React.FC<PermissionGroupDialogProps> = ({
                     selectedItemName={selectedItemName}
                     permissions={permissionsMap}
                     onPermissionChange={handlePermissionChange}
+                    itemsMap={dialogItemsMap}
+                    parentMap={dialogParentMap}
                   />
                 </div>
               </div>
