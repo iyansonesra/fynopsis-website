@@ -22,6 +22,8 @@ export type Node = {
     path?: string;   // Add path information
     isFolder?: boolean; // Indicate if it's a folder
     parentFolderId?: string; // Add parent folder ID
+    // Add visibility property
+    show?: boolean;
     // File attributes
     fileId?: string;
     fileName?: string;
@@ -72,7 +74,8 @@ const buildFolderStructure = (folders: Folder[], files: FileItem[]): Node[] => {
                     id: index === pathParts.length - 1 ? folder.id : undefined,
                     path: pathParts.slice(0, index + 1).join('/'),
                     isFolder: true,
-                    parentFolderId: parentId
+                    parentFolderId: parentId,
+                    show: true // Default visibility to true
                 };
             }
 
@@ -104,7 +107,8 @@ const buildFolderStructure = (folders: Folder[], files: FileItem[]): Node[] => {
                     nodes: [],
                     path: pathParts.slice(0, i + 1).join('/'),
                     isFolder: true,
-                    parentFolderId: parentId
+                    parentFolderId: parentId,
+                    show: true // Default visibility to true
                 };
             }
             parentId = currentLevel[part].id || parentId;
@@ -121,6 +125,7 @@ const buildFolderStructure = (folders: Folder[], files: FileItem[]): Node[] => {
                 path: file.fullPath,
                 isFolder: false,
                 parentFolderId: file.parentFolderId || parentId,
+                show: true, // Default visibility to true
                 // Add all file attributes
                 fileId: file.fileId,
                 fileName: file.fileName,
@@ -238,9 +243,28 @@ const FolderTree: React.FC<FolderTreeProps> = ({ onNodeSelect }) => {
         const folderTree = buildFolderStructure(searchableFolders, searchableFiles);
         setFolderStructure(folderTree);
 
-        // Select all nodes by default
-        const allNodeIds = folderTree.flatMap(node => getAllNodeIds(node));
-        setSelectedItems(new Set(allNodeIds));
+        // Create a set of visible items (those with show: true)
+        const getVisibleNodeIds = (node: Node): string[] => {
+            const ids: string[] = [];
+            const nodeId = node.id || (node.path ? `${node.path}/${node.name}` : node.name);
+            
+            // If node has a show property and it's true, add its ID
+            // Default to true if no show property is found
+            if (node.show !== false) {
+                ids.push(nodeId);
+            }
+            
+            if (node.nodes) {
+                node.nodes.forEach(child => {
+                    ids.push(...getVisibleNodeIds(child));
+                });
+            }
+            return ids;
+        };
+
+        // Initialize selectedItems with all visible node IDs
+        const visibleNodeIds = folderTree.flatMap(node => getVisibleNodeIds(node));
+        setSelectedItems(new Set(visibleNodeIds));
     }, [openNode, searchableFiles, searchableFolders]);
 
     // Function to handle checkbox selection (with children and parents)
@@ -250,6 +274,10 @@ const FolderTree: React.FC<FolderTreeProps> = ({ onNodeSelect }) => {
         const childIds = getAllNodeIds(node);
         const nodeId = node.id || (node.path ? `${node.path}/${node.name}` : node.name);
         
+        // First, update the current node's visibility in memory
+        node.show = isSelected;
+
+        // Update the node and its children in selectedItems set
         if (isSelected) {
             // Add the node and its children
             childIds.forEach(id => newSelectedItems.add(id));
@@ -262,9 +290,8 @@ const FolderTree: React.FC<FolderTreeProps> = ({ onNodeSelect }) => {
                 }
             });
 
-            // Also update parent nodes' visibility
+            // Update parent nodes' visibility
             parentIds.forEach(parentId => {
-                // Find the parent node
                 const findNode = (searchNode: Node, targetId: string): Node | null => {
                     const searchNodeId = searchNode.id || (searchNode.path ? `${searchNode.path}/${searchNode.name}` : searchNode.name);
                     if (searchNodeId === targetId) return searchNode;
@@ -278,6 +305,10 @@ const FolderTree: React.FC<FolderTreeProps> = ({ onNodeSelect }) => {
 
                 const parentNode = findNode(folderStructure[0], parentId);
                 if (parentNode) {
+                    // Update parent visibility in memory
+                    parentNode.show = true;
+                    
+                    // Update parent visibility in item permissions
                     const updatedParent = {
                         ...parentNode,
                         show: true
@@ -292,45 +323,59 @@ const FolderTree: React.FC<FolderTreeProps> = ({ onNodeSelect }) => {
         
         setSelectedItems(newSelectedItems);
 
-        // Update permissions for the node and its children
-        if (onNodeSelect) {
-            // Create a new node with updated visibility
-            const updatedNode = {
-                ...node,
-                show: isSelected
-            };
-            onNodeSelect(updatedNode);
-
-            // If it's a folder, update all children recursively
-            if (node.isFolder && node.nodes) {
-                const updateChildrenVisibility = (childNode: Node) => {
-                    const updatedChild = {
-                        ...childNode,
-                        show: isSelected
-                    };
-                    onNodeSelect(updatedChild);
-                    if (childNode.nodes) {
-                        childNode.nodes.forEach(updateChildrenVisibility);
-                    }
-                };
-                node.nodes.forEach(updateChildrenVisibility);
+        // Create a mapping of all affected nodes for efficient updates
+        const updateNodeAndChildren = (currentNode: Node, visibility: boolean) => {
+            // First, update the node in memory
+            currentNode.show = visibility;
+            
+            // Then, notify the permissions panel
+            if (onNodeSelect && currentNode.id) {
+                onNodeSelect({
+                    ...currentNode,
+                    show: visibility
+                });
             }
-        }
+            
+            // If it's a folder, update all children recursively
+            if (currentNode.nodes) {
+                currentNode.nodes.forEach(child => {
+                    updateNodeAndChildren(child, visibility);
+                });
+            }
+        };
+        
+        // Apply the visibility change to the node and all its children
+        updateNodeAndChildren(node, isSelected);
+        
+        // Update the folder structure to trigger re-render with new visibility
+        setFolderStructure([...folderStructure]);
     };
 
     // Function to handle node selection (single node only)
     const handleNodeClick = (node: Node) => {
-        if (node.id) {
-            setSelectedNodeId(node.id);
-            // Call onNodeSelect if provided
-            if (onNodeSelect) {
-                onNodeSelect(node);
-            }
+        // Set the selected node ID for highlighting purposes
+        const nodeId = node.id || (node.path ? `${node.path}/${node.name}` : node.name);
+        setSelectedNodeId(nodeId);
+        
+        // Pass the complete node (including its current visibility state) to the item permissions panel
+        if (onNodeSelect) {
+            // Ensure we pass the current visibility state
+            const nodeToPass = {
+                ...node,
+                show: node.show !== undefined ? node.show : isNodeCheckboxSelected(node)
+            };
+            onNodeSelect(nodeToPass);
         }
     };
 
-    // Function to check if a node is selected by checkbox
+    // Function to check if a node is selected by checkbox - directly tied to visibility
     const isNodeCheckboxSelected = (node: Node): boolean => {
+        // If the node has a 'show' property, prioritize that value
+        if (node.hasOwnProperty('show')) {
+            return (node as any).show === true;
+        }
+        
+        // Otherwise fall back to the selectedItems set
         if (!node.id) {
             // Generate consistent ID for nodes without explicit ID
             const generatedId = node.path ? `${node.path}/${node.name}` : node.name;
