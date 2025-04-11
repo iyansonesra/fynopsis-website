@@ -300,59 +300,82 @@ export const createPermissionGroup = async (
   permissions: PermissionGroup
 ) => {
   try {
-    // Map frontend state to the backend expected structure
+    // Map frontend state (NEW structure) to the backend expected structure
+    // NOTE: This assumes the backend API has been updated to accept the NEW structure.
+    // If the backend still expects the OLD structure, this mapping needs adjustment.
     const backendPermissionsPayload = {
-      // General dataroom permissions
+      // Pass the relevant fields from the NEW frontend structure
+      name: groupName, // Name is passed separately but could be part of payload too
       allAccess: permissions.allAccess,
-      canQueryEntireDataroom: permissions.canQuery,
-      canOrganize: permissions.canOrganize,
-      canViewAuditLogs: permissions.canViewAuditLogs,
-      canInviteUsers: permissions.canInviteUsers,
-      canUpdateUserPermissions: permissions.canUpdateUserPermissions,
-      canCreatePermissionGroups: permissions.canCreatePermissionGroups,
-      canDeleteDataroom: permissions.canDeleteDataroom,
-      canReadQA: permissions.canUseQA,
-      canAnswerQA: permissions.canReadAnswerQuestions,
-      canRetryProcessing: true, // Default to true 
       
-      // Default file permissions
+      // Direct Permissions
+      canQueryEntireDataroom: permissions.canQueryEntireDataroom ?? false,
+      canOrganize: permissions.canOrganize ?? false,
+      canRetryProcessing: permissions.canRetryProcessing ?? false,
+      canDeleteDataroom: permissions.canDeleteDataroom ?? false,
+      
+      // Panel Permissions
+      canAccessIssuesPanel: permissions.canAccessIssuesPanel ?? false,
+      canCreateIssue: permissions.canCreateIssue ?? false,
+      canAnswerIssue: permissions.canAnswerIssue ?? false,
+      canAccessAuditLogsPanel: permissions.canAccessAuditLogsPanel ?? false,
+      canViewAuditLogs: permissions.canViewAuditLogs ?? false, // Kept
+      canExportAuditLogs: permissions.canExportAuditLogs ?? false,
+      canAccessDiligenceDashboard: permissions.canAccessDiligenceDashboard ?? false,
+      canCreateDiligenceWidget: permissions.canCreateDiligenceWidget ?? false,
+      canMoveWidgets: permissions.canMoveWidgets ?? false,
+      canDeleteWidgets: permissions.canDeleteWidgets ?? false,
+      canAccessQuestionairePanel: permissions.canAccessQuestionairePanel ?? false, // Using frontend spelling
+      canAddQuestionnaire: permissions.canAddQuestionnaire ?? false, // Using frontend spelling
+      
+      // User Management Permissions
+      canAccessUserManagementPanel: permissions.canAccessUserManagementPanel ?? false,
+      canViewUsers: permissions.canViewUsers ?? false,
+      canViewPermissionGroupDetails: permissions.canViewPermissionGroupDetails ?? false,
+      canInviteUsers: permissions.canInviteUsers ?? [], // Default to empty array
+      canUpdateUserPermissions: permissions.canUpdateUserPermissions ?? [], // Default to empty array
+      canUpdatePeerPermissions: permissions.canUpdatePeerPermissions ?? false,
+      canRemoveUsers: permissions.canRemoveUsers ?? [], // Default to empty array
+      canRemovePeerPermission: permissions.canRemovePeerPermission ?? false,
+      canCreatePermissionGroups: permissions.canCreatePermissionGroups ?? false, // Kept
+      
+      // Default Permissions (Flattened structure, ensure defaults for optional fields)
       defaultFilePerms: {
-        ...permissions.defaultFilePerms
+        viewAccess: permissions.defaultFilePerms.viewAccess,
+        watermarkContent: permissions.defaultFilePerms.watermarkContent,
+        deleteAccess: permissions.defaultFilePerms.deleteAccess ?? false,
+        editAccess: permissions.defaultFilePerms.editAccess ?? false,
+        deleteEditAccess: permissions.defaultFilePerms.deleteEditAccess ?? false, // Keep or remove based on backend expectation
+        viewComments: permissions.defaultFilePerms.viewComments,
+        addComments: permissions.defaultFilePerms.addComments,
+        downloadAccess: permissions.defaultFilePerms.downloadAccess,
+        viewTags: permissions.defaultFilePerms.viewTags,
+        addTags: permissions.defaultFilePerms.addTags ?? false,
+        canQuery: permissions.defaultFilePerms.canQuery,
+        isVisible: permissions.defaultFilePerms.isVisible,
+        moveAccess: permissions.defaultFilePerms.moveAccess ?? false,
+        renameAccess: permissions.defaultFilePerms.renameAccess ?? false,
       },
-      
-      // Default folder permissions with complete nested structure
       defaultFolderPerms: {
-        // Direct folder permissions
         allowUploads: permissions.defaultFolderPerms.allowUploads,
         createFolders: permissions.defaultFolderPerms.createFolders,
         addComments: permissions.defaultFolderPerms.addComments,
         viewComments: permissions.defaultFolderPerms.viewComments,
         viewContents: permissions.defaultFolderPerms.viewContents,
         viewTags: permissions.defaultFolderPerms.viewTags,
+        addTags: permissions.defaultFolderPerms.addTags ?? false,
         canQuery: permissions.defaultFolderPerms.canQuery,
         isVisible: permissions.defaultFolderPerms.isVisible,
-        
-        // Nested permissions for inheritance
-        inheritFileAccess: {
-          ...permissions.defaultFolderPerms.inheritFileAccess || permissions.defaultFilePerms
-        },
-        inheritFolderAccess: {
-          ...(permissions.defaultFolderPerms.inheritFolderAccess || {
-            allowUploads: permissions.defaultFolderPerms.allowUploads,
-            createFolders: permissions.defaultFolderPerms.createFolders,
-            addComments: permissions.defaultFolderPerms.addComments,
-            viewComments: permissions.defaultFolderPerms.viewComments,
-            viewContents: permissions.defaultFolderPerms.viewContents,
-            viewTags: permissions.defaultFolderPerms.viewTags,
-            canQuery: permissions.defaultFolderPerms.canQuery,
-            isVisible: permissions.defaultFolderPerms.isVisible
-          })
-        }
+        moveContents: permissions.defaultFolderPerms.moveContents ?? false,
+        renameContents: permissions.defaultFolderPerms.renameContents ?? false,
+        deleteContents: permissions.defaultFolderPerms.deleteContents ?? false,
       },
       
-      // Empty folder and file specific access maps
+      // Specific Overrides
       folderIdAccess: permissions.folderIdAccess || {},
       fileIdAccess: permissions.fileIdAccess || {}
+      
+      // Removed old/deprecated mappings: canQuery, canUseQA, canReadAnswerQuestions
     };
 
     const restOperation = post({

@@ -38,7 +38,7 @@ interface PermissionGroupDialogProps {
   handleAllAccessChange?: (checked: boolean) => void;
 }
 
-type TabType = 'general' | 'specific' | 'user' | 'dataroom' | 'qa';
+type TabType = 'general' | 'specific' | 'user' | 'dataroom' | 'qa' | 'audit' | 'diligence' | 'questionnaire';
 
 export const PermissionGroupDialog: React.FC<PermissionGroupDialogProps> = ({
   isOpen,
@@ -382,7 +382,7 @@ export const PermissionGroupDialog: React.FC<PermissionGroupDialogProps> = ({
                     onClick={() => navigateToTab('dataroom')}
                   >
                     <Database className="mr-2 h-4 w-4" />
-                    Dataroom Access
+                    Dataroom Settings
                   </Button>
                 </li>
                 <li>
@@ -395,7 +395,46 @@ export const PermissionGroupDialog: React.FC<PermissionGroupDialogProps> = ({
                     onClick={() => navigateToTab('qa')}
                   >
                     <HelpCircle className="mr-2 h-4 w-4" />
-                    Q&A Permissions
+                    Issues & Support
+                  </Button>
+                </li>
+                <li>
+                  <Button
+                    variant="ghost"
+                    className={cn(
+                      "w-full justify-start rounded-md text-sm font-medium",
+                      activeTab === 'audit' && "bg-gray-100 dark:bg-gray-800"
+                    )}
+                    onClick={() => navigateToTab('audit')}
+                  >
+                    <FileText className="mr-2 h-4 w-4" />
+                    Audit Logs
+                  </Button>
+                </li>
+                <li>
+                  <Button
+                    variant="ghost"
+                    className={cn(
+                      "w-full justify-start rounded-md text-sm font-medium",
+                      activeTab === 'diligence' && "bg-gray-100 dark:bg-gray-800"
+                    )}
+                    onClick={() => navigateToTab('diligence')}
+                  >
+                    <Database className="mr-2 h-4 w-4" />
+                    Diligence Dashboard
+                  </Button>
+                </li>
+                <li>
+                  <Button
+                    variant="ghost"
+                    className={cn(
+                      "w-full justify-start rounded-md text-sm font-medium",
+                      activeTab === 'questionnaire' && "bg-gray-100 dark:bg-gray-800"
+                    )}
+                    onClick={() => navigateToTab('questionnaire')}
+                  >
+                    <HelpCircle className="mr-2 h-4 w-4" />
+                    Questionnaires
                   </Button>
                 </li>
               </ul>
@@ -422,42 +461,33 @@ export const PermissionGroupDialog: React.FC<PermissionGroupDialogProps> = ({
                         <Switch 
                           checked={newGroup.defaultFilePerms.viewAccess}
                           onCheckedChange={(checked) => 
-                            setNewGroup(prev => ({ 
-                              ...prev, 
-                              defaultFilePerms: { 
-                                ...prev.defaultFilePerms, 
-                                viewAccess: checked 
-                              } 
+                            setNewGroup(prev => ({
+                              ...prev,
+                              defaultFilePerms: { ...prev.defaultFilePerms, viewAccess: checked }
                             }))}
                         />
                       </div>
                       
                       <div className="flex items-center justify-between">
-                        <label className="text-sm">Download files</label>
-                        <Switch 
-                          checked={newGroup.defaultFilePerms.downloadAccess}
-                          onCheckedChange={(checked) => 
-                            setNewGroup(prev => ({ 
-                              ...prev, 
-                              defaultFilePerms: { 
-                                ...prev.defaultFilePerms, 
-                                downloadAccess: checked 
-                              } 
+                        <label className="text-sm">Edit files</label>
+                        <Switch
+                          checked={newGroup.defaultFilePerms.editAccess}
+                          onCheckedChange={(checked) =>
+                            setNewGroup(prev => ({
+                              ...prev,
+                              defaultFilePerms: { ...prev.defaultFilePerms, editAccess: checked }
                             }))}
                         />
                       </div>
                       
                       <div className="flex items-center justify-between">
-                        <label className="text-sm">Edit/Delete files</label>
-                        <Switch 
-                          checked={newGroup.defaultFilePerms.deleteEditAccess}
-                          onCheckedChange={(checked) => 
-                            setNewGroup(prev => ({ 
-                              ...prev, 
-                              defaultFilePerms: { 
-                                ...prev.defaultFilePerms, 
-                                deleteEditAccess: checked 
-                              } 
+                        <label className="text-sm">Delete files</label>
+                        <Switch
+                          checked={newGroup.defaultFilePerms.deleteAccess}
+                          onCheckedChange={(checked) =>
+                            setNewGroup(prev => ({
+                              ...prev,
+                              defaultFilePerms: { ...prev.defaultFilePerms, deleteAccess: checked }
                             }))}
                         />
                       </div>
@@ -469,10 +499,31 @@ export const PermissionGroupDialog: React.FC<PermissionGroupDialogProps> = ({
                           onCheckedChange={(checked) => 
                             setNewGroup(prev => ({ 
                               ...prev, 
-                              defaultFilePerms: { 
-                                ...prev.defaultFilePerms, 
-                                watermarkContent: checked 
-                              } 
+                              defaultFilePerms: { ...prev.defaultFilePerms, watermarkContent: checked }
+                            }))}
+                        />
+                      </div>
+                      
+                      <div className="flex items-center justify-between">
+                        <label className="text-sm">Move files</label>
+                        <Switch
+                          checked={newGroup.defaultFilePerms.moveAccess}
+                          onCheckedChange={(checked) =>
+                            setNewGroup(prev => ({
+                              ...prev,
+                              defaultFilePerms: { ...prev.defaultFilePerms, moveAccess: checked }
+                            }))}
+                        />
+                      </div>
+                      
+                      <div className="flex items-center justify-between">
+                        <label className="text-sm">Rename files</label>
+                        <Switch
+                          checked={newGroup.defaultFilePerms.renameAccess}
+                          onCheckedChange={(checked) =>
+                            setNewGroup(prev => ({
+                              ...prev,
+                              defaultFilePerms: { ...prev.defaultFilePerms, renameAccess: checked }
                             }))}
                         />
                       </div>
@@ -484,10 +535,7 @@ export const PermissionGroupDialog: React.FC<PermissionGroupDialogProps> = ({
                           onCheckedChange={(checked) => 
                             setNewGroup(prev => ({ 
                               ...prev, 
-                              defaultFilePerms: { 
-                                ...prev.defaultFilePerms, 
-                                viewComments: checked 
-                              } 
+                              defaultFilePerms: { ...prev.defaultFilePerms, viewComments: checked }
                             }))}
                         />
                       </div>
@@ -499,10 +547,7 @@ export const PermissionGroupDialog: React.FC<PermissionGroupDialogProps> = ({
                           onCheckedChange={(checked) => 
                             setNewGroup(prev => ({ 
                               ...prev, 
-                              defaultFilePerms: { 
-                                ...prev.defaultFilePerms, 
-                                addComments: checked 
-                              } 
+                              defaultFilePerms: { ...prev.defaultFilePerms, addComments: checked }
                             }))}
                         />
                       </div>
@@ -514,10 +559,43 @@ export const PermissionGroupDialog: React.FC<PermissionGroupDialogProps> = ({
                           onCheckedChange={(checked) => 
                             setNewGroup(prev => ({ 
                               ...prev, 
-                              defaultFilePerms: { 
-                                ...prev.defaultFilePerms, 
-                                viewTags: checked 
-                              } 
+                              defaultFilePerms: { ...prev.defaultFilePerms, viewTags: checked }
+                            }))}
+                        />
+                      </div>
+
+                      <div className="flex items-center justify-between">
+                        <label className="text-sm">Add tags</label>
+                        <Switch 
+                          checked={newGroup.defaultFilePerms.addTags}
+                          onCheckedChange={(checked) => 
+                            setNewGroup(prev => ({ 
+                              ...prev, 
+                              defaultFilePerms: { ...prev.defaultFilePerms, addTags: checked }
+                            }))}
+                        />
+                      </div>
+
+                      <div className="flex items-center justify-between">
+                        <label className="text-sm">AI Query Content</label>
+                        <Switch
+                          checked={newGroup.defaultFilePerms.canQuery}
+                          onCheckedChange={(checked) =>
+                            setNewGroup(prev => ({
+                              ...prev,
+                              defaultFilePerms: { ...prev.defaultFilePerms, canQuery: checked }
+                            }))}
+                        />
+                      </div>
+
+                      <div className="flex items-center justify-between">
+                        <label className="text-sm">Is Visible</label>
+                        <Switch
+                          checked={newGroup.defaultFilePerms.isVisible}
+                          onCheckedChange={(checked) =>
+                            setNewGroup(prev => ({
+                              ...prev,
+                              defaultFilePerms: { ...prev.defaultFilePerms, isVisible: checked }
                             }))}
                         />
                       </div>
@@ -535,10 +613,7 @@ export const PermissionGroupDialog: React.FC<PermissionGroupDialogProps> = ({
                           onCheckedChange={(checked) => 
                             setNewGroup(prev => ({ 
                               ...prev, 
-                              defaultFolderPerms: { 
-                                ...prev.defaultFolderPerms, 
-                                viewContents: checked 
-                              } 
+                              defaultFolderPerms: { ...prev.defaultFolderPerms, viewContents: checked }
                             }))}
                         />
                       </div>
@@ -550,10 +625,7 @@ export const PermissionGroupDialog: React.FC<PermissionGroupDialogProps> = ({
                           onCheckedChange={(checked) => 
                             setNewGroup(prev => ({ 
                               ...prev, 
-                              defaultFolderPerms: { 
-                                ...prev.defaultFolderPerms, 
-                                createFolders: checked 
-                              } 
+                              defaultFolderPerms: { ...prev.defaultFolderPerms, createFolders: checked }
                             }))}
                         />
                       </div>
@@ -565,10 +637,43 @@ export const PermissionGroupDialog: React.FC<PermissionGroupDialogProps> = ({
                           onCheckedChange={(checked) => 
                             setNewGroup(prev => ({ 
                               ...prev, 
-                              defaultFolderPerms: { 
-                                ...prev.defaultFolderPerms, 
-                                allowUploads: checked 
-                              } 
+                              defaultFolderPerms: { ...prev.defaultFolderPerms, allowUploads: checked }
+                            }))}
+                        />
+                      </div>
+                      
+                      <div className="flex items-center justify-between">
+                        <label className="text-sm">Delete folder contents</label>
+                        <Switch
+                          checked={newGroup.defaultFolderPerms.deleteContents}
+                          onCheckedChange={(checked) =>
+                            setNewGroup(prev => ({
+                              ...prev,
+                              defaultFolderPerms: { ...prev.defaultFolderPerms, deleteContents: checked }
+                            }))}
+                        />
+                      </div>
+                      
+                      <div className="flex items-center justify-between">
+                        <label className="text-sm">Move folder contents</label>
+                        <Switch
+                          checked={newGroup.defaultFolderPerms.moveContents}
+                          onCheckedChange={(checked) =>
+                            setNewGroup(prev => ({
+                              ...prev,
+                              defaultFolderPerms: { ...prev.defaultFolderPerms, moveContents: checked }
+                            }))}
+                        />
+                      </div>
+                      
+                      <div className="flex items-center justify-between">
+                        <label className="text-sm">Rename folder contents</label>
+                        <Switch
+                          checked={newGroup.defaultFolderPerms.renameContents}
+                          onCheckedChange={(checked) =>
+                            setNewGroup(prev => ({
+                              ...prev,
+                              defaultFolderPerms: { ...prev.defaultFolderPerms, renameContents: checked }
                             }))}
                         />
                       </div>
@@ -580,10 +685,7 @@ export const PermissionGroupDialog: React.FC<PermissionGroupDialogProps> = ({
                           onCheckedChange={(checked) => 
                             setNewGroup(prev => ({ 
                               ...prev, 
-                              defaultFolderPerms: { 
-                                ...prev.defaultFolderPerms, 
-                                viewComments: checked 
-                              } 
+                              defaultFolderPerms: { ...prev.defaultFolderPerms, viewComments: checked }
                             }))}
                         />
                       </div>
@@ -595,10 +697,7 @@ export const PermissionGroupDialog: React.FC<PermissionGroupDialogProps> = ({
                           onCheckedChange={(checked) => 
                             setNewGroup(prev => ({ 
                               ...prev, 
-                              defaultFolderPerms: { 
-                                ...prev.defaultFolderPerms, 
-                                addComments: checked 
-                              } 
+                              defaultFolderPerms: { ...prev.defaultFolderPerms, addComments: checked }
                             }))}
                         />
                       </div>
@@ -610,10 +709,43 @@ export const PermissionGroupDialog: React.FC<PermissionGroupDialogProps> = ({
                           onCheckedChange={(checked) => 
                             setNewGroup(prev => ({ 
                               ...prev, 
-                              defaultFolderPerms: { 
-                                ...prev.defaultFolderPerms, 
-                                viewTags: checked 
-                              } 
+                              defaultFolderPerms: { ...prev.defaultFolderPerms, viewTags: checked }
+                            }))}
+                        />
+                      </div>
+
+                      <div className="flex items-center justify-between">
+                        <label className="text-sm">Add tags</label>
+                        <Switch 
+                          checked={newGroup.defaultFolderPerms.addTags}
+                          onCheckedChange={(checked) => 
+                            setNewGroup(prev => ({ 
+                              ...prev, 
+                              defaultFolderPerms: { ...prev.defaultFolderPerms, addTags: checked }
+                            }))}
+                        />
+                      </div>
+
+                      <div className="flex items-center justify-between">
+                        <label className="text-sm">AI Query Content</label>
+                        <Switch
+                          checked={newGroup.defaultFolderPerms.canQuery}
+                          onCheckedChange={(checked) =>
+                            setNewGroup(prev => ({
+                              ...prev,
+                              defaultFolderPerms: { ...prev.defaultFolderPerms, canQuery: checked }
+                            }))}
+                        />
+                      </div>
+
+                      <div className="flex items-center justify-between">
+                        <label className="text-sm">Is Visible</label>
+                        <Switch
+                          checked={newGroup.defaultFolderPerms.isVisible}
+                          onCheckedChange={(checked) =>
+                            setNewGroup(prev => ({
+                              ...prev,
+                              defaultFolderPerms: { ...prev.defaultFolderPerms, isVisible: checked }
                             }))}
                         />
                       </div>
@@ -656,7 +788,15 @@ export const PermissionGroupDialog: React.FC<PermissionGroupDialogProps> = ({
                 </p>
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 h-[400px]">
-                  <FolderTree onNodeSelect={handleNodeSelect} />
+                  <FolderPermissionTree
+                    folderStructure={folderStructure}
+                    selectedPermissions={newGroup.fileIdAccess as Record<string, FilePermission> || {}}
+                    onPermissionChange={onFilePermissionChange} 
+                    selectedItem={selectedFileId}
+                    onSelectItem={setSelectedFileId}
+                    itemsMap={dialogItemsMap}
+                    parentMap={dialogParentMap}
+                  />
                   <ItemPermissionsPanel
                     selectedItemId={selectedFileId}
                     items={Object.values(dialogItemsMap)}
@@ -696,6 +836,33 @@ export const PermissionGroupDialog: React.FC<PermissionGroupDialogProps> = ({
                   Configure who this permission group can invite and manage.
                 </p>
                 
+                <div className="flex items-center justify-between">
+                  <label className="text-sm">Can access user management panel</label>
+                  <Switch 
+                    checked={newGroup.canAccessUserManagementPanel}
+                    onCheckedChange={(checked) => 
+                      setNewGroup(prev => ({...prev, canAccessUserManagementPanel: checked }))}
+                  />
+                </div>
+                <div className="flex items-center justify-between">
+                  <label className="text-sm">Can view users list</label>
+                  <Switch 
+                    checked={newGroup.canViewUsers}
+                    onCheckedChange={(checked) => 
+                      setNewGroup(prev => ({...prev, canViewUsers: checked }))}
+                  />
+                </div>
+                <div className="flex items-center justify-between">
+                  <label className="text-sm">Can view permission group details</label>
+                  <Switch 
+                    checked={newGroup.canViewPermissionGroupDetails}
+                    onCheckedChange={(checked) => 
+                      setNewGroup(prev => ({...prev, canViewPermissionGroupDetails: checked }))}
+                  />
+                </div>
+
+                <Separator />
+
                 <div className="border dark:border-gray-700 rounded-md p-6 space-y-6">
                   {/* Can invite users section */}
                   <div className="space-y-3">
@@ -709,39 +876,32 @@ export const PermissionGroupDialog: React.FC<PermissionGroupDialogProps> = ({
                       </div>
                       <Switch 
                         id="invite-any-role" 
-                        checked={newGroup.canInviteUsers.includes('*')}
+                        checked={newGroup.canInviteUsers?.includes('*')}
                         onCheckedChange={(checked) => {
                           if (checked) {
-                            // Enable wildcard - any role
-                            setNewGroup({...newGroup, canInviteUsers: ['*']});
+                            setNewGroup(prev => ({...prev, canInviteUsers: ['*']}));
                           } else {
-                            // Disable wildcard, clear selection
-                            setNewGroup({...newGroup, canInviteUsers: []});
+                            setNewGroup(prev => ({...prev, canInviteUsers: []}));
                           }
                         }}
                       />
                     </div>
                     
                     {/* Specific roles selection */}
-                    <div className={`grid grid-cols-2 sm:grid-cols-3 gap-4 ${newGroup.canInviteUsers.includes('*') ? 'opacity-50' : ''}`}>
+                    <div className={`grid grid-cols-2 sm:grid-cols-3 gap-4 ${newGroup.canInviteUsers?.includes('*') ? 'opacity-50' : ''}`}>
                       <div className="flex items-center space-x-2">
                         <Switch 
                           id="invite-read" 
-                          checked={newGroup.canInviteUsers.includes('*') || newGroup.canInviteUsers.includes('READ')}
+                          checked={newGroup.canInviteUsers?.includes('*') || newGroup.canInviteUsers?.includes('READ')}
                           onCheckedChange={(checked) => {
-                            // Don't allow changes if wildcard is set
-                            if (newGroup.canInviteUsers.includes('*')) return;
-                            
-                            const newInviteUsers = [...newGroup.canInviteUsers];
-                            if (checked) {
-                              if (!newInviteUsers.includes('READ')) newInviteUsers.push('READ');
-                            } else {
-                              const index = newInviteUsers.indexOf('READ');
-                              if (index > -1) newInviteUsers.splice(index, 1);
-                            }
-                            setNewGroup({...newGroup, canInviteUsers: newInviteUsers});
+                            if (newGroup.canInviteUsers?.includes('*')) return;
+                            const current = newGroup.canInviteUsers || [];
+                            const next = checked 
+                              ? [...current.filter(r => r !== 'READ'), 'READ'] 
+                              : current.filter(r => r !== 'READ');
+                            setNewGroup(prev => ({...prev, canInviteUsers: next }));
                           }}
-                          disabled={newGroup.canInviteUsers.includes('*')}
+                          disabled={newGroup.canInviteUsers?.includes('*')}
                         />
                         <label htmlFor="invite-read" className="text-sm">Viewer</label>
                       </div>
@@ -749,21 +909,16 @@ export const PermissionGroupDialog: React.FC<PermissionGroupDialogProps> = ({
                       <div className="flex items-center space-x-2">
                         <Switch 
                           id="invite-write" 
-                          checked={newGroup.canInviteUsers.includes('*') || newGroup.canInviteUsers.includes('WRITE')}
+                          checked={newGroup.canInviteUsers?.includes('*') || newGroup.canInviteUsers?.includes('WRITE')}
                           onCheckedChange={(checked) => {
-                            // Don't allow changes if wildcard is set
-                            if (newGroup.canInviteUsers.includes('*')) return;
-                            
-                            const newInviteUsers = [...newGroup.canInviteUsers];
-                            if (checked) {
-                              if (!newInviteUsers.includes('WRITE')) newInviteUsers.push('WRITE');
-                            } else {
-                              const index = newInviteUsers.indexOf('WRITE');
-                              if (index > -1) newInviteUsers.splice(index, 1);
-                            }
-                            setNewGroup({...newGroup, canInviteUsers: newInviteUsers});
+                            if (newGroup.canInviteUsers?.includes('*')) return;
+                            const current = newGroup.canInviteUsers || [];
+                            const next = checked 
+                              ? [...current.filter(r => r !== 'WRITE'), 'WRITE'] 
+                              : current.filter(r => r !== 'WRITE');
+                            setNewGroup(prev => ({...prev, canInviteUsers: next }));
                           }}
-                          disabled={newGroup.canInviteUsers.includes('*')}
+                          disabled={newGroup.canInviteUsers?.includes('*')}
                         />
                         <label htmlFor="invite-write" className="text-sm">Editor</label>
                       </div>
@@ -771,27 +926,22 @@ export const PermissionGroupDialog: React.FC<PermissionGroupDialogProps> = ({
                       <div className="flex items-center space-x-2">
                         <Switch 
                           id="invite-admin" 
-                          checked={newGroup.canInviteUsers.includes('*') || newGroup.canInviteUsers.includes('ADMIN')}
+                          checked={newGroup.canInviteUsers?.includes('*') || newGroup.canInviteUsers?.includes('ADMIN')}
                           onCheckedChange={(checked) => {
-                            // Don't allow changes if wildcard is set
-                            if (newGroup.canInviteUsers.includes('*')) return;
-                            
-                            const newInviteUsers = [...newGroup.canInviteUsers];
-                            if (checked) {
-                              if (!newInviteUsers.includes('ADMIN')) newInviteUsers.push('ADMIN');
-                            } else {
-                              const index = newInviteUsers.indexOf('ADMIN');
-                              if (index > -1) newInviteUsers.splice(index, 1);
-                            }
-                            setNewGroup({...newGroup, canInviteUsers: newInviteUsers});
+                            if (newGroup.canInviteUsers?.includes('*')) return;
+                            const current = newGroup.canInviteUsers || [];
+                            const next = checked 
+                              ? [...current.filter(r => r !== 'ADMIN'), 'ADMIN'] 
+                              : current.filter(r => r !== 'ADMIN');
+                            setNewGroup(prev => ({...prev, canInviteUsers: next }));
                           }}
-                          disabled={newGroup.canInviteUsers.includes('*')}
+                          disabled={newGroup.canInviteUsers?.includes('*')}
                         />
                         <label htmlFor="invite-admin" className="text-sm">Admin</label>
                       </div>
                     </div>
                     
-                    {newGroup.canInviteUsers.includes('*') && (
+                    {newGroup.canInviteUsers?.includes('*') && (
                       <p className="text-xs text-blue-500 dark:text-blue-400 italic">
                         Users with this permission group can invite users with any role
                       </p>
@@ -802,7 +952,7 @@ export const PermissionGroupDialog: React.FC<PermissionGroupDialogProps> = ({
                   
                   {/* Can update user permissions section */}
                   <div className="space-y-3">
-                    <h4 className="text-sm font-medium">Can update permissions for:</h4>
+                    <h4 className="text-sm font-medium">Can update permissions for users with roles:</h4>
                     
                     {/* Any Role toggle */}
                     <div className="flex items-center justify-between p-2 bg-gray-50 dark:bg-gray-800 rounded-md">
@@ -812,39 +962,32 @@ export const PermissionGroupDialog: React.FC<PermissionGroupDialogProps> = ({
                       </div>
                       <Switch 
                         id="update-any-role" 
-                        checked={newGroup.canUpdateUserPermissions.includes('*')}
+                        checked={newGroup.canUpdateUserPermissions?.includes('*')}
                         onCheckedChange={(checked) => {
                           if (checked) {
-                            // Enable wildcard - any role
-                            setNewGroup({...newGroup, canUpdateUserPermissions: ['*']});
+                            setNewGroup(prev => ({...prev, canUpdateUserPermissions: ['*']}));
                           } else {
-                            // Disable wildcard, clear selection
-                            setNewGroup({...newGroup, canUpdateUserPermissions: []});
+                            setNewGroup(prev => ({...prev, canUpdateUserPermissions: []}));
                           }
                         }}
                       />
                     </div>
                     
                     {/* Specific roles selection */}
-                    <div className={`grid grid-cols-2 sm:grid-cols-3 gap-4 ${newGroup.canUpdateUserPermissions.includes('*') ? 'opacity-50' : ''}`}>
+                    <div className={`grid grid-cols-2 sm:grid-cols-3 gap-4 ${newGroup.canUpdateUserPermissions?.includes('*') ? 'opacity-50' : ''}`}>
                       <div className="flex items-center space-x-2">
                         <Switch 
                           id="update-read" 
-                          checked={newGroup.canUpdateUserPermissions.includes('*') || newGroup.canUpdateUserPermissions.includes('READ')}
+                          checked={newGroup.canUpdateUserPermissions?.includes('*') || newGroup.canUpdateUserPermissions?.includes('READ')}
                           onCheckedChange={(checked) => {
-                            // Don't allow changes if wildcard is set
-                            if (newGroup.canUpdateUserPermissions.includes('*')) return;
-                            
-                            const newUpdateUsers = [...newGroup.canUpdateUserPermissions];
-                            if (checked) {
-                              if (!newUpdateUsers.includes('READ')) newUpdateUsers.push('READ');
-                            } else {
-                              const index = newUpdateUsers.indexOf('READ');
-                              if (index > -1) newUpdateUsers.splice(index, 1);
-                            }
-                            setNewGroup({...newGroup, canUpdateUserPermissions: newUpdateUsers});
+                            if (newGroup.canUpdateUserPermissions?.includes('*')) return;
+                            const current = newGroup.canUpdateUserPermissions || [];
+                            const next = checked 
+                              ? [...current.filter(r => r !== 'READ'), 'READ'] 
+                              : current.filter(r => r !== 'READ');
+                            setNewGroup(prev => ({...prev, canUpdateUserPermissions: next }));
                           }}
-                          disabled={newGroup.canUpdateUserPermissions.includes('*')}
+                          disabled={newGroup.canUpdateUserPermissions?.includes('*')}
                         />
                         <label htmlFor="update-read" className="text-sm">Viewers</label>
                       </div>
@@ -852,21 +995,16 @@ export const PermissionGroupDialog: React.FC<PermissionGroupDialogProps> = ({
                       <div className="flex items-center space-x-2">
                         <Switch 
                           id="update-write" 
-                          checked={newGroup.canUpdateUserPermissions.includes('*') || newGroup.canUpdateUserPermissions.includes('WRITE')}
+                          checked={newGroup.canUpdateUserPermissions?.includes('*') || newGroup.canUpdateUserPermissions?.includes('WRITE')}
                           onCheckedChange={(checked) => {
-                            // Don't allow changes if wildcard is set
-                            if (newGroup.canUpdateUserPermissions.includes('*')) return;
-                            
-                            const newUpdateUsers = [...newGroup.canUpdateUserPermissions];
-                            if (checked) {
-                              if (!newUpdateUsers.includes('WRITE')) newUpdateUsers.push('WRITE');
-                            } else {
-                              const index = newUpdateUsers.indexOf('WRITE');
-                              if (index > -1) newUpdateUsers.splice(index, 1);
-                            }
-                            setNewGroup({...newGroup, canUpdateUserPermissions: newUpdateUsers});
+                            if (newGroup.canUpdateUserPermissions?.includes('*')) return;
+                            const current = newGroup.canUpdateUserPermissions || [];
+                            const next = checked 
+                              ? [...current.filter(r => r !== 'WRITE'), 'WRITE'] 
+                              : current.filter(r => r !== 'WRITE');
+                            setNewGroup(prev => ({...prev, canUpdateUserPermissions: next }));
                           }}
-                          disabled={newGroup.canUpdateUserPermissions.includes('*')}
+                          disabled={newGroup.canUpdateUserPermissions?.includes('*')}
                         />
                         <label htmlFor="update-write" className="text-sm">Editors</label>
                       </div>
@@ -874,27 +1012,22 @@ export const PermissionGroupDialog: React.FC<PermissionGroupDialogProps> = ({
                       <div className="flex items-center space-x-2">
                         <Switch 
                           id="update-admin" 
-                          checked={newGroup.canUpdateUserPermissions.includes('*') || newGroup.canUpdateUserPermissions.includes('ADMIN')}
+                          checked={newGroup.canUpdateUserPermissions?.includes('*') || newGroup.canUpdateUserPermissions?.includes('ADMIN')}
                           onCheckedChange={(checked) => {
-                            // Don't allow changes if wildcard is set
-                            if (newGroup.canUpdateUserPermissions.includes('*')) return;
-                            
-                            const newUpdateUsers = [...newGroup.canUpdateUserPermissions];
-                            if (checked) {
-                              if (!newUpdateUsers.includes('ADMIN')) newUpdateUsers.push('ADMIN');
-                            } else {
-                              const index = newUpdateUsers.indexOf('ADMIN');
-                              if (index > -1) newUpdateUsers.splice(index, 1);
-                            }
-                            setNewGroup({...newGroup, canUpdateUserPermissions: newUpdateUsers});
+                            if (newGroup.canUpdateUserPermissions?.includes('*')) return;
+                            const current = newGroup.canUpdateUserPermissions || [];
+                            const next = checked 
+                              ? [...current.filter(r => r !== 'ADMIN'), 'ADMIN'] 
+                              : current.filter(r => r !== 'ADMIN');
+                            setNewGroup(prev => ({...prev, canUpdateUserPermissions: next }));
                           }}
-                          disabled={newGroup.canUpdateUserPermissions.includes('*')}
+                          disabled={newGroup.canUpdateUserPermissions?.includes('*')}
                         />
                         <label htmlFor="update-admin" className="text-sm">Admins</label>
                       </div>
                     </div>
                     
-                    {newGroup.canUpdateUserPermissions.includes('*') && (
+                    {newGroup.canUpdateUserPermissions?.includes('*') && (
                       <p className="text-xs text-blue-500 dark:text-blue-400 italic">
                         Users with this permission group can update permissions for any role
                       </p>
@@ -903,39 +1036,144 @@ export const PermissionGroupDialog: React.FC<PermissionGroupDialogProps> = ({
                   
                   <Separator />
                   
-                  {/* Can create permission groups */}
+                  {/* Can update peer permissions */}
+                  <div className="flex items-center justify-between">
+                    <label className="text-sm">Can update permissions of peers (same group)</label>
+                    <Switch 
+                      checked={newGroup.canUpdatePeerPermissions}
+                      onCheckedChange={(checked) => 
+                        setNewGroup(prev => ({...prev, canUpdatePeerPermissions: checked }))}
+                    />
+                  </div>
+                  
+                  <Separator />
+                  
+                  {/* Can remove users section */}
+                  <div className="space-y-3">
+                    <h4 className="text-sm font-medium">Can remove users with roles:</h4>
+                    
+                    {/* Any Role toggle */}
+                    <div className="flex items-center justify-between p-2 bg-gray-50 dark:bg-gray-800 rounded-md">
+                      <div>
+                        <label htmlFor="remove-any-role" className="text-sm font-medium">Any Role</label>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">Allow removing users with any role</p>
+                      </div>
+                      <Switch 
+                        id="remove-any-role" 
+                        checked={newGroup.canRemoveUsers?.includes('*')}
+                        onCheckedChange={(checked) => {
+                          if (checked) {
+                            setNewGroup(prev => ({...prev, canRemoveUsers: ['*']}));
+                          } else {
+                            setNewGroup(prev => ({...prev, canRemoveUsers: []}));
+                          }
+                        }}
+                      />
+                    </div>
+                    
+                    {/* Specific roles selection */}
+                    <div className={`grid grid-cols-2 sm:grid-cols-3 gap-4 ${newGroup.canRemoveUsers?.includes('*') ? 'opacity-50' : ''}`}>
+                      <div className="flex items-center space-x-2">
+                        <Switch 
+                          id="remove-read" 
+                          checked={newGroup.canRemoveUsers?.includes('*') || newGroup.canRemoveUsers?.includes('READ')}
+                          onCheckedChange={(checked) => {
+                            if (newGroup.canRemoveUsers?.includes('*')) return;
+                            const current = newGroup.canRemoveUsers || [];
+                            const next = checked 
+                              ? [...current.filter(r => r !== 'READ'), 'READ'] 
+                              : current.filter(r => r !== 'READ');
+                            setNewGroup(prev => ({...prev, canRemoveUsers: next }));
+                          }}
+                          disabled={newGroup.canRemoveUsers?.includes('*')}
+                        />
+                        <label htmlFor="remove-read" className="text-sm">Viewer</label>
+                      </div>
+                      
+                      <div className="flex items-center space-x-2">
+                        <Switch 
+                          id="remove-write" 
+                          checked={newGroup.canRemoveUsers?.includes('*') || newGroup.canRemoveUsers?.includes('WRITE')}
+                           onCheckedChange={(checked) => {
+                            if (newGroup.canRemoveUsers?.includes('*')) return;
+                            const current = newGroup.canRemoveUsers || [];
+                            const next = checked ? [...current, 'WRITE'] : current.filter(r => r !== 'WRITE');
+                            setNewGroup({...newGroup, canRemoveUsers: next });
+                          }}
+                          disabled={newGroup.canRemoveUsers?.includes('*')}
+                        />
+                        <label htmlFor="remove-write" className="text-sm">Editor</label>
+                      </div>
+                      
+                      <div className="flex items-center space-x-2">
+                        <Switch 
+                          id="remove-admin" 
+                          checked={newGroup.canRemoveUsers?.includes('*') || newGroup.canRemoveUsers?.includes('ADMIN')}
+                           onCheckedChange={(checked) => {
+                            if (newGroup.canRemoveUsers?.includes('*')) return;
+                            const current = newGroup.canRemoveUsers || [];
+                            const next = checked ? [...current, 'ADMIN'] : current.filter(r => r !== 'ADMIN');
+                            setNewGroup({...newGroup, canRemoveUsers: next });
+                          }}
+                          disabled={newGroup.canRemoveUsers?.includes('*')}
+                        />
+                        <label htmlFor="remove-admin" className="text-sm">Admin</label>
+                      </div>
+                    </div>
+                    
+                    {newGroup.canRemoveUsers?.includes('*') && (
+                      <p className="text-xs text-blue-500 dark:text-blue-400 italic">
+                        Users with this permission group can remove users with any role (except Owner)
+                      </p>
+                    )}
+                  </div>
+                  
+                  {/* Can remove peer permission */}
+                  <div className="flex items-center justify-between">
+                    <label className="text-sm">Can remove peers (same group)</label>
+                    <Switch 
+                      checked={newGroup.canRemovePeerPermission}
+                      onCheckedChange={(checked) => 
+                        setNewGroup(prev => ({...prev, canRemovePeerPermission: checked }))}
+                    />
+                  </div>
+                  
+                  <Separator />
+                  
+                  {/* Can create permission groups */} 
                   <div className="flex items-center justify-between">
                     <label className="text-sm">Can create/edit permission groups</label>
                     <Switch 
                       checked={newGroup.canCreatePermissionGroups}
                       onCheckedChange={(checked) => 
-                        setNewGroup({...newGroup, canCreatePermissionGroups: checked})}
+                        setNewGroup(prev => ({...prev, canCreatePermissionGroups: checked }))}
                     />
                   </div>
                 </div>
               </div>
             )}
             
-            {/* Dataroom Permissions Tab */}
+            {/* Dataroom Permissions Tab - Renamed to Dataroom Settings */} 
             {activeTab === 'dataroom' && (
               <div className="space-y-6">
-                <h3 className="text-lg font-medium">Dataroom Permissions</h3>
+                <h3 className="text-lg font-medium">Dataroom Settings</h3>
                 <p className="text-sm text-gray-500 dark:text-gray-400">
-                  Configure dataroom-level permissions for this group.
+                  Configure settings for the dataroom.
                 </p>
                 
                 <div className="border dark:border-gray-700 rounded-md p-6">
                   <div className="space-y-4">
+                    {/* Renamed canQuery to canQueryEntireDataroom */}
                     <div className="flex items-center justify-between">
-                      <label className="text-sm">Can AI query dataroom</label>
+                      <label className="text-sm">Can AI query entire dataroom</label>
                       <Switch 
-                        checked={newGroup.canQuery}
+                        checked={newGroup.canQueryEntireDataroom}
                         onCheckedChange={(checked) => 
-                          setNewGroup({...newGroup, canQuery: checked})}
+                          setNewGroup(prev => ({...prev, canQueryEntireDataroom: checked }))}
                       />
                     </div>
                     
-                    {newGroup.canQuery && (
+                    {newGroup.canQueryEntireDataroom && (
                       <div className="ml-8 text-sm bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 p-3 rounded-md">
                         <p>
                           Queries may use data from files that users may not have access to with specific permissions (granular querying coming soon).
@@ -948,16 +1186,7 @@ export const PermissionGroupDialog: React.FC<PermissionGroupDialogProps> = ({
                       <Switch 
                         checked={newGroup.canOrganize}
                         onCheckedChange={(checked) => 
-                          setNewGroup({...newGroup, canOrganize: checked})}
-                      />
-                    </div>
-                    
-                    <div className="flex items-center justify-between">
-                      <label className="text-sm">Can view audit logs</label>
-                      <Switch 
-                        checked={newGroup.canViewAuditLogs}
-                        onCheckedChange={(checked) => 
-                          setNewGroup({...newGroup, canViewAuditLogs: checked})}
+                          setNewGroup(prev => ({...prev, canOrganize: checked }))}
                       />
                     </div>
                     
@@ -966,11 +1195,7 @@ export const PermissionGroupDialog: React.FC<PermissionGroupDialogProps> = ({
                       <Switch 
                         checked={newGroup.canRetryProcessing !== false} // Default to true if not explicitly set
                         onCheckedChange={(checked) => {
-                          // Add the property explicitly to the object
-                          setNewGroup({
-                            ...newGroup, 
-                            canRetryProcessing: checked
-                          });
+                          setNewGroup(prev => ({...prev, canRetryProcessing: checked }));
                         }}
                       />
                     </div>
@@ -981,49 +1206,47 @@ export const PermissionGroupDialog: React.FC<PermissionGroupDialogProps> = ({
                         <p className="text-xs text-gray-500 dark:text-gray-400">Only dataroom owners can delete datarooms</p>
                       </div>
                       <Switch 
-                        checked={false}
-                        onCheckedChange={() => {}}
+                        checked={false} // Controlled by Owner role primarily
                         disabled={true}
                       />
                     </div>
-                    
-                    {newGroup.canDeleteDataroom && (
-                      <div className="ml-8 text-sm bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 p-3 rounded-md">
-                        <p>
-                          Warning: This will allow users with this permission group to permanently delete the entire dataroom and all its content.
-                        </p>
-                      </div>
-                    )}
                   </div>
                 </div>
               </div>
             )}
             
-            {/* Q&A Permissions Tab */}
+            {/* Q&A Permissions Tab - Renamed to Issues & Support */}
             {activeTab === 'qa' && (
               <div className="space-y-6">
-                <h3 className="text-lg font-medium">Q&A Permissions</h3>
+                <h3 className="text-lg font-medium">Issues & Support Permissions</h3>
                 <p className="text-sm text-gray-500 dark:text-gray-400">
-                  Configure permissions for the Q&A section of the dataroom.
+                  Configure permissions for the Issues & Support section.
                 </p>
                 
                 <div className="border dark:border-gray-700 rounded-md p-6">
                   <div className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <label className="text-sm">Can read Q&A</label>
+                     <div className="flex items-center justify-between">
+                      <label className="text-sm">Can access Issues & Support panel</label>
                       <Switch 
-                        checked={newGroup.canUseQA}
+                        checked={!!newGroup.canAccessIssuesPanel} // Use !! to ensure boolean
                         onCheckedChange={(checked) => 
-                          setNewGroup({...newGroup, canUseQA: checked})}
+                          setNewGroup(prev => ({...prev, canAccessIssuesPanel: checked }))}
                       />
                     </div>
-                    
                     <div className="flex items-center justify-between">
-                      <label className="text-sm">Can answer Q&A</label>
+                      <label className="text-sm">Can create new issues</label>
                       <Switch 
-                        checked={newGroup.canReadAnswerQuestions}
+                        checked={!!newGroup.canCreateIssue} // Use !! to ensure boolean
                         onCheckedChange={(checked) => 
-                          setNewGroup({...newGroup, canReadAnswerQuestions: checked})}
+                          setNewGroup(prev => ({...prev, canCreateIssue: checked }))}
+                      />
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <label className="text-sm">Can answer/resolve issues</label>
+                      <Switch 
+                        checked={!!newGroup.canAnswerIssue} // Use !! to ensure boolean
+                        onCheckedChange={(checked) => 
+                          setNewGroup(prev => ({...prev, canAnswerIssue: checked }))}
                       />
                     </div>
                   </div>

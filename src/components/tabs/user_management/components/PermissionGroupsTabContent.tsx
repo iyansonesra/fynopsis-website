@@ -98,7 +98,7 @@ export const PermissionGroupsTabContent: React.FC<PermissionGroupsTabContentProp
                               Full Access: {group.allAccess ? 'Yes' : 'No'}
                             </li>
                             <li>
-                              Can Query: {group.canQuery ? 'Yes' : 'No'}
+                              Can Query: {group.canQueryEntireDataroom ? 'Yes' : 'No'}
                             </li>
                             <li>
                               Can Organize: {group.canOrganize ? 'Yes' : 'No'}

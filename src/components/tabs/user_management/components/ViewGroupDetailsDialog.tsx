@@ -9,19 +9,64 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
+import { Separator } from "@/components/ui/separator";
 import {
   Accordion,
   AccordionContent,
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
-import type { PermissionGroup } from '../CollaboratorsTypes';
+import type { PermissionGroup, FilePermission, FolderPermission } from '../CollaboratorsTypes';
+import { cn } from "@/lib/utils"; // Import cn for conditional classes
+import {
+  FileText, FolderOpen, Users, Database, HelpCircle, 
+  AlertCircle, CheckCircle, XCircle, FileWarning
+} from 'lucide-react';
 
 interface ViewGroupDetailsDialogProps {
   isOpen: boolean;
   group: PermissionGroup | null;
   onClose: () => void;
 }
+
+// Helper component to render permission switches in a consistent way
+const PermissionSwitchDisplay: React.FC<{ id: string; label: string; checked?: boolean }> = ({ id, label, checked }) => (
+  <div className="flex items-center space-x-2">
+    <Switch 
+      id={id} 
+      checked={checked}
+      disabled
+      className="opacity-80" // Apply slight opacity to indicate disabled
+    />
+    <label htmlFor={id} className="text-xs font-medium leading-none dark:text-gray-300">
+      {label}
+    </label>
+    {/* Optional: Add icons based on checked state */}
+    {/* {checked ? <CheckCircle className="h-3 w-3 text-green-500 ml-1" /> : <XCircle className="h-3 w-3 text-red-500 ml-1" />} */}
+  </div>
+);
+
+// Helper to display role list
+const RoleListDisplay: React.FC<{ roles?: string[], title: string }> = ({ roles, title }) => (
+  <div className="mt-2">
+    <p className="text-xs font-medium mb-1 dark:text-gray-400">{title}</p>
+    <div className="flex flex-wrap gap-1">
+      {roles?.includes('*') ? (
+        <span className="bg-blue-100 text-blue-800 text-xs px-2 py-0.5 rounded dark:bg-blue-900/50 dark:text-blue-300">
+          Any Role
+        </span>
+      ) : roles && roles.length > 0 ? (
+        roles.map(role => (
+          <span key={role} className="bg-gray-100 text-gray-800 text-xs px-2 py-0.5 rounded dark:bg-gray-700 dark:text-gray-300">
+            {role} 
+          </span>
+        ))
+      ) : (
+        <span className="text-xs text-gray-500 italic dark:text-gray-400">None specified</span>
+      )}
+    </div>
+  </div>
+);
 
 export const ViewGroupDetailsDialog: React.FC<ViewGroupDetailsDialogProps> = ({
   isOpen,
@@ -30,307 +75,224 @@ export const ViewGroupDetailsDialog: React.FC<ViewGroupDetailsDialogProps> = ({
 }) => {
   if (!group) return null;
 
+  const renderFilePerms = (perms: PermissionGroup['defaultFilePerms']) => (
+    <div className="grid grid-cols-2 gap-x-6 gap-y-3">
+      <PermissionSwitchDisplay id="view-file-view" label="View files" checked={perms.viewAccess} />
+      <PermissionSwitchDisplay id="view-file-download" label="Download files" checked={perms.downloadAccess} />
+      <PermissionSwitchDisplay id="view-file-edit" label="Edit files" checked={perms.editAccess} />
+      <PermissionSwitchDisplay id="view-file-delete" label="Delete files" checked={perms.deleteAccess} />
+      <PermissionSwitchDisplay id="view-file-watermark" label="Apply watermark" checked={perms.watermarkContent} />
+      <PermissionSwitchDisplay id="view-file-move" label="Move files" checked={perms.moveAccess} />
+      <PermissionSwitchDisplay id="view-file-rename" label="Rename files" checked={perms.renameAccess} />
+      <PermissionSwitchDisplay id="view-file-view-comments" label="View comments" checked={perms.viewComments} />
+      <PermissionSwitchDisplay id="view-file-add-comments" label="Add comments" checked={perms.addComments} />
+      <PermissionSwitchDisplay id="view-file-view-tags" label="View tags" checked={perms.viewTags} />
+      <PermissionSwitchDisplay id="view-file-add-tags" label="Add tags" checked={perms.addTags} />
+      <PermissionSwitchDisplay id="view-file-query" label="AI Query content" checked={perms.canQuery} />
+      <PermissionSwitchDisplay id="view-file-visible" label="Is Visible" checked={perms.isVisible} />
+      {/* Removed deleteEditAccess */}
+    </div>
+  );
+
+  const renderFolderPerms = (perms: PermissionGroup['defaultFolderPerms']) => (
+     <div className="grid grid-cols-2 gap-x-6 gap-y-3">
+      <PermissionSwitchDisplay id="view-folder-view-contents" label="View contents" checked={perms.viewContents} />
+      <PermissionSwitchDisplay id="view-folder-create" label="Create folders" checked={perms.createFolders} />
+      <PermissionSwitchDisplay id="view-folder-upload" label="Allow uploads" checked={perms.allowUploads} />
+      <PermissionSwitchDisplay id="view-folder-delete" label="Delete contents" checked={perms.deleteContents} />
+      <PermissionSwitchDisplay id="view-folder-move" label="Move contents" checked={perms.moveContents} />
+      <PermissionSwitchDisplay id="view-folder-rename" label="Rename contents" checked={perms.renameContents} />
+      <PermissionSwitchDisplay id="view-folder-view-comments" label="View comments" checked={perms.viewComments} />
+      <PermissionSwitchDisplay id="view-folder-add-comments" label="Add comments" checked={perms.addComments} />
+      <PermissionSwitchDisplay id="view-folder-view-tags" label="View tags" checked={perms.viewTags} />
+      <PermissionSwitchDisplay id="view-folder-add-tags" label="Add tags" checked={perms.addTags} />
+      <PermissionSwitchDisplay id="view-folder-query" label="AI Query content" checked={perms.canQuery} />
+      <PermissionSwitchDisplay id="view-folder-visible" label="Is Visible" checked={perms.isVisible} />
+    </div>
+  );
+
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-5xl dark:bg-darkbg overflow-auto max-h-[90vh] p-6">
-        <DialogHeader>
-          <DialogTitle className="text-xl font-semibold dark:text-white">
-            {group?.name} Details <span className="text-xs font-normal ml-2 px-2 py-0.5 rounded bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300">Default Role</span>
+      <DialogContent className="max-w-5xl dark:bg-darkbg overflow-auto max-h-[90vh] p-0">
+        <DialogHeader className="p-6 pb-2 border-b dark:border-gray-700">
+          <DialogTitle className="text-xl font-semibold dark:text-white flex items-center">
+            {group?.name}
+            {group?.isDefault && (
+                <span className="text-xs font-normal ml-2 px-2 py-0.5 rounded bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300">
+                    Default Role
+                </span>
+            )}
           </DialogTitle>
         </DialogHeader>
           
-        <div className="py-4 space-y-6">
-          <div>
-            <label className="text-sm font-medium dark:text-gray-200 mb-1 block">Group Name</label>
-            <Input
-              value={group?.name || ''}
-              readOnly
-              disabled
-              className="dark:bg-slate-800 dark:text-white dark:border-gray-700 opacity-70"
-            />
-          </div>
-          
-          {/* Permission Mode Section - always showing general permissions for view details */}
-          <div className="space-y-2">
-            <h3 className="text-sm font-medium dark:text-gray-200">Permission Mode</h3>
-            <div className="flex items-center space-x-4">
-              <div className="flex-1">
-                <Button
-                  type="button"
-                  variant="default"
+        <div className="p-6 space-y-6">
+           {/* Basic Info */}
+           <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="text-xs font-medium text-gray-500 dark:text-gray-400 block mb-1">Group Name</label>
+                <Input
+                  value={group?.name || ''}
+                  readOnly
                   disabled
-                  className="w-full bg-blue-600 hover:bg-blue-700 text-white opacity-80"
-                >
-                  General File Permissions
-                </Button>
+                  className="dark:bg-slate-800 dark:text-white dark:border-gray-700 opacity-70 text-sm"
+                />
               </div>
-              <div className="flex-1">
-                <Button
-                  type="button"
-                  variant="outline"
+              <div>
+                <label className="text-xs font-medium text-gray-500 dark:text-gray-400 block mb-1">Permission Mode</label>
+                 <Input
+                  value={group?.allAccess ? "General Access" : "Specific Permissions"}
+                  readOnly
                   disabled
-                  className="w-full dark:bg-slate-700 dark:text-gray-300 dark:border-slate-600 opacity-60"
-                >
-                  Specific File Permissions
-                </Button>
+                  className="dark:bg-slate-800 dark:text-white dark:border-gray-700 opacity-70 text-sm"
+                />
               </div>
-            </div>
-            <p className="text-xs text-gray-500 dark:text-gray-400 pt-1">
-              Default roles use consistent permissions across all files and folders.
-            </p>
-          </div>
-          
-          {/* General Permissions Accordion - Read Only */}
-          <Accordion type="single" collapsible defaultValue="general-permissions" className="w-full border dark:border-gray-700 rounded-md">
-            <AccordionItem value="general-permissions" className="border-b-0">
-              <AccordionTrigger className="dark:text-white hover:no-underline px-4 py-3 text-sm font-medium">
-                General Permissions Settings
-              </AccordionTrigger>
-              <AccordionContent className="dark:text-gray-300 space-y-4 px-4 pb-4 pt-2">
-                <div className="grid grid-cols-2 gap-x-6 gap-y-3">
-                  
-                  {/* All switches set to disabled and using the group data */}
-                  <div className="flex items-center space-x-2">
-                    <Switch 
-                      id="view-general-file-view-access" 
-                      checked={group?.defaultFilePerms.viewAccess}
-                      disabled
-                    />
-                    <label htmlFor="view-general-file-view-access" className="text-xs font-medium leading-none dark:text-gray-300">
-                      View files
-                    </label>
-                  </div>
-                  
-                  <div className="flex items-center space-x-2">
-                    <Switch 
-                      id="view-general-file-download" 
-                      checked={group?.defaultFilePerms.downloadAccess}
-                      disabled
-                    />
-                    <label htmlFor="view-general-file-download" className="text-xs font-medium leading-none dark:text-gray-300">
-                      Download files
-                    </label>
-                  </div>
-                  
-                  <div className="flex items-center space-x-2">
-                    <Switch 
-                      id="view-general-file-watermark" 
-                      checked={group?.defaultFilePerms.watermarkContent}
-                      disabled
-                    />
-                    <label htmlFor="view-general-file-watermark" className="text-xs font-medium leading-none dark:text-gray-300">
-                      Apply watermark
-                    </label>
-                  </div>
-                  
-                  <div className="flex items-center space-x-2">
-                    <Switch 
-                      id="view-general-file-delete-edit" 
-                      checked={group?.defaultFilePerms.deleteEditAccess}
-                      disabled
-                    />
-                    <label htmlFor="view-general-file-delete-edit" className="text-xs font-medium leading-none dark:text-gray-300">
-                      Delete/edit files
-                    </label>
-                  </div>
-                  
-                  <div className="flex items-center space-x-2">
-                    <Switch 
-                      id="view-general-file-view-comments" 
-                      checked={group?.defaultFilePerms.viewComments}
-                      disabled
-                    />
-                    <label htmlFor="view-general-file-view-comments" className="text-xs font-medium leading-none dark:text-gray-300">
-                      View comments
-                    </label>
-                  </div>
-                  
-                  <div className="flex items-center space-x-2">
-                    <Switch 
-                      id="view-general-file-add-comments" 
-                      checked={group?.defaultFilePerms.addComments}
-                      disabled
-                    />
-                    <label htmlFor="view-general-file-add-comments" className="text-xs font-medium leading-none dark:text-gray-300">
-                      Add comments
-                    </label>
-                  </div>
-                  
-                  <div className="flex items-center space-x-2">
-                    <Switch 
-                      id="view-general-file-view-tags" 
-                      checked={group?.defaultFilePerms.viewTags}
-                      disabled
-                    />
-                    <label htmlFor="view-general-file-view-tags" className="text-xs font-medium leading-none dark:text-gray-300">
-                      View tags
-                    </label>
-                  </div>
+           </div>
 
-                  <div className="flex items-center space-x-2">
-                    <Switch 
-                      id="view-general-folder-view-contents" 
-                      checked={group?.defaultFolderPerms.viewContents}
-                      disabled
-                    />
-                    <label htmlFor="view-general-folder-view-contents" className="text-xs font-medium leading-none dark:text-gray-300">
-                      View folder contents
-                    </label>
-                  </div>
-                  
-                  <div className="flex items-center space-x-2">
-                    <Switch 
-                      id="view-general-folder-allow-uploads" 
-                      checked={group?.defaultFolderPerms.allowUploads}
-                      disabled
-                    />
-                    <label htmlFor="view-general-folder-allow-uploads" className="text-xs font-medium leading-none dark:text-gray-300">
-                      Allow uploads to folder
-                    </label>
-                  </div>
-                </div>
-              </AccordionContent>
-            </AccordionItem>
-          </Accordion>
-          
-          {/* Dataroom Permissions Accordion - Read Only */}
-          <Accordion type="single" collapsible className="w-full border dark:border-gray-700 rounded-md">
-            <AccordionItem value="dataroom-permissions" className="border-b-0">
-              <AccordionTrigger className="dark:text-white hover:no-underline px-4 py-3 text-sm font-medium">
-                Dataroom Permissions
-              </AccordionTrigger>
-              <AccordionContent className="dark:text-gray-300 space-y-3 px-4 pb-4 pt-2">
-                <div className="flex items-center space-x-2">
-                  <Switch 
-                    id="view-can-query" 
-                    checked={group?.canQuery}
-                    disabled
-                  />
-                  <label htmlFor="view-can-query" className="text-xs font-medium leading-none dark:text-gray-300">
-                    AI Query dataroom
-                  </label>
-                </div>
-                
-                <div className="text-xs text-amber-600 dark:text-amber-400 italic bg-amber-50 dark:bg-amber-900/20 p-2 rounded-md my-2">
-                  Note: Queries may use data from files that users may not have access to with Specific Permissions (granular querying coming soon)
-                </div>
-                
-                <div className="flex items-center space-x-2">
-                  <Switch 
-                    id="view-can-organize" 
-                    checked={group?.canOrganize}
-                    disabled
-                  />
-                  <label htmlFor="view-can-organize" className="text-xs font-medium leading-none dark:text-gray-300">
-                    Organize files and folders
-                  </label>
-                </div>
-                
-                <div className="flex items-center space-x-2">
-                  <Switch 
-                    id="view-can-view-audit" 
-                    checked={group?.canViewAuditLogs}
-                    disabled
-                  />
-                  <label htmlFor="view-can-view-audit" className="text-xs font-medium leading-none dark:text-gray-300">
-                    View audit logs
-                  </label>
-                </div>
-                
-                <div className="flex items-center space-x-2">
-                  <Switch 
-                    id="view-can-create-permission-groups" 
-                    checked={group?.canCreatePermissionGroups}
-                    disabled
-                  />
-                  <label htmlFor="view-can-create-permission-groups" className="text-xs font-medium leading-none dark:text-gray-300">
-                    Create permission groups
-                  </label>
-                </div>
-                
-                <div className="flex items-center space-x-2">
-                  <Switch 
-                    id="view-can-delete-dataroom" 
-                    checked={group?.canDeleteDataroom}
-                    disabled
-                  />
-                  <label htmlFor="view-can-delete-dataroom" className="text-xs font-medium leading-none dark:text-gray-300">
-                    Delete dataroom
-                  </label>
-                </div>
-                
-                <div className="pt-2">
-                  <label className="text-xs font-medium block mb-2 dark:text-gray-300">Invite other users with roles:</label>
-                  <div className="grid grid-cols-2 gap-x-6 gap-y-2">
-                    <div className="flex items-center space-x-2">
-                      <Switch 
-                        id="view-invite-read" 
-                        checked={group?.canInviteUsers.includes('READ')}
-                        disabled
-                      />
-                      <label htmlFor="view-invite-read" className="text-xs dark:text-gray-300">Viewer</label>
-                    </div>
-                    
-                    <div className="flex items-center space-x-2">
-                      <Switch 
-                        id="view-invite-write" 
-                        checked={group?.canInviteUsers.includes('WRITE')}
-                        disabled
-                      />
-                      <label htmlFor="view-invite-write" className="text-xs dark:text-gray-300">Editor</label>
-                    </div>
-                    
-                    <div className="flex items-center space-x-2">
-                      <Switch 
-                        id="view-invite-admin" 
-                        checked={group?.canInviteUsers.includes('ADMIN')}
-                        disabled
-                      />
-                      <label htmlFor="view-invite-admin" className="text-xs dark:text-gray-300">Admin</label>
-                    </div>
-                  </div>
-                </div>
-              </AccordionContent>
-            </AccordionItem>
-            
-            <AccordionItem value="qa-permissions" className="border-b-0">
-              <AccordionTrigger className="dark:text-white hover:no-underline px-4 py-3 text-sm font-medium">
-                Q&A Permissions
-              </AccordionTrigger>
-              <AccordionContent className="dark:text-gray-300 space-y-3 px-4 pb-4 pt-2">
-                <div className="flex items-center space-x-2">
-                  <Switch 
-                    id="view-can-read-qa" 
-                    checked={group?.canUseQA}
-                    disabled
-                  />
-                  <label htmlFor="view-can-read-qa" className="text-xs font-medium leading-none dark:text-gray-300">
-                    Read Q&A
-                  </label>
-                </div>
-                
-                <div className="flex items-center space-x-2">
-                  <Switch 
-                    id="view-can-answer-qa" 
-                    checked={group?.canReadAnswerQuestions}
-                    disabled
-                  />
-                  <label htmlFor="view-can-answer-qa" className="text-xs font-medium leading-none dark:text-gray-300">
-                    Answer Q&A
-                  </label>
-                </div>
-              </AccordionContent>
-            </AccordionItem>
-          </Accordion>
+           <Accordion type="multiple" className="w-full space-y-3">
+             {/* General Permissions Section */}
+             <AccordionItem value="general-perms" className="border dark:border-gray-700 rounded-md">
+               <AccordionTrigger className="dark:text-white hover:no-underline px-4 py-3 text-sm font-medium">
+                 Default File & Folder Permissions
+               </AccordionTrigger>
+               <AccordionContent className="space-y-4 px-4 pb-4 pt-2">
+                 <div>
+                   <h4 className="text-sm font-medium mb-2 dark:text-gray-200">Default File Permissions</h4>
+                   {renderFilePerms(group.defaultFilePerms)}
+                 </div>
+                 <Separator className="dark:bg-gray-600" />
+                 <div>
+                   <h4 className="text-sm font-medium mb-2 dark:text-gray-200">Default Folder Permissions</h4>
+                   {renderFolderPerms(group.defaultFolderPerms)}
+                 </div>
+                 {group.allAccess ? (
+                   <p className="text-xs text-blue-500 dark:text-blue-400 italic pt-2">
+                     These permissions apply to all files and folders as General Access Mode is ON.
+                   </p>
+                 ) : (
+                   <p className="text-xs text-yellow-600 dark:text-yellow-400 italic pt-2">
+                     General Access Mode is OFF. Specific permissions (if set) will override these defaults.
+                   </p>
+                 )}
+               </AccordionContent>
+             </AccordionItem>
+
+             {/* Dataroom Settings Section */}
+             <AccordionItem value="dataroom-settings" className="border dark:border-gray-700 rounded-md">
+               <AccordionTrigger className="dark:text-white hover:no-underline px-4 py-3 text-sm font-medium">
+                 Dataroom Settings
+               </AccordionTrigger>
+               <AccordionContent className="dark:text-gray-300 space-y-3 px-4 pb-4 pt-2">
+                  <PermissionSwitchDisplay id="view-query-dataroom" label="AI Query Entire Dataroom" checked={group.canQueryEntireDataroom} />
+                   {group.canQueryEntireDataroom && (
+                      <div className="ml-8 text-xs text-amber-600 dark:text-amber-400 italic bg-amber-50 dark:bg-amber-900/20 p-2 rounded-md my-1">
+                        Note: Queries may use data from files that users may not have access to with Specific Permissions (granular querying coming soon)
+                      </div>
+                    )}
+                  <PermissionSwitchDisplay id="view-organize" label="Organize Files & Folders" checked={group.canOrganize} />
+                  <PermissionSwitchDisplay id="view-retry" label="Retry Processing" checked={group.canRetryProcessing} />
+                  <PermissionSwitchDisplay id="view-delete-dataroom" label="Delete Dataroom" checked={group.canDeleteDataroom} />
+               </AccordionContent>
+             </AccordionItem>
+
+              {/* User Management Section */}
+             <AccordionItem value="user-management" className="border dark:border-gray-700 rounded-md">
+               <AccordionTrigger className="dark:text-white hover:no-underline px-4 py-3 text-sm font-medium">
+                 User Management Permissions
+               </AccordionTrigger>
+               <AccordionContent className="dark:text-gray-300 space-y-3 px-4 pb-4 pt-2">
+                 <PermissionSwitchDisplay id="view-access-user-panel" label="Access User Management Panel" checked={group.canAccessUserManagementPanel} />
+                 <PermissionSwitchDisplay id="view-view-users" label="View Users List" checked={group.canViewUsers} />
+                 <PermissionSwitchDisplay id="view-view-group-details" label="View Permission Group Details" checked={group.canViewPermissionGroupDetails} />
+                 <PermissionSwitchDisplay id="view-create-groups" label="Create/Edit Permission Groups" checked={group.canCreatePermissionGroups} />
+                 <Separator className="dark:bg-gray-600 my-3" />
+                 <RoleListDisplay roles={group.canInviteUsers} title="Can Invite Roles:" />
+                 <Separator className="dark:bg-gray-600 my-3" />
+                 <RoleListDisplay roles={group.canUpdateUserPermissions} title="Can Update Permissions for Roles:" />
+                 <PermissionSwitchDisplay id="view-update-peer-perms" label="Can Update Peers' Permissions" checked={group.canUpdatePeerPermissions} />
+                 <Separator className="dark:bg-gray-600 my-3" />
+                 <RoleListDisplay roles={group.canRemoveUsers} title="Can Remove Roles:" />
+                 <PermissionSwitchDisplay id="view-remove-peer" label="Can Remove Peers" checked={group.canRemovePeerPermission} />
+               </AccordionContent>
+             </AccordionItem>
+
+             {/* Issues & Support Section */}
+             <AccordionItem value="issues-support" className="border dark:border-gray-700 rounded-md">
+               <AccordionTrigger className="dark:text-white hover:no-underline px-4 py-3 text-sm font-medium">
+                 Issues & Support Permissions
+               </AccordionTrigger>
+               <AccordionContent className="dark:text-gray-300 space-y-3 px-4 pb-4 pt-2">
+                 <PermissionSwitchDisplay id="view-access-issues" label="Access Issues Panel" checked={group.canAccessIssuesPanel} />
+                 <PermissionSwitchDisplay id="view-create-issues" label="Create Issues" checked={group.canCreateIssue} />
+                 <PermissionSwitchDisplay id="view-answer-issues" label="Answer/Resolve Issues" checked={group.canAnswerIssue} />
+               </AccordionContent>
+             </AccordionItem>
+
+              {/* Audit Log Section */}
+             <AccordionItem value="audit-logs" className="border dark:border-gray-700 rounded-md">
+               <AccordionTrigger className="dark:text-white hover:no-underline px-4 py-3 text-sm font-medium">
+                 Audit Log Permissions
+               </AccordionTrigger>
+               <AccordionContent className="dark:text-gray-300 space-y-3 px-4 pb-4 pt-2">
+                 <PermissionSwitchDisplay id="view-access-audit" label="Access Audit Logs Panel" checked={group.canAccessAuditLogsPanel} />
+                 <PermissionSwitchDisplay id="view-view-audit" label="View Audit Logs" checked={group.canViewAuditLogs} />
+                 <PermissionSwitchDisplay id="view-export-audit" label="Export Audit Logs" checked={group.canExportAuditLogs} />
+               </AccordionContent>
+             </AccordionItem>
+
+             {/* Diligence Dashboard Section */}
+              <AccordionItem value="diligence-dashboard" className="border dark:border-gray-700 rounded-md">
+               <AccordionTrigger className="dark:text-white hover:no-underline px-4 py-3 text-sm font-medium">
+                 Diligence Dashboard Permissions
+               </AccordionTrigger>
+               <AccordionContent className="dark:text-gray-300 space-y-3 px-4 pb-4 pt-2">
+                 <PermissionSwitchDisplay id="view-access-diligence" label="Access Diligence Dashboard Panel" checked={group.canAccessDiligenceDashboard} />
+                 <PermissionSwitchDisplay id="view-create-widget" label="Create Widgets" checked={group.canCreateDiligenceWidget} />
+                 <PermissionSwitchDisplay id="view-move-widget" label="Move Widgets" checked={group.canMoveWidgets} />
+                 <PermissionSwitchDisplay id="view-delete-widget" label="Delete Widgets" checked={group.canDeleteWidgets} />
+               </AccordionContent>
+             </AccordionItem>
+
+             {/* Questionnaire Section */}
+             <AccordionItem value="questionnaire" className="border dark:border-gray-700 rounded-md">
+               <AccordionTrigger className="dark:text-white hover:no-underline px-4 py-3 text-sm font-medium">
+                 Questionnaire Permissions
+               </AccordionTrigger>
+               <AccordionContent className="dark:text-gray-300 space-y-3 px-4 pb-4 pt-2">
+                 <PermissionSwitchDisplay id="view-access-questionnaire" label="Access Questionnaire Panel" checked={group.canAccessQuestionairePanel} />
+                 <PermissionSwitchDisplay id="view-add-questionnaire" label="Add Questionnaires" checked={group.canAddQuestionnaire} />
+               </AccordionContent>
+             </AccordionItem>
+
+              {/* Specific Permissions Section - Only show if relevant */}
+              {!group.allAccess && (group.fileIdAccess || group.folderIdAccess) && Object.keys({...group.fileIdAccess, ...group.folderIdAccess}).length > 0 && (
+                <AccordionItem value="specific-permissions" className="border border-yellow-500/50 dark:border-yellow-400/40 rounded-md">
+                  <AccordionTrigger className="dark:text-yellow-300 hover:no-underline px-4 py-3 text-sm font-medium text-yellow-700 dark:text-yellow-300">
+                     <FileWarning className="h-4 w-4 mr-2" /> Specific File/Folder Overrides
+                  </AccordionTrigger>
+                  <AccordionContent className="dark:text-gray-300 space-y-3 px-4 pb-4 pt-2">
+                     <p className="text-xs italic text-yellow-600 dark:text-yellow-400">The following specific permissions are set for this group, overriding the defaults:</p>
+                     {/* TODO: Display specific file/folder permissions in a readable format */} 
+                     {/* This might involve fetching file/folder names based on IDs */} 
+                     <pre className="text-xs bg-gray-100 dark:bg-gray-800 p-2 rounded overflow-auto max-h-40">
+                       {JSON.stringify({ fileIdAccess: group.fileIdAccess, folderIdAccess: group.folderIdAccess }, null, 2)}
+                     </pre>
+                  </AccordionContent>
+                </AccordionItem>
+              )}
+
+           </Accordion> 
+
         </div>
-          
-        <DialogFooter className="pt-4">
-          <Button
+        
+        <DialogFooter className="p-4 border-t dark:border-gray-700">
+          <Button 
+            variant="outline" 
             onClick={onClose}
-            className="dark:bg-blue-600 dark:hover:bg-blue-700 text-white"
+            className="dark:text-white dark:border-gray-600"
           >
             Close
           </Button>
+          {/* Potentially add Edit button here for non-default roles */} 
         </DialogFooter>
       </DialogContent>
     </Dialog>
