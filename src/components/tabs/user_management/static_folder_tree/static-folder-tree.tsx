@@ -202,9 +202,10 @@ const FolderTree: React.FC<FolderTreeProps> = ({ onNodeSelect }) => {
     // Function to get all node IDs (recursive)
     const getAllNodeIds = (node: Node): string[] => {
         const ids: string[] = [];
-        if (node.id) {
-            ids.push(node.id);
-        }
+        // Use node.id if available, otherwise generate a consistent ID
+        const nodeId = node.id || (node.path ? `${node.path}/${node.name}` : node.name);
+        ids.push(nodeId);
+        
         if (node.nodes) {
             node.nodes.forEach(child => {
                 ids.push(...getAllNodeIds(child));
@@ -217,13 +218,16 @@ const FolderTree: React.FC<FolderTreeProps> = ({ onNodeSelect }) => {
     const getParentIds = (node: Node, targetId: string): string[] => {
         if (!node.nodes) return [];
         
+        const nodeId = node.id || (node.path ? `${node.path}/${node.name}` : node.name);
+        
         for (const child of node.nodes) {
-            if (child.id === targetId) {
-                return node.id ? [node.id] : [];
+            const childId = child.id || (child.path ? `${child.path}/${child.name}` : child.name);
+            if (childId === targetId) {
+                return nodeId ? [nodeId] : [];
             }
             const parentIds = getParentIds(child, targetId);
             if (parentIds.length > 0) {
-                return node.id ? [...parentIds, node.id] : parentIds;
+                return nodeId ? [...parentIds, nodeId] : parentIds;
             }
         }
         return [];
@@ -241,45 +245,46 @@ const FolderTree: React.FC<FolderTreeProps> = ({ onNodeSelect }) => {
 
     // Function to handle checkbox selection (with children and parents)
     const handleCheckboxSelect = (node: Node, isSelected: boolean) => {
+        console.log("Checkbox selected:", node.name, isSelected);
         const newSelectedItems = new Set(selectedItems);
         const childIds = getAllNodeIds(node);
+        const nodeId = node.id || (node.path ? `${node.path}/${node.name}` : node.name);
         
         if (isSelected) {
             // Add the node and its children
             childIds.forEach(id => newSelectedItems.add(id));
             
             // Check and add parents if needed
-            if (node.id) {
-                const parentIds = getParentIds(folderStructure[0], node.id);
-                parentIds.forEach(parentId => {
-                    if (!newSelectedItems.has(parentId)) {
-                        newSelectedItems.add(parentId);
-                    }
-                });
+            const parentIds = getParentIds(folderStructure[0], nodeId);
+            parentIds.forEach(parentId => {
+                if (!newSelectedItems.has(parentId)) {
+                    newSelectedItems.add(parentId);
+                }
+            });
 
-                // Also update parent nodes' visibility
-                parentIds.forEach(parentId => {
-                    // Find the parent node
-                    const findNode = (searchNode: Node, targetId: string): Node | null => {
-                        if (searchNode.id === targetId) return searchNode;
-                        if (!searchNode.nodes) return null;
-                        for (const child of searchNode.nodes) {
-                            const found = findNode(child, targetId);
-                            if (found) return found;
-                        }
-                        return null;
+            // Also update parent nodes' visibility
+            parentIds.forEach(parentId => {
+                // Find the parent node
+                const findNode = (searchNode: Node, targetId: string): Node | null => {
+                    const searchNodeId = searchNode.id || (searchNode.path ? `${searchNode.path}/${searchNode.name}` : searchNode.name);
+                    if (searchNodeId === targetId) return searchNode;
+                    if (!searchNode.nodes) return null;
+                    for (const child of searchNode.nodes) {
+                        const found = findNode(child, targetId);
+                        if (found) return found;
+                    }
+                    return null;
+                };
+
+                const parentNode = findNode(folderStructure[0], parentId);
+                if (parentNode) {
+                    const updatedParent = {
+                        ...parentNode,
+                        show: true
                     };
-
-                    const parentNode = findNode(folderStructure[0], parentId);
-                    if (parentNode) {
-                        const updatedParent = {
-                            ...parentNode,
-                            show: true
-                        };
-                        onNodeSelect?.(updatedParent);
-                    }
-                });
-            }
+                    onNodeSelect?.(updatedParent);
+                }
+            });
         } else {
             // Remove the node and its children
             childIds.forEach(id => newSelectedItems.delete(id));
@@ -326,7 +331,11 @@ const FolderTree: React.FC<FolderTreeProps> = ({ onNodeSelect }) => {
 
     // Function to check if a node is selected by checkbox
     const isNodeCheckboxSelected = (node: Node): boolean => {
-        if (!node.id) return false;
+        if (!node.id) {
+            // Generate consistent ID for nodes without explicit ID
+            const generatedId = node.path ? `${node.path}/${node.name}` : node.name;
+            return selectedItems.has(generatedId);
+        }
         return selectedItems.has(node.id);
     };
 
@@ -391,7 +400,7 @@ const FolderTree: React.FC<FolderTreeProps> = ({ onNodeSelect }) => {
                     {folderStructure.map((node) => (
                         <FilesystemItem
                             node={node}
-                            key={node.name}
+                            key={node.id}
                             onSelect={handleNodeClick}
                             onCheckboxSelect={handleCheckboxSelect}
                             isCheckboxSelected={isNodeCheckboxSelected(node)}

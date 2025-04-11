@@ -808,15 +808,7 @@ export const PermissionGroupDialog: React.FC<PermissionGroupDialogProps> = ({
                 </p>
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 h-[400px]">
-                  <FolderPermissionTree
-                    folderStructure={folderStructure}
-                    selectedPermissions={newGroup.fileIdAccess as Record<string, FilePermission> || {}}
-                    onPermissionChange={onFilePermissionChange} 
-                    selectedItem={selectedFileId}
-                    onSelectItem={setSelectedFileId}
-                    itemsMap={dialogItemsMap}
-                    parentMap={dialogParentMap}
-                  />
+                  <FolderTree onNodeSelect={handleNodeSelect} />
                   <ItemPermissionsPanel
                     selectedItemId={selectedFileId}
                     items={Object.values(dialogItemsMap)}

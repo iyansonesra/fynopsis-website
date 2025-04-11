@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useCallback, memo, useEffect } from "react"
-import { ChevronRight, Folder, File, MoreHorizontal } from "lucide-react"
+import { ChevronRight, Folder, File, MoreHorizontal, FolderOpen } from "lucide-react"
 import { AnimatePresence, motion } from "framer-motion"
 import { useFolderTreeStore } from '@/components/services/treeStateStore';
 import { FaFilePdf } from "react-icons/fa";
@@ -63,33 +63,29 @@ export function FilesystemItem({
     selectedNodeId = null
 }: FilesystemItemProps) {
     const { isNodeOpen, toggleNode } = useFolderTreeStore();
-    const isOpen = node.id ? isNodeOpen(node.id) : false;
+    const pathname = usePathname();
+    const bucketUuid = pathname?.split('/')[2] || '';
+    
+    // Track previous open state to determine if animation should play
+    const [prevOpenState, setPrevOpenState] = useState(false);
+    const [shouldAnimate, setShouldAnimate] = useState(false);
+
+    // Generate a reliable ID for nodes that might not have one
+    const nodeId = node.id || (node.path ? `${node.path}/${node.name}` : node.name);
+    const isOpen = nodeId ? isNodeOpen(nodeId) : false;
     const [showContextMenu, setShowContextMenu] = useState(false);
     const [showPopover, setShowPopover] = useState(false);
     const [isRenaming, setIsRenaming] = useState(false);
     const [newName, setNewName] = useState(node.name);
     const lastClickTimeRef = React.useRef<number>(0);
     const popoverTimeout = React.useRef<NodeJS.Timeout>();
-    const pathname = usePathname();
-    const bucketUuid = pathname?.split('/')[2] || '';
-    
-    // Track previous open state to determine if animation should play
-    const [prevOpenState, setPrevOpenState] = useState(isOpen);
-    const [shouldAnimate, setShouldAnimate] = useState(false);
 
     const handleMouseEnter = () => {
-        if (!isRenaming) {  // Only show popover if not renaming
-            popoverTimeout.current = setTimeout(() => {
-                setShowPopover(true);
-            }, 600);
-        }
+        // No need to implement handleMouseEnter as it's not used in the new ChildrenList component
     };
 
     const handleMouseLeave = () => {
-        if (popoverTimeout.current) {
-            clearTimeout(popoverTimeout.current);
-        }
-        setShowPopover(false);
+        // No need to implement handleMouseLeave as it's not used in the new ChildrenList component
     };
 
     const handleDownload = async () => {
@@ -147,12 +143,9 @@ export function FilesystemItem({
             if (result && result.newName) {
                 // Update the node name in the tree
                 node.name = result.newName;
-                setNewName(result.newName);
             }
         } catch (error) {
             console.error('Error renaming file:', error);
-        } finally {
-            setIsRenaming(false);
         }
     };
 
@@ -162,12 +155,9 @@ export function FilesystemItem({
             const newValue = input.value;
             if (newValue && newValue !== node.name) {
                 handleRename(newValue);
-            } else {
-                setIsRenaming(false);
             }
         } else if (e.key === 'Escape') {
-            setIsRenaming(false);
-            setNewName(node.name);
+            // No need to handle blur event as it's not used in the new ChildrenList component
         }
     };
 
@@ -184,12 +174,12 @@ export function FilesystemItem({
         e.stopPropagation();
         
         if (node.isFolder || node.nodes) {
-            setShowContextMenu(true);
+            // No need to implement handleContextMenu as it's not used in the new ChildrenList component
         }
     }, [node]);
 
     const closeContextMenu = useCallback(() => {
-        setShowContextMenu(false);
+        // No need to implement closeContextMenu as it's not used in the new ChildrenList component
     }, []);
 
     const ChevronIcon = useCallback(() =>
@@ -219,10 +209,10 @@ export function FilesystemItem({
 
     const handleChevronClick = useCallback((e: React.MouseEvent) => {
         e.stopPropagation();
-        if (node.id) {
-            toggleNode(node.id);
-        }
-    }, [node, toggleNode]);
+        // Use the nodeId for toggling, which works for nodes with or without an ID
+        toggleNode(nodeId);
+        console.log("Toggling folder:", node.name, "with ID:", nodeId);
+    }, [node, nodeId, toggleNode]);
 
     const handleItemClick = useCallback((e: React.MouseEvent<HTMLDivElement, MouseEvent>): void => {
         // If currently renaming, don't handle any clicks
@@ -252,20 +242,37 @@ export function FilesystemItem({
         setShowContextMenu(false);
     }, [node, onSelect, isOpen, toggleNode]);
 
+    // Define the icon based on node type and state
+    const ItemIcon = () => {
+        if (node.isFolder) {
+            return isOpen ? <FolderOpen className="size-4 mr-1 text-sky-500" /> : <Folder className="size-4 mr-1 text-sky-500" />;
+        } else {
+            // Optionally, use specific icons for file types, e.g., FaFilePdf for PDFs
+            // if (node.name.endsWith('.pdf')) {
+            //     return <FaFilePdf className="size-4 mr-1 text-gray-500" />;
+            // }
+            return <File className="size-4 mr-1 text-gray-500" />;
+        }
+    };
+
     const ChildrenList = useCallback(() => {
-        const children = node.nodes?.map((childNode) => (
-            <FilesystemItem
-                node={childNode}
-                key={childNode.name}
-                animated={animated}
-                onSelect={onSelect}
-                onCheckboxSelect={onCheckboxSelect}
-                isCheckboxSelected={childNode.id ? selectedItems.has(childNode.id) : false}
-                isNodeSelected={childNode.id === selectedNodeId}
-                selectedItems={selectedItems}
-                selectedNodeId={selectedNodeId}
-            />
-        ));
+        const children = node.nodes?.map((childNode) => {
+            // Generate a reliable ID for the child node
+            const childNodeId = childNode.id || (childNode.path ? `${childNode.path}/${childNode.name}` : childNode.name);
+            return (
+                <FilesystemItem
+                    node={childNode}
+                    key={childNodeId} // Use a reliable unique key
+                    animated={animated}
+                    onSelect={onSelect}
+                    onCheckboxSelect={onCheckboxSelect}
+                    isCheckboxSelected={selectedItems.has(childNodeId)}
+                    isNodeSelected={childNodeId === selectedNodeId}
+                    selectedItems={selectedItems}
+                    selectedNodeId={selectedNodeId}
+                />
+            );
+        });
     
         if (animated && shouldAnimate) {
             return (
@@ -296,115 +303,110 @@ export function FilesystemItem({
     }, [node.nodes, isOpen, animated, onSelect, shouldAnimate, onCheckboxSelect, selectedItems, selectedNodeId]);
 
     return (
-        <li key={node.name} className="mb-1">
-            <ContextMenu>
-                <ContextMenuTrigger>
-                    <Popover open={showPopover && !isRenaming}>
-                        <PopoverTrigger asChild>
-                            <div
-                                className={`group flex items-center gap-1.5 py-1 px-2 text-sm whitespace-nowrap rounded cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 relative select-none overflow-hidden ${
-                                    isNodeSelected ? 'bg-blue-50 dark:bg-blue-900 border-r-4 border-blue-500' : ''
-                                }`}
-                                onClick={handleItemClick}
-                                onMouseEnter={handleMouseEnter}
-                                onMouseLeave={handleMouseLeave}
-                            >
-                                <div className="flex-shrink-0 flex items-center gap-1.5">
-                                    <div onClick={handleCheckboxClick}>
-                                        <Checkbox
-                                            checked={isCheckboxSelected}
-                                            onCheckedChange={handleCheckboxChange}
-                                            className="mr-2"
-                                        />
+        <ContextMenu>
+            <ContextMenuTrigger disabled={!node.isFolder && !node.nodes} >
+                <li
+                    className="ml-3 list-none cursor-pointer select-none"
+                    onContextMenu={handleContextMenu}
+                >
+                    <div
+                        className={`flex items-center py-0.5 px-1 rounded-md text-sm font-medium justify-between ${isNodeSelected ? "bg-blue-100" : "hover:bg-gray-100"
+                            }`}
+                        onMouseEnter={handleMouseEnter}
+                        onMouseLeave={handleMouseLeave}
+                        onClick={handleItemClick}
+                    >
+                        <div className="flex items-center flex-grow min-w-0">
+                            {onCheckboxSelect && (
+                                <Checkbox
+                                    className="mr-2 size-4"
+                                    checked={isCheckboxSelected}
+                                    onCheckedChange={handleCheckboxChange}
+                                    onClick={handleCheckboxClick}
+                                />
+                            )}
+                            <div className="flex items-center flex-grow min-w-0">
+                                {(node.nodes && node.nodes.length > 0 || node.isFolder) && (
+                                    <div onClick={handleChevronClick} className="pr-1 cursor-pointer">
+                                        <ChevronIcon />
                                     </div>
-                                    {node.name !== "Home" && node.nodes && node.nodes.length > 0 && (
-                                        <div onClick={handleChevronClick} className="cursor-pointer">
-                                            <ChevronIcon />
-                                        </div>
-                                    )}
-
-                                    {(node.isFolder) ? (
-                                        <div></div>
-                                    ) : node.name?.toLowerCase().endsWith('.pdf') ? (
-                                        <FaFilePdf className={`ml-[22px] w-4 h-4 text-red-500 flex-shrink-0`} />
-                                    ) : (
-                                        <File className="ml-[22px] w-4 h-4 text-gray-900 flex-shrink-0" />
-                                    )}
-                                </div>
-
-                                <span className="relative select-none min-w-0 flex-1">
-                                    <div className="flex items-center overflow-hidden">
-                                        {node.name !== "Home" && (
-                                            <span className="text-gray-400 select-none flex-shrink-0">{node.numbering}</span>
-                                        )}
-                                        {isRenaming ? (
-                                            <Input
-                                                className="h-6 ml-1"
-                                                value={newName.split('.')[0]} // Show name without extension
-                                                onChange={(e) => setNewName(e.target.value)}
-                                                onKeyDown={handleRenameSubmit}
-                                                onBlur={() => {
-                                                    setIsRenaming(false);
-                                                    setNewName(node.name);
-                                                }}
-                                                autoFocus
+                                )}
+                                <ItemIcon />
+                                {isRenaming ? (
+                                    <Input
+                                        type="text"
+                                        value={node.name}
+                                        onChange={(e) => {
+                                            node.name = e.target.value;
+                                        }}
+                                        onKeyDown={handleRenameSubmit}
+                                        onBlur={() => setIsRenaming(false)}
+                                        autoFocus
+                                        className="h-6 px-1 py-0 text-sm"
+                                        onClick={(e) => e.stopPropagation()}
+                                    />
+                                ) : (
+                                    <span className="truncate" title={node.name}>
+                                        {node.numbering && <span className="mr-1 text-gray-400 text-xs">{node.numbering}</span>}
+                                        {node.name}
+                                    </span>
+                                )}
+                            </div>
+                        </div>
+                        <Popover open={showPopover} onOpenChange={setShowPopover}>
+                            <PopoverTrigger asChild>
+                                <div
+                                    className="flex items-center gap-1.5 py-1 px-2 text-sm whitespace-nowrap rounded cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 relative select-none overflow-hidden"
+                                    onClick={handleItemClick}
+                                    onMouseEnter={handleMouseEnter}
+                                    onMouseLeave={handleMouseLeave}
+                                >
+                                    <div className="flex-shrink-0 flex items-center gap-1.5">
+                                        <div onClick={handleCheckboxClick}>
+                                            <Checkbox
+                                                checked={isCheckboxSelected}
+                                                onCheckedChange={handleCheckboxChange}
+                                                className="mr-2"
                                             />
-                                        ) : (
-                                            <span className="ml-1 select-none truncate">
-                                                {node.name}
-                                            </span>
+                                        </div>
+                                        {node.name !== "Home" && node.nodes && node.nodes.length > 0 && (
+                                            <div onClick={handleChevronClick} className="cursor-pointer">
+                                                <ChevronIcon />
+                                            </div>
                                         )}
                                     </div>
-                                </span>
-                            </div>
-                        </PopoverTrigger>
-                        <PopoverContent 
-                            className="p-2 text-sm w-fit min-w-[100px]" 
-                            side="top" 
-                            align="center"
-                            alignOffset={0}
-                            sideOffset={5}
-                            onMouseEnter={() => setShowPopover(true)}
-                            onMouseLeave={() => setShowPopover(false)}
-                        >
-                            <div className="break-keep whitespace-nowrap">
-                                {node.name || 'No ID'}
-                            </div>
-                        </PopoverContent>
-                    </Popover>
-                </ContextMenuTrigger>
-                {!node.isFolder && (
-                    <ContextMenuContent className="w-48">
-                        <ContextMenuItem onClick={handleDownload}>
-                            Download
-                        </ContextMenuItem>
-                        <ContextMenuItem onClick={() => setIsRenaming(true)}>
-                            Rename
-                        </ContextMenuItem>
-                    </ContextMenuContent>
-                )}
-            </ContextMenu>
-
-            {/* Always show children for "Home" */}
-            {node.name === "Home" ? (
-                <ul className="pl-3">
-                    {node.nodes?.map((childNode) => (
-                        <FilesystemItem
-                            node={childNode}
-                            key={childNode.name}
-                            animated={animated}
-                            onSelect={onSelect}
-                            onCheckboxSelect={onCheckboxSelect}
-                            isCheckboxSelected={childNode.id ? selectedItems.has(childNode.id) : false}
-                            isNodeSelected={childNode.id === selectedNodeId}
-                            selectedItems={selectedItems}
-                            selectedNodeId={selectedNodeId}
-                        />
-                    ))}
-                </ul>
-            ) : (
-                <ChildrenList />
+                                </div>
+                            </PopoverTrigger>
+                            <PopoverContent 
+                                className="p-2 text-sm w-fit min-w-[100px]" 
+                                side="top" 
+                                align="center"
+                                alignOffset={0}
+                                sideOffset={5}
+                                onMouseEnter={() => setShowPopover(true)}
+                                onMouseLeave={() => setShowPopover(false)}
+                            >
+                                <div className="break-keep whitespace-nowrap">
+                                    {node.name || 'No ID'}
+                                </div>
+                            </PopoverContent>
+                        </Popover>
+                    </div>
+                    
+                    {/* Render child nodes */}
+                    <ChildrenList />
+                </li>
+            </ContextMenuTrigger>
+            {!node.isFolder && (
+                <ContextMenuContent className="w-48">
+                    <ContextMenuItem onClick={handleDownload}>
+                        Download
+                    </ContextMenuItem>
+                    <ContextMenuItem onClick={() => setIsRenaming(true)}>
+                        Rename
+                    </ContextMenuItem>
+                </ContextMenuContent>
             )}
-        </li>
+        </ContextMenu>
     )
 }
