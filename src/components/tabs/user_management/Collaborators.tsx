@@ -22,7 +22,15 @@ import {
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/components/ui/use-toast";
 import { Amplify } from 'aws-amplify';
-import type { FilePermission, FileTreeItem as FileTreeItemType, User, UserManagementProps, TransferOwnershipDialog, PermissionGroup, Role } from './CollaboratorsTypes';
+import { 
+  FilePermission, 
+  FileTreeItem as FileTreeItemType, 
+  User, 
+  UserManagementProps, 
+  TransferOwnershipDialog, 
+  PermissionGroup, 
+  Role 
+} from './CollaboratorsTypes';
 import { DEFAULT_ROLES } from './CollaboratorsTypes';
 import { FolderPermissionTree, ItemPermissionsPanel } from './PermissionFolderTree';
 
@@ -53,10 +61,19 @@ import { ViewGroupDetailsDialog } from './components/ViewGroupDetailsDialog';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
 import { DeletePermissionGroupDialog } from './components/DeletePermissionGroupDialog';
 
+// Define RoleInfo locally to avoid import issues
+interface RoleInfo {
+  id: string;
+  name: string;
+  type: 'ROLE' | 'GROUP';
+  description?: string;
+}
+
 const UserManagement: React.FC<UserManagementProps> = ({ dataroomId }) => {
   const [users, setUsers] = useState<User[]>([]);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [otherUsers, setOtherUsers] = useState<User[]>([]);
+  const [availableRoles, setAvailableRoles] = useState<Record<string, RoleInfo>>({});
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [userToRemove, setUserToRemove] = useState<User | null>(null);
@@ -321,21 +338,25 @@ const UserManagement: React.FC<UserManagementProps> = ({ dataroomId }) => {
   };
 
   // Use the service to handle role changes
-  const handleRoleChange = (userEmail: string, newRole: string) => {
-    if (newRole === 'OWNER' && currentUser?.role === 'OWNER') {
+  const handleRoleChange = (userEmail: string, newRoleId: string) => {
+    // Get role info from availableRoles
+    const roleInfo = availableRoles[newRoleId];
+    
+    // Special case for transferring ownership
+    if (newRoleId === 'OWNER' && currentUser?.role === 'OWNER') {
       setOwnerTransfer({
         isOpen: true,
         targetUser: users.find(u => u.email === userEmail) || null
       });
     } else {
-      handleChangePermission(userEmail, newRole);
+      handleChangePermission(userEmail, newRoleId);
     }
   };
 
   // Use the service to handle permission changes
-  const handleChangePermission = async (userEmail: string, newRole: string) => {
+  const handleChangePermission = async (userEmail: string, newRoleId: string) => {
     try {
-      await changeUserPermission(bucketUuid, userEmail, newRole);
+      await changeUserPermission(bucketUuid, userEmail, newRoleId);
       await loadUsers(); // Refresh the user list
     } catch (error) {
       console.error('Error changing user permission:', error);
@@ -402,16 +423,18 @@ const UserManagement: React.FC<UserManagementProps> = ({ dataroomId }) => {
     setError(null);
 
     try {
-      const fetchedUsers = await fetchUsers(bucketUuid);
-      setUsers(fetchedUsers);
+      const response = await fetchUsers(bucketUuid);
+      setUsers(response.users);
+      setAvailableRoles(response.roles);
       
-        setTimeout(() => {
-          setIsLoading(false);
-        }, 500);
+      setTimeout(() => {
+        setIsLoading(false);
+      }, 500);
     } catch (error) {
       console.error('Error fetching users:', error);
       setError('Failed to fetch users');
       setUsers([]);
+      setAvailableRoles({});
       setIsLoading(false);
     }
   };
@@ -962,7 +985,7 @@ const UserManagement: React.FC<UserManagementProps> = ({ dataroomId }) => {
                         </div>
                       </div>
                       <div className="ml-6">
-                            <RoleSelect user={currentUser} currentUserRole={currentUser.role as Role} onRoleChange={handleRoleChange} currentUserEmail={currentUser.email} />
+                            <RoleSelect user={currentUser} currentUserRole={currentUser.role as Role} onRoleChange={handleRoleChange} currentUserEmail={currentUser.email} availableRoles={availableRoles} />
                       </div>
                     </div>
                   </div>
@@ -977,6 +1000,7 @@ const UserManagement: React.FC<UserManagementProps> = ({ dataroomId }) => {
                         currentUserEmail={currentUser?.email || null}
                         onRoleChange={handleRoleChange}
                         onRemoveUser={setUserToRemove}
+                        availableRoles={availableRoles}
                       />
                 ))}
               </div>

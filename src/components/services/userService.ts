@@ -7,12 +7,20 @@ import type {
   FileTreeItem as FileTreeItemType 
 } from '../tabs/user_management/CollaboratorsTypes';
 
+// Define RoleInfo locally to avoid import issues
+interface RoleInfo {
+  id: string;
+  name: string;
+  type: 'ROLE' | 'GROUP';
+  description?: string;
+}
+
 /**
  * Fetch all users associated with a dataroom
  * @param bucketUuid The dataroom/bucket identifier
- * @returns Array of users with their permissions
+ * @returns Array of users with their permissions and available roles
  */
-export const fetchUsers = async (bucketUuid: string): Promise<User[]> => {
+export const fetchUsers = async (bucketUuid: string): Promise<{ users: User[], roles: Record<string, any> }> => {
   try {
     const restOperation = get({
       apiName: 'S3_API',
@@ -29,9 +37,12 @@ export const fetchUsers = async (bucketUuid: string): Promise<User[]> => {
     const responseText = await body.text();
     const response = JSON.parse(responseText);
     
-    // Handle response when it's an array
-    if (Array.isArray(response)) {
-      return response.map((user: any) => ({
+    console.log('response', response);
+    
+    // Handle the new response format with users and roles
+    if (response && response.users && Array.isArray(response.users)) {
+      // Process users
+      const formattedUsers = response.users.map((user: any) => ({
         ...user,
         isInvited: user.status === 'INVITED',
         role: user.role,
@@ -39,16 +50,24 @@ export const fetchUsers = async (bucketUuid: string): Promise<User[]> => {
         permissionInfo: user.permissionInfo || {
           type: 'ROLE',
           displayName: formatRoleDisplay(user.role),
+          id: user.role
         },
         invitedPermissionInfo: user.invitedPermissionInfo || (user.invitedRole ? {
           type: 'ROLE',
           displayName: formatRoleDisplay(user.invitedRole),
+          id: user.invitedRole
         } : undefined)
       }));
+
+      // Return both users and roles
+      return {
+        users: formattedUsers,
+        roles: response.roles || {}
+      };
     } 
-    // Handle response when it has a users property
-    else if (response.users && Array.isArray(response.users)) {
-      return response.users.map((user: any) => ({
+    // Fallback for old format (just array of users)
+    else if (Array.isArray(response)) {
+      const formattedUsers = response.map((user: any) => ({
         ...user,
         isInvited: user.status === 'INVITED',
         role: user.role,
@@ -56,16 +75,31 @@ export const fetchUsers = async (bucketUuid: string): Promise<User[]> => {
         permissionInfo: user.permissionInfo || {
           type: 'ROLE',
           displayName: formatRoleDisplay(user.role),
+          id: user.role
         },
         invitedPermissionInfo: user.invitedPermissionInfo || (user.invitedRole ? {
           type: 'ROLE',
           displayName: formatRoleDisplay(user.invitedRole),
+          id: user.invitedRole
         } : undefined)
       }));
+
+      // Create default roles object for backward compatibility
+      const defaultRoles = {
+        'OWNER': { id: 'OWNER', name: 'Owner', type: 'ROLE' as const },
+        'ADMIN': { id: 'ADMIN', name: 'Admin', type: 'ROLE' as const },
+        'WRITE': { id: 'WRITE', name: 'Editor', type: 'ROLE' as const },
+        'READ': { id: 'READ', name: 'Viewer', type: 'ROLE' as const }
+      };
+
+      return {
+        users: formattedUsers,
+        roles: defaultRoles
+      };
     } 
     else {
       console.error('Unexpected response format:', response);
-      return [];
+      return { users: [], roles: {} };
     }
   } catch (error) {
     console.error('Error fetching users:', error);
@@ -151,13 +185,13 @@ export const fetchPermissionGroups = async (bucketUuid: string): Promise<Permiss
  * Change a user's permission level in a dataroom
  * @param bucketUuid The dataroom/bucket identifier
  * @param userEmail Email of the user whose permissions to change
- * @param newPermissionLevel New permission level to assign
+ * @param newPermissionId New permission level ID (can be a standard role or permission group ID)
  * @returns API response from the operation
  */
 export const changeUserPermission = async (
   bucketUuid: string, 
   userEmail: string, 
-  newPermissionLevel: string
+  newPermissionId: string
 ) => {
   try {
     const restOperation = post({
@@ -169,7 +203,7 @@ export const changeUserPermission = async (
         },
         body: {
           userEmail,
-          newPermissionLevel
+          role: newPermissionId
         },
         withCredentials: true
       },
