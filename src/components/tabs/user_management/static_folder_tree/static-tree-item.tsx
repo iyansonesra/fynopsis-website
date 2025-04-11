@@ -244,48 +244,53 @@ export function FilesystemItem({
 
     // Define the icon based on node type and state
     const ItemIcon = () => {
+        // Common opacity class for unselected items
+        const opacityClass = !isCheckboxSelected ? "opacity-60" : "";
+        
         if (node.isFolder) {
-            return isOpen ? <FolderOpen className="size-4 mr-1 text-sky-500" /> : <Folder className="size-4 mr-1 text-sky-500" />;
+            return isOpen ? 
+                <FolderOpen className={`size-4 mr-1 text-sky-500 ${opacityClass}`} /> : 
+                <Folder className={`size-4 mr-1 text-sky-500 ${opacityClass}`} />;
         } else {
             // Use specific icons for different file types
             const fileName = node.name.toLowerCase();
             
             // Document types
             if (fileName.endsWith('.pdf')) {
-                return <FaFilePdf className="size-4 mr-1 text-red-500" />;
+                return <FaFilePdf className={`size-4 mr-1 text-red-500 ${opacityClass}`} />;
             } else if (fileName.endsWith('.doc') || fileName.endsWith('.docx')) {
-                return <FaFileWord className="size-4 mr-1 text-blue-600" />;
+                return <FaFileWord className={`size-4 mr-1 text-blue-600 ${opacityClass}`} />;
             } else if (fileName.endsWith('.xls') || fileName.endsWith('.xlsx')) {
-                return <FaFileExcel className="size-4 mr-1 text-green-600" />;
+                return <FaFileExcel className={`size-4 mr-1 text-green-600 ${opacityClass}`} />;
             } else if (fileName.endsWith('.ppt') || fileName.endsWith('.pptx')) {
-                return <FaFilePowerpoint className="size-4 mr-1 text-orange-600" />;
+                return <FaFilePowerpoint className={`size-4 mr-1 text-orange-600 ${opacityClass}`} />;
             } 
             // Image types
             else if (['.jpg', '.jpeg', '.png', '.gif', '.svg', '.webp'].some(ext => fileName.endsWith(ext))) {
-                return <FaFileImage className="size-4 mr-1 text-purple-500" />;
+                return <FaFileImage className={`size-4 mr-1 text-purple-500 ${opacityClass}`} />;
             }
             // Code/text types
             else if (['.js', '.ts', '.jsx', '.tsx', '.html', '.css', '.json', '.py', '.java', '.c', '.cpp'].some(ext => fileName.endsWith(ext))) {
-                return <FaFileCode className="size-4 mr-1 text-gray-600" />;
+                return <FaFileCode className={`size-4 mr-1 text-gray-600 ${opacityClass}`} />;
             }
             // Archive types
             else if (['.zip', '.rar', '.tar', '.gz', '.7z'].some(ext => fileName.endsWith(ext))) {
-                return <FaFileArchive className="size-4 mr-1 text-yellow-600" />;
+                return <FaFileArchive className={`size-4 mr-1 text-yellow-600 ${opacityClass}`} />;
             }
             // Video types
             else if (['.mp4', '.avi', '.mov', '.wmv', '.mkv'].some(ext => fileName.endsWith(ext))) {
-                return <FaFileVideo className="size-4 mr-1 text-indigo-500" />;
+                return <FaFileVideo className={`size-4 mr-1 text-indigo-500 ${opacityClass}`} />;
             }
             // Audio types
             else if (['.mp3', '.wav', '.ogg', '.flac'].some(ext => fileName.endsWith(ext))) {
-                return <FaFileAudio className="size-4 mr-1 text-pink-500" />;
+                return <FaFileAudio className={`size-4 mr-1 text-pink-500 ${opacityClass}`} />;
             }
             // Text files
             else if (['.txt', '.md', '.rtf'].some(ext => fileName.endsWith(ext))) {
-                return <FaFileAlt className="size-4 mr-1 text-gray-500" />;
+                return <FaFileAlt className={`size-4 mr-1 text-gray-500 ${opacityClass}`} />;
             }
             // Default file icon for other types
-            return <File className="size-4 mr-1 text-gray-500" />;
+            return <File className={`size-4 mr-1 text-gray-500 ${opacityClass}`} />;
         }
     };
 
@@ -344,21 +349,16 @@ export function FilesystemItem({
                     onContextMenu={handleContextMenu}
                 >
                     <div
-                        className={`flex items-center py-0.5 px-1 rounded-md text-sm font-medium justify-between ${isNodeSelected ? "bg-blue-100" : "hover:bg-gray-100"
-                            }`}
+                        className={`flex items-center py-0.5 px-1 rounded-md text-sm font-medium justify-between 
+                            ${isNodeSelected ? "bg-blue-100" : "hover:bg-gray-100"}
+                            ${!isCheckboxSelected ? "text-gray-400 opacity-60" : "text-gray-900"}
+                        `}
                         onMouseEnter={handleMouseEnter}
                         onMouseLeave={handleMouseLeave}
                         onClick={handleItemClick}
                     >
                         <div className="flex items-center flex-grow min-w-0">
-                            {onCheckboxSelect && (
-                                <Checkbox
-                                    className="mr-2 size-4"
-                                    checked={isCheckboxSelected}
-                                    onCheckedChange={handleCheckboxChange}
-                                    onClick={handleCheckboxClick}
-                                />
-                            )}
+                            {/* Removed the checkbox from the left side as requested */}
                             <div className="flex items-center flex-grow min-w-0">
                                 {(node.nodes && node.nodes.length > 0 || node.isFolder) && (
                                     <div onClick={handleChevronClick} className="pr-1 cursor-pointer">
