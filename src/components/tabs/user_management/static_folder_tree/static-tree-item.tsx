@@ -352,7 +352,6 @@ export function FilesystemItem({
                         className={`flex items-center py-0.5 px-1 rounded-md text-sm font-medium justify-between 
                             ${isNodeSelected ? "bg-blue-100" : "hover:bg-gray-100"}
                             ${!isCheckboxSelected ? "text-gray-400 opacity-60" : "text-gray-900"}
-                            pr-10
                         `}
                         onMouseEnter={handleMouseEnter}
                         onMouseLeave={handleMouseLeave}
@@ -386,37 +385,12 @@ export function FilesystemItem({
                             )}
                         </div>
                         
-                        <Popover open={showPopover} onOpenChange={setShowPopover}>
-                            <PopoverTrigger asChild>
-                                <div
-                                    className="flex items-center gap-1.5 py-1 px-2 text-sm whitespace-nowrap rounded cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 relative select-none overflow-hidden"
-                                    onClick={(e) => e.stopPropagation()}
-                                    onMouseEnter={handleMouseEnter}
-                                    onMouseLeave={handleMouseLeave}
-                                >
-                                    <div onClick={handleCheckboxClick} className="flex items-center">
-                                        <Checkbox
-                                            checked={isCheckboxSelected}
-                                            onCheckedChange={handleCheckboxChange}
-                                            className="mr-2"
-                                        />
-                                    </div>
-                                </div>
-                            </PopoverTrigger>
-                            <PopoverContent 
-                                className="p-2 text-sm w-fit min-w-[100px]" 
-                                side="top" 
-                                align="center"
-                                alignOffset={0}
-                                sideOffset={5}
-                                onMouseEnter={() => setShowPopover(true)}
-                                onMouseLeave={() => setShowPopover(false)}
-                            >
-                                <div className="break-keep whitespace-nowrap">
-                                    {node.name || 'No ID'}
-                                </div>
-                            </PopoverContent>
-                        </Popover>
+                        <div onClick={handleCheckboxClick} className="flex items-center pr-1">
+                            <Checkbox
+                                checked={isCheckboxSelected}
+                                onCheckedChange={handleCheckboxChange}
+                            />
+                        </div>
                     </div>
                     
                     {/* Render child nodes */}

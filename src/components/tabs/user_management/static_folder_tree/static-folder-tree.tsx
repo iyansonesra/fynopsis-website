@@ -394,6 +394,12 @@ const FolderTree: React.FC<FolderTreeProps> = ({ onNodeSelect }) => {
 
     return (
         <div className="h-full flex flex-col p-3 overflow-hidden border rounded-md">
+            {/* Header with labels */}
+            <div className="flex justify-between items-center pb-2 mb-2 border-b">
+                <span className="font-medium text-sm text-gray-700">Folders/Files</span>
+                <span className="font-medium text-sm text-gray-700 mr-1">Show</span>
+            </div>
+            
             {/* Folder tree structure */}
             <div className="flex-1 overflow-auto">
                 <ul>
