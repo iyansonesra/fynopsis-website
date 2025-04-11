@@ -35,6 +35,7 @@ export default function DataroomLayout({ children }: { children: React.ReactNode
     setCanInviteUsers,
     setCanMoveWidgets,
     setCanQueryEntireDataroom,
+    setCanUpdatePeerPermissions,
   } = usePermissionsStore();
 
   // Extract dataroomId from params
@@ -84,6 +85,7 @@ export default function DataroomLayout({ children }: { children: React.ReactNode
       // setCanInviteUsers(["hello"]);
       // setCanMoveWidgets(false);
       // setCanQueryEntireDataroom(false);
+      setCanUpdatePeerPermissions(true);
       setHasPermission(true);
       setDataroomId(id);
 

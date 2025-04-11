@@ -10,6 +10,8 @@ import {
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { User, Role } from '../CollaboratorsTypes';
+import { usePermissionsStore } from '@/stores/permissionsStore'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 
 // Define RoleInfo directly to avoid dependency on external module
 interface RoleInfo {
@@ -49,8 +51,13 @@ export const RoleSelect: React.FC<{
   currentUserEmail: string | null;
   availableRoles: Record<string, RoleInfo>;
 }> = ({ user, currentUserRole, onRoleChange, currentUserEmail, availableRoles }) => {
+  const { permissionDetails } = usePermissionsStore();
   const isCurrentUser = user.email === currentUserEmail;
   const canModifyRole = canModifyUserRole(currentUserRole, user.role as Role, isCurrentUser);
+  const canUpdatePermissions = permissionDetails?.canUpdatePeerPermissions;
+  const canModifyUser = permissionDetails?.canUpdateUserPermissions?.includes('*') && isCurrentUser;
+
+  const canActuallyModifyRole = (canModifyRole && canUpdatePermissions) || canModifyUser;
   
   // Use type assertion to access properties
   const permissionInfo = (user as any).permissionInfo;
@@ -68,23 +75,36 @@ export const RoleSelect: React.FC<{
     });
 
   return (
-    <Select
-      disabled={!canModifyRole || isUserOwner} // Disable if user is Owner (can't change from Owner)
-      value={currentRoleId}
-      onValueChange={(value) => onRoleChange(user.email, value)}
-    >
-      <SelectTrigger className="w-[140px]">
-        <SelectValue placeholder={currentRoleDisplay} />
-      </SelectTrigger>
-      <SelectContent>
-        {roleEntries.map(([id, roleInfo]) => (
-          <SelectItem key={id} value={id} className="cursor-pointer">
-            {roleInfo.name}
-            {roleInfo.type === 'GROUP' && ' (Custom)'}
-          </SelectItem>
-        ))}
-      </SelectContent>
-    </Select>
+    <TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <div className={!canActuallyModifyRole ? "opacity-50 cursor-not-allowed" : ""}>
+            <Select
+              disabled={!canActuallyModifyRole}
+              value={currentRoleId}
+              onValueChange={(value) => onRoleChange(user.email, value)}
+            >
+              <SelectTrigger className="w-[140px]">
+                <SelectValue placeholder={currentRoleDisplay} />
+              </SelectTrigger>
+              <SelectContent>
+                {roleEntries.map(([id, roleInfo]) => (
+                  <SelectItem key={id} value={id} className="cursor-pointer">
+                    {roleInfo.name}
+                    {roleInfo.type === 'GROUP' && ' (Custom)'}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </TooltipTrigger>
+        {!canActuallyModifyRole && (
+          <TooltipContent>
+            {!canUpdatePermissions ? "Updating user permissions is disabled" : "You don't have permission to update this user's role"}
+          </TooltipContent>
+        )}
+      </Tooltip>
+    </TooltipProvider>
   );
 };
 
@@ -96,8 +116,11 @@ export const UserCard: React.FC<UserCardProps> = ({
   onRemoveUser,
   availableRoles
 }) => {
+  const { permissionDetails } = usePermissionsStore();
   const isCurrentUser = user.email === currentUserEmail;
-  const canRemove = canRemoveUser(currentUserRole, user.role as Role) && !isCurrentUser;
+  const canRemove = permissionDetails?.canRemoveUsers?.includes('*') || permissionDetails?.canRemoveUsers?.includes(user.email);
+  const canRemove2 = canRemoveUser(currentUserRole, user.role as Role) && !isCurrentUser;
+  const canActuallyRemove = canRemove && canRemove2;
 
   return (
     <div className="p-6 border-b dark:border-gray-700 last:border-b-0">
@@ -132,7 +155,27 @@ export const UserCard: React.FC<UserCardProps> = ({
             currentUserEmail={currentUserEmail}
             availableRoles={availableRoles}
           />
-          {canRemove && (
+          {!canActuallyRemove ? (
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div className="opacity-50 cursor-not-allowed">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      disabled={true}
+                      className="text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-600"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent>
+                  {!canRemove ? "Removing users is disabled" : "You don't have permission to remove this user"}
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          ) : (
             <Button
               variant="ghost"
               size="icon"

@@ -79,9 +79,9 @@ interface PermissionsState {
   setCanOrganize: (value: boolean) => void; 
   setCanQueryEntireDataroom: (value: boolean) => void; // done
   setCanRemovePeerPermission: (value: boolean) => void;
-  setCanRemoveUsers: (value: string[]) => void;
+  setCanRemoveUsers: (value: string[]) => void; // done
   setCanRetryProcessing: (value: boolean) => void;
-  setCanUpdatePeerPermissions: (value: boolean) => void;
+  setCanUpdatePeerPermissions: (value: boolean) => void; // done
   setCanUpdateUserPermissions: (value: string[]) => void;
   setCanViewAuditLogs: (value: boolean) => void;
   setCanViewPermissionGroupDetails: (value: boolean) => void;
