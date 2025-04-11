@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import type { FilePermission, FileTreeItem as FileTreeItemType } from "./CollaboratorsTypes";
+import type { FilePermission, FileTreeItem as FileTreeItemType, FolderPermission } from "./CollaboratorsTypes";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/switch";
 import { ChevronDown, ChevronRight, Folder, File } from "lucide-react";
@@ -199,10 +199,17 @@ export const FileTreeItem = ({
 
 export const ItemPermissionsPanel: React.FC<{
     selectedItemId: string | null;
-    items: any[];
+    selectedItemIsFolder: boolean | null;
+    selectedItemName: string | null;
     permissions: Record<string, FilePermission>;
     onPermissionChange: (id: string, permissions: Partial<FilePermission>) => void;
-  }> = ({ selectedItemId, items, permissions, onPermissionChange }) => {
+  }> = ({ 
+    selectedItemId, 
+    selectedItemIsFolder,
+    selectedItemName,
+    permissions, 
+    onPermissionChange 
+  }) => {
     if (!selectedItemId) {
       return (
         <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-md h-full flex items-center justify-center min-h-[500px]">
@@ -214,27 +221,103 @@ export const ItemPermissionsPanel: React.FC<{
     }
   
     const itemPermissions = permissions[selectedItemId] || {};
-    const selectedItem = items.find((item: any) => item.id === selectedItemId) || 
-                        items.flatMap((item: any) => item.children || []).find((child: any) => child.id === selectedItemId);
-    const isFolder = selectedItem?.type === 'folder';
-    const isVisible = itemPermissions.show !== false;
+    
+    const isFolder = selectedItemIsFolder === true;
+    const isVisible = itemPermissions.isVisible !== false;
+  
+    const DEFAULT_FILE_PERMISSIONS = {
+      viewAccess: true,
+      watermarkContent: false, 
+      deleteAccess: false,
+      editAccess: false,
+      viewComments: true,
+      addComments: false,
+      downloadAccess: false,
+      viewTags: true,
+      addTags: false,
+      canQuery: false,
+      isVisible: true,
+      moveAccess: false,
+      renameAccess: false
+    };
+
+    const DEFAULT_FOLDER_PERMISSIONS = {
+      allowUploads: false,
+      createFolders: false,
+      addComments: false,
+      viewComments: true,
+      viewContents: true,
+      viewTags: true,
+      addTags: false,
+      canQuery: false,
+      isVisible: true,
+      moveContents: false,
+      renameContents: false,
+      deleteContents: false
+    };
   
     const handleVisibilitySwitchChange = (checked: boolean) => {
       if (selectedItemId) {
-        onPermissionChange(selectedItemId, { show: checked });
+        onPermissionChange(selectedItemId, { 
+          isVisible: checked,
+          show: checked
+        });
       }
     };
   
-    const handleDetailPermissionChange = (update: Partial<FilePermission>) => {
-      if (selectedItemId) {
+    const handleFilePermissionChange = (update: Partial<FilePermission>) => {
+      if (selectedItemId && !isFolder) {
         onPermissionChange(selectedItemId, update);
       }
     };
+
+    const handleFolderPermissionChange = (update: Partial<FolderPermission>) => {
+      if (selectedItemId && isFolder) {
+        onPermissionChange(selectedItemId, { 
+          folderPerms: {
+            ...(itemPermissions.folderPerms || DEFAULT_FOLDER_PERMISSIONS),
+            ...update
+          }
+        });
+      }
+    };
+
+    const handleChildFilePermissionChange = (update: Partial<FilePermission>) => {
+      if (selectedItemId && isFolder) {
+        onPermissionChange(selectedItemId, { 
+          childFilePerms: {
+            ...(itemPermissions.childFilePerms || DEFAULT_FILE_PERMISSIONS),
+            ...update
+          }
+        });
+      }
+    };
+
+    const getFilePermission = (key: keyof typeof DEFAULT_FILE_PERMISSIONS) => {
+      if (!isFolder) {
+          return itemPermissions[key] !== undefined ? itemPermissions[key] : DEFAULT_FILE_PERMISSIONS[key];
+      }
+      return DEFAULT_FILE_PERMISSIONS[key]; 
+    };
+
+    const getFolderPermission = (key: keyof typeof DEFAULT_FOLDER_PERMISSIONS) => {
+        if (!isFolder) return DEFAULT_FOLDER_PERMISSIONS[key];
+        const folderPerms = itemPermissions.folderPerms;
+        if (!folderPerms) return DEFAULT_FOLDER_PERMISSIONS[key];
+        return folderPerms[key] !== undefined ? folderPerms[key] : DEFAULT_FOLDER_PERMISSIONS[key];
+    };
+
+    const getChildFilePermission = (key: keyof typeof DEFAULT_FILE_PERMISSIONS) => {
+        if (!isFolder) return DEFAULT_FILE_PERMISSIONS[key];
+        const childPerms = itemPermissions.childFilePerms;
+        if (!childPerms) return DEFAULT_FILE_PERMISSIONS[key];
+        return childPerms[key] !== undefined ? childPerms[key] : DEFAULT_FILE_PERMISSIONS[key];
+    };
   
     return (
-      <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-md">
+      <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-md h-full overflow-auto min-h-[600px]">
         <h3 className="font-medium text-sm mb-3 dark:text-white">
-          {selectedItem?.name || 'Item'} Permissions
+           {selectedItemName || 'Item'} Permissions {isFolder ? '(Folder)' : '(File)'}
         </h3>
         
         <div className="space-y-4">
@@ -252,15 +335,17 @@ export const ItemPermissionsPanel: React.FC<{
             </div>
           </div>
           
+          {!isFolder && (
+            <>
           <div>
-            <h4 className="text-xs uppercase text-gray-500 dark:text-gray-400 mb-2">Access Permissions</h4>
+                <h4 className="text-xs uppercase text-gray-500 dark:text-gray-400 mb-2">File Access Permissions</h4>
             <div className="space-y-2">
               <div className="flex items-center space-x-2">
                 <Switch 
                   id={`${selectedItemId}-panel-view`}
-                  checked={isVisible && itemPermissions.viewAccess}
+                      checked={isVisible && getFilePermission('viewAccess')}
                   onCheckedChange={(checked) => 
-                    handleDetailPermissionChange({ viewAccess: checked })}
+                        handleFilePermissionChange({ viewAccess: checked })}
                   disabled={!isVisible}
                 />
                 <label htmlFor={`${selectedItemId}-panel-view`} className={`text-sm transition-colors ${!isVisible ? 'text-gray-400 dark:text-gray-500' : 'dark:text-gray-300'}`}>
@@ -271,9 +356,9 @@ export const ItemPermissionsPanel: React.FC<{
               <div className="flex items-center space-x-2">
                 <Switch 
                   id={`${selectedItemId}-panel-download`}
-                  checked={isVisible && itemPermissions.downloadAccess}
+                      checked={isVisible && getFilePermission('downloadAccess')}
                   onCheckedChange={(checked) => 
-                    handleDetailPermissionChange({ downloadAccess: checked })}
+                        handleFilePermissionChange({ downloadAccess: checked })}
                   disabled={!isVisible}
                 />
                 <label htmlFor={`${selectedItemId}-panel-download`} className={`text-sm transition-colors ${!isVisible ? 'text-gray-400 dark:text-gray-500' : 'dark:text-gray-300'}`}>
@@ -284,40 +369,66 @@ export const ItemPermissionsPanel: React.FC<{
               <div className="flex items-center space-x-2">
                 <Switch 
                   id={`${selectedItemId}-panel-edit`}
-                  checked={isVisible && itemPermissions.deleteEditAccess}
+                      checked={isVisible && getFilePermission('editAccess')}
                   onCheckedChange={(checked) => 
-                    handleDetailPermissionChange({ deleteEditAccess: checked })}
+                        handleFilePermissionChange({ editAccess: checked })}
                   disabled={!isVisible}
                 />
                 <label htmlFor={`${selectedItemId}-panel-edit`} className={`text-sm transition-colors ${!isVisible ? 'text-gray-400 dark:text-gray-500' : 'dark:text-gray-300'}`}>
-                  Edit/Delete
+                      Edit
+                    </label>
+                  </div>
+
+                  <div className="flex items-center space-x-2">
+                    <Switch 
+                      id={`${selectedItemId}-panel-delete`}
+                      checked={isVisible && getFilePermission('deleteAccess')}
+                      onCheckedChange={(checked) => 
+                        handleFilePermissionChange({ deleteAccess: checked })}
+                      disabled={!isVisible}
+                    />
+                    <label htmlFor={`${selectedItemId}-panel-delete`} className={`text-sm transition-colors ${!isVisible ? 'text-gray-400 dark:text-gray-500' : 'dark:text-gray-300'}`}>
+                      Delete
+                    </label>
+                  </div>
+
+                  <div className="flex items-center space-x-2">
+                    <Switch 
+                      id={`${selectedItemId}-panel-move`}
+                      checked={isVisible && getFilePermission('moveAccess')}
+                      onCheckedChange={(checked) => 
+                        handleFilePermissionChange({ moveAccess: checked })}
+                      disabled={!isVisible}
+                    />
+                    <label htmlFor={`${selectedItemId}-panel-move`} className={`text-sm transition-colors ${!isVisible ? 'text-gray-400 dark:text-gray-500' : 'dark:text-gray-300'}`}>
+                      Move file
                 </label>
               </div>
             </div>
           </div>
           
           <div>
-            <h4 className="text-xs uppercase text-gray-500 dark:text-gray-400 mb-2">Special Settings</h4>
+                <h4 className="text-xs uppercase text-gray-500 dark:text-gray-400 mb-2">File Special Settings</h4>
             <div className="space-y-2">
                <div className="flex items-center space-x-2">
                 <Switch 
                   id={`${selectedItemId}-panel-watermark`}
-                  checked={isVisible && itemPermissions.requireAgreement}
+                      checked={isVisible && getFilePermission('watermarkContent')}
                   onCheckedChange={(checked) => 
-                    handleDetailPermissionChange({ requireAgreement: checked })}
+                        handleFilePermissionChange({ watermarkContent: checked })}
                   disabled={!isVisible}
                 />
                 <label htmlFor={`${selectedItemId}-panel-watermark`} className={`text-sm transition-colors ${!isVisible ? 'text-gray-400 dark:text-gray-500' : 'dark:text-gray-300'}`}>
-                  Require NDA/agreement to view
+                      Apply watermark
                 </label>
               </div>
               
               <div className="flex items-center space-x-2">
                 <Switch 
                   id={`${selectedItemId}-panel-viewtags`}
-                  checked={isVisible && itemPermissions.viewTags}
+                      checked={isVisible && getFilePermission('viewTags')}
                   onCheckedChange={(checked) => 
-                    handleDetailPermissionChange({ viewTags: checked })}
+                        handleFilePermissionChange({ viewTags: checked })}
                   disabled={!isVisible}
                 />
                 <label htmlFor={`${selectedItemId}-panel-viewtags`} className={`text-sm transition-colors ${!isVisible ? 'text-gray-400 dark:text-gray-500' : 'dark:text-gray-300'}`}>
@@ -325,22 +436,351 @@ export const ItemPermissionsPanel: React.FC<{
                 </label>
               </div>
               
-              {isFolder && (
+                  <div className="flex items-center space-x-2">
+                    <Switch 
+                      id={`${selectedItemId}-panel-addtags`}
+                      checked={isVisible && getFilePermission('addTags')}
+                      onCheckedChange={(checked) => 
+                        handleFilePermissionChange({ addTags: checked })}
+                      disabled={!isVisible}
+                    />
+                    <label htmlFor={`${selectedItemId}-panel-addtags`} className={`text-sm transition-colors ${!isVisible ? 'text-gray-400 dark:text-gray-500' : 'dark:text-gray-300'}`}>
+                      Add tags
+                    </label>
+                  </div>
+
+                  <div className="flex items-center space-x-2">
+                    <Switch 
+                      id={`${selectedItemId}-panel-viewcomments`}
+                      checked={isVisible && getFilePermission('viewComments')}
+                      onCheckedChange={(checked) => 
+                        handleFilePermissionChange({ viewComments: checked })}
+                      disabled={!isVisible}
+                    />
+                    <label htmlFor={`${selectedItemId}-panel-viewcomments`} className={`text-sm transition-colors ${!isVisible ? 'text-gray-400 dark:text-gray-500' : 'dark:text-gray-300'}`}>
+                      View comments
+                    </label>
+                  </div>
+
+                  <div className="flex items-center space-x-2">
+                    <Switch 
+                      id={`${selectedItemId}-panel-addcomments`}
+                      checked={isVisible && getFilePermission('addComments')}
+                      onCheckedChange={(checked) => 
+                        handleFilePermissionChange({ addComments: checked })}
+                      disabled={!isVisible}
+                    />
+                    <label htmlFor={`${selectedItemId}-panel-addcomments`} className={`text-sm transition-colors ${!isVisible ? 'text-gray-400 dark:text-gray-500' : 'dark:text-gray-300'}`}>
+                      Add comments
+                    </label>
+                  </div>
+
+                  <div className="flex items-center space-x-2">
+                    <Switch 
+                      id={`${selectedItemId}-panel-canquery`}
+                      checked={isVisible && getFilePermission('canQuery')}
+                      onCheckedChange={(checked) => 
+                        handleFilePermissionChange({ canQuery: checked })}
+                      disabled={!isVisible}
+                    />
+                    <label htmlFor={`${selectedItemId}-panel-canquery`} className={`text-sm transition-colors ${!isVisible ? 'text-gray-400 dark:text-gray-500' : 'dark:text-gray-300'}`}>
+                      AI Query Content
+                    </label>
+                  </div>
+                </div>
+              </div>
+            </>
+          )}
+
+          {isFolder && (
+            <>
+              <div>
+                <h4 className="text-xs uppercase text-gray-500 dark:text-gray-400 mb-2">Folder Permissions</h4>
+                <div className="space-y-2">
+                  <div className="flex items-center space-x-2">
+                    <Switch 
+                      id={`${selectedItemId}-panel-viewcontents`}
+                      checked={isVisible && getFolderPermission('viewContents')}
+                      onCheckedChange={(checked) => 
+                        handleFolderPermissionChange({ viewContents: checked })}
+                      disabled={!isVisible}
+                    />
+                    <label htmlFor={`${selectedItemId}-panel-viewcontents`} className={`text-sm transition-colors ${!isVisible ? 'text-gray-400 dark:text-gray-500' : 'dark:text-gray-300'}`}>
+                      View folder contents
+                    </label>
+                  </div>
+                  
+                  <div className="flex items-center space-x-2">
+                    <Switch 
+                      id={`${selectedItemId}-panel-createfolders`}
+                      checked={isVisible && getFolderPermission('createFolders')}
+                      onCheckedChange={(checked) => 
+                        handleFolderPermissionChange({ createFolders: checked })}
+                      disabled={!isVisible}
+                    />
+                    <label htmlFor={`${selectedItemId}-panel-createfolders`} className={`text-sm transition-colors ${!isVisible ? 'text-gray-400 dark:text-gray-500' : 'dark:text-gray-300'}`}>
+                      Create folders
+                    </label>
+                  </div>
+                  
+                  <div className="flex items-center space-x-2">
+                    <Switch 
+                      id={`${selectedItemId}-panel-allowuploads`}
+                      checked={isVisible && getFolderPermission('allowUploads')}
+                      onCheckedChange={(checked) => 
+                        handleFolderPermissionChange({ allowUploads: checked })}
+                      disabled={!isVisible}
+                    />
+                    <label htmlFor={`${selectedItemId}-panel-allowuploads`} className={`text-sm transition-colors ${!isVisible ? 'text-gray-400 dark:text-gray-500' : 'dark:text-gray-300'}`}>
+                      Allow uploads
+                    </label>
+                  </div>
+
+                  <div className="flex items-center space-x-2">
+                    <Switch 
+                      id={`${selectedItemId}-panel-movecontents`}
+                      checked={isVisible && getFolderPermission('moveContents')}
+                      onCheckedChange={(checked) => 
+                        handleFolderPermissionChange({ moveContents: checked })}
+                      disabled={!isVisible}
+                    />
+                    <label htmlFor={`${selectedItemId}-panel-movecontents`} className={`text-sm transition-colors ${!isVisible ? 'text-gray-400 dark:text-gray-500' : 'dark:text-gray-300'}`}>
+                      Move folder contents
+                    </label>
+                  </div>
+
+                  <div className="flex items-center space-x-2">
+                    <Switch 
+                      id={`${selectedItemId}-panel-deletecontents`}
+                      checked={isVisible && getFolderPermission('deleteContents')}
+                      onCheckedChange={(checked) => 
+                        handleFolderPermissionChange({ deleteContents: checked })}
+                      disabled={!isVisible}
+                    />
+                    <label htmlFor={`${selectedItemId}-panel-deletecontents`} className={`text-sm transition-colors ${!isVisible ? 'text-gray-400 dark:text-gray-500' : 'dark:text-gray-300'}`}>
+                      Delete folder contents
+                    </label>
+                  </div>
+
+                  <div className="flex items-center space-x-2">
+                    <Switch 
+                      id={`${selectedItemId}-panel-folder-viewtags`}
+                      checked={isVisible && getFolderPermission('viewTags')}
+                      onCheckedChange={(checked) => 
+                        handleFolderPermissionChange({ viewTags: checked })}
+                      disabled={!isVisible}
+                    />
+                    <label htmlFor={`${selectedItemId}-panel-folder-viewtags`} className={`text-sm transition-colors ${!isVisible ? 'text-gray-400 dark:text-gray-500' : 'dark:text-gray-300'}`}>
+                      View tags
+                    </label>
+                  </div>
+
+                  <div className="flex items-center space-x-2">
+                    <Switch 
+                      id={`${selectedItemId}-panel-folder-addtags`}
+                      checked={isVisible && getFolderPermission('addTags')}
+                      onCheckedChange={(checked) => 
+                        handleFolderPermissionChange({ addTags: checked })}
+                      disabled={!isVisible}
+                    />
+                    <label htmlFor={`${selectedItemId}-panel-folder-addtags`} className={`text-sm transition-colors ${!isVisible ? 'text-gray-400 dark:text-gray-500' : 'dark:text-gray-300'}`}>
+                      Add tags
+                    </label>
+                  </div>
+
+                  <div className="flex items-center space-x-2">
+                    <Switch 
+                      id={`${selectedItemId}-panel-folder-viewcomments`}
+                      checked={isVisible && getFolderPermission('viewComments')}
+                      onCheckedChange={(checked) => 
+                        handleFolderPermissionChange({ viewComments: checked })}
+                      disabled={!isVisible}
+                    />
+                    <label htmlFor={`${selectedItemId}-panel-folder-viewcomments`} className={`text-sm transition-colors ${!isVisible ? 'text-gray-400 dark:text-gray-500' : 'dark:text-gray-300'}`}>
+                      View comments
+                    </label>
+                  </div>
+
+                  <div className="flex items-center space-x-2">
+                    <Switch 
+                      id={`${selectedItemId}-panel-folder-addcomments`}
+                      checked={isVisible && getFolderPermission('addComments')}
+                      onCheckedChange={(checked) => 
+                        handleFolderPermissionChange({ addComments: checked })}
+                      disabled={!isVisible}
+                    />
+                    <label htmlFor={`${selectedItemId}-panel-folder-addcomments`} className={`text-sm transition-colors ${!isVisible ? 'text-gray-400 dark:text-gray-500' : 'dark:text-gray-300'}`}>
+                      Add comments
+                    </label>
+                  </div>
+
                 <div className="flex items-center space-x-2">
                   <Switch 
-                    id={`${selectedItemId}-panel-uploads`}
-                    checked={isVisible && itemPermissions.allowUploads}
+                      id={`${selectedItemId}-panel-folder-canquery`}
+                      checked={isVisible && getFolderPermission('canQuery')}
                     onCheckedChange={(checked) => 
-                      handleDetailPermissionChange({ allowUploads: checked })}
+                        handleFolderPermissionChange({ canQuery: checked })}
                     disabled={!isVisible}
                   />
-                  <label htmlFor={`${selectedItemId}-panel-uploads`} className={`text-sm transition-colors ${!isVisible ? 'text-gray-400 dark:text-gray-500' : 'dark:text-gray-300'}`}>
-                    Allow uploads to this folder
+                    <label htmlFor={`${selectedItemId}-panel-folder-canquery`} className={`text-sm transition-colors ${!isVisible ? 'text-gray-400 dark:text-gray-500' : 'dark:text-gray-300'}`}>
+                      AI Query Content
                   </label>
+                  </div>
                 </div>
-              )}
+              </div>
+
+              <div className="mt-6 pt-6 border-t border-gray-200 dark:border-gray-700">
+                <h4 className="text-xs uppercase text-gray-500 dark:text-gray-400 mb-2">Child File Permissions</h4>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
+                  These permissions apply to all files within this folder.
+                </p>
+                <div className="space-y-2">
+                  <div className="flex items-center space-x-2">
+                    <Switch 
+                      id={`${selectedItemId}-panel-child-view`}
+                      checked={isVisible && getChildFilePermission('viewAccess')}
+                      onCheckedChange={(checked) => 
+                        handleChildFilePermissionChange({ viewAccess: checked })}
+                      disabled={!isVisible}
+                    />
+                    <label htmlFor={`${selectedItemId}-panel-child-view`} className={`text-sm transition-colors ${!isVisible ? 'text-gray-400 dark:text-gray-500' : 'dark:text-gray-300'}`}>
+                      View content
+                    </label>
+                  </div>
+                  
+                  <div className="flex items-center space-x-2">
+                    <Switch 
+                      id={`${selectedItemId}-panel-child-download`}
+                      checked={isVisible && getChildFilePermission('downloadAccess')}
+                      onCheckedChange={(checked) => 
+                        handleChildFilePermissionChange({ downloadAccess: checked })}
+                      disabled={!isVisible}
+                    />
+                    <label htmlFor={`${selectedItemId}-panel-child-download`} className={`text-sm transition-colors ${!isVisible ? 'text-gray-400 dark:text-gray-500' : 'dark:text-gray-300'}`}>
+                      Download
+                    </label>
+                  </div>
+                  
+                  <div className="flex items-center space-x-2">
+                    <Switch 
+                      id={`${selectedItemId}-panel-child-edit`}
+                      checked={isVisible && getChildFilePermission('editAccess')}
+                      onCheckedChange={(checked) => 
+                        handleChildFilePermissionChange({ editAccess: checked })}
+                      disabled={!isVisible}
+                    />
+                    <label htmlFor={`${selectedItemId}-panel-child-edit`} className={`text-sm transition-colors ${!isVisible ? 'text-gray-400 dark:text-gray-500' : 'dark:text-gray-300'}`}>
+                      Edit
+                    </label>
+                  </div>
+
+                  <div className="flex items-center space-x-2">
+                    <Switch 
+                      id={`${selectedItemId}-panel-child-delete`}
+                      checked={isVisible && getChildFilePermission('deleteAccess')}
+                      onCheckedChange={(checked) => 
+                        handleChildFilePermissionChange({ deleteAccess: checked })}
+                      disabled={!isVisible}
+                    />
+                    <label htmlFor={`${selectedItemId}-panel-child-delete`} className={`text-sm transition-colors ${!isVisible ? 'text-gray-400 dark:text-gray-500' : 'dark:text-gray-300'}`}>
+                      Delete
+                    </label>
+                  </div>
+
+                  <div className="flex items-center space-x-2">
+                    <Switch 
+                      id={`${selectedItemId}-panel-child-watermark`}
+                      checked={isVisible && getChildFilePermission('watermarkContent')}
+                      onCheckedChange={(checked) => 
+                        handleChildFilePermissionChange({ watermarkContent: checked })}
+                      disabled={!isVisible}
+                    />
+                    <label htmlFor={`${selectedItemId}-panel-child-watermark`} className={`text-sm transition-colors ${!isVisible ? 'text-gray-400 dark:text-gray-500' : 'dark:text-gray-300'}`}>
+                      Apply watermark
+                    </label>
+                  </div>
+                  
+                  <div className="flex items-center space-x-2">
+                    <Switch 
+                      id={`${selectedItemId}-panel-child-viewtags`}
+                      checked={isVisible && getChildFilePermission('viewTags')}
+                      onCheckedChange={(checked) => 
+                        handleChildFilePermissionChange({ viewTags: checked })}
+                      disabled={!isVisible}
+                    />
+                    <label htmlFor={`${selectedItemId}-panel-child-viewtags`} className={`text-sm transition-colors ${!isVisible ? 'text-gray-400 dark:text-gray-500' : 'dark:text-gray-300'}`}>
+                      View tags
+                    </label>
+                  </div>
+
+                  <div className="flex items-center space-x-2">
+                    <Switch 
+                      id={`${selectedItemId}-panel-child-addtags`}
+                      checked={isVisible && getChildFilePermission('addTags')}
+                      onCheckedChange={(checked) => 
+                        handleChildFilePermissionChange({ addTags: checked })}
+                      disabled={!isVisible}
+                    />
+                    <label htmlFor={`${selectedItemId}-panel-child-addtags`} className={`text-sm transition-colors ${!isVisible ? 'text-gray-400 dark:text-gray-500' : 'dark:text-gray-300'}`}>
+                      Add tags
+                    </label>
+                  </div>
+
+                  <div className="flex items-center space-x-2">
+                    <Switch 
+                      id={`${selectedItemId}-panel-child-viewcomments`}
+                      checked={isVisible && getChildFilePermission('viewComments')}
+                      onCheckedChange={(checked) => 
+                        handleChildFilePermissionChange({ viewComments: checked })}
+                      disabled={!isVisible}
+                    />
+                    <label htmlFor={`${selectedItemId}-panel-child-viewcomments`} className={`text-sm transition-colors ${!isVisible ? 'text-gray-400 dark:text-gray-500' : 'dark:text-gray-300'}`}>
+                      View comments
+                    </label>
+                  </div>
+
+                  <div className="flex items-center space-x-2">
+                    <Switch 
+                      id={`${selectedItemId}-panel-child-addcomments`}
+                      checked={isVisible && getChildFilePermission('addComments')}
+                      onCheckedChange={(checked) => 
+                        handleChildFilePermissionChange({ addComments: checked })}
+                      disabled={!isVisible}
+                    />
+                    <label htmlFor={`${selectedItemId}-panel-child-addcomments`} className={`text-sm transition-colors ${!isVisible ? 'text-gray-400 dark:text-gray-500' : 'dark:text-gray-300'}`}>
+                      Add comments
+                    </label>
+                  </div>
+
+                  <div className="flex items-center space-x-2">
+                    <Switch 
+                      id={`${selectedItemId}-panel-child-canquery`}
+                      checked={isVisible && getChildFilePermission('canQuery')}
+                      onCheckedChange={(checked) => 
+                        handleChildFilePermissionChange({ canQuery: checked })}
+                      disabled={!isVisible}
+                    />
+                    <label htmlFor={`${selectedItemId}-panel-child-canquery`} className={`text-sm transition-colors ${!isVisible ? 'text-gray-400 dark:text-gray-500' : 'dark:text-gray-300'}`}>
+                      AI Query Content
+                    </label>
+                  </div>
+
+                  <div className="flex items-center space-x-2">
+                    <Switch 
+                      id={`${selectedItemId}-panel-child-moveaccess`}
+                      checked={isVisible && getChildFilePermission('moveAccess')}
+                      onCheckedChange={(checked) => 
+                        handleChildFilePermissionChange({ moveAccess: checked })}
+                      disabled={!isVisible}
+                    />
+                    <label htmlFor={`${selectedItemId}-panel-child-moveaccess`} className={`text-sm transition-colors ${!isVisible ? 'text-gray-400 dark:text-gray-500' : 'dark:text-gray-300'}`}>
+                      Move files
+                    </label>
+                  </div>
             </div>
           </div>
+            </>
+          )}
         </div>
       </div>
     );
