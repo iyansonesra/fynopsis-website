@@ -109,8 +109,7 @@ export default function Home() {
         case 'q&a':
           return permissions.canAccessQuestionairePanel !== false;
         case 'users':
-          return permissions.canAccessUserManagementPanel === true &&
-            permissions.canViewUsers !== false;
+          return permissions.canAccessUserManagementPanel === true;
         case 'activity':
           return permissions.canAccessAuditLogsPanel === true &&
             permissions.canViewAuditLogs !== false;
@@ -507,15 +506,15 @@ export default function Home() {
             </div>
           );
         }
-        if (permissionDetails && permissionDetails.canViewUsers === false) {
-          return (
-            <div className="grid h-screen place-items-center">
-              <div className="flex flex-col items-center gap-4">
-                <h2 className="text-xl font-semibold">You don't have permission to view users</h2>
-              </div>
-            </div>
-          );
-        }
+        // if (permissionDetails) {
+        //   return (
+        //     <div className="grid h-screen place-items-center">
+        //       <div className="flex flex-col items-center gap-4">
+        //         <h2 className="text-xl font-semibold">You don't have permission to view users</h2>
+        //       </div>
+        //     </div>
+        //   );
+        // }
         return <UserManagement dataroomId={contextDataroomId || ''} />;
       case "activity":
         if (permissionDetails && permissionDetails.canAccessAuditLogsPanel === false) {
