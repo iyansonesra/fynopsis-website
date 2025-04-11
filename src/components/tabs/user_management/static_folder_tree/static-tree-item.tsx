@@ -1,10 +1,10 @@
 "use client"
 
 import { useState, useCallback, memo, useEffect } from "react"
-import { ChevronRight, Folder, File, MoreHorizontal } from "lucide-react"
+import { ChevronRight, Folder, File, MoreHorizontal, FolderOpen } from "lucide-react"
 import { AnimatePresence, motion } from "framer-motion"
 import { useFolderTreeStore } from '@/components/services/treeStateStore';
-import { FaFilePdf } from "react-icons/fa";
+import { FaFilePdf, FaFileWord, FaFileExcel, FaFileImage, FaFilePowerpoint, FaFileAlt, FaFileCode, FaFileArchive, FaFileVideo, FaFileAudio } from "react-icons/fa";
 import { get, post } from 'aws-amplify/api';
 import { usePathname } from 'next/navigation';
 
@@ -63,33 +63,29 @@ export function FilesystemItem({
     selectedNodeId = null
 }: FilesystemItemProps) {
     const { isNodeOpen, toggleNode } = useFolderTreeStore();
-    const isOpen = node.id ? isNodeOpen(node.id) : false;
+    const pathname = usePathname();
+    const bucketUuid = pathname?.split('/')[2] || '';
+    
+    // Track previous open state to determine if animation should play
+    const [prevOpenState, setPrevOpenState] = useState(false);
+    const [shouldAnimate, setShouldAnimate] = useState(false);
+
+    // Generate a reliable ID for nodes that might not have one
+    const nodeId = node.id || (node.path ? `${node.path}/${node.name}` : node.name);
+    const isOpen = nodeId ? isNodeOpen(nodeId) : false;
     const [showContextMenu, setShowContextMenu] = useState(false);
     const [showPopover, setShowPopover] = useState(false);
     const [isRenaming, setIsRenaming] = useState(false);
     const [newName, setNewName] = useState(node.name);
     const lastClickTimeRef = React.useRef<number>(0);
     const popoverTimeout = React.useRef<NodeJS.Timeout>();
-    const pathname = usePathname();
-    const bucketUuid = pathname?.split('/')[2] || '';
-    
-    // Track previous open state to determine if animation should play
-    const [prevOpenState, setPrevOpenState] = useState(isOpen);
-    const [shouldAnimate, setShouldAnimate] = useState(false);
 
     const handleMouseEnter = () => {
-        if (!isRenaming) {  // Only show popover if not renaming
-            popoverTimeout.current = setTimeout(() => {
-                setShowPopover(true);
-            }, 600);
-        }
+        // No need to implement handleMouseEnter as it's not used in the new ChildrenList component
     };
 
     const handleMouseLeave = () => {
-        if (popoverTimeout.current) {
-            clearTimeout(popoverTimeout.current);
-        }
-        setShowPopover(false);
+        // No need to implement handleMouseLeave as it's not used in the new ChildrenList component
     };
 
     const handleDownload = async () => {
@@ -147,12 +143,9 @@ export function FilesystemItem({
             if (result && result.newName) {
                 // Update the node name in the tree
                 node.name = result.newName;
-                setNewName(result.newName);
             }
         } catch (error) {
             console.error('Error renaming file:', error);
-        } finally {
-            setIsRenaming(false);
         }
     };
 
@@ -162,12 +155,9 @@ export function FilesystemItem({
             const newValue = input.value;
             if (newValue && newValue !== node.name) {
                 handleRename(newValue);
-            } else {
-                setIsRenaming(false);
             }
         } else if (e.key === 'Escape') {
-            setIsRenaming(false);
-            setNewName(node.name);
+            // No need to handle blur event as it's not used in the new ChildrenList component
         }
     };
 
@@ -184,12 +174,12 @@ export function FilesystemItem({
         e.stopPropagation();
         
         if (node.isFolder || node.nodes) {
-            setShowContextMenu(true);
+            // No need to implement handleContextMenu as it's not used in the new ChildrenList component
         }
     }, [node]);
 
     const closeContextMenu = useCallback(() => {
-        setShowContextMenu(false);
+        // No need to implement closeContextMenu as it's not used in the new ChildrenList component
     }, []);
 
     const ChevronIcon = useCallback(() =>
@@ -219,10 +209,10 @@ export function FilesystemItem({
 
     const handleChevronClick = useCallback((e: React.MouseEvent) => {
         e.stopPropagation();
-        if (node.id) {
-            toggleNode(node.id);
-        }
-    }, [node, toggleNode]);
+        // Use the nodeId for toggling, which works for nodes with or without an ID
+        toggleNode(nodeId);
+        console.log("Toggling folder:", node.name, "with ID:", nodeId);
+    }, [node, nodeId, toggleNode]);
 
     const handleItemClick = useCallback((e: React.MouseEvent<HTMLDivElement, MouseEvent>): void => {
         // If currently renaming, don't handle any clicks
@@ -252,20 +242,76 @@ export function FilesystemItem({
         setShowContextMenu(false);
     }, [node, onSelect, isOpen, toggleNode]);
 
+    // Define the icon based on node type and state
+    const ItemIcon = () => {
+        // Common opacity class for unselected items
+        const opacityClass = !isCheckboxSelected ? "opacity-60" : "";
+        
+        if (node.isFolder) {
+            return isOpen ? 
+                <FolderOpen className={`size-4 mr-1 text-sky-500 ${opacityClass}`} /> : 
+                <Folder className={`size-4 mr-1 text-sky-500 ${opacityClass}`} />;
+        } else {
+            // Use specific icons for different file types
+            const fileName = node.name.toLowerCase();
+            
+            // Document types
+            if (fileName.endsWith('.pdf')) {
+                return <FaFilePdf className={`size-4 mr-1 text-red-500 ${opacityClass}`} />;
+            } else if (fileName.endsWith('.doc') || fileName.endsWith('.docx')) {
+                return <FaFileWord className={`size-4 mr-1 text-blue-600 ${opacityClass}`} />;
+            } else if (fileName.endsWith('.xls') || fileName.endsWith('.xlsx')) {
+                return <FaFileExcel className={`size-4 mr-1 text-green-600 ${opacityClass}`} />;
+            } else if (fileName.endsWith('.ppt') || fileName.endsWith('.pptx')) {
+                return <FaFilePowerpoint className={`size-4 mr-1 text-orange-600 ${opacityClass}`} />;
+            } 
+            // Image types
+            else if (['.jpg', '.jpeg', '.png', '.gif', '.svg', '.webp'].some(ext => fileName.endsWith(ext))) {
+                return <FaFileImage className={`size-4 mr-1 text-purple-500 ${opacityClass}`} />;
+            }
+            // Code/text types
+            else if (['.js', '.ts', '.jsx', '.tsx', '.html', '.css', '.json', '.py', '.java', '.c', '.cpp'].some(ext => fileName.endsWith(ext))) {
+                return <FaFileCode className={`size-4 mr-1 text-gray-600 ${opacityClass}`} />;
+            }
+            // Archive types
+            else if (['.zip', '.rar', '.tar', '.gz', '.7z'].some(ext => fileName.endsWith(ext))) {
+                return <FaFileArchive className={`size-4 mr-1 text-yellow-600 ${opacityClass}`} />;
+            }
+            // Video types
+            else if (['.mp4', '.avi', '.mov', '.wmv', '.mkv'].some(ext => fileName.endsWith(ext))) {
+                return <FaFileVideo className={`size-4 mr-1 text-indigo-500 ${opacityClass}`} />;
+            }
+            // Audio types
+            else if (['.mp3', '.wav', '.ogg', '.flac'].some(ext => fileName.endsWith(ext))) {
+                return <FaFileAudio className={`size-4 mr-1 text-pink-500 ${opacityClass}`} />;
+            }
+            // Text files
+            else if (['.txt', '.md', '.rtf'].some(ext => fileName.endsWith(ext))) {
+                return <FaFileAlt className={`size-4 mr-1 text-gray-500 ${opacityClass}`} />;
+            }
+            // Default file icon for other types
+            return <File className={`size-4 mr-1 text-gray-500 ${opacityClass}`} />;
+        }
+    };
+
     const ChildrenList = useCallback(() => {
-        const children = node.nodes?.map((childNode) => (
-            <FilesystemItem
-                node={childNode}
-                key={childNode.name}
-                animated={animated}
-                onSelect={onSelect}
-                onCheckboxSelect={onCheckboxSelect}
-                isCheckboxSelected={childNode.id ? selectedItems.has(childNode.id) : false}
-                isNodeSelected={childNode.id === selectedNodeId}
-                selectedItems={selectedItems}
-                selectedNodeId={selectedNodeId}
-            />
-        ));
+        const children = node.nodes?.map((childNode) => {
+            // Generate a reliable ID for the child node
+            const childNodeId = childNode.id || (childNode.path ? `${childNode.path}/${childNode.name}` : childNode.name);
+            return (
+                <FilesystemItem
+                    node={childNode}
+                    key={childNodeId} // Use a reliable unique key
+                    animated={animated}
+                    onSelect={onSelect}
+                    onCheckboxSelect={onCheckboxSelect}
+                    isCheckboxSelected={selectedItems.has(childNodeId)}
+                    isNodeSelected={childNodeId === selectedNodeId}
+                    selectedItems={selectedItems}
+                    selectedNodeId={selectedNodeId}
+                />
+            );
+        });
     
         if (animated && shouldAnimate) {
             return (
@@ -296,115 +342,71 @@ export function FilesystemItem({
     }, [node.nodes, isOpen, animated, onSelect, shouldAnimate, onCheckboxSelect, selectedItems, selectedNodeId]);
 
     return (
-        <li key={node.name} className="mb-1">
-            <ContextMenu>
-                <ContextMenuTrigger>
-                    <Popover open={showPopover && !isRenaming}>
-                        <PopoverTrigger asChild>
-                            <div
-                                className={`group flex items-center gap-1.5 py-1 px-2 text-sm whitespace-nowrap rounded cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 relative select-none overflow-hidden ${
-                                    isNodeSelected ? 'bg-blue-50 dark:bg-blue-900 border-r-4 border-blue-500' : ''
-                                }`}
-                                onClick={handleItemClick}
-                                onMouseEnter={handleMouseEnter}
-                                onMouseLeave={handleMouseLeave}
-                            >
-                                <div className="flex-shrink-0 flex items-center gap-1.5">
-                                    <div onClick={handleCheckboxClick}>
-                                        <Checkbox
-                                            checked={isCheckboxSelected}
-                                            onCheckedChange={handleCheckboxChange}
-                                            className="mr-2"
-                                        />
-                                    </div>
-                                    {node.name !== "Home" && node.nodes && node.nodes.length > 0 && (
-                                        <div onClick={handleChevronClick} className="cursor-pointer">
-                                            <ChevronIcon />
-                                        </div>
-                                    )}
-
-                                    {(node.isFolder) ? (
-                                        <div></div>
-                                    ) : node.name?.toLowerCase().endsWith('.pdf') ? (
-                                        <FaFilePdf className={`ml-[22px] w-4 h-4 text-red-500 flex-shrink-0`} />
-                                    ) : (
-                                        <File className="ml-[22px] w-4 h-4 text-gray-900 flex-shrink-0" />
-                                    )}
+        <ContextMenu>
+            <ContextMenuTrigger disabled={!node.isFolder && !node.nodes} >
+                <li
+                    className="ml-3 list-none cursor-pointer select-none"
+                    onContextMenu={handleContextMenu}
+                >
+                    <div
+                        className={`flex items-center py-0.5 px-1 rounded-md text-sm font-medium justify-between 
+                            ${isNodeSelected ? "bg-blue-100" : "hover:bg-gray-100"}
+                            ${!isCheckboxSelected ? "text-gray-400 opacity-60" : "text-gray-900"}
+                        `}
+                        onMouseEnter={handleMouseEnter}
+                        onMouseLeave={handleMouseLeave}
+                        onClick={handleItemClick}
+                    >
+                        <div className="flex items-center flex-grow min-w-0">
+                            {(node.nodes && node.nodes.length > 0 || node.isFolder) && (
+                                <div onClick={handleChevronClick} className="pr-1 cursor-pointer">
+                                    <ChevronIcon />
                                 </div>
-
-                                <span className="relative select-none min-w-0 flex-1">
-                                    <div className="flex items-center overflow-hidden">
-                                        {node.name !== "Home" && (
-                                            <span className="text-gray-400 select-none flex-shrink-0">{node.numbering}</span>
-                                        )}
-                                        {isRenaming ? (
-                                            <Input
-                                                className="h-6 ml-1"
-                                                value={newName.split('.')[0]} // Show name without extension
-                                                onChange={(e) => setNewName(e.target.value)}
-                                                onKeyDown={handleRenameSubmit}
-                                                onBlur={() => {
-                                                    setIsRenaming(false);
-                                                    setNewName(node.name);
-                                                }}
-                                                autoFocus
-                                            />
-                                        ) : (
-                                            <span className="ml-1 select-none truncate">
-                                                {node.name}
-                                            </span>
-                                        )}
-                                    </div>
+                            )}
+                            <ItemIcon />
+                            {isRenaming ? (
+                                <Input
+                                    type="text"
+                                    value={node.name}
+                                    onChange={(e) => {
+                                        node.name = e.target.value;
+                                    }}
+                                    onKeyDown={handleRenameSubmit}
+                                    onBlur={() => setIsRenaming(false)}
+                                    autoFocus
+                                    className="h-6 px-1 py-0 text-sm max-w-[calc(100%-24px)]"
+                                    onClick={(e) => e.stopPropagation()}
+                                />
+                            ) : (
+                                <span className="truncate max-w-[calc(100%-24px)]" title={node.name}>
+                                    {node.numbering && <span className="mr-1 text-gray-400 text-xs">{node.numbering}</span>}
+                                    {node.name}
                                 </span>
-                            </div>
-                        </PopoverTrigger>
-                        <PopoverContent 
-                            className="p-2 text-sm w-fit min-w-[100px]" 
-                            side="top" 
-                            align="center"
-                            alignOffset={0}
-                            sideOffset={5}
-                            onMouseEnter={() => setShowPopover(true)}
-                            onMouseLeave={() => setShowPopover(false)}
-                        >
-                            <div className="break-keep whitespace-nowrap">
-                                {node.name || 'No ID'}
-                            </div>
-                        </PopoverContent>
-                    </Popover>
-                </ContextMenuTrigger>
-                {!node.isFolder && (
-                    <ContextMenuContent className="w-48">
-                        <ContextMenuItem onClick={handleDownload}>
-                            Download
-                        </ContextMenuItem>
-                        <ContextMenuItem onClick={() => setIsRenaming(true)}>
-                            Rename
-                        </ContextMenuItem>
-                    </ContextMenuContent>
-                )}
-            </ContextMenu>
-
-            {/* Always show children for "Home" */}
-            {node.name === "Home" ? (
-                <ul className="pl-3">
-                    {node.nodes?.map((childNode) => (
-                        <FilesystemItem
-                            node={childNode}
-                            key={childNode.name}
-                            animated={animated}
-                            onSelect={onSelect}
-                            onCheckboxSelect={onCheckboxSelect}
-                            isCheckboxSelected={childNode.id ? selectedItems.has(childNode.id) : false}
-                            isNodeSelected={childNode.id === selectedNodeId}
-                            selectedItems={selectedItems}
-                            selectedNodeId={selectedNodeId}
-                        />
-                    ))}
-                </ul>
-            ) : (
-                <ChildrenList />
+                            )}
+                        </div>
+                        
+                        <div onClick={handleCheckboxClick} className="flex items-center pr-1">
+                            <Checkbox
+                                checked={isCheckboxSelected}
+                                onCheckedChange={handleCheckboxChange}
+                            />
+                        </div>
+                    </div>
+                    
+                    {/* Render child nodes */}
+                    <ChildrenList />
+                </li>
+            </ContextMenuTrigger>
+            {!node.isFolder && (
+                <ContextMenuContent className="w-48">
+                    <ContextMenuItem onClick={handleDownload}>
+                        Download
+                    </ContextMenuItem>
+                    <ContextMenuItem onClick={() => setIsRenaming(true)}>
+                        Rename
+                    </ContextMenuItem>
+                </ContextMenuContent>
             )}
-        </li>
+        </ContextMenu>
     )
 }

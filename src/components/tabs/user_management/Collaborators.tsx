@@ -1192,47 +1192,34 @@ const UserManagement: React.FC<UserManagementProps> = ({ dataroomId }) => {
         onClose={() => setIsCreateGroupDialogOpen(false)}
         newGroupName={newGroupName}
         setNewGroupName={setNewGroupName}
-        onNameChange={(value) => setNewGroupName(value)}
         newGroup={newGroup}
         setNewGroup={setNewGroup}
+        onCreateGroup={handleCreatePermissionGroup}
+        isCreatingGroup={isCreatingGroup}
         folderStructure={folderStructure}
         dialogItemsMap={dialogItemsMap}
         dialogParentMap={dialogParentMap}
         onFilePermissionChange={handleFilePermissionChange}
-        isCreatingGroup={isCreatingGroup}
-        onCreateGroup={handleCreatePermissionGroup}
-        showSpecificPermissions={showSpecificPermissions}
-        setShowSpecificPermissions={setShowSpecificPermissions}
-        selectedFileId={selectedFileId}
-        setSelectedFileId={setSelectedFileId}
         handleAllAccessChange={handleAllAccessChange}
+        availablePermissionGroups={availableRoles}
       />
 
       {/* Edit Group Dialog - reuse the same PermissionGroupDialog but with different props */}
       <PermissionGroupDialog
         isOpen={isEditGroupDialogOpen}
-        onClose={() => {
-          setIsEditGroupDialogOpen(false);
-          setEditingGroup(null);
-          setNewGroupName('');
-          setNewGroup({} as PermissionGroup);
-        }}
+        onClose={() => setIsEditGroupDialogOpen(false)}
         newGroupName={newGroupName}
         setNewGroupName={setNewGroupName}
-        onNameChange={(value) => setNewGroupName(value)}
         newGroup={newGroup}
         setNewGroup={setNewGroup}
+        onCreateGroup={handleUpdatePermissionGroup}
+        isCreatingGroup={isCreatingGroup}
         folderStructure={folderStructure}
         dialogItemsMap={dialogItemsMap}
         dialogParentMap={dialogParentMap}
         onFilePermissionChange={handleFilePermissionChange}
-        isCreatingGroup={isCreatingGroup}
-        onCreateGroup={handleUpdatePermissionGroup}
-        showSpecificPermissions={showSpecificPermissions}
-        setShowSpecificPermissions={setShowSpecificPermissions}
-        selectedFileId={selectedFileId}
-        setSelectedFileId={setSelectedFileId}
         handleAllAccessChange={handleAllAccessChange}
+        availablePermissionGroups={availableRoles}
       />
 
       <ViewGroupDetailsDialog

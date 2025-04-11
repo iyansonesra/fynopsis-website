@@ -28,6 +28,8 @@ interface PermissionGroupsTabContentProps {
   dialogParentMap: Record<string, string | undefined>;
   handleFilePermissionChange: (fileId: string, permissionUpdate: Partial<FilePermission>) => void;
   handleViewGroupDetails: (group: PermissionGroup) => void;
+  availableRoles: PermissionGroup[];
+  handleAllAccessChange: (group: PermissionGroup, isAllAccess: boolean) => void;
 }
 
 export const PermissionGroupsTabContent: React.FC<PermissionGroupsTabContentProps> = ({
@@ -46,7 +48,9 @@ export const PermissionGroupsTabContent: React.FC<PermissionGroupsTabContentProp
   dialogItemsMap,
   dialogParentMap,
   handleFilePermissionChange,
-  handleViewGroupDetails
+  handleViewGroupDetails,
+  availableRoles,
+  handleAllAccessChange
 }) => {
   return (
     <div className="space-y-4">
@@ -155,6 +159,11 @@ export const PermissionGroupsTabContent: React.FC<PermissionGroupsTabContentProp
         dialogItemsMap={dialogItemsMap}
         dialogParentMap={dialogParentMap}
         onFilePermissionChange={handleFilePermissionChange}
+        handleAllAccessChange={(checked) => handleAllAccessChange(newGroup, checked)}
+        availablePermissionGroups={Object.fromEntries(availableRoles.map(role => [
+          role.id,
+          { id: role.id, name: role.name, type: 'GROUP', description: '' }
+        ]))}
       />
     </div>
   );
