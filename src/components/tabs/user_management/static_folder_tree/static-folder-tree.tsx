@@ -393,7 +393,7 @@ const FolderTree: React.FC<FolderTreeProps> = ({ onNodeSelect }) => {
     };
 
     return (
-        <div className="h-full flex flex-col p-3">
+        <div className="h-full flex flex-col p-3 overflow-hidden border rounded-md">
             {/* Folder tree structure */}
             <div className="flex-1 overflow-auto">
                 <ul>

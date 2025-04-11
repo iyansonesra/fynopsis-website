@@ -352,62 +352,54 @@ export function FilesystemItem({
                         className={`flex items-center py-0.5 px-1 rounded-md text-sm font-medium justify-between 
                             ${isNodeSelected ? "bg-blue-100" : "hover:bg-gray-100"}
                             ${!isCheckboxSelected ? "text-gray-400 opacity-60" : "text-gray-900"}
+                            pr-10
                         `}
                         onMouseEnter={handleMouseEnter}
                         onMouseLeave={handleMouseLeave}
                         onClick={handleItemClick}
                     >
                         <div className="flex items-center flex-grow min-w-0">
-                            {/* Removed the checkbox from the left side as requested */}
-                            <div className="flex items-center flex-grow min-w-0">
-                                {(node.nodes && node.nodes.length > 0 || node.isFolder) && (
-                                    <div onClick={handleChevronClick} className="pr-1 cursor-pointer">
-                                        <ChevronIcon />
-                                    </div>
-                                )}
-                                <ItemIcon />
-                                {isRenaming ? (
-                                    <Input
-                                        type="text"
-                                        value={node.name}
-                                        onChange={(e) => {
-                                            node.name = e.target.value;
-                                        }}
-                                        onKeyDown={handleRenameSubmit}
-                                        onBlur={() => setIsRenaming(false)}
-                                        autoFocus
-                                        className="h-6 px-1 py-0 text-sm"
-                                        onClick={(e) => e.stopPropagation()}
-                                    />
-                                ) : (
-                                    <span className="truncate" title={node.name}>
-                                        {node.numbering && <span className="mr-1 text-gray-400 text-xs">{node.numbering}</span>}
-                                        {node.name}
-                                    </span>
-                                )}
-                            </div>
+                            {(node.nodes && node.nodes.length > 0 || node.isFolder) && (
+                                <div onClick={handleChevronClick} className="pr-1 cursor-pointer">
+                                    <ChevronIcon />
+                                </div>
+                            )}
+                            <ItemIcon />
+                            {isRenaming ? (
+                                <Input
+                                    type="text"
+                                    value={node.name}
+                                    onChange={(e) => {
+                                        node.name = e.target.value;
+                                    }}
+                                    onKeyDown={handleRenameSubmit}
+                                    onBlur={() => setIsRenaming(false)}
+                                    autoFocus
+                                    className="h-6 px-1 py-0 text-sm max-w-[calc(100%-24px)]"
+                                    onClick={(e) => e.stopPropagation()}
+                                />
+                            ) : (
+                                <span className="truncate max-w-[calc(100%-24px)]" title={node.name}>
+                                    {node.numbering && <span className="mr-1 text-gray-400 text-xs">{node.numbering}</span>}
+                                    {node.name}
+                                </span>
+                            )}
                         </div>
+                        
                         <Popover open={showPopover} onOpenChange={setShowPopover}>
                             <PopoverTrigger asChild>
                                 <div
                                     className="flex items-center gap-1.5 py-1 px-2 text-sm whitespace-nowrap rounded cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 relative select-none overflow-hidden"
-                                    onClick={handleItemClick}
+                                    onClick={(e) => e.stopPropagation()}
                                     onMouseEnter={handleMouseEnter}
                                     onMouseLeave={handleMouseLeave}
                                 >
-                                    <div className="flex-shrink-0 flex items-center gap-1.5">
-                                        <div onClick={handleCheckboxClick}>
-                                            <Checkbox
-                                                checked={isCheckboxSelected}
-                                                onCheckedChange={handleCheckboxChange}
-                                                className="mr-2"
-                                            />
-                                        </div>
-                                        {node.name !== "Home" && node.nodes && node.nodes.length > 0 && (
-                                            <div onClick={handleChevronClick} className="cursor-pointer">
-                                                <ChevronIcon />
-                                            </div>
-                                        )}
+                                    <div onClick={handleCheckboxClick} className="flex items-center">
+                                        <Checkbox
+                                            checked={isCheckboxSelected}
+                                            onCheckedChange={handleCheckboxChange}
+                                            className="mr-2"
+                                        />
                                     </div>
                                 </div>
                             </PopoverTrigger>
