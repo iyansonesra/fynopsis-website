@@ -22,7 +22,15 @@ import {
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/components/ui/use-toast";
 import { Amplify } from 'aws-amplify';
-import type { FilePermission, FileTreeItem as FileTreeItemType, User, UserManagementProps, TransferOwnershipDialog, PermissionGroup, Role } from './CollaboratorsTypes';
+import { 
+  FilePermission, 
+  FileTreeItem as FileTreeItemType, 
+  User, 
+  UserManagementProps, 
+  TransferOwnershipDialog, 
+  PermissionGroup, 
+  Role 
+} from './CollaboratorsTypes';
 import { DEFAULT_ROLES } from './CollaboratorsTypes';
 import { FolderPermissionTree, ItemPermissionsPanel } from './PermissionFolderTree';
 
@@ -35,7 +43,9 @@ import {
   transferOwnership,
   removeUser,
   inviteUser,
-  createPermissionGroup
+  createPermissionGroup,
+  updatePermissionGroup,
+  deletePermissionGroup
 } from '../../services/userService';
 
 // Import components
@@ -49,11 +59,21 @@ import { PermissionGroupsTabContent } from './components/PermissionGroupsTabCont
 import { UsersTabContent } from './components/UsersTabContent';
 import { ViewGroupDetailsDialog } from './components/ViewGroupDetailsDialog';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
+import { DeletePermissionGroupDialog } from './components/DeletePermissionGroupDialog';
+
+// Define RoleInfo locally to avoid import issues
+interface RoleInfo {
+  id: string;
+  name: string;
+  type: 'ROLE' | 'GROUP';
+  description?: string;
+}
 
 const UserManagement: React.FC<UserManagementProps> = ({ dataroomId }) => {
   const [users, setUsers] = useState<User[]>([]);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [otherUsers, setOtherUsers] = useState<User[]>([]);
+  const [availableRoles, setAvailableRoles] = useState<Record<string, RoleInfo>>({});
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [userToRemove, setUserToRemove] = useState<User | null>(null);
@@ -108,63 +128,90 @@ const UserManagement: React.FC<UserManagementProps> = ({ dataroomId }) => {
   const [permissionGroups, setPermissionGroups] = useState<PermissionGroup[]>([]);
   const [isCreateGroupDialogOpen, setIsCreateGroupDialogOpen] = useState(false);
   const [newGroupName, setNewGroupName] = useState('');
-  const [newGroup, setNewGroup] = useState<PermissionGroup>({
-    id: '',
-    name: '',
-    allAccess: false,
-    canQuery: true,
-    canOrganize: false,
-    canViewAuditLogs: false,
-    canInviteUsers: [],
-    canUpdateUserPermissions: [],
-    canCreatePermissionGroups: false,
-    canDeleteDataroom: false,
-    canUseQA: true,
-    canReadAnswerQuestions: true,
-    defaultFilePerms: {
-      viewAccess: true,
-      watermarkContent: false,
-      deleteEditAccess: false,
-      viewComments: true,
-      addComments: false,
-      downloadAccess: false,
-      viewTags: true,
-      canQuery: true,
-      isVisible: true
-    },
-    defaultFolderPerms: {
-      allowUploads: false,
-      createFolders: false,
-      addComments: false,
-      viewComments: true,
-      viewContents: true,
-      viewTags: true,
-      canQuery: true,
-      isVisible: true,
-      inheritFileAccess: {
-        viewAccess: true,
-        watermarkContent: false,
-        deleteEditAccess: false,
-        viewComments: true,
-        addComments: false,
-        downloadAccess: false,
-        viewTags: true,
-        canQuery: true,
-        isVisible: true
+  const [newGroup, setNewGroup] = useState<PermissionGroup>(() => {
+    // Initialize with a structure reflecting the NEW PermissionGroup type
+    // Start with restrictive defaults for a *new* custom group.
+    const initialGroup: PermissionGroup = {
+      id: '', // Will be set by backend
+      name: '', // Will be set by user input
+      isDefault: false,
+      // dataroomId: '', // This likely comes from context/props, not part of creation form
+
+      // Direct Permissions
+      allAccess: true, // Start with general access ON by default
+      canQueryEntireDataroom: false,
+      canOrganize: false,
+      canRetryProcessing: false,
+      canDeleteDataroom: false, // Should always be false for non-owners
+
+      // Issues Panel
+      canAccessIssuesPanel: false,
+      canCreateIssue: false,
+      canAnswerIssue: false,
+
+      // Audit Logs Panel
+      canAccessAuditLogsPanel: false,
+      canViewAuditLogs: false,
+      canExportAuditLogs: false,
+
+      // Diligence Dashboard Panel
+      canAccessDiligenceDashboard: false,
+      canCreateDiligenceWidget: false,
+      canMoveWidgets: false,
+      canDeleteWidgets: false,
+
+      // Questionnaire Panel
+      canAccessQuestionairePanel: false, // Using standard spelling
+      canAddQuestionnaire: false,
+
+      // User Management Panel
+      canAccessUserManagementPanel: false,
+      canViewUsers: false,
+      canViewPermissionGroupDetails: false,
+      canInviteUsers: [], // Start empty, user adds roles
+      canUpdateUserPermissions: [], // Start empty
+      canUpdatePeerPermissions: false,
+      canRemoveUsers: [], // Start empty
+      canRemovePeerPermission: false,
+      canCreatePermissionGroups: false,
+
+      // Default Permissions (Apply when allAccess: true)
+      defaultFilePerms: {
+          viewAccess: true, // Basic view access is a reasonable default
+          watermarkContent: false,
+          deleteAccess: false,
+          editAccess: false,
+          // deleteEditAccess: false, // Use separate delete/edit flags now
+          viewComments: true,
+          addComments: false,
+          downloadAccess: false,
+          viewTags: true,
+          addTags: false,
+          canQuery: false, // Default to false for files unless specified
+          isVisible: true, // Default to visible
+          moveAccess: false,
+          renameAccess: false,
       },
-      inheritFolderAccess: {
-        allowUploads: false,
-        createFolders: false,
-        addComments: false,
-        viewComments: true,
-        viewContents: true,
-        viewTags: true,
-        canQuery: true,
-        isVisible: true
-      }
-    },
-    folderIdAccess: {},
-    fileIdAccess: {}
+      defaultFolderPerms: {
+          allowUploads: false,
+          createFolders: false,
+          addComments: false,
+          viewComments: true,
+          viewContents: true, // Basic view access
+          viewTags: true,
+          addTags: false,
+          canQuery: false,
+          isVisible: true,
+          moveContents: false,
+          renameContents: false,
+          deleteContents: false,
+      },
+
+      // Specific Overrides (Start empty)
+      folderIdAccess: {},
+      fileIdAccess: {}
+    };
+    return initialGroup;
   });
   const [activeTab, setActiveTab] = useState('users');
   
@@ -291,21 +338,25 @@ const UserManagement: React.FC<UserManagementProps> = ({ dataroomId }) => {
   };
 
   // Use the service to handle role changes
-  const handleRoleChange = (userEmail: string, newRole: string) => {
-    if (newRole === 'OWNER' && currentUser?.role === 'OWNER') {
+  const handleRoleChange = (userEmail: string, newRoleId: string) => {
+    // Get role info from availableRoles
+    const roleInfo = availableRoles[newRoleId];
+    
+    // Special case for transferring ownership
+    if (newRoleId === 'OWNER' && currentUser?.role === 'OWNER') {
       setOwnerTransfer({
         isOpen: true,
         targetUser: users.find(u => u.email === userEmail) || null
       });
     } else {
-      handleChangePermission(userEmail, newRole);
+      handleChangePermission(userEmail, newRoleId);
     }
   };
 
   // Use the service to handle permission changes
-  const handleChangePermission = async (userEmail: string, newRole: string) => {
+  const handleChangePermission = async (userEmail: string, newRoleId: string) => {
     try {
-      await changeUserPermission(bucketUuid, userEmail, newRole);
+      await changeUserPermission(bucketUuid, userEmail, newRoleId);
       await loadUsers(); // Refresh the user list
     } catch (error) {
       console.error('Error changing user permission:', error);
@@ -372,16 +423,18 @@ const UserManagement: React.FC<UserManagementProps> = ({ dataroomId }) => {
     setError(null);
 
     try {
-      const fetchedUsers = await fetchUsers(bucketUuid);
-      setUsers(fetchedUsers);
+      const response = await fetchUsers(bucketUuid);
+      setUsers(response.users);
+      setAvailableRoles(response.roles);
       
-        setTimeout(() => {
-          setIsLoading(false);
-        }, 500);
+      setTimeout(() => {
+        setIsLoading(false);
+      }, 500);
     } catch (error) {
       console.error('Error fetching users:', error);
       setError('Failed to fetch users');
       setUsers([]);
+      setAvailableRoles({});
       setIsLoading(false);
     }
   };
@@ -432,34 +485,32 @@ const UserManagement: React.FC<UserManagementProps> = ({ dataroomId }) => {
       // Reset state and close dialog
       setIsCreateGroupDialogOpen(false);
       setNewGroupName('');
-      setNewGroup({
-        id: '', name: '', allAccess: false, canQuery: true, canOrganize: false,
-        canViewAuditLogs: false, canInviteUsers: [], canUpdateUserPermissions: [],
-        canCreatePermissionGroups: false, canDeleteDataroom: false, canUseQA: true,
-        canReadAnswerQuestions: true,
-        defaultFilePerms: {
-          viewAccess: true, watermarkContent: false, deleteEditAccess: false, 
-          viewComments: true, addComments: false, downloadAccess: false, 
-          viewTags: true, canQuery: true, isVisible: true
-        },
-        defaultFolderPerms: {
-          allowUploads: false, createFolders: false, addComments: false, 
-          viewComments: true, viewContents: true, viewTags: true, 
-          canQuery: true, isVisible: true,
-          inheritFileAccess: {
-            viewAccess: true, watermarkContent: false, deleteEditAccess: false, 
-            viewComments: true, addComments: false, downloadAccess: false, 
-            viewTags: true, canQuery: true, isVisible: true
-          },
-          inheritFolderAccess: {
-            allowUploads: false, createFolders: false, addComments: false, 
-            viewComments: true, viewContents: true, viewTags: true, 
-            canQuery: true, isVisible: true
-          }
-        },
-        folderIdAccess: {},
-        fileIdAccess: {}
-      });
+      // Reset newGroup to the initial state function to ensure clean slate
+      setNewGroup(() => { 
+         const initialGroup: PermissionGroup = {
+            id: '', name: '', isDefault: false, allAccess: true, 
+            canQueryEntireDataroom: false, canOrganize: false, canRetryProcessing: false, canDeleteDataroom: false,
+            canAccessIssuesPanel: false, canCreateIssue: false, canAnswerIssue: false,
+            canAccessAuditLogsPanel: false, canViewAuditLogs: false, canExportAuditLogs: false,
+            canAccessDiligenceDashboard: false, canCreateDiligenceWidget: false, canMoveWidgets: false, canDeleteWidgets: false,
+            canAccessQuestionairePanel: false, canAddQuestionnaire: false,
+            canAccessUserManagementPanel: false, canViewUsers: false, canViewPermissionGroupDetails: false,
+            canInviteUsers: [], canUpdateUserPermissions: [], canUpdatePeerPermissions: false, canRemoveUsers: [], canRemovePeerPermission: false, canCreatePermissionGroups: false,
+            defaultFilePerms: {
+                viewAccess: true, watermarkContent: false, deleteAccess: false, editAccess: false, 
+                viewComments: true, addComments: false, downloadAccess: false, 
+                viewTags: true, addTags: false, canQuery: false, isVisible: true, 
+                moveAccess: false, renameAccess: false
+            },
+            defaultFolderPerms: {
+                allowUploads: false, createFolders: false, addComments: false, viewComments: true, 
+                viewContents: true, viewTags: true, addTags: false, canQuery: false, 
+                isVisible: true, moveContents: false, renameContents: false, deleteContents: false
+            },
+            folderIdAccess: {}, fileIdAccess: {}
+         };
+         return initialGroup;
+       });
       
       // Refresh the permission groups list
       await loadPermissionGroups();
@@ -500,10 +551,18 @@ const UserManagement: React.FC<UserManagementProps> = ({ dataroomId }) => {
         show: true,
         viewAccess: true,
         downloadAccess: false,
-        deleteEditAccess: false,
+        deleteEditAccess: false, // Using combined field now
         requireAgreement: false,
         viewTags: true,
+        addTags: false,
         allowUploads: false,
+        moveAccess: false,
+        renameAccess: false,
+        watermarkContent: false,
+        viewComments: true,
+        addComments: false,
+        canQuery: false,
+        isVisible: true
     };
   
     // Check if this is purely a visibility toggle
@@ -518,7 +577,8 @@ const UserManagement: React.FC<UserManagementProps> = ({ dataroomId }) => {
       }
   
       setNewGroup(prevState => {
-          const prevPermissions = prevState.fileIdAccess || {};
+          // Explicitly type prevPermissions and cast the potentially partial state value
+          const prevPermissions: Record<string, FilePermission> = (prevState.fileIdAccess as Record<string, FilePermission>) || {};
           const updates: Record<string, Partial<FilePermission>> = {}; // Store all partial updates needed
   
           // Helper: Get descendants
@@ -590,52 +650,76 @@ const UserManagement: React.FC<UserManagementProps> = ({ dataroomId }) => {
             const currentCompletePerms = prevPermissions[id] || defaultPermValues; // Start with previous or defaults
             const partialUpdate = updates[id];
             // Merge and ensure all fields exist, using defaults if needed after merge
+            // Explicitly defining all fields to satisfy FilePermission type
             const mergedUpdate = { ...currentCompletePerms, ...partialUpdate }; 
             nextPermissions[id] = {
-                show: mergedUpdate.show,
+                show: mergedUpdate.show ?? defaultPermValues.show,
                 viewAccess: mergedUpdate.viewAccess ?? defaultPermValues.viewAccess,
                 downloadAccess: mergedUpdate.downloadAccess ?? defaultPermValues.downloadAccess,
                 deleteEditAccess: mergedUpdate.deleteEditAccess ?? defaultPermValues.deleteEditAccess,
                 requireAgreement: mergedUpdate.requireAgreement ?? defaultPermValues.requireAgreement,
                 viewTags: mergedUpdate.viewTags ?? defaultPermValues.viewTags,
+                addTags: mergedUpdate.addTags ?? defaultPermValues.addTags,
                 allowUploads: mergedUpdate.allowUploads ?? defaultPermValues.allowUploads,
+                moveAccess: mergedUpdate.moveAccess ?? defaultPermValues.moveAccess,
+                renameAccess: mergedUpdate.renameAccess ?? defaultPermValues.renameAccess,
+                watermarkContent: mergedUpdate.watermarkContent ?? defaultPermValues.watermarkContent,
+                viewComments: mergedUpdate.viewComments ?? defaultPermValues.viewComments,
+                addComments: mergedUpdate.addComments ?? defaultPermValues.addComments,
+                canQuery: mergedUpdate.canQuery ?? defaultPermValues.canQuery,
+                isVisible: mergedUpdate.isVisible ?? defaultPermValues.isVisible,
             };
           });
   
           console.log("Final updates being applied:", updates);
           console.log("Resulting permissions state:", nextPermissions);
   
+          // Ensure the final object assigned matches the state type
+          const finalPermissionsForState: Record<string, FilePermission> = nextPermissions;
+
           return {
             ...prevState,
             allAccess: false, 
-            fileIdAccess: nextPermissions,
+            fileIdAccess: finalPermissionsForState as Record<string, FilePermission>, // Explicit cast
           };
         });
   
     } else {
       // Apply non-visibility or combined updates
       setNewGroup(prevState => {
-          const prevSpecificPermissions = prevState.fileIdAccess || {};
+          // Explicitly type prevSpecificPermissions and cast the potentially partial state value
+          const prevSpecificPermissions: Record<string, FilePermission> = (prevState.fileIdAccess as Record<string, FilePermission>) || {};
           const currentCompletePerms = prevSpecificPermissions[fileId] || defaultPermValues;
           const mergedUpdate = { ...currentCompletePerms, ...permissionUpdate };
-          // Ensure complete object even for single updates
-          const nextPermission = {
-              show: mergedUpdate.show,
+          // Ensure complete object even for single updates, satisfying FilePermission type
+          const nextPermission: FilePermission = {
+              show: mergedUpdate.show ?? defaultPermValues.show,
               viewAccess: mergedUpdate.viewAccess ?? defaultPermValues.viewAccess,
               downloadAccess: mergedUpdate.downloadAccess ?? defaultPermValues.downloadAccess,
               deleteEditAccess: mergedUpdate.deleteEditAccess ?? defaultPermValues.deleteEditAccess,
               requireAgreement: mergedUpdate.requireAgreement ?? defaultPermValues.requireAgreement,
               viewTags: mergedUpdate.viewTags ?? defaultPermValues.viewTags,
+              addTags: mergedUpdate.addTags ?? defaultPermValues.addTags,
               allowUploads: mergedUpdate.allowUploads ?? defaultPermValues.allowUploads,
+              moveAccess: mergedUpdate.moveAccess ?? defaultPermValues.moveAccess,
+              renameAccess: mergedUpdate.renameAccess ?? defaultPermValues.renameAccess,
+              watermarkContent: mergedUpdate.watermarkContent ?? defaultPermValues.watermarkContent,
+              viewComments: mergedUpdate.viewComments ?? defaultPermValues.viewComments,
+              addComments: mergedUpdate.addComments ?? defaultPermValues.addComments,
+              canQuery: mergedUpdate.canQuery ?? defaultPermValues.canQuery,
+              isVisible: mergedUpdate.isVisible ?? defaultPermValues.isVisible,
            };
          
+          // Construct the final object for the state update with explicit typing
+          const finalSpecificPermissionsForState: Record<string, FilePermission> = {
+            ...prevSpecificPermissions,
+            [fileId]: nextPermission,
+          };
+
           return {
               ...prevState,
               allAccess: false, 
-              fileIdAccess: {
-                  ...prevSpecificPermissions,
-                  [fileId]: nextPermission,
-              },
+              fileIdAccess: finalSpecificPermissionsForState as Record<string, FilePermission>, // Explicit cast
           };
       });
     }
@@ -698,6 +782,80 @@ const UserManagement: React.FC<UserManagementProps> = ({ dataroomId }) => {
         description: "Failed to remove user. Please try again.",
         variant: "destructive"
       });
+    }
+  };
+
+  // Add state for delete dialog
+  const [groupToDelete, setGroupToDelete] = useState<PermissionGroup | null>(null);
+  
+  // Add state for edit group
+  const [isEditGroupDialogOpen, setIsEditGroupDialogOpen] = useState(false);
+  const [editingGroup, setEditingGroup] = useState<PermissionGroup | null>(null);
+
+  // Function to handle editing a permission group
+  const handleEditGroup = (group: PermissionGroup) => {
+    setEditingGroup(group);
+    // Copy the group properties to newGroup
+    setNewGroupName(group.name);
+    setNewGroup(group);
+    setIsEditGroupDialogOpen(true);
+  };
+
+  // Function to save edited group
+  const handleUpdatePermissionGroup = async () => {
+    if (!editingGroup || !newGroupName.trim() || !bucketUuid) return;
+    
+    setIsCreatingGroup(true); // Reuse the loading state
+    try {
+      await updatePermissionGroup(bucketUuid, editingGroup.id, newGroupName, newGroup);
+      
+      toast({
+        title: "Success",
+        description: `Permission group "${newGroupName}" updated successfully.`
+      });
+      
+      // Reset state and close dialog
+      setIsEditGroupDialogOpen(false);
+      setEditingGroup(null);
+      setNewGroupName('');
+      setNewGroup({} as PermissionGroup); // Reset newGroup
+      
+      // Refresh the permission groups list
+      await loadPermissionGroups();
+    } catch (error) {
+      console.error("Error updating permission group:", error);
+      toast({
+        title: "Error",
+        description: "Failed to update permission group.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsCreatingGroup(false);
+    }
+  };
+
+  // Function to handle deleting a permission group
+  const handleDeleteGroup = async (groupId: string) => {
+    if (!bucketUuid) return;
+    
+    try {
+      await deletePermissionGroup(bucketUuid, groupId);
+      
+      toast({
+        title: "Success",
+        description: "Permission group deleted successfully."
+      });
+      
+      // Refresh the permission groups list
+      await loadPermissionGroups();
+    } catch (error) {
+      console.error("Error deleting permission group:", error);
+      // Re-throw to be caught by the dialog component
+      if (error instanceof Error) {
+        throw error;
+      } else {
+        throw new Error('Failed to delete permission group');
+      }
     }
   };
 
@@ -827,7 +985,7 @@ const UserManagement: React.FC<UserManagementProps> = ({ dataroomId }) => {
                         </div>
                       </div>
                       <div className="ml-6">
-                            <RoleSelect user={currentUser} currentUserRole={currentUser.role as Role} onRoleChange={handleRoleChange} currentUserEmail={currentUser.email} />
+                            <RoleSelect user={currentUser} currentUserRole={currentUser.role as Role} onRoleChange={handleRoleChange} currentUserEmail={currentUser.email} availableRoles={availableRoles} />
                       </div>
                     </div>
                   </div>
@@ -842,6 +1000,7 @@ const UserManagement: React.FC<UserManagementProps> = ({ dataroomId }) => {
                         currentUserEmail={currentUser?.email || null}
                         onRoleChange={handleRoleChange}
                         onRemoveUser={setUserToRemove}
+                        availableRoles={availableRoles}
                       />
                 ))}
               </div>
@@ -871,26 +1030,42 @@ const UserManagement: React.FC<UserManagementProps> = ({ dataroomId }) => {
                       </CardDescription>
                     </CardHeader>
                     <CardContent>
-                      <div className="text-sm dark:text-gray-300">
-                         <p className="mb-1">
-                           <span className="font-semibold">AI Query:</span> {group.canQuery ? 'Yes' : 'No'}
+                      <div className="text-sm dark:text-gray-300 space-y-1">
+                         <p>
+                           <span className="font-semibold">Query Dataroom:</span> {group.canQueryEntireDataroom ? 'Yes' : 'No'}
                          </p>
-                         <p className="mb-1">
+                         <p>
                            <span className="font-semibold">Organize Files:</span> {group.canOrganize ? 'Yes' : 'No'}
                          </p>
                          <p>
                            <span className="font-semibold">View Audit Logs:</span> {group.canViewAuditLogs ? 'Yes' : 'No'}
                          </p>
+                         {/* Add a few more key indicators */}
+                         <p>
+                           <span className="font-semibold">Manage Users:</span> {group.canAccessUserManagementPanel ? 'Yes' : 'No'}
+                         </p>
+                          <p>
+                           <span className="font-semibold">Manage Issues:</span> {group.canAccessIssuesPanel ? 'Yes' : 'No'}
+                         </p>
                       </div>
                     </CardContent>
-                    <CardFooter className="flex gap-2">
+                    <CardFooter className="flex gap-2 justify-end">
                       {/* Conditionally render buttons only for non-default groups */}
                       {!group.isDefault ? (
                         <>
-                          <Button variant="outline" size="sm" className="dark:text-white">
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            className="dark:text-white"
+                            onClick={() => handleEditGroup(group)}
+                          >
                             Edit
                           </Button>
-                          <Button variant="destructive" size="sm">
+                          <Button 
+                            variant="destructive" 
+                            size="sm"
+                            onClick={() => setGroupToDelete(group)}
+                          >
                             Delete
                           </Button>
                         </>
@@ -966,7 +1141,7 @@ const UserManagement: React.FC<UserManagementProps> = ({ dataroomId }) => {
         onNameChange={(value) => setNewGroupName(value)}
         newGroup={newGroup}
         setNewGroup={setNewGroup}
-                    folderStructure={folderStructure}
+        folderStructure={folderStructure}
         dialogItemsMap={dialogItemsMap}
         dialogParentMap={dialogParentMap}
         onFilePermissionChange={handleFilePermissionChange}
@@ -979,10 +1154,44 @@ const UserManagement: React.FC<UserManagementProps> = ({ dataroomId }) => {
         handleAllAccessChange={handleAllAccessChange}
       />
 
+      {/* Edit Group Dialog - reuse the same PermissionGroupDialog but with different props */}
+      <PermissionGroupDialog 
+        isOpen={isEditGroupDialogOpen}
+        onClose={() => {
+          setIsEditGroupDialogOpen(false);
+          setEditingGroup(null);
+          setNewGroupName('');
+          setNewGroup({} as PermissionGroup);
+        }}
+        newGroupName={newGroupName}
+        setNewGroupName={setNewGroupName}
+        onNameChange={(value) => setNewGroupName(value)}
+        newGroup={newGroup}
+        setNewGroup={setNewGroup}
+        folderStructure={folderStructure}
+        dialogItemsMap={dialogItemsMap}
+        dialogParentMap={dialogParentMap}
+        onFilePermissionChange={handleFilePermissionChange}
+        isCreatingGroup={isCreatingGroup}
+        onCreateGroup={handleUpdatePermissionGroup}
+        showSpecificPermissions={showSpecificPermissions}
+        setShowSpecificPermissions={setShowSpecificPermissions}
+        selectedFileId={selectedFileId}
+        setSelectedFileId={setSelectedFileId}
+        handleAllAccessChange={handleAllAccessChange}
+      />
+
       <ViewGroupDetailsDialog 
         isOpen={viewGroupDetails.isOpen}
         group={viewGroupDetails.group}
         onClose={() => setViewGroupDetails({isOpen: false, group: null})}
+      />
+
+      <DeletePermissionGroupDialog
+        isOpen={groupToDelete !== null}
+        group={groupToDelete}
+        onClose={() => setGroupToDelete(null)}
+        onConfirm={handleDeleteGroup}
       />
     </>
   );

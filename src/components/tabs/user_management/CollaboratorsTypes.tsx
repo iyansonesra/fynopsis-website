@@ -37,35 +37,82 @@ downloadAccess: boolean;
 deleteEditAccess: boolean;
 requireAgreement: boolean;
 viewTags: boolean;
-allowUploads?: boolean; // Added allowUploads
+addTags?: boolean;
+allowUploads?: boolean;
+moveAccess?: boolean;
+renameAccess?: boolean;
+watermarkContent?: boolean;
+viewComments?: boolean;
+addComments?: boolean;
+canQuery?: boolean;
+isVisible?: boolean;
 };
 
-// Permission Group Type Update
+// Folder-specific Permission Type (Optional, but helps clarity)
+export type FolderPermission = {
+allowUploads: boolean;
+createFolders: boolean;
+addComments: boolean;
+viewComments: boolean;
+viewContents: boolean;
+viewTags: boolean;
+addTags: boolean;
+canQuery: boolean;
+isVisible: boolean;
+moveContents: boolean;
+renameContents: boolean;
+deleteContents: boolean;
+inheritFileAccess?: FilePermission;
+inheritFolderAccess?: Omit<FolderPermission, 'inheritFileAccess' | 'inheritFolderAccess'>;
+};
+
+// Permission Group Type Update - Reflects the NEW structure provided
 export type PermissionGroup = {
 id: string;
 name: string;
-isDefault?: boolean; // Added flag for default roles
+isDefault?: boolean;
+dataroomId?: string;
 allAccess: boolean;
-canQuery: boolean;
-canOrganize: boolean;
-canViewAuditLogs: boolean;
-canInviteUsers: string[];
-canUpdateUserPermissions: string[];
-canCreatePermissionGroups: boolean;
-canDeleteDataroom: boolean;
-canUseQA: boolean;
-canReadAnswerQuestions: boolean;
-canRetryProcessing?: boolean; // Added for retry processing permission
+canQueryEntireDataroom?: boolean;
+canOrganize?: boolean;
+canRetryProcessing?: boolean;
+canDeleteDataroom?: boolean;
+canAccessIssuesPanel?: boolean;
+canCreateIssue?: boolean;
+canAnswerIssue?: boolean;
+canAccessAuditLogsPanel?: boolean;
+canViewAuditLogs?: boolean;
+canExportAuditLogs?: boolean;
+canAccessDiligenceDashboard?: boolean;
+canCreateDiligenceWidget?: boolean;
+canMoveWidgets?: boolean;
+canDeleteWidgets?: boolean;
+canAccessQuestionairePanel?: boolean;
+canAddQuestionnaire?: boolean;
+canAccessUserManagementPanel?: boolean;
+canViewUsers?: boolean;
+canViewPermissionGroupDetails?: boolean;
+canInviteUsers?: string[];
+canUpdateUserPermissions?: string[];
+canUpdatePeerPermissions?: boolean;
+canRemoveUsers?: string[];
+canRemovePeerPermission?: boolean;
+canCreatePermissionGroups?: boolean;
 defaultFilePerms: {
     viewAccess: boolean;
     watermarkContent: boolean;
-    deleteEditAccess: boolean;
+    deleteAccess?: boolean;
+    editAccess?: boolean;
+    deleteEditAccess?: boolean;
     viewComments: boolean;
     addComments: boolean;
     downloadAccess: boolean;
     viewTags: boolean;
+    addTags?: boolean;
     canQuery: boolean;
     isVisible: boolean;
+    moveAccess?: boolean;
+    renameAccess?: boolean;
 };
 defaultFolderPerms: {
     allowUploads: boolean;
@@ -74,107 +121,88 @@ defaultFolderPerms: {
     viewComments: boolean;
     viewContents: boolean;
     viewTags: boolean;
+    addTags?: boolean;
     canQuery: boolean;
     isVisible: boolean;
-    inheritFileAccess?: {
-    viewAccess: boolean;
-    watermarkContent: boolean;
-    deleteEditAccess: boolean;
-    viewComments: boolean;
-    addComments: boolean;
-    downloadAccess: boolean;
-    viewTags: boolean;
-    canQuery: boolean;
-    isVisible: boolean;
-    };
-    inheritFolderAccess?: {
-    allowUploads: boolean;
-    createFolders: boolean;
-    addComments: boolean;
-    viewComments: boolean;
-    viewContents: boolean;
-    viewTags: boolean;
-    canQuery: boolean;
-    isVisible: boolean;
-    };
+    moveContents?: boolean;
+    renameContents?: boolean;
+    deleteContents?: boolean;
 };
-folderIdAccess?: Record<string, any>;
-fileIdAccess?: Record<string, any>;
+folderIdAccess?: Record<string, Partial<FolderPermission>>;
+fileIdAccess?: Record<string, Partial<FilePermission>>;
 };
 
 // Define Default Role Structures (Constants) - Placed BEFORE the component
-export const DEFAULT_ROLES: Array<Omit<PermissionGroup, 'id'>> = [
+export const DEFAULT_ROLES: Array<Omit<PermissionGroup, 'id' | 'dataroomId'>> = [
 {
     name: 'Owner',
     isDefault: true,
-    allAccess: true,
-    canQuery: true,
-    canOrganize: true,
-    canViewAuditLogs: true,
-    canInviteUsers: ['*'],
-    canUpdateUserPermissions: ['*'],
-    canCreatePermissionGroups: true,
-    canDeleteDataroom: true,
-    canUseQA: true,
-    canReadAnswerQuestions: true,
     defaultFilePerms: {
-    viewAccess: true,
-    watermarkContent: false,
-    deleteEditAccess: true,
-    viewComments: true,
-    addComments: true,
-    downloadAccess: true,
-    viewTags: true,
-    canQuery: true,
-    isVisible: true
-    },
-    defaultFolderPerms: {
-    allowUploads: true,
-    createFolders: true,
-    addComments: true,
-    viewComments: true,
-    viewContents: true,
-    viewTags: true,
-    canQuery: true,
-    isVisible: true,
-    inheritFileAccess: {
         viewAccess: true,
         watermarkContent: false,
-        deleteEditAccess: true,
+        deleteAccess: true,
+        editAccess: true,
         viewComments: true,
         addComments: true,
         downloadAccess: true,
         viewTags: true,
+        addTags: true,
         canQuery: true,
-        isVisible: true
+        isVisible: true,
+        moveAccess: true,
+        renameAccess: true
     },
-    inheritFolderAccess: {
+    defaultFolderPerms: {
         allowUploads: true,
         createFolders: true,
         addComments: true,
         viewComments: true,
         viewContents: true,
         viewTags: true,
+        addTags: true,
         canQuery: true,
-        isVisible: true
-    }
+        isVisible: true,
+        moveContents: true,
+        renameContents: true,
+        deleteContents: true
     },
-    folderIdAccess: {},
-    fileIdAccess: {}
+    allAccess: true,
+    canQueryEntireDataroom: true,
+    canOrganize: true,
+    canRetryProcessing: true,
+    canDeleteDataroom: true,
+    canAccessIssuesPanel: true,
+    canCreateIssue: true,
+    canAnswerIssue: true,
+    canAccessAuditLogsPanel: true,
+    canViewAuditLogs: true,
+    canExportAuditLogs: true,
+    canAccessDiligenceDashboard: true,
+    canCreateDiligenceWidget: true,
+    canMoveWidgets: true,
+    canDeleteWidgets: true,
+    canAccessQuestionairePanel: true,
+    canAddQuestionnaire: true,
+    canAccessUserManagementPanel: true,
+    canViewUsers: true,
+    canViewPermissionGroupDetails: true,
+    canInviteUsers: ['*'],
+    canUpdateUserPermissions: ['*'],
+    canUpdatePeerPermissions: false,
+    canRemoveUsers: ['*'],
+    canRemovePeerPermission: false,
+    canCreatePermissionGroups: true
 },
 {
     name: 'Admin',
     isDefault: true,
     allAccess: true,
-    canQuery: true,
     canOrganize: true,
     canViewAuditLogs: true,
     canInviteUsers: ['READ', 'WRITE', 'ADMIN'],
     canUpdateUserPermissions: ['READ', 'WRITE', 'ADMIN'],
     canCreatePermissionGroups: true,
     canDeleteDataroom: false,
-    canUseQA: true,
-    canReadAnswerQuestions: true,
     defaultFilePerms: {
     viewAccess: true,
     watermarkContent: false,
@@ -195,102 +223,52 @@ export const DEFAULT_ROLES: Array<Omit<PermissionGroup, 'id'>> = [
     viewTags: true,
     canQuery: true,
     isVisible: true,
-    inheritFileAccess: {
-        viewAccess: true,
-        watermarkContent: false,
-        deleteEditAccess: true,
-        viewComments: true,
-        addComments: true,
-        downloadAccess: true,
-        viewTags: true,
-        canQuery: true,
-        isVisible: true
     },
-    inheritFolderAccess: {
-        allowUploads: true,
-        createFolders: true,
-        addComments: true,
-        viewComments: true,
-        viewContents: true,
-        viewTags: true,
-        canQuery: true,
-        isVisible: true
-    }
-    },
-    folderIdAccess: {},
-    fileIdAccess: {}
 },
 {
-    name: 'Editor', // WRITE
-    isDefault: true,
-    allAccess: true, 
-    canQuery: true,
-    canOrganize: false,
-    canViewAuditLogs: false,
-    canInviteUsers: [],
-    canUpdateUserPermissions: [],
-    canCreatePermissionGroups: false,
-    canDeleteDataroom: false,
-    canUseQA: true,
-    canReadAnswerQuestions: true,
-    defaultFilePerms: {
-    viewAccess: true,
-    watermarkContent: false,
-    deleteEditAccess: true,
-    viewComments: true,
-    addComments: true,
-    downloadAccess: true,
-    viewTags: true,
-    canQuery: true,
-    isVisible: true
-    },
-    defaultFolderPerms: {
-    allowUploads: true,
-    createFolders: true,
-    addComments: true,
-    viewComments: true,
-    viewContents: true,
-    viewTags: true,
-    canQuery: true,
-    isVisible: true,
-    inheritFileAccess: {
-        viewAccess: true,
-        watermarkContent: false,
-        deleteEditAccess: true,
-        viewComments: true,
-        addComments: true,
-        downloadAccess: true,
-        viewTags: true,
-        canQuery: true,
-        isVisible: true
-    },
-    inheritFolderAccess: {
-        allowUploads: true,
-        createFolders: true,
-        addComments: true,
-        viewComments: true,
-        viewContents: true,
-        viewTags: true,
-        canQuery: true,
-        isVisible: true
-    }
-    },
-    folderIdAccess: {},
-    fileIdAccess: {}
-},
-{
-    name: 'Viewer', // READ
+    name: 'Editor',
     isDefault: true,
     allAccess: true,
-    canQuery: true,
     canOrganize: false,
     canViewAuditLogs: false,
     canInviteUsers: [],
     canUpdateUserPermissions: [],
     canCreatePermissionGroups: false,
     canDeleteDataroom: false,
-    canUseQA: true,
-    canReadAnswerQuestions: false,
+    defaultFilePerms: {
+    viewAccess: true,
+    watermarkContent: false,
+    deleteEditAccess: true,
+    viewComments: true,
+    addComments: true,
+    downloadAccess: true,
+    viewTags: true,
+    canQuery: true,
+    isVisible: true
+    },
+    defaultFolderPerms: {
+    allowUploads: true,
+    createFolders: true,
+    addComments: true,
+    viewComments: true,
+    viewContents: true,
+    viewTags: true,
+    canQuery: true,
+    isVisible: true,
+    },
+    folderIdAccess: {},
+    fileIdAccess: {}
+},
+{
+    name: 'Viewer',
+    isDefault: true,
+    allAccess: true,
+    canOrganize: false,
+    canViewAuditLogs: false,
+    canInviteUsers: [],
+    canUpdateUserPermissions: [],
+    canCreatePermissionGroups: false,
+    canDeleteDataroom: false,
     defaultFilePerms: {
     viewAccess: true,
     watermarkContent: true,
@@ -311,27 +289,6 @@ export const DEFAULT_ROLES: Array<Omit<PermissionGroup, 'id'>> = [
     viewTags: true,
     canQuery: true,
     isVisible: true,
-    inheritFileAccess: {
-        viewAccess: true,
-        watermarkContent: true,
-        deleteEditAccess: false,
-        viewComments: true,
-        addComments: false,
-        downloadAccess: false,
-        viewTags: true,
-        canQuery: true,
-        isVisible: true
-    },
-    inheritFolderAccess: {
-        allowUploads: false,
-        createFolders: false,
-        addComments: false,
-        viewComments: true,
-        viewContents: true,
-        viewTags: true,
-        canQuery: true,
-        isVisible: true
-    }
     },
     folderIdAccess: {},
     fileIdAccess: {}

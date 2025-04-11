@@ -1,4 +1,4 @@
-import { get, post } from '@aws-amplify/api';
+import { get, post, put, del } from 'aws-amplify/api';
 import type { 
   User, 
   TransferOwnershipDialog, 
@@ -7,12 +7,20 @@ import type {
   FileTreeItem as FileTreeItemType 
 } from '../tabs/user_management/CollaboratorsTypes';
 
+// Define RoleInfo locally to avoid import issues
+interface RoleInfo {
+  id: string;
+  name: string;
+  type: 'ROLE' | 'GROUP';
+  description?: string;
+}
+
 /**
  * Fetch all users associated with a dataroom
  * @param bucketUuid The dataroom/bucket identifier
- * @returns Array of users with their permissions
+ * @returns Array of users with their permissions and available roles
  */
-export const fetchUsers = async (bucketUuid: string): Promise<User[]> => {
+export const fetchUsers = async (bucketUuid: string): Promise<{ users: User[], roles: Record<string, any> }> => {
   try {
     const restOperation = get({
       apiName: 'S3_API',
@@ -29,9 +37,12 @@ export const fetchUsers = async (bucketUuid: string): Promise<User[]> => {
     const responseText = await body.text();
     const response = JSON.parse(responseText);
     
-    // Handle response when it's an array
-    if (Array.isArray(response)) {
-      return response.map((user: any) => ({
+    console.log('response', response);
+    
+    // Handle the new response format with users and roles
+    if (response && response.users && Array.isArray(response.users)) {
+      // Process users
+      const formattedUsers = response.users.map((user: any) => ({
         ...user,
         isInvited: user.status === 'INVITED',
         role: user.role,
@@ -39,16 +50,24 @@ export const fetchUsers = async (bucketUuid: string): Promise<User[]> => {
         permissionInfo: user.permissionInfo || {
           type: 'ROLE',
           displayName: formatRoleDisplay(user.role),
+          id: user.role
         },
         invitedPermissionInfo: user.invitedPermissionInfo || (user.invitedRole ? {
           type: 'ROLE',
           displayName: formatRoleDisplay(user.invitedRole),
+          id: user.invitedRole
         } : undefined)
       }));
+
+      // Return both users and roles
+      return {
+        users: formattedUsers,
+        roles: response.roles || {}
+      };
     } 
-    // Handle response when it has a users property
-    else if (response.users && Array.isArray(response.users)) {
-      return response.users.map((user: any) => ({
+    // Fallback for old format (just array of users)
+    else if (Array.isArray(response)) {
+      const formattedUsers = response.map((user: any) => ({
         ...user,
         isInvited: user.status === 'INVITED',
         role: user.role,
@@ -56,16 +75,31 @@ export const fetchUsers = async (bucketUuid: string): Promise<User[]> => {
         permissionInfo: user.permissionInfo || {
           type: 'ROLE',
           displayName: formatRoleDisplay(user.role),
+          id: user.role
         },
         invitedPermissionInfo: user.invitedPermissionInfo || (user.invitedRole ? {
           type: 'ROLE',
           displayName: formatRoleDisplay(user.invitedRole),
+          id: user.invitedRole
         } : undefined)
       }));
+
+      // Create default roles object for backward compatibility
+      const defaultRoles = {
+        'OWNER': { id: 'OWNER', name: 'Owner', type: 'ROLE' as const },
+        'ADMIN': { id: 'ADMIN', name: 'Admin', type: 'ROLE' as const },
+        'WRITE': { id: 'WRITE', name: 'Editor', type: 'ROLE' as const },
+        'READ': { id: 'READ', name: 'Viewer', type: 'ROLE' as const }
+      };
+
+      return {
+        users: formattedUsers,
+        roles: defaultRoles
+      };
     } 
     else {
       console.error('Unexpected response format:', response);
-      return [];
+      return { users: [], roles: {} };
     }
   } catch (error) {
     console.error('Error fetching users:', error);
@@ -151,13 +185,13 @@ export const fetchPermissionGroups = async (bucketUuid: string): Promise<Permiss
  * Change a user's permission level in a dataroom
  * @param bucketUuid The dataroom/bucket identifier
  * @param userEmail Email of the user whose permissions to change
- * @param newPermissionLevel New permission level to assign
+ * @param newPermissionId New permission level ID (can be a standard role or permission group ID)
  * @returns API response from the operation
  */
 export const changeUserPermission = async (
   bucketUuid: string, 
   userEmail: string, 
-  newPermissionLevel: string
+  newPermissionId: string
 ) => {
   try {
     const restOperation = post({
@@ -169,7 +203,7 @@ export const changeUserPermission = async (
         },
         body: {
           userEmail,
-          newPermissionLevel
+          role: newPermissionId
         },
         withCredentials: true
       },
@@ -300,59 +334,82 @@ export const createPermissionGroup = async (
   permissions: PermissionGroup
 ) => {
   try {
-    // Map frontend state to the backend expected structure
+    // Map frontend state (NEW structure) to the backend expected structure
+    // NOTE: This assumes the backend API has been updated to accept the NEW structure.
+    // If the backend still expects the OLD structure, this mapping needs adjustment.
     const backendPermissionsPayload = {
-      // General dataroom permissions
+      // Pass the relevant fields from the NEW frontend structure
+      name: groupName, // Name is passed separately but could be part of payload too
       allAccess: permissions.allAccess,
-      canQueryEntireDataroom: permissions.canQuery,
-      canOrganize: permissions.canOrganize,
-      canViewAuditLogs: permissions.canViewAuditLogs,
-      canInviteUsers: permissions.canInviteUsers,
-      canUpdateUserPermissions: permissions.canUpdateUserPermissions,
-      canCreatePermissionGroups: permissions.canCreatePermissionGroups,
-      canDeleteDataroom: permissions.canDeleteDataroom,
-      canReadQA: permissions.canUseQA,
-      canAnswerQA: permissions.canReadAnswerQuestions,
-      canRetryProcessing: true, // Default to true 
       
-      // Default file permissions
+      // Direct Permissions
+      canQueryEntireDataroom: permissions.canQueryEntireDataroom ?? false,
+      canOrganize: permissions.canOrganize ?? false,
+      canRetryProcessing: permissions.canRetryProcessing ?? false,
+      canDeleteDataroom: permissions.canDeleteDataroom ?? false,
+      
+      // Panel Permissions
+      canAccessIssuesPanel: permissions.canAccessIssuesPanel ?? false,
+      canCreateIssue: permissions.canCreateIssue ?? false,
+      canAnswerIssue: permissions.canAnswerIssue ?? false,
+      canAccessAuditLogsPanel: permissions.canAccessAuditLogsPanel ?? false,
+      canViewAuditLogs: permissions.canViewAuditLogs ?? false, // Kept
+      canExportAuditLogs: permissions.canExportAuditLogs ?? false,
+      canAccessDiligenceDashboard: permissions.canAccessDiligenceDashboard ?? false,
+      canCreateDiligenceWidget: permissions.canCreateDiligenceWidget ?? false,
+      canMoveWidgets: permissions.canMoveWidgets ?? false,
+      canDeleteWidgets: permissions.canDeleteWidgets ?? false,
+      canAccessQuestionairePanel: permissions.canAccessQuestionairePanel ?? false, // Using frontend spelling
+      canAddQuestionnaire: permissions.canAddQuestionnaire ?? false, // Using frontend spelling
+      
+      // User Management Permissions
+      canAccessUserManagementPanel: permissions.canAccessUserManagementPanel ?? false,
+      canViewUsers: permissions.canViewUsers ?? false,
+      canViewPermissionGroupDetails: permissions.canViewPermissionGroupDetails ?? false,
+      canInviteUsers: permissions.canInviteUsers ?? [], // Default to empty array
+      canUpdateUserPermissions: permissions.canUpdateUserPermissions ?? [], // Default to empty array
+      canUpdatePeerPermissions: permissions.canUpdatePeerPermissions ?? false,
+      canRemoveUsers: permissions.canRemoveUsers ?? [], // Default to empty array
+      canRemovePeerPermission: permissions.canRemovePeerPermission ?? false,
+      canCreatePermissionGroups: permissions.canCreatePermissionGroups ?? false, // Kept
+      
+      // Default Permissions (Flattened structure, ensure defaults for optional fields)
       defaultFilePerms: {
-        ...permissions.defaultFilePerms
+        viewAccess: permissions.defaultFilePerms.viewAccess,
+        watermarkContent: permissions.defaultFilePerms.watermarkContent,
+        deleteAccess: permissions.defaultFilePerms.deleteAccess ?? false,
+        editAccess: permissions.defaultFilePerms.editAccess ?? false,
+        deleteEditAccess: permissions.defaultFilePerms.deleteEditAccess ?? false, // Keep or remove based on backend expectation
+        viewComments: permissions.defaultFilePerms.viewComments,
+        addComments: permissions.defaultFilePerms.addComments,
+        downloadAccess: permissions.defaultFilePerms.downloadAccess,
+        viewTags: permissions.defaultFilePerms.viewTags,
+        addTags: permissions.defaultFilePerms.addTags ?? false,
+        canQuery: permissions.defaultFilePerms.canQuery,
+        isVisible: permissions.defaultFilePerms.isVisible,
+        moveAccess: permissions.defaultFilePerms.moveAccess ?? false,
+        renameAccess: permissions.defaultFilePerms.renameAccess ?? false,
       },
-      
-      // Default folder permissions with complete nested structure
       defaultFolderPerms: {
-        // Direct folder permissions
         allowUploads: permissions.defaultFolderPerms.allowUploads,
         createFolders: permissions.defaultFolderPerms.createFolders,
         addComments: permissions.defaultFolderPerms.addComments,
         viewComments: permissions.defaultFolderPerms.viewComments,
         viewContents: permissions.defaultFolderPerms.viewContents,
         viewTags: permissions.defaultFolderPerms.viewTags,
+        addTags: permissions.defaultFolderPerms.addTags ?? false,
         canQuery: permissions.defaultFolderPerms.canQuery,
         isVisible: permissions.defaultFolderPerms.isVisible,
-        
-        // Nested permissions for inheritance
-        inheritFileAccess: {
-          ...permissions.defaultFolderPerms.inheritFileAccess || permissions.defaultFilePerms
-        },
-        inheritFolderAccess: {
-          ...(permissions.defaultFolderPerms.inheritFolderAccess || {
-            allowUploads: permissions.defaultFolderPerms.allowUploads,
-            createFolders: permissions.defaultFolderPerms.createFolders,
-            addComments: permissions.defaultFolderPerms.addComments,
-            viewComments: permissions.defaultFolderPerms.viewComments,
-            viewContents: permissions.defaultFolderPerms.viewContents,
-            viewTags: permissions.defaultFolderPerms.viewTags,
-            canQuery: permissions.defaultFolderPerms.canQuery,
-            isVisible: permissions.defaultFolderPerms.isVisible
-          })
-        }
+        moveContents: permissions.defaultFolderPerms.moveContents ?? false,
+        renameContents: permissions.defaultFolderPerms.renameContents ?? false,
+        deleteContents: permissions.defaultFolderPerms.deleteContents ?? false,
       },
       
-      // Empty folder and file specific access maps
+      // Specific Overrides
       folderIdAccess: permissions.folderIdAccess || {},
       fileIdAccess: permissions.fileIdAccess || {}
+      
+      // Removed old/deprecated mappings: canQuery, canUseQA, canReadAnswerQuestions
     };
 
     const restOperation = post({
@@ -373,6 +430,123 @@ export const createPermissionGroup = async (
     return result;
   } catch (error) {
     console.error("Error creating permission group:", error);
+    throw error;
+  }
+};
+
+/**
+ * Update an existing permission group
+ * @param bucketUuid The dataroom/bucket identifier
+ * @param permissionGroupId ID of the permission group to update
+ * @param groupName Name for the updated permission group
+ * @param permissions Permission settings for the group
+ * @returns API response from the operation
+ */
+export const updatePermissionGroup = async (
+  bucketUuid: string,
+  permissionGroupId: string,
+  groupName: string,
+  permissions: PermissionGroup
+) => {
+  try {
+    // Map frontend state to the backend expected structure
+    const backendPermissionsPayload = {
+      // Direct Permissions
+      allAccess: permissions.allAccess,
+      canQueryEntireDataroom: permissions.canQueryEntireDataroom ?? false,
+      canOrganize: permissions.canOrganize ?? false,
+      canRetryProcessing: permissions.canRetryProcessing ?? false,
+      canDeleteDataroom: permissions.canDeleteDataroom ?? false,
+      
+      // Panel Permissions
+      canAccessIssuesPanel: permissions.canAccessIssuesPanel ?? false,
+      canCreateIssue: permissions.canCreateIssue ?? false,
+      canAnswerIssue: permissions.canAnswerIssue ?? false,
+      canAccessAuditLogsPanel: permissions.canAccessAuditLogsPanel ?? false,
+      canViewAuditLogs: permissions.canViewAuditLogs ?? false,
+      canExportAuditLogs: permissions.canExportAuditLogs ?? false,
+      canAccessDiligenceDashboard: permissions.canAccessDiligenceDashboard ?? false,
+      canCreateDiligenceWidget: permissions.canCreateDiligenceWidget ?? false,
+      canMoveWidgets: permissions.canMoveWidgets ?? false,
+      canDeleteWidgets: permissions.canDeleteWidgets ?? false,
+      canAccessQuestionairePanel: permissions.canAccessQuestionairePanel ?? false,
+      canAddQuestionnaire: permissions.canAddQuestionnaire ?? false,
+      
+      // User Management Permissions
+      canAccessUserManagementPanel: permissions.canAccessUserManagementPanel ?? false,
+      canViewUsers: permissions.canViewUsers ?? false,
+      canViewPermissionGroupDetails: permissions.canViewPermissionGroupDetails ?? false,
+      canInviteUsers: permissions.canInviteUsers ?? [],
+      canUpdateUserPermissions: permissions.canUpdateUserPermissions ?? [],
+      canUpdatePeerPermissions: permissions.canUpdatePeerPermissions ?? false,
+      canRemoveUsers: permissions.canRemoveUsers ?? [],
+      canRemovePeerPermission: permissions.canRemovePeerPermission ?? false,
+      canCreatePermissionGroups: permissions.canCreatePermissionGroups ?? false,
+      
+      // Default Permissions
+      defaultFilePerms: permissions.defaultFilePerms,
+      defaultFolderPerms: permissions.defaultFolderPerms,
+      
+      // Specific Overrides
+      folderIdAccess: permissions.folderIdAccess || {},
+      fileIdAccess: permissions.fileIdAccess || {}
+    };
+
+    const restOperation = put({
+      apiName: 'S3_API',
+      path: `/share-folder/${bucketUuid}/permission-groups/${permissionGroupId}`,
+      options: {
+        headers: { 'Content-Type': 'application/json' },
+        body: {
+          name: groupName,
+          ...backendPermissionsPayload
+        },
+        withCredentials: true
+      }
+    });
+
+    const response = await restOperation.response;
+    const result = await response.body.json();
+    return result;
+  } catch (error) {
+    console.error("Error updating permission group:", error);
+    throw error;
+  }
+};
+
+/**
+ * Delete a permission group
+ * @param bucketUuid The dataroom/bucket identifier
+ * @param permissionGroupId ID of the permission group to delete
+ * @returns API response from the operation
+ */
+export const deletePermissionGroup = async (
+  bucketUuid: string,
+  permissionGroupId: string
+) => {
+  try {
+    // Using del function from aws-amplify/api as used in metricsService.ts
+    const restOperation = del({
+      apiName: 'S3_API',
+      path: `/share-folder/${bucketUuid}/permission-groups/${permissionGroupId}`,
+      options: {
+        headers: { 'Content-Type': 'application/json' },
+        withCredentials: true
+      }
+    });
+    
+    await restOperation.response;
+    return { success: true, message: 'Permission group deleted successfully' };
+  } catch (error) {
+    console.error("Error deleting permission group:", error);
+    
+    // Check if the error contains a message about users
+    if (error instanceof Error && 
+        (error.message.includes('in use by users') || 
+         error.message.includes('Cannot delete permission group'))) {
+      throw new Error('Cannot delete permission group that is in use by users');
+    }
+    
     throw error;
   }
 }; 
