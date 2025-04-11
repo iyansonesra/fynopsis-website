@@ -4,7 +4,7 @@ import { useState, useCallback, memo, useEffect } from "react"
 import { ChevronRight, Folder, File, MoreHorizontal, FolderOpen } from "lucide-react"
 import { AnimatePresence, motion } from "framer-motion"
 import { useFolderTreeStore } from '@/components/services/treeStateStore';
-import { FaFilePdf } from "react-icons/fa";
+import { FaFilePdf, FaFileWord, FaFileExcel, FaFileImage, FaFilePowerpoint, FaFileAlt, FaFileCode, FaFileArchive, FaFileVideo, FaFileAudio } from "react-icons/fa";
 import { get, post } from 'aws-amplify/api';
 import { usePathname } from 'next/navigation';
 
@@ -247,10 +247,44 @@ export function FilesystemItem({
         if (node.isFolder) {
             return isOpen ? <FolderOpen className="size-4 mr-1 text-sky-500" /> : <Folder className="size-4 mr-1 text-sky-500" />;
         } else {
-            // Optionally, use specific icons for file types, e.g., FaFilePdf for PDFs
-            // if (node.name.endsWith('.pdf')) {
-            //     return <FaFilePdf className="size-4 mr-1 text-gray-500" />;
-            // }
+            // Use specific icons for different file types
+            const fileName = node.name.toLowerCase();
+            
+            // Document types
+            if (fileName.endsWith('.pdf')) {
+                return <FaFilePdf className="size-4 mr-1 text-red-500" />;
+            } else if (fileName.endsWith('.doc') || fileName.endsWith('.docx')) {
+                return <FaFileWord className="size-4 mr-1 text-blue-600" />;
+            } else if (fileName.endsWith('.xls') || fileName.endsWith('.xlsx')) {
+                return <FaFileExcel className="size-4 mr-1 text-green-600" />;
+            } else if (fileName.endsWith('.ppt') || fileName.endsWith('.pptx')) {
+                return <FaFilePowerpoint className="size-4 mr-1 text-orange-600" />;
+            } 
+            // Image types
+            else if (['.jpg', '.jpeg', '.png', '.gif', '.svg', '.webp'].some(ext => fileName.endsWith(ext))) {
+                return <FaFileImage className="size-4 mr-1 text-purple-500" />;
+            }
+            // Code/text types
+            else if (['.js', '.ts', '.jsx', '.tsx', '.html', '.css', '.json', '.py', '.java', '.c', '.cpp'].some(ext => fileName.endsWith(ext))) {
+                return <FaFileCode className="size-4 mr-1 text-gray-600" />;
+            }
+            // Archive types
+            else if (['.zip', '.rar', '.tar', '.gz', '.7z'].some(ext => fileName.endsWith(ext))) {
+                return <FaFileArchive className="size-4 mr-1 text-yellow-600" />;
+            }
+            // Video types
+            else if (['.mp4', '.avi', '.mov', '.wmv', '.mkv'].some(ext => fileName.endsWith(ext))) {
+                return <FaFileVideo className="size-4 mr-1 text-indigo-500" />;
+            }
+            // Audio types
+            else if (['.mp3', '.wav', '.ogg', '.flac'].some(ext => fileName.endsWith(ext))) {
+                return <FaFileAudio className="size-4 mr-1 text-pink-500" />;
+            }
+            // Text files
+            else if (['.txt', '.md', '.rtf'].some(ext => fileName.endsWith(ext))) {
+                return <FaFileAlt className="size-4 mr-1 text-gray-500" />;
+            }
+            // Default file icon for other types
             return <File className="size-4 mr-1 text-gray-500" />;
         }
     };
