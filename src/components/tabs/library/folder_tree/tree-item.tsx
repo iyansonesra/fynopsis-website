@@ -1,12 +1,13 @@
 "use client"
 
 import { useState, useCallback, memo, useEffect } from "react"
-import { ChevronRight, Folder, File, MoreHorizontal } from "lucide-react"
+import { ChevronRight, Folder, File, MoreHorizontal, Download, Pencil } from "lucide-react"
 import { AnimatePresence, motion } from "framer-motion"
 import { useFolderTreeStore } from '@/components/services/treeStateStore';
 import { FaFilePdf } from "react-icons/fa";
 import { get, post } from 'aws-amplify/api';
 import { usePathname } from 'next/navigation';
+import { usePermissionsStore } from '@/stores/permissionsStore';
 
 // Import shadcn components
 import {
@@ -22,6 +23,12 @@ import {
 } from "@/components/ui/popover"
 import { Input } from "@/components/ui/input"
 import React from "react"
+import {
+    Tooltip,
+    TooltipContent,
+    TooltipProvider,
+    TooltipTrigger,
+} from "@/components/ui/tooltip"
 
 type Node = {
     name: string
@@ -75,6 +82,9 @@ export function FilesystemItem({
     // Track previous open state to determine if animation should play
     const [prevOpenState, setPrevOpenState] = useState(isOpen);
     const [shouldAnimate, setShouldAnimate] = useState(false);
+    const { permissionDetails } = usePermissionsStore();
+    const viewAccess = permissionDetails?.defaultFilePerms.viewAccess;
+    const editAccess = permissionDetails?.defaultFilePerms.editAccess;
 
     const handleMouseEnter = () => {
         if (!isRenaming) {  // Only show popover if not renaming
@@ -224,7 +234,7 @@ export function FilesystemItem({
         // Check if this is a double click (typically within 300ms)
         if (timeSinceLastClick < 300) {
             // Double click detected
-            if (!node.isFolder && onSelect) {
+            if (!node.isFolder && onSelect && viewAccess) {
                 onSelect(node);
                 return;
             }
@@ -245,7 +255,7 @@ export function FilesystemItem({
         if ((node.isFolder || (node.nodes && node.nodes.length > 0)) && node.id) {
             toggleNode(node.id);
         }
-    }, [node, onSelect, toggleNode, isRenaming, isSelected, onNodeSelect]);
+    }, [node, onSelect, toggleNode, isRenaming, isSelected, onNodeSelect, viewAccess]);
 
     const handleOpenFolder = useCallback((e: React.MouseEvent) => {
         e.preventDefault();
@@ -466,12 +476,50 @@ export function FilesystemItem({
                 </ContextMenuTrigger>
                 {!node.isFolder && (
                     <ContextMenuContent className="w-48">
-                        <ContextMenuItem onClick={handleDownload}>
-                            Download
-                        </ContextMenuItem>
-                        <ContextMenuItem onClick={() => setIsRenaming(true)}>
-                            Rename
-                        </ContextMenuItem>
+                        {!viewAccess ? (
+                            <TooltipProvider>
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <div className="opacity-50 cursor-not-allowed">
+                                            <ContextMenuItem disabled className="flex items-center gap-2">
+                                                <Download size={16} />
+                                                <span>Download</span>
+                                            </ContextMenuItem>
+                                        </div>
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                        <p>View access is disabled</p>
+                                    </TooltipContent>
+                                </Tooltip>
+                            </TooltipProvider>
+                        ) : (
+                            <ContextMenuItem onClick={handleDownload} className="flex items-center gap-2">
+                                <Download size={16} />
+                                <span>Download</span>
+                            </ContextMenuItem>
+                        )}
+                        {!editAccess ? (
+                            <TooltipProvider>
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <div className="opacity-50 cursor-not-allowed">
+                                            <ContextMenuItem disabled className="flex items-center gap-2">
+                                                <Pencil size={16} />
+                                                <span>Rename</span>
+                                            </ContextMenuItem>
+                                        </div>
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                        <p>Edit access is disabled</p>
+                                    </TooltipContent>
+                                </Tooltip>
+                            </TooltipProvider>
+                        ) : (
+                            <ContextMenuItem onClick={() => setIsRenaming(true)} className="flex items-center gap-2">
+                                <Pencil size={16} />
+                                <span>Rename</span>
+                            </ContextMenuItem>
+                        )}
                     </ContextMenuContent>
                 )}
             </ContextMenu>

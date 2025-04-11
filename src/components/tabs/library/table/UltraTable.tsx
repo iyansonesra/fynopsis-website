@@ -60,6 +60,8 @@ import { useTabStore } from '../../../tabStore';
 import { useToast } from "@/components/ui/use-toast";
 import { Button } from '@/components/ui/button';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { usePermissionsStore } from '@/stores/permissionsStore'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 
 
 
@@ -795,6 +797,7 @@ export function FileSystem({ onFileSelect, permissionDetails }: FileSystemProps)
   const ResizableHeader: React.FC<ResizableHeaderProps> = ({ column, width, children }) => {
     const resizerRef = useRef<HTMLDivElement>(null);
     const headerRef = useRef<HTMLTableHeaderCellElement>(null);
+    
 
     const handleMouseDown = (e: React.MouseEvent) => {
       e.preventDefault();
@@ -867,6 +870,12 @@ export function FileSystem({ onFileSelect, permissionDetails }: FileSystemProps)
     onSelect: (ids: string[]) => void;
   }>(({ item, loading, selectedItemIds, onSelect }) => {
     const isSelected = selectedItemIds.includes(item.id);
+    const { permissionDetails } = usePermissionsStore();
+    const viewAccess = permissionDetails?.defaultFilePerms.viewAccess;
+    const deleteAccess = permissionDetails?.defaultFilePerms.deleteAccess;
+    const editAccess = permissionDetails?.defaultFilePerms.editAccess;
+    const allowUploads = permissionDetails?.defaultFolderPerms.allowUploads;
+    const createFolders = permissionDetails?.defaultFolderPerms.createFolders;
 
     const handleClick = (e: React.MouseEvent) => {
       e.stopPropagation();
@@ -954,8 +963,10 @@ export function FileSystem({ onFileSelect, permissionDetails }: FileSystemProps)
 
     const handleDoubleClick = async () => {
       if (!item.isFolder && item.id) {
+        if (!viewAccess) {
+          return; // Don't proceed if view access is disabled
+        }
         try {
-          // console.log(item.s3Key);
           const downloadResponse = await get({
             apiName: 'S3_API',
             path: `/s3/${bucketUuid}/view-url`,
@@ -980,9 +991,6 @@ export function FileSystem({ onFileSelect, permissionDetails }: FileSystemProps)
         segments.pop();  // Remove the last segment
         segments.push(item.id); // Add the new folder ID
         router.push(segments.join('/'));
-
-
-
       }
     };
 
@@ -1386,41 +1394,95 @@ export function FileSystem({ onFileSelect, permissionDetails }: FileSystemProps)
                   ) : (
                     // File options
                     <>
-                      <DropdownMenuItem
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleDoubleClick(); // Use the same handler as double-click
-                          setOpenDropdownId(null);
-                        }}
-                        className="text-black"
-                      >
-                        <FileTypeIcon fileName={item.name} />
-                        View
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleDownload();
-                          setOpenDropdownId(null);
-                        }}
-                        className="text-black"
-                      >
-                        <Download className="mr-2 h-4 w-4" />
-                        Download
-                      </DropdownMenuItem>
+                      {!viewAccess ? (
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <div className="opacity-50 cursor-not-allowed">
+                                <DropdownMenuItem disabled className="text-black">
+                                  <FileTypeIcon fileName={item.name} />
+                                  View
+                                </DropdownMenuItem>
+                              </div>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p>View access is disabled</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      ) : (
+                        <DropdownMenuItem
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDoubleClick(); // Use the same handler as double-click
+                            setOpenDropdownId(null);
+                          }}
+                          className="text-black"
+                        >
+                          <FileTypeIcon fileName={item.name} />
+                          View
+                        </DropdownMenuItem>
+                      )}
+                      {!viewAccess ? (
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <div className="opacity-50 cursor-not-allowed">
+                                <DropdownMenuItem disabled className="text-black">
+                                  <Download className="mr-2 h-4 w-4" />
+                                  Download
+                                </DropdownMenuItem>
+                              </div>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p>View access is disabled</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      ) : (
+                        <DropdownMenuItem
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDownload();
+                            setOpenDropdownId(null);
+                          }}
+                          className="text-black"
+                        >
+                          <Download className="mr-2 h-4 w-4" />
+                          Download
+                        </DropdownMenuItem>
+                      )}
                     </>
                   )}
-                  <DropdownMenuItem
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleRename();
-                      setOpenDropdownId(null);
-                    }}
-                    className="text-black"
-                  >
-                    <Pencil className="mr-2 h-4 w-4" />
-                    Rename
-                  </DropdownMenuItem>
+                  {!editAccess ? (
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <div className="opacity-50 cursor-not-allowed">
+                            <DropdownMenuItem disabled className="text-black">
+                              <Pencil className="mr-2 h-4 w-4" />
+                              Rename
+                            </DropdownMenuItem>
+                          </div>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>Edit access is disabled</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  ) : (
+                    <DropdownMenuItem
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleRename();
+                        setOpenDropdownId(null);
+                      }}
+                      className="text-black"
+                    >
+                      <Pencil className="mr-2 h-4 w-4" />
+                      Rename
+                    </DropdownMenuItem>
+                  )}
                   {item.status === 'FAILED' && !item.isFolder && (
                     <DropdownMenuItem
                       onClick={(e) => {
@@ -1434,17 +1496,35 @@ export function FileSystem({ onFileSelect, permissionDetails }: FileSystemProps)
                       Retry Processing
                     </DropdownMenuItem>
                   )}
-                  <DropdownMenuItem
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleDelete();
-                      setOpenDropdownId(null);
-                    }}
-                    className="text-red-600 focus:text-red-600"
-                  >
-                    <Trash className="mr-2 h-4 w-4" />
-                    Delete
-                  </DropdownMenuItem>
+                  {!deleteAccess ? (
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <div className="opacity-50 cursor-not-allowed">
+                            <DropdownMenuItem disabled className="text-red-600 focus:text-red-600">
+                              <Trash className="mr-2 h-4 w-4" />
+                              Delete
+                            </DropdownMenuItem>
+                          </div>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>Delete access is disabled</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  ) : (
+                    <DropdownMenuItem
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDelete();
+                        setOpenDropdownId(null);
+                      }}
+                      className="text-red-600 focus:text-red-600"
+                    >
+                      <Trash className="mr-2 h-4 w-4" />
+                      Delete
+                    </DropdownMenuItem>
+                  )}
                 </DropdownMenuContent>
               </DropdownMenu>
             </td>
@@ -1459,20 +1539,74 @@ export function FileSystem({ onFileSelect, permissionDetails }: FileSystemProps)
             </ContextMenuItem>
           ) : (
             <>
-              <ContextMenuItem onClick={() => handleDoubleClick()}>
-                <FileTypeIcon fileName={item.name} />
-                View
-              </ContextMenuItem>
-              <ContextMenuItem onClick={() => handleDownload()}>
-                <Download className="mr-2 h-4 w-4" />
-                Download
-              </ContextMenuItem>
+              {!viewAccess ? (
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <div className="opacity-50 cursor-not-allowed">
+                        <ContextMenuItem disabled>
+                          <FileTypeIcon fileName={item.name} />
+                          View
+                        </ContextMenuItem>
+                      </div>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>View access is disabled</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              ) : (
+                <ContextMenuItem onClick={() => handleDoubleClick()}>
+                  <FileTypeIcon fileName={item.name} />
+                  View
+                </ContextMenuItem>
+              )}
+              {!viewAccess ? (
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <div className="opacity-50 cursor-not-allowed">
+                        <ContextMenuItem disabled>
+                          <Download className="mr-2 h-4 w-4" />
+                          Download
+                        </ContextMenuItem>
+                      </div>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>View access is disabled</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              ) : (
+                <ContextMenuItem onClick={() => handleDownload()}>
+                  <Download className="mr-2 h-4 w-4" />
+                  Download
+                </ContextMenuItem>
+              )}
             </>
           )}
-          <ContextMenuItem onClick={handleRename}>
-            <Pencil className="mr-2 h-4 w-4" />
-            Rename
-          </ContextMenuItem>
+          {!editAccess ? (
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div className="opacity-50 cursor-not-allowed">
+                    <ContextMenuItem disabled>
+                      <Pencil className="mr-2 h-4 w-4" />
+                      Rename
+                    </ContextMenuItem>
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Edit access is disabled</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          ) : (
+            <ContextMenuItem onClick={handleRename}>
+              <Pencil className="mr-2 h-4 w-4" />
+              Rename
+            </ContextMenuItem>
+          )}
           {item.status === 'FAILED' && !item.isFolder && (
             <ContextMenuItem onClick={handleRetry}>
               <RotateCcw className="mr-2 h-4 w-4" />
@@ -1480,10 +1614,28 @@ export function FileSystem({ onFileSelect, permissionDetails }: FileSystemProps)
             </ContextMenuItem>
           )}
           <ContextMenuSeparator />
-          <ContextMenuItem onClick={handleDelete} className="text-red-600">
-            <Trash className="mr-2 h-4 w-4" />
-            Delete
-          </ContextMenuItem>
+          {!deleteAccess ? (
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div className="opacity-50 cursor-not-allowed">
+                    <ContextMenuItem disabled className="text-red-600">
+                      <Trash className="mr-2 h-4 w-4" />
+                      Delete
+                    </ContextMenuItem>
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Delete access is disabled</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          ) : (
+            <ContextMenuItem onClick={handleDelete} className="text-red-600">
+              <Trash className="mr-2 h-4 w-4" />
+              Delete
+            </ContextMenuItem>
+          )}
         </ContextMenuContent>
       </ContextMenu>
 
@@ -1719,7 +1871,8 @@ export function FileSystem({ onFileSelect, permissionDetails }: FileSystemProps)
   // }, [dataroomId, pathArray]);
 
   const [showDeleteConfirmation, setShowDeleteConfirmation] = useState<boolean>(false);
-
+  const allowUploads = permissionDetails?.defaultFolderPerms.allowUploads;
+  const createFolders = permissionDetails?.defaultFolderPerms.createFolders;
   return (
     <div className="select-none w-full dark:bg-darkbg pt-4 h-full flex flex-col overflow-hidden">
       <style jsx>{`
@@ -1818,15 +1971,51 @@ th {
                 <ChevronDown size={16} />
               </button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="dark:bg-slate-900 dark:border-none dark:outline-none dark:text-gray-200 ">
-              <DropdownMenuItem onClick={() => setShowUploadOverlay(true)} className="flex items-center gap-2 dark:hover:text-gray-400">
-                <Upload size={16} />
-                <span>Upload</span>
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setShowFolderModal(true)} className="flex items-center gap-2 dark:hover:text-gray-400">
-                <Plus size={16} />
-                <span>Create Folder</span>
-              </DropdownMenuItem>
+            <DropdownMenuContent align="start" className="dark:bg-slate-900 dark:border-none dark:outline-none dark:text-gray-200 w-full">
+              {!allowUploads ? (
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <div className="opacity-50 cursor-not-allowed">
+                        <DropdownMenuItem disabled className="flex items-center gap-2 dark:hover:text-gray-400">
+                          <Upload size={16} />
+                          <span>Upload</span>
+                        </DropdownMenuItem>
+                      </div>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Upload access is disabled</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              ) : (
+                <DropdownMenuItem onClick={() => setShowUploadOverlay(true)} className="flex items-center gap-2 dark:hover:text-gray-400">
+                  <Upload size={16} />
+                  <span>Upload</span>
+                </DropdownMenuItem>
+              )}
+              {!createFolders ? (
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <div className="opacity-50 cursor-not-allowed">
+                        <DropdownMenuItem disabled className="flex items-center gap-2 dark:hover:text-gray-400">
+                          <Plus size={16} />
+                          <span>Create Folder</span>
+                        </DropdownMenuItem>
+                      </div>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Create folder access is disabled</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              ) : (
+                <DropdownMenuItem onClick={() => setShowFolderModal(true)} className="flex items-center gap-2 dark:hover:text-gray-400">
+                  <Plus size={16} />
+                  <span>Create Folder</span>
+                </DropdownMenuItem>
+              )}
 
               {(!permissionDetails || permissionDetails.canOrganize !== false) && (
                 <DropdownMenuItem onClick={() => setShowFileOrganizer(true)} className="flex items-center gap-2 dark:hover:text-gray-400">
@@ -2071,10 +2260,28 @@ th {
                 <Plus className="mr-2 h-4 w-4" />
                 Create Folder
               </ContextMenuItem>
-              <ContextMenuItem onClick={() => setShowUploadOverlay(true)}>
-                <Upload className="mr-2 h-4 w-4" />
-                Upload File
-              </ContextMenuItem>
+              {!allowUploads ? (
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <div className="opacity-50 cursor-not-allowed">
+                        <ContextMenuItem disabled>
+                          <Upload className="mr-2 h-4 w-4" />
+                          Upload File
+                        </ContextMenuItem>
+                      </div>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Upload access is disabled</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              ) : (
+                <ContextMenuItem onClick={() => setShowUploadOverlay(true)}>
+                  <Upload className="mr-2 h-4 w-4" />
+                  Upload File
+                </ContextMenuItem>
+              )}
             </ContextMenuContent>
           </ContextMenu>
 

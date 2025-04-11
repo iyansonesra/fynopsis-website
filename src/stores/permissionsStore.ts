@@ -82,12 +82,22 @@ interface PermissionsState {
   setCanRemoveUsers: (value: string[]) => void; // done
   setCanRetryProcessing: (value: boolean) => void;
   setCanUpdatePeerPermissions: (value: boolean) => void; // done
-  setCanUpdateUserPermissions: (value: string[]) => void;
+  setCanUpdateUserPermissions: (value: string[]) => void; // done
   setCanViewAuditLogs: (value: boolean) => void;
-  setCanViewPermissionGroupDetails: (value: boolean) => void;
-  setCanViewUsers: (value: boolean) => void;
+  setCanViewPermissionGroupDetails: (value: boolean) => void; // done
+  setCanViewUsers: (value: boolean) => void; // done
   setDefaultFilePerms: (value: PermissionDetails['defaultFilePerms']) => void;
+  setDefaultFilePermsViewAccess: (value: boolean) => void; // done
+  setDefaultFilePermsWatermarkContent: (value: boolean) => void; 
+  setDefaultFilePermsDeleteAccess: (value: boolean) => void; // done
+  setDefaultFilePermsEditAccess: (value: boolean) => void; //done
+  setDefaultFilePermsViewComments: (value: boolean) => void;
   setDefaultFolderPerms: (value: PermissionDetails['defaultFolderPerms']) => void;
+  setDefaultFolderPermsAllowUploads: (value: boolean) => void;
+  setDefaultFolderPermsCreateFolders: (value: boolean) => void;
+  setDefaultFolderPermsAddComments: (value: boolean) => void;
+  setDefaultFolderPermsViewComments: (value: boolean) => void;
+  setDefaultFolderPermsViewContents: (value: boolean) => void;
   setId: (value: string) => void;
   setName: (value: string) => void;
   setRole: (value: string) => void;
@@ -190,8 +200,98 @@ export const usePermissionsStore = create<PermissionsState>()(
       setDefaultFilePerms: (value) => set((state) => ({
         permissionDetails: state.permissionDetails ? { ...state.permissionDetails, defaultFilePerms: value } : null
       })),
+      setDefaultFilePermsViewAccess: (value) => set((state) => ({
+        permissionDetails: state.permissionDetails ? {
+          ...state.permissionDetails,
+          defaultFilePerms: {
+            ...state.permissionDetails.defaultFilePerms,
+            viewAccess: value
+          }
+        } : null
+      })),
+      setDefaultFilePermsWatermarkContent: (value) => set((state) => ({
+        permissionDetails: state.permissionDetails ? {
+          ...state.permissionDetails,
+          defaultFilePerms: {
+            ...state.permissionDetails.defaultFilePerms,
+            watermarkContent: value
+          }
+        } : null
+      })),
+      setDefaultFilePermsDeleteAccess: (value) => set((state) => ({
+        permissionDetails: state.permissionDetails ? {
+          ...state.permissionDetails,
+          defaultFilePerms: {
+            ...state.permissionDetails.defaultFilePerms,
+            deleteAccess: value
+          }
+        } : null
+      })),
+      setDefaultFilePermsEditAccess: (value) => set((state) => ({
+        permissionDetails: state.permissionDetails ? {
+          ...state.permissionDetails,
+          defaultFilePerms: {
+            ...state.permissionDetails.defaultFilePerms,
+            editAccess: value
+          }
+        } : null
+      })),
+      setDefaultFilePermsViewComments: (value) => set((state) => ({
+        permissionDetails: state.permissionDetails ? {
+          ...state.permissionDetails,
+          defaultFilePerms: {
+            ...state.permissionDetails.defaultFilePerms,
+            viewComments: value
+          }
+        } : null
+      })),
       setDefaultFolderPerms: (value) => set((state) => ({
         permissionDetails: state.permissionDetails ? { ...state.permissionDetails, defaultFolderPerms: value } : null
+      })),
+      setDefaultFolderPermsAllowUploads: (value) => set((state) => ({
+        permissionDetails: state.permissionDetails ? {
+          ...state.permissionDetails,
+          defaultFolderPerms: {
+            ...state.permissionDetails.defaultFolderPerms,
+            allowUploads: value
+          }
+        } : null
+      })),
+      setDefaultFolderPermsCreateFolders: (value) => set((state) => ({
+        permissionDetails: state.permissionDetails ? {
+          ...state.permissionDetails,
+          defaultFolderPerms: {
+            ...state.permissionDetails.defaultFolderPerms,
+            createFolders: value
+          }
+        } : null
+      })),
+      setDefaultFolderPermsAddComments: (value) => set((state) => ({
+        permissionDetails: state.permissionDetails ? {
+          ...state.permissionDetails,
+          defaultFolderPerms: {
+            ...state.permissionDetails.defaultFolderPerms,
+            addComments: value
+          }
+        } : null
+      })),
+      setDefaultFolderPermsViewComments: (value) => set((state) => ({
+        permissionDetails: state.permissionDetails ? {
+          ...state.permissionDetails,
+          defaultFolderPerms: {
+            ...state.permissionDetails.defaultFolderPerms,
+            viewComments: value
+          }
+        } : null
+      })),
+      setDefaultFolderPermsViewContents: (value) => set((state) => ({
+        permissionDetails: state.permissionDetails ? {
+          ...state.permissionDetails,
+          defaultFolderPerms: {
+            ...state.permissionDetails.defaultFolderPerms,
+            viewContents: value
+          }
+        } : null
       })),
       setId: (value) => set((state) => ({
         permissionDetails: state.permissionDetails ? { ...state.permissionDetails, id: value } : null

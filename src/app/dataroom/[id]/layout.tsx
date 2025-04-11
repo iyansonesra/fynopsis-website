@@ -36,6 +36,19 @@ export default function DataroomLayout({ children }: { children: React.ReactNode
     setCanMoveWidgets,
     setCanQueryEntireDataroom,
     setCanUpdatePeerPermissions,
+    setCanViewPermissionGroupDetails,
+    setCanViewUsers,
+    setDefaultFilePermsViewAccess,
+    setDefaultFilePermsWatermarkContent,
+    setDefaultFilePermsDeleteAccess,
+    setDefaultFilePermsEditAccess,
+    setDefaultFilePermsViewComments,
+    setDefaultFolderPermsAllowUploads,
+    setDefaultFolderPermsCreateFolders,
+    setDefaultFolderPermsAddComments,
+    setDefaultFolderPermsViewComments,
+    setDefaultFolderPermsViewContents,
+    setCanOrganize,
   } = usePermissionsStore();
 
   // Extract dataroomId from params
@@ -86,6 +99,18 @@ export default function DataroomLayout({ children }: { children: React.ReactNode
       // setCanMoveWidgets(false);
       // setCanQueryEntireDataroom(false);
       setCanUpdatePeerPermissions(true);
+      setCanViewPermissionGroupDetails(true);
+      setDefaultFilePermsViewAccess(true);
+      setDefaultFilePermsEditAccess(true);
+      setDefaultFilePermsDeleteAccess(false);
+      setDefaultFilePermsViewComments(false);
+      setDefaultFolderPermsAllowUploads(false);
+      setDefaultFolderPermsCreateFolders(false);
+      setDefaultFolderPermsAddComments(false);
+      setDefaultFolderPermsViewComments(false);
+      setDefaultFolderPermsViewContents(false);
+      setCanOrganize(false);
+      setCanViewUsers(true);
       setHasPermission(true);
       setDataroomId(id);
 
