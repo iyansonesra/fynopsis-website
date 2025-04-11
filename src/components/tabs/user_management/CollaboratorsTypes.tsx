@@ -46,6 +46,12 @@ viewComments?: boolean;
 addComments?: boolean;
 canQuery?: boolean;
 isVisible?: boolean;
+// File-specific permissions
+editAccess?: boolean;
+deleteAccess?: boolean;
+// Folder-specific permissions (used in PermissionFolderTree)
+folderPerms?: FolderPermission;
+childFilePerms?: Partial<FilePermission>;
 };
 
 // Folder-specific Permission Type (Optional, but helps clarity)
