@@ -64,20 +64,35 @@ const buildFolderStructure = (folders: Folder[], files: FileItem[]): Node[] => {
 
     // First, build the folder structure
     folders.forEach((folder) => {
+        console.log('FOLDEEEERRR:', folder);
         const pathParts = folder.fullPath.split('/').filter(part => part !== 'Root' && part !== '');
         let currentLevel = root;
         let parentId = 'ROOT'; // Start with ROOT as parent
+        console.log('PATH PARTS:', pathParts);
+        
+        // Create a map to store folder IDs by their full path
+        const folderIdMap = new Map();
+        folders.forEach(f => {
+            const fPath = f.fullPath.split('/').filter(part => part !== 'Root' && part !== '').join('/');
+            folderIdMap.set(fPath, f.id);
+        });
 
         pathParts.forEach((part, index) => {
+            const currentPath = pathParts.slice(0, index + 1).join('/');
+            const folderId = folderIdMap.get(currentPath);
+
             if (!currentLevel[part]) {
                 currentLevel[part] = {
                     name: part,
                     nodes: [],
-                    id: index === pathParts.length - 1 ? folder.id : undefined,
-                    path: pathParts.slice(0, index + 1).join('/'),
+                    id: folderId,
+                    path: currentPath,
                     isFolder: true,
                     parentFolderId: parentId
                 };
+            } else if (folderId) {
+                // Update the ID if it wasn't set before
+                currentLevel[part].id = folderId;
             }
 
             if (index < pathParts.length - 1) {
@@ -289,7 +304,25 @@ const FolderTree: React.FC<FolderTreeProps> = () => {
                                 parentFolderId: node.id || 'ROOT'
                             });
                             
-                            setFolderStructure(updatedStructure);
+                            // Recalculate numbering for the entire structure
+                            const addNumbering = (nodes: Node[], prefix: string): Node[] => {
+                                return nodes.map((node, index) => {
+                                    const currentNumber = prefix ? `${prefix}.${index + 1}` : `${index + 1}`;
+                                    return {
+                                        ...node,
+                                        numbering: currentNumber,
+                                        nodes: node.nodes ? addNumbering(node.nodes, currentNumber) : [],
+                                    };
+                                });
+                            };
+
+                            // Apply numbering to the updated structure
+                            const numberedStructure = updatedStructure.map(rootNode => ({
+                                ...rootNode,
+                                nodes: addNumbering(rootNode.nodes || [], '')
+                            }));
+                            
+                            setFolderStructure(numberedStructure);
                         }
                     }
                 } catch (error) {
