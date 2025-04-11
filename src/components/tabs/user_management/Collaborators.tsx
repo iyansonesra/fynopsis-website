@@ -35,7 +35,9 @@ import {
   transferOwnership,
   removeUser,
   inviteUser,
-  createPermissionGroup
+  createPermissionGroup,
+  updatePermissionGroup,
+  deletePermissionGroup
 } from '../../services/userService';
 
 // Import components
@@ -49,6 +51,7 @@ import { PermissionGroupsTabContent } from './components/PermissionGroupsTabCont
 import { UsersTabContent } from './components/UsersTabContent';
 import { ViewGroupDetailsDialog } from './components/ViewGroupDetailsDialog';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
+import { DeletePermissionGroupDialog } from './components/DeletePermissionGroupDialog';
 
 const UserManagement: React.FC<UserManagementProps> = ({ dataroomId }) => {
   const [users, setUsers] = useState<User[]>([]);
@@ -759,6 +762,80 @@ const UserManagement: React.FC<UserManagementProps> = ({ dataroomId }) => {
     }
   };
 
+  // Add state for delete dialog
+  const [groupToDelete, setGroupToDelete] = useState<PermissionGroup | null>(null);
+  
+  // Add state for edit group
+  const [isEditGroupDialogOpen, setIsEditGroupDialogOpen] = useState(false);
+  const [editingGroup, setEditingGroup] = useState<PermissionGroup | null>(null);
+
+  // Function to handle editing a permission group
+  const handleEditGroup = (group: PermissionGroup) => {
+    setEditingGroup(group);
+    // Copy the group properties to newGroup
+    setNewGroupName(group.name);
+    setNewGroup(group);
+    setIsEditGroupDialogOpen(true);
+  };
+
+  // Function to save edited group
+  const handleUpdatePermissionGroup = async () => {
+    if (!editingGroup || !newGroupName.trim() || !bucketUuid) return;
+    
+    setIsCreatingGroup(true); // Reuse the loading state
+    try {
+      await updatePermissionGroup(bucketUuid, editingGroup.id, newGroupName, newGroup);
+      
+      toast({
+        title: "Success",
+        description: `Permission group "${newGroupName}" updated successfully.`
+      });
+      
+      // Reset state and close dialog
+      setIsEditGroupDialogOpen(false);
+      setEditingGroup(null);
+      setNewGroupName('');
+      setNewGroup({} as PermissionGroup); // Reset newGroup
+      
+      // Refresh the permission groups list
+      await loadPermissionGroups();
+    } catch (error) {
+      console.error("Error updating permission group:", error);
+      toast({
+        title: "Error",
+        description: "Failed to update permission group.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsCreatingGroup(false);
+    }
+  };
+
+  // Function to handle deleting a permission group
+  const handleDeleteGroup = async (groupId: string) => {
+    if (!bucketUuid) return;
+    
+    try {
+      await deletePermissionGroup(bucketUuid, groupId);
+      
+      toast({
+        title: "Success",
+        description: "Permission group deleted successfully."
+      });
+      
+      // Refresh the permission groups list
+      await loadPermissionGroups();
+    } catch (error) {
+      console.error("Error deleting permission group:", error);
+      // Re-throw to be caught by the dialog component
+      if (error instanceof Error) {
+        throw error;
+      } else {
+        throw new Error('Failed to delete permission group');
+      }
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="mx-auto px-4 py-6 flex flex-col w-full dark:bg-darkbg">
@@ -952,10 +1029,19 @@ const UserManagement: React.FC<UserManagementProps> = ({ dataroomId }) => {
                       {/* Conditionally render buttons only for non-default groups */}
                       {!group.isDefault ? (
                         <>
-                          <Button variant="outline" size="sm" className="dark:text-white">
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            className="dark:text-white"
+                            onClick={() => handleEditGroup(group)}
+                          >
                             Edit
                           </Button>
-                          <Button variant="destructive" size="sm">
+                          <Button 
+                            variant="destructive" 
+                            size="sm"
+                            onClick={() => setGroupToDelete(group)}
+                          >
                             Delete
                           </Button>
                         </>
@@ -1031,7 +1117,7 @@ const UserManagement: React.FC<UserManagementProps> = ({ dataroomId }) => {
         onNameChange={(value) => setNewGroupName(value)}
         newGroup={newGroup}
         setNewGroup={setNewGroup}
-                    folderStructure={folderStructure}
+        folderStructure={folderStructure}
         dialogItemsMap={dialogItemsMap}
         dialogParentMap={dialogParentMap}
         onFilePermissionChange={handleFilePermissionChange}
@@ -1044,10 +1130,44 @@ const UserManagement: React.FC<UserManagementProps> = ({ dataroomId }) => {
         handleAllAccessChange={handleAllAccessChange}
       />
 
+      {/* Edit Group Dialog - reuse the same PermissionGroupDialog but with different props */}
+      <PermissionGroupDialog 
+        isOpen={isEditGroupDialogOpen}
+        onClose={() => {
+          setIsEditGroupDialogOpen(false);
+          setEditingGroup(null);
+          setNewGroupName('');
+          setNewGroup({} as PermissionGroup);
+        }}
+        newGroupName={newGroupName}
+        setNewGroupName={setNewGroupName}
+        onNameChange={(value) => setNewGroupName(value)}
+        newGroup={newGroup}
+        setNewGroup={setNewGroup}
+        folderStructure={folderStructure}
+        dialogItemsMap={dialogItemsMap}
+        dialogParentMap={dialogParentMap}
+        onFilePermissionChange={handleFilePermissionChange}
+        isCreatingGroup={isCreatingGroup}
+        onCreateGroup={handleUpdatePermissionGroup}
+        showSpecificPermissions={showSpecificPermissions}
+        setShowSpecificPermissions={setShowSpecificPermissions}
+        selectedFileId={selectedFileId}
+        setSelectedFileId={setSelectedFileId}
+        handleAllAccessChange={handleAllAccessChange}
+      />
+
       <ViewGroupDetailsDialog 
         isOpen={viewGroupDetails.isOpen}
         group={viewGroupDetails.group}
         onClose={() => setViewGroupDetails({isOpen: false, group: null})}
+      />
+
+      <DeletePermissionGroupDialog
+        isOpen={groupToDelete !== null}
+        group={groupToDelete}
+        onClose={() => setGroupToDelete(null)}
+        onConfirm={handleDeleteGroup}
       />
     </>
   );

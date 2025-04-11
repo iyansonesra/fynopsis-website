@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
@@ -267,11 +267,19 @@ export const PermissionGroupDialog: React.FC<PermissionGroupDialogProps> = ({
     }
   };
 
+  // Determine if we're editing or creating
+  const isEditMode = newGroup.id !== undefined && newGroup.id !== '';
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-5xl max-h-[90vh] overflow-hidden p-0">
-        <DialogHeader className="p-6 pb-2">
-          <DialogTitle className="text-xl">Create New Permission Group</DialogTitle>
+      <DialogContent className="sm:max-w-[90vw] max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>{isEditMode ? "Edit Permission Group" : "Create Permission Group"}</DialogTitle>
+          <DialogDescription>
+            {isEditMode 
+              ? "Modify this permission group's settings to control what users assigned to this group can do." 
+              : "Create a new permission group to control what users assigned to this group can do."}
+          </DialogDescription>
         </DialogHeader>
         
         <div className="grid grid-cols-[240px_1fr] h-[70vh]">
@@ -1222,8 +1230,7 @@ export const PermissionGroupDialog: React.FC<PermissionGroupDialogProps> = ({
                 <p className="text-sm text-gray-500 dark:text-gray-400">
                   Configure permissions for the Issues & Support section.
                 </p>
-                
-                <div className="border dark:border-gray-700 rounded-md p-6">
+                 <div className="border dark:border-gray-700 rounded-md p-6">
                   <div className="space-y-4">
                      <div className="flex items-center justify-between">
                       <label className="text-sm">Can access Issues & Support panel</label>
@@ -1253,22 +1260,133 @@ export const PermissionGroupDialog: React.FC<PermissionGroupDialogProps> = ({
                 </div>
               </div>
             )}
+
+            {/* Added: Audit Logs Tab */}
+            {activeTab === 'audit' && (
+              <div className="space-y-6">
+                <h3 className="text-lg font-medium">Audit Log Permissions</h3>
+                 <p className="text-sm text-gray-500 dark:text-gray-400">
+                  Configure permissions for accessing audit logs.
+                </p>
+                 <div className="border dark:border-gray-700 rounded-md p-6">
+                  <div className="space-y-4">
+                     <div className="flex items-center justify-between">
+                      <label className="text-sm">Can access Audit Logs panel</label>
+                      <Switch 
+                        checked={newGroup.canAccessAuditLogsPanel}
+                        onCheckedChange={(checked) => 
+                          setNewGroup(prev => ({...prev, canAccessAuditLogsPanel: checked }))}
+                      />
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <label className="text-sm">Can view audit logs</label>
+                      <Switch 
+                        checked={newGroup.canViewAuditLogs}
+                        onCheckedChange={(checked) => 
+                          setNewGroup(prev => ({...prev, canViewAuditLogs: checked }))}
+                      />
+                    </div>
+                     <div className="flex items-center justify-between">
+                      <label className="text-sm">Can export audit logs</label>
+                      <Switch 
+                        checked={newGroup.canExportAuditLogs}
+                        onCheckedChange={(checked) => 
+                          setNewGroup(prev => ({...prev, canExportAuditLogs: checked }))}
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Added: Diligence Dashboard Tab */}
+            {activeTab === 'diligence' && (
+              <div className="space-y-6">
+                <h3 className="text-lg font-medium">Diligence Dashboard Permissions</h3>
+                 <p className="text-sm text-gray-500 dark:text-gray-400">
+                  Configure permissions for the Diligence Dashboard.
+                </p>
+                 <div className="border dark:border-gray-700 rounded-md p-6">
+                  <div className="space-y-4">
+                     <div className="flex items-center justify-between">
+                      <label className="text-sm">Can access Diligence Dashboard panel</label>
+                      <Switch 
+                        checked={newGroup.canAccessDiligenceDashboard}
+                        onCheckedChange={(checked) => 
+                          setNewGroup(prev => ({...prev, canAccessDiligenceDashboard: checked }))}
+                      />
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <label className="text-sm">Can create diligence widgets</label>
+                      <Switch 
+                        checked={newGroup.canCreateDiligenceWidget}
+                        onCheckedChange={(checked) => 
+                          setNewGroup(prev => ({...prev, canCreateDiligenceWidget: checked }))}
+                      />
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <label className="text-sm">Can move diligence widgets</label>
+                      <Switch 
+                        checked={newGroup.canMoveWidgets}
+                        onCheckedChange={(checked) => 
+                          setNewGroup(prev => ({...prev, canMoveWidgets: checked }))}
+                      />
+                    </div>
+                     <div className="flex items-center justify-between">
+                      <label className="text-sm">Can delete diligence widgets</label>
+                      <Switch 
+                        checked={newGroup.canDeleteWidgets}
+                        onCheckedChange={(checked) => 
+                          setNewGroup(prev => ({...prev, canDeleteWidgets: checked }))}
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+             {/* Added: Questionnaire Tab */}
+            {activeTab === 'questionnaire' && (
+              <div className="space-y-6">
+                <h3 className="text-lg font-medium">Questionnaire Permissions</h3>
+                 <p className="text-sm text-gray-500 dark:text-gray-400">
+                  Configure permissions for Questionnaires.
+                </p>
+                 <div className="border dark:border-gray-700 rounded-md p-6">
+                  <div className="space-y-4">
+                     <div className="flex items-center justify-between">
+                      <label className="text-sm">Can access Questionnaire panel</label>
+                      <Switch 
+                        checked={newGroup.canAccessQuestionairePanel} // Keeping sample typo for consistency
+                        onCheckedChange={(checked) => 
+                          setNewGroup(prev => ({...prev, canAccessQuestionairePanel: checked }))}
+                      />
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <label className="text-sm">Can add questionnaires</label>
+                      <Switch 
+                        checked={newGroup.canAddQuestionnaire}
+                        onCheckedChange={(checked) => 
+                          setNewGroup(prev => ({...prev, canAddQuestionnaire: checked }))}
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
           </div>
+        
         </div>
         
-        <DialogFooter className="p-6 border-t dark:border-gray-700">
-          <Button 
-            variant="outline" 
-            onClick={onClose}
-            disabled={isCreatingGroup}
-          >
+        <DialogFooter className="sm:justify-end">
+          <Button variant="ghost" className="mr-2" onClick={onClose} disabled={isCreatingGroup}>
             Cancel
           </Button>
-          <Button 
-            onClick={onCreateGroup} 
-            disabled={!newGroupName.trim() || isCreatingGroup}
-          >
-            {isCreatingGroup ? 'Creating...' : 'Create Permission Group'}
+          <Button type="submit" onClick={onCreateGroup} disabled={!newGroupName.trim() || isCreatingGroup}>
+            {isCreatingGroup 
+              ? (isEditMode ? "Updating..." : "Creating...") 
+              : (isEditMode ? "Save Changes" : "Create Group")}
           </Button>
         </DialogFooter>
       </DialogContent>

@@ -1,4 +1,4 @@
-import { get, post } from '@aws-amplify/api';
+import { get, post, put, del } from 'aws-amplify/api';
 import type { 
   User, 
   TransferOwnershipDialog, 
@@ -396,6 +396,123 @@ export const createPermissionGroup = async (
     return result;
   } catch (error) {
     console.error("Error creating permission group:", error);
+    throw error;
+  }
+};
+
+/**
+ * Update an existing permission group
+ * @param bucketUuid The dataroom/bucket identifier
+ * @param permissionGroupId ID of the permission group to update
+ * @param groupName Name for the updated permission group
+ * @param permissions Permission settings for the group
+ * @returns API response from the operation
+ */
+export const updatePermissionGroup = async (
+  bucketUuid: string,
+  permissionGroupId: string,
+  groupName: string,
+  permissions: PermissionGroup
+) => {
+  try {
+    // Map frontend state to the backend expected structure
+    const backendPermissionsPayload = {
+      // Direct Permissions
+      allAccess: permissions.allAccess,
+      canQueryEntireDataroom: permissions.canQueryEntireDataroom ?? false,
+      canOrganize: permissions.canOrganize ?? false,
+      canRetryProcessing: permissions.canRetryProcessing ?? false,
+      canDeleteDataroom: permissions.canDeleteDataroom ?? false,
+      
+      // Panel Permissions
+      canAccessIssuesPanel: permissions.canAccessIssuesPanel ?? false,
+      canCreateIssue: permissions.canCreateIssue ?? false,
+      canAnswerIssue: permissions.canAnswerIssue ?? false,
+      canAccessAuditLogsPanel: permissions.canAccessAuditLogsPanel ?? false,
+      canViewAuditLogs: permissions.canViewAuditLogs ?? false,
+      canExportAuditLogs: permissions.canExportAuditLogs ?? false,
+      canAccessDiligenceDashboard: permissions.canAccessDiligenceDashboard ?? false,
+      canCreateDiligenceWidget: permissions.canCreateDiligenceWidget ?? false,
+      canMoveWidgets: permissions.canMoveWidgets ?? false,
+      canDeleteWidgets: permissions.canDeleteWidgets ?? false,
+      canAccessQuestionairePanel: permissions.canAccessQuestionairePanel ?? false,
+      canAddQuestionnaire: permissions.canAddQuestionnaire ?? false,
+      
+      // User Management Permissions
+      canAccessUserManagementPanel: permissions.canAccessUserManagementPanel ?? false,
+      canViewUsers: permissions.canViewUsers ?? false,
+      canViewPermissionGroupDetails: permissions.canViewPermissionGroupDetails ?? false,
+      canInviteUsers: permissions.canInviteUsers ?? [],
+      canUpdateUserPermissions: permissions.canUpdateUserPermissions ?? [],
+      canUpdatePeerPermissions: permissions.canUpdatePeerPermissions ?? false,
+      canRemoveUsers: permissions.canRemoveUsers ?? [],
+      canRemovePeerPermission: permissions.canRemovePeerPermission ?? false,
+      canCreatePermissionGroups: permissions.canCreatePermissionGroups ?? false,
+      
+      // Default Permissions
+      defaultFilePerms: permissions.defaultFilePerms,
+      defaultFolderPerms: permissions.defaultFolderPerms,
+      
+      // Specific Overrides
+      folderIdAccess: permissions.folderIdAccess || {},
+      fileIdAccess: permissions.fileIdAccess || {}
+    };
+
+    const restOperation = put({
+      apiName: 'S3_API',
+      path: `/share-folder/${bucketUuid}/permission-groups/${permissionGroupId}`,
+      options: {
+        headers: { 'Content-Type': 'application/json' },
+        body: {
+          name: groupName,
+          ...backendPermissionsPayload
+        },
+        withCredentials: true
+      }
+    });
+
+    const response = await restOperation.response;
+    const result = await response.body.json();
+    return result;
+  } catch (error) {
+    console.error("Error updating permission group:", error);
+    throw error;
+  }
+};
+
+/**
+ * Delete a permission group
+ * @param bucketUuid The dataroom/bucket identifier
+ * @param permissionGroupId ID of the permission group to delete
+ * @returns API response from the operation
+ */
+export const deletePermissionGroup = async (
+  bucketUuid: string,
+  permissionGroupId: string
+) => {
+  try {
+    // Using del function from aws-amplify/api as used in metricsService.ts
+    const restOperation = del({
+      apiName: 'S3_API',
+      path: `/share-folder/${bucketUuid}/permission-groups/${permissionGroupId}`,
+      options: {
+        headers: { 'Content-Type': 'application/json' },
+        withCredentials: true
+      }
+    });
+    
+    await restOperation.response;
+    return { success: true, message: 'Permission group deleted successfully' };
+  } catch (error) {
+    console.error("Error deleting permission group:", error);
+    
+    // Check if the error contains a message about users
+    if (error instanceof Error && 
+        (error.message.includes('in use by users') || 
+         error.message.includes('Cannot delete permission group'))) {
+      throw new Error('Cannot delete permission group that is in use by users');
+    }
+    
     throw error;
   }
 }; 
