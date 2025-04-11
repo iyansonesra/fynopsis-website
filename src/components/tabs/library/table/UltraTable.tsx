@@ -20,7 +20,7 @@ import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { useS3Store, TreeNode } from "../../../services/fileService";
 import { usePathname } from 'next/navigation';
 import {
-  ChevronDown, ChevronRight, Circle, FileIcon, FolderIcon,
+  ChevronDown, ChevronRight, Circle, FileIcon,
   Plus, RefreshCcw, Upload, Search, Download, Pencil, Trash,
   RotateCcw
 } from 'lucide-react';
@@ -34,7 +34,9 @@ import {
   FaFileAlt, 
   FaFileCode,
   FaFileAudio,
-  FaFileVideo
+  FaFileVideo,
+  FaFolder,
+  FaFolderOpen // Import FaFolderOpen
 } from 'react-icons/fa';
 import { Input } from '../../../ui/input';
 import DragDropOverlay from './DragDrop';
@@ -43,7 +45,7 @@ import { fetchAuthSession, getCurrentUser, JWT } from 'aws-amplify/auth';
 import { Skeleton } from '@mui/material';
 import { get, post } from 'aws-amplify/api';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '../../../ui/dropdown-menu';
-import { Folder, File } from 'lucide-react';
+import { File } from 'lucide-react';
 import { TagDisplay } from './TagsHover';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../../ui/select';
 import { HoverCard, HoverCardContent, HoverCardTrigger } from '../../../ui/hover-card';
@@ -1271,7 +1273,7 @@ export function FileSystem({ onFileSelect, permissionDetails }: FileSystemProps)
                   flexShrink: 0, // Prevent icon from shrinking
                 }} className="flex flex-row">
                   {item.isFolder ?
-                    <FolderIcon className="mr-2 h-4 w-4 dark:text-white" /> :
+                    <FaFolder className="mr-2 h-4 w-4 text-blue-500 dark:text-blue-400" /> : // Use FaFolder and add blue color
                     <FileTypeIcon fileName={item.name} className="dark:text-white" />
                   }
                 </div>
@@ -1388,7 +1390,7 @@ export function FileSystem({ onFileSelect, permissionDetails }: FileSystemProps)
                       }}
                       className="text-black"
                     >
-                      <Folder className="mr-2 h-4 w-4" />
+                      <FaFolderOpen className="mr-2 h-4 w-4 text-blue-500 dark:text-blue-400" />
                       Open
                     </DropdownMenuItem>
                   ) : (
@@ -1534,7 +1536,7 @@ export function FileSystem({ onFileSelect, permissionDetails }: FileSystemProps)
         <ContextMenuContent>
           {item.isFolder ? (
             <ContextMenuItem onClick={() => handleDoubleClick()}>
-              <Folder className="mr-2 h-4 w-4" />
+              <FaFolderOpen className="mr-2 h-4 w-4 text-blue-500 dark:text-blue-400" />
               Open
             </ContextMenuItem>
           ) : (
@@ -2019,7 +2021,7 @@ th {
 
               {(!permissionDetails || permissionDetails.canOrganize !== false) && (
                 <DropdownMenuItem onClick={() => setShowFileOrganizer(true)} className="flex items-center gap-2 dark:hover:text-gray-400">
-                  <Folder size={16} />
+                  <FaFolder size={16} />
                   <span>Organize Documents</span>
                 </DropdownMenuItem>
               )}
