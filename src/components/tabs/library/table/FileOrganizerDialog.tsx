@@ -5,7 +5,7 @@ import { Checkbox } from '../../../ui/checkbox';
 import { Label } from '../../../ui/label';
 import { post, get } from 'aws-amplify/api';
 import { Loader2, RotateCcw } from 'lucide-react';
-import { FolderTreeEditor } from '../../misc/FolderTreeEditor';
+import { FolderTreeEditor, TreeItem } from '../../misc/FolderTreeEditor';
 import { DndProvider } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
 import { Alert, AlertDescription, AlertTitle } from '../../../ui/alert';
@@ -19,6 +19,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from ".
 import { FolderIcon, ChevronRightIcon, ChevronDownIcon, FileIcon, ArrowRight, Pencil, Check, X, Trash2 } from 'lucide-react';
 import { useFileStore } from '../../../services/HotkeyService';
 import { Input } from '../../../ui/input';
+import { sampleTree } from '../../misc/sampleTree';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../../ui/select";
+import { schemaTemplates } from '../../misc/schemaTemplates';
 
 interface FileOrganizerDialogProps {
   bucketId: string;
@@ -716,6 +719,7 @@ export const FileOrganizerDialog: React.FC<FileOrganizerDialogProps> = ({ bucket
   const [isInitialLoading, setIsInitialLoading] = useState(true);
   const [fileAssignments, setFileAssignments] = useState<Record<string, string>>({});
   const [fileNewNames, setFileNewNames] = useState<Record<string, string>>({});
+  const [selectedTemplate, setSelectedTemplate] = useState<string>('default');
 
   // Function to check schema status
   const checkSchemaStatus = async () => {
@@ -1103,6 +1107,36 @@ export const FileOrganizerDialog: React.FC<FileOrganizerDialogProps> = ({ bucket
     }
   };
 
+  // Add this function to handle template selection
+  const handleTemplateChange = (templateId: string) => {
+    setSelectedTemplate(templateId);
+    const template = schemaTemplates.find(t => t.id === templateId);
+    if (template) {
+      // Reset organization results when changing templates
+      setOrganizationResults(null);
+      setSchemaStatus('NO_SCHEMA');
+      setSchemaId(undefined);
+      // Update schema with the new template
+      setSchema(generateSchema(template.tree));
+    }
+  };
+
+  // Helper function to generate schema from tree
+  const generateSchema = (tree: TreeItem[]): string => {
+    const buildYaml = (items: TreeItem[], level: number = 0): string => {
+      return items.map(item => {
+        const indent = '  '.repeat(level);
+        if (item.type === 'folder') {
+          const childrenYaml = item.children ? buildYaml(item.children, level + 1) : '';
+          return `${indent}${item.name}:\n${childrenYaml}`;
+        }
+        return `${indent}- ${item.name}`;
+      }).join('\n');
+    };
+
+    return buildYaml(tree);
+  };
+
   const renderContent = () => {
     if (isInitialLoading) {
       return (
@@ -1137,7 +1171,10 @@ export const FileOrganizerDialog: React.FC<FileOrganizerDialogProps> = ({ bucket
           </Alert>
           <div className="flex-1 min-h-[400px] overflow-auto border rounded-md p-4">
             <DndProvider backend={HTML5Backend}>
-              <FolderTreeEditor onSchemaChange={setSchema} />
+              <FolderTreeEditor 
+                onSchemaChange={setSchema} 
+                initialTree={organizationResults ? convertToTreeStructure(organizationResults) : sampleTree} 
+              />
             </DndProvider>
           </div>
           <Button onClick={handlePreview}>Try Again</Button>
@@ -1238,59 +1275,89 @@ export const FileOrganizerDialog: React.FC<FileOrganizerDialogProps> = ({ bucket
 
     // NO_SCHEMA or default case
     return (
-      <div className="flex flex-col gap-4 h-full dark:bg-darkbg ">
-        <div className="flex-1 h-full overflow-auto rounded-md p-4">
-          <DndProvider backend={HTML5Backend}>
-            <FolderTreeEditor onSchemaChange={setSchema} />
-          </DndProvider>
-        </div>
-        <div className="space-y-4 px-4">
-          <div className="flex items-center gap-2">
-            <Label htmlFor="filename-schema" className="text-sm">Filename Schema (Optional):</Label>
-            <Input 
-              id="filename-schema"
-              value={filenameSchema}
-              onChange={(e) => setFilenameSchema(e.target.value)}
-              placeholder="Enter filename schema"
-              className="max-w-sm"
-            />
+      <div className="flex flex-col h-full min-h-0 dark:bg-darkbg">
+        {/* <h1>Hello</h1> */}
+        <div className="min-h-[10%] max-h-[10%] flex items-center gap-4 px-4">
+          <div className="flex-1">
+            <Select value={selectedTemplate} onValueChange={handleTemplateChange}>
+              <SelectTrigger className="outline-none border-none ring-0 w-fit gap-2">
+                <SelectValue placeholder="Select a template" />
+              </SelectTrigger>
+              <SelectContent>
+                {schemaTemplates.map((template) => (
+                  <SelectItem key={template.id} value={template.id}>
+                    {template.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
-          <div className="flex items-center justify-between space-x-4">
-            <div>
-              {undoSchemaId && (
-                <Button
-                  variant="outline"
-                  onClick={handleUndo}
-                  disabled={isUndoing || isApplying || isCancelling}
-                >
-                  {isUndoing ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Undoing...
-                    </>
-                  ) : (
-                    <>
-                      <RotateCcw className="mr-2 h-4 w-4" />
-                      Undo Last Organization
-                    </>
-                  )}
-                </Button>
-              )}
-            </div>
-            
-            <Button onClick={handlePreview} disabled={isLoading}>
-              {isLoading ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Generating Preview
-                </>
-              ) : (
-                'Preview Changes'
-              )}
-            </Button>
-          </div>
+          {/* <div className="text-sm text-gray-500">
+            {schemaTemplates.find(t => t.id === selectedTemplate)?.description}
+          </div> */}
         </div>
 
+        <div className="min-h-[70%] max-h-[70%]">
+          <ScrollArea className="h-full">
+            <DndProvider backend={HTML5Backend}>
+              <div className="h-full">
+                <FolderTreeEditor 
+                  onSchemaChange={setSchema} 
+                  initialTree={organizationResults ? convertToTreeStructure(organizationResults) : schemaTemplates.find(t => t.id === selectedTemplate)?.tree} 
+                />
+              </div>
+            </DndProvider>
+          </ScrollArea>
+        </div>
+
+        <div className="min-h-[20%] max-h-[20%] border-t dark:border-gray-800">
+          <div className="p-4 space-y-4 flex flex-row justify-between items-center">
+            <div className="flex items-center gap-2">
+              <Label htmlFor="filename-schema" className="text-sm">Filename Schema (Optional):</Label>
+              <Input 
+                id="filename-schema"
+                value={filenameSchema}
+                onChange={(e) => setFilenameSchema(e.target.value)}
+                placeholder="Enter filename schema"
+                className=""
+              />
+            </div>
+            <div className="flex items-center justify-between space-x-4">
+              <div>
+                {undoSchemaId && (
+                  <Button
+                    variant="outline"
+                    onClick={handleUndo}
+                    disabled={isUndoing || isApplying || isCancelling}
+                  >
+                    {isUndoing ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Undoing...
+                      </>
+                    ) : (
+                      <>
+                        <RotateCcw className="mr-2 h-4 w-4" />
+                        Undo Last Organization
+                      </>
+                    )}
+                  </Button>
+                )}
+              </div>
+              
+              <Button onClick={handlePreview} disabled={isLoading}>
+                {isLoading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Generating Preview
+                  </>
+                ) : (
+                  'Preview Changes'
+                )}
+              </Button>
+            </div>
+          </div>
+        </div>
       </div>
     );
   };
@@ -1303,12 +1370,64 @@ export const FileOrganizerDialog: React.FC<FileOrganizerDialogProps> = ({ bucket
           <DialogHeader>
             <DialogTitle className="dark:text-gray-200">Organize Files</DialogTitle>
           </DialogHeader>
-          <div className="flex-1 grid gap-4">
-            {renderContent()}
+          <div className="flex-1 h-full gap-4 ">
+            <div className="h-full flex flex-col">
+              {renderContent()}
+            </div>
           </div>
         </DialogContent>
       </div>
     </Dialog>
 
   );
+};
+
+// Add this helper function to convert organization results to tree structure
+const convertToTreeStructure = (results: OrganizationResults): TreeItem[] => {
+  const root: TreeItem = {
+    id: '1',
+    name: 'Root',
+    type: 'folder',
+    children: [],
+  };
+
+  // Helper function to find or create a folder path
+  const getOrCreateFolder = (path: string): TreeItem => {
+    const parts = path.split('/').filter(Boolean);
+    let current = root;
+    
+    for (const part of parts) {
+      let child = current.children?.find(c => c.name === part && c.type === 'folder');
+      if (!child) {
+        child = {
+          id: Math.random().toString(36).substr(2, 9),
+          name: part,
+          type: 'folder',
+          children: [],
+        };
+        if (!current.children) current.children = [];
+        current.children.push(child);
+      }
+      current = child;
+    }
+    return current;
+  };
+
+  // Process file assignments
+  Object.entries(results.file_assignments).forEach(([sourcePath, destPath]) => {
+    const fileName = sourcePath.split('/').pop() || '';
+    const newName = results.new_names[sourcePath] || fileName;
+    const folderPath = destPath.split('/').slice(0, -1).join('/');
+    
+    const parentFolder = getOrCreateFolder(folderPath);
+    if (!parentFolder.children) parentFolder.children = [];
+    
+    parentFolder.children.push({
+      id: Math.random().toString(36).substr(2, 9),
+      name: newName,
+      type: 'file',
+    });
+  });
+
+  return [root];
 };

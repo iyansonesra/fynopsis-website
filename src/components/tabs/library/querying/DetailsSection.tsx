@@ -607,7 +607,7 @@ const DetailSection: React.FC<DetailsSectionProps> = ({
                 use_reasoning: searchType === "reasoning",
                 file_keys: selectedFiles,
                 use_planning: searchType === "planning",
-                use_deep_research: searchType === "deep_research" // Add the deep research option
+                // use_deep_search: searchType === "deep_research" // Add the deep research option
             }
         });
         

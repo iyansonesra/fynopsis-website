@@ -1,9 +1,9 @@
-import React, { useState, useCallback, useRef } from 'react';
+import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { FolderIcon, FileIcon, GripVertical, X, Plus } from 'lucide-react';
 import { useDrag, useDrop } from 'react-dnd';
 import { Button } from '../../ui/button';
 
-interface TreeItem {
+export interface TreeItem {
   id: string;
   name: string;
   type: 'folder' | 'file';
@@ -21,6 +21,7 @@ interface TreeNodeProps {
 
 interface FolderTreeEditorProps {
   onSchemaChange: (schema: string) => void;
+  initialTree?: TreeItem[];
 }
 
 const TreeNode: React.FC<TreeNodeProps> = ({ item, level, onDelete, onAdd, onMove, onNameChange }) => {
@@ -124,8 +125,8 @@ const TreeNode: React.FC<TreeNodeProps> = ({ item, level, onDelete, onAdd, onMov
   );
 };
 
-export const FolderTreeEditor: React.FC<FolderTreeEditorProps> = ({ onSchemaChange }) => {
-  const [tree, setTree] = useState<TreeItem[]>([
+export const FolderTreeEditor: React.FC<FolderTreeEditorProps> = ({ onSchemaChange, initialTree }) => {
+  const [tree, setTree] = useState<TreeItem[]>(initialTree || [
     {
       id: '1',
       name: 'Root',
@@ -133,6 +134,15 @@ export const FolderTreeEditor: React.FC<FolderTreeEditorProps> = ({ onSchemaChan
       children: [],
     },
   ]);
+
+  // Add useEffect to update tree when initialTree changes
+  useEffect(() => {
+    if (initialTree) {
+      setTree(initialTree);
+      const schema = generateSchema(initialTree);
+      onSchemaChange(schema);
+    }
+  }, [initialTree, onSchemaChange]);
 
   const generateSchema = useCallback((items: TreeItem[]): string => {
     const buildYaml = (items: TreeItem[], level: number = 0): string => {
@@ -254,7 +264,7 @@ export const FolderTreeEditor: React.FC<FolderTreeEditorProps> = ({ onSchemaChan
   const rootNode = tree[0];
 
   return (
-    <div className="p-4">
+    <div className="h-full">
       {renderTree(tree)}
       <Button
         className="mt-4 dark:bg-slate-800 bg-white border-none text-black dark:text-white bg-slate-200 hover:bg-slate-300"
