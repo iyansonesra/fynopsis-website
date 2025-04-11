@@ -50,12 +50,16 @@ interface FilesystemItemProps {
     node: Node
     animated?: boolean
     onSelect?: (node: Node) => void
+    isSelected?: boolean
+    onNodeSelect?: (node: Node | null) => void
 }
 
 export function FilesystemItem({
     node,
     animated = false,
-    onSelect
+    onSelect,
+    isSelected = false,
+    onNodeSelect
 }: FilesystemItemProps) {
     const { isNodeOpen, toggleNode } = useFolderTreeStore();
     const isOpen = node.id ? isNodeOpen(node.id) : false;
@@ -203,6 +207,7 @@ export function FilesystemItem({
         ), [isOpen, animated]);
 
     const handleClick = useCallback((e: React.MouseEvent<HTMLDivElement, MouseEvent>): void => {
+        e.preventDefault();
         e.stopPropagation();
         
         // If currently renaming, don't handle any clicks
@@ -226,13 +231,24 @@ export function FilesystemItem({
         }
         
         // Single click behavior
-        // Only toggle open/close state for folders
+        // Handle selection first
+
+        console.log('NODE:', node);
+        console.log('IS SELECTED:', isSelected);
+        console.log('ON NODE SELECT:', onNodeSelect);
+        if (onNodeSelect) {
+            console.log('ON NODE SELECT:', onNodeSelect);
+            onNodeSelect(isSelected ? null : node);
+        }
+
+        // Then handle folder open/close
         if ((node.isFolder || (node.nodes && node.nodes.length > 0)) && node.id) {
             toggleNode(node.id);
         }
-    }, [node, onSelect, toggleNode, isRenaming]);
+    }, [node, onSelect, toggleNode, isRenaming, isSelected, onNodeSelect]);
 
     const handleOpenFolder = useCallback((e: React.MouseEvent) => {
+        e.preventDefault();
         e.stopPropagation();
 
         // For folders, call onSelect WITHOUT toggling isOpen
@@ -338,6 +354,8 @@ export function FilesystemItem({
                 key={childNode.name}
                 animated={animated}
                 onSelect={onSelect}
+                isSelected={isSelected}
+                onNodeSelect={onNodeSelect}
             />
         ));
     
@@ -369,7 +387,7 @@ export function FilesystemItem({
         }
         
         return null;
-    }, [node.nodes, isOpen, animated, onSelect, shouldAnimate]);
+    }, [node.nodes, isOpen, animated, onSelect, isSelected, onNodeSelect, shouldAnimate]);
 
     return (
         <li key={node.name} className="mb-1">
@@ -378,7 +396,9 @@ export function FilesystemItem({
                     <Popover open={showPopover && !isRenaming}>
                         <PopoverTrigger asChild>
                             <div
-                                className="group flex items-center gap-1.5 py-1 px-2 text-sm whitespace-nowrap rounded cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 relative select-none overflow-hidden"
+                                className={`group flex items-center gap-1.5 py-1 px-2 text-sm whitespace-nowrap rounded cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 relative select-none overflow-hidden ${
+                                    isSelected ? 'bg-blue-50 dark:bg-blue-900 border-r-2 border-blue-500' : ''
+                                }`}
                                 onClick={handleClick}
                                 onMouseEnter={handleMouseEnter}
                                 onMouseLeave={handleMouseLeave}
@@ -465,6 +485,9 @@ export function FilesystemItem({
                             key={childNode.name}
                             animated={animated}
                             onSelect={onSelect}
+                            isSelected={isSelected}
+                            onNodeSelect={onNodeSelect}
+                            
                         />
                     ))}
                 </ul>

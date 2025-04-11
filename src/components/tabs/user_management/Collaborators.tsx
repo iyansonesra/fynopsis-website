@@ -13,7 +13,7 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { 
+import {
   Accordion,
   AccordionContent,
   AccordionItem,
@@ -22,22 +22,24 @@ import {
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/components/ui/use-toast";
 import { Amplify } from 'aws-amplify';
-import { 
-  FilePermission, 
-  FileTreeItem as FileTreeItemType, 
-  User, 
-  UserManagementProps, 
-  TransferOwnershipDialog, 
-  PermissionGroup, 
-  Role 
+import {
+  FilePermission,
+  FileTreeItem as FileTreeItemType,
+  User,
+  UserManagementProps,
+  TransferOwnershipDialog,
+  PermissionGroup,
+  Role
 } from './CollaboratorsTypes';
 import { DEFAULT_ROLES } from './CollaboratorsTypes';
 import { FolderPermissionTree, ItemPermissionsPanel } from './PermissionFolderTree';
+import { usePermissionsStore } from '@/stores/permissionsStore'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 
 // Import service functions
-import { 
-  fetchUsers, 
-  fetchPermissionLevel, 
+import {
+  fetchUsers,
+  fetchPermissionLevel,
   fetchPermissionGroups,
   changeUserPermission,
   transferOwnership,
@@ -94,7 +96,9 @@ const UserManagement: React.FC<UserManagementProps> = ({ dataroomId }) => {
   const [customPermissionGroups, setCustomPermissionGroups] = useState<PermissionGroup[]>([]);
   const [isLoadingGroups, setIsLoadingGroups] = useState<boolean>(false);
   const [groupsError, setGroupsError] = useState<string | null>(null);
-  
+
+  const { permissionDetails } = usePermissionsStore();
+
   // Use the service function to fetch permission groups
   const loadPermissionGroups = async () => {
     if (!bucketUuid) return;
@@ -177,34 +181,34 @@ const UserManagement: React.FC<UserManagementProps> = ({ dataroomId }) => {
 
       // Default Permissions (Apply when allAccess: true)
       defaultFilePerms: {
-          viewAccess: true, // Basic view access is a reasonable default
-          watermarkContent: false,
-          deleteAccess: false,
-          editAccess: false,
-          // deleteEditAccess: false, // Use separate delete/edit flags now
-          viewComments: true,
-          addComments: false,
-          downloadAccess: false,
-          viewTags: true,
-          addTags: false,
-          canQuery: false, // Default to false for files unless specified
-          isVisible: true, // Default to visible
-          moveAccess: false,
-          renameAccess: false,
+        viewAccess: true, // Basic view access is a reasonable default
+        watermarkContent: false,
+        deleteAccess: false,
+        editAccess: false,
+        // deleteEditAccess: false, // Use separate delete/edit flags now
+        viewComments: true,
+        addComments: false,
+        downloadAccess: false,
+        viewTags: true,
+        addTags: false,
+        canQuery: false, // Default to false for files unless specified
+        isVisible: true, // Default to visible
+        moveAccess: false,
+        renameAccess: false,
       },
       defaultFolderPerms: {
-          allowUploads: false,
-          createFolders: false,
-          addComments: false,
-          viewComments: true,
-          viewContents: true, // Basic view access
-          viewTags: true,
-          addTags: false,
-          canQuery: false,
-          isVisible: true,
-          moveContents: false,
-          renameContents: false,
-          deleteContents: false,
+        allowUploads: false,
+        createFolders: false,
+        addComments: false,
+        viewComments: true,
+        viewContents: true, // Basic view access
+        viewTags: true,
+        addTags: false,
+        canQuery: false,
+        isVisible: true,
+        moveContents: false,
+        renameContents: false,
+        deleteContents: false,
       },
 
       // Specific Overrides (Start empty)
@@ -214,13 +218,13 @@ const UserManagement: React.FC<UserManagementProps> = ({ dataroomId }) => {
     return initialGroup;
   });
   const [activeTab, setActiveTab] = useState('users');
-  
+
   // Add view details dialog state
-  const [viewGroupDetails, setViewGroupDetails] = useState<{isOpen: boolean, group: PermissionGroup | null}>({
+  const [viewGroupDetails, setViewGroupDetails] = useState<{ isOpen: boolean, group: PermissionGroup | null }>({
     isOpen: false,
     group: null
   });
-  
+
   // Sample folder structure - this would come from an API in production
   const [folderStructure, setFolderStructure] = useState<FileTreeItemType[]>([
     {
@@ -317,7 +321,7 @@ const UserManagement: React.FC<UserManagementProps> = ({ dataroomId }) => {
     if (isCurrentUser && currentUserRole === 'OWNER') {
       return false;
     }
-    
+
     if (currentUserRole === 'OWNER') {
       return true;  // OWNER can modify any other role
     }
@@ -341,7 +345,7 @@ const UserManagement: React.FC<UserManagementProps> = ({ dataroomId }) => {
   const handleRoleChange = (userEmail: string, newRoleId: string) => {
     // Get role info from availableRoles
     const roleInfo = availableRoles[newRoleId];
-    
+
     // Special case for transferring ownership
     if (newRoleId === 'OWNER' && currentUser?.role === 'OWNER') {
       setOwnerTransfer({
@@ -426,7 +430,7 @@ const UserManagement: React.FC<UserManagementProps> = ({ dataroomId }) => {
       const response = await fetchUsers(bucketUuid);
       setUsers(response.users);
       setAvailableRoles(response.roles);
-      
+
       setTimeout(() => {
         setIsLoading(false);
       }, 500);
@@ -446,7 +450,7 @@ const UserManagement: React.FC<UserManagementProps> = ({ dataroomId }) => {
     setInviteError(null);
     try {
       await inviteUser(bucketUuid, inviteEmail, inviteRole);
-      
+
       setIsInviteDialogOpen(false);
       setInviteEmail('');
       setInviteRole('READ');
@@ -486,32 +490,32 @@ const UserManagement: React.FC<UserManagementProps> = ({ dataroomId }) => {
       setIsCreateGroupDialogOpen(false);
       setNewGroupName('');
       // Reset newGroup to the initial state function to ensure clean slate
-      setNewGroup(() => { 
-         const initialGroup: PermissionGroup = {
-            id: '', name: '', isDefault: false, allAccess: true, 
-            canQueryEntireDataroom: false, canOrganize: false, canRetryProcessing: false, canDeleteDataroom: false,
-            canAccessIssuesPanel: false, canCreateIssue: false, canAnswerIssue: false,
-            canAccessAuditLogsPanel: false, canViewAuditLogs: false, canExportAuditLogs: false,
-            canAccessDiligenceDashboard: false, canCreateDiligenceWidget: false, canMoveWidgets: false, canDeleteWidgets: false,
-            canAccessQuestionairePanel: false, canAddQuestionnaire: false,
-            canAccessUserManagementPanel: false, canViewUsers: false, canViewPermissionGroupDetails: false,
-            canInviteUsers: [], canUpdateUserPermissions: [], canUpdatePeerPermissions: false, canRemoveUsers: [], canRemovePeerPermission: false, canCreatePermissionGroups: false,
-            defaultFilePerms: {
-                viewAccess: true, watermarkContent: false, deleteAccess: false, editAccess: false, 
-                viewComments: true, addComments: false, downloadAccess: false, 
-                viewTags: true, addTags: false, canQuery: false, isVisible: true, 
-                moveAccess: false, renameAccess: false
-            },
-            defaultFolderPerms: {
-                allowUploads: false, createFolders: false, addComments: false, viewComments: true, 
-                viewContents: true, viewTags: true, addTags: false, canQuery: false, 
-                isVisible: true, moveContents: false, renameContents: false, deleteContents: false
-            },
-            folderIdAccess: {}, fileIdAccess: {}
-         };
-         return initialGroup;
-       });
-      
+      setNewGroup(() => {
+        const initialGroup: PermissionGroup = {
+          id: '', name: '', isDefault: false, allAccess: true,
+          canQueryEntireDataroom: false, canOrganize: false, canRetryProcessing: false, canDeleteDataroom: false,
+          canAccessIssuesPanel: false, canCreateIssue: false, canAnswerIssue: false,
+          canAccessAuditLogsPanel: false, canViewAuditLogs: false, canExportAuditLogs: false,
+          canAccessDiligenceDashboard: false, canCreateDiligenceWidget: false, canMoveWidgets: false, canDeleteWidgets: false,
+          canAccessQuestionairePanel: false, canAddQuestionnaire: false,
+          canAccessUserManagementPanel: false, canViewUsers: false, canViewPermissionGroupDetails: false,
+          canInviteUsers: [], canUpdateUserPermissions: [], canUpdatePeerPermissions: false, canRemoveUsers: [], canRemovePeerPermission: false, canCreatePermissionGroups: false,
+          defaultFilePerms: {
+            viewAccess: true, watermarkContent: false, deleteAccess: false, editAccess: false,
+            viewComments: true, addComments: false, downloadAccess: false,
+            viewTags: true, addTags: false, canQuery: false, isVisible: true,
+            moveAccess: false, renameAccess: false
+          },
+          defaultFolderPerms: {
+            allowUploads: false, createFolders: false, addComments: false, viewComments: true,
+            viewContents: true, viewTags: true, addTags: false, canQuery: false,
+            isVisible: true, moveContents: false, renameContents: false, deleteContents: false
+          },
+          folderIdAccess: {}, fileIdAccess: {}
+        };
+        return initialGroup;
+      });
+
       // Refresh the permission groups list
       await loadPermissionGroups();
     } catch (error) {
@@ -541,186 +545,186 @@ const UserManagement: React.FC<UserManagementProps> = ({ dataroomId }) => {
       });
     }
   };
-  
+
   // --- Enhanced handleFilePermissionChange with Cascade Logic ---
   const handleFilePermissionChange = (fileId: string, permissionUpdate: Partial<FilePermission>) => {
     console.log(`handleFilePermissionChange called for ${fileId} with update:`, permissionUpdate);
-  
+
     // Default Permission Values (used when creating/updating to ensure type compliance)
     const defaultPermValues: FilePermission = {
-        show: true,
-        viewAccess: true,
-        downloadAccess: false,
-        deleteEditAccess: false, // Using combined field now
-        requireAgreement: false,
-        viewTags: true,
-        addTags: false,
-        allowUploads: false,
-        moveAccess: false,
-        renameAccess: false,
-        watermarkContent: false,
-        viewComments: true,
-        addComments: false,
-        canQuery: false,
-        isVisible: true
+      show: true,
+      viewAccess: true,
+      downloadAccess: false,
+      deleteEditAccess: false, // Using combined field now
+      requireAgreement: false,
+      viewTags: true,
+      addTags: false,
+      allowUploads: false,
+      moveAccess: false,
+      renameAccess: false,
+      watermarkContent: false,
+      viewComments: true,
+      addComments: false,
+      canQuery: false,
+      isVisible: true
     };
-  
+
     // Check if this is purely a visibility toggle
     const isVisibilityToggle = Object.keys(permissionUpdate).length === 1 && permissionUpdate.hasOwnProperty('show');
     const newVisibility = permissionUpdate.show;
-  
+
     if (isVisibilityToggle && typeof newVisibility === 'boolean') {
       const item = dialogItemsMap[fileId];
       if (!item) {
-          console.error("Item not found in map for visibility toggle:", fileId);
-          return; 
+        console.error("Item not found in map for visibility toggle:", fileId);
+        return;
       }
-  
-      setNewGroup(prevState => {
-          // Explicitly type prevPermissions and cast the potentially partial state value
-          const prevPermissions: Record<string, FilePermission> = (prevState.fileIdAccess as Record<string, FilePermission>) || {};
-          const updates: Record<string, Partial<FilePermission>> = {}; // Store all partial updates needed
-  
-          // Helper: Get descendants
-          const getAllDescendantIds = (itemId: string): string[] => {
-            const result: string[] = [];
-            const queue: string[] = [...(dialogChildrenMap[itemId] || [])];
-            while (queue.length > 0) {
-              const currentId = queue.shift()!;
-              if(currentId) {
-                  result.push(currentId);
-                  const children = dialogChildrenMap[currentId] || [];
-                  queue.push(...children);
-              }
-            }
-            return result;
-          };
-  
-          // 1. Prepare the direct update
-          const directUpdate: Partial<FilePermission> = { show: newVisibility };
-          if (!newVisibility) {
-            directUpdate.viewAccess = false;
-            directUpdate.downloadAccess = false;
-            directUpdate.deleteEditAccess = false;
-            directUpdate.requireAgreement = false;
-            directUpdate.viewTags = false;
-            directUpdate.allowUploads = false; 
-          }
-          updates[fileId] = directUpdate;
-         
-          // 2. Prepare Cascade Downwards updates (if folder)
-          if (item.type === 'folder') {
-            const descendants = getAllDescendantIds(fileId);
-            console.log(`Cascading visibility ${newVisibility} to ${descendants.length} descendants`);
-            descendants.forEach(descId => {
-              const descPrevPerms = prevPermissions[descId] || {};
-              if (descPrevPerms.show !== newVisibility) { 
-                const descUpdate: Partial<FilePermission> = { show: newVisibility };
-                if (!newVisibility) {
-                  descUpdate.viewAccess = false;
-                  descUpdate.downloadAccess = false;
-                  descUpdate.deleteEditAccess = false;
-                  descUpdate.requireAgreement = false;
-                  descUpdate.viewTags = false;
-                  descUpdate.allowUploads = false;
-                }
-                // Add or merge the update for the descendant
-                updates[descId] = { ...(updates[descId] || {}), ...descUpdate };
-              }
-            });
-         }
-         
-          // 3. Prepare Cascade Upwards updates (if showing)
-          if (newVisibility) {
-            let currentParentId = dialogParentMap[fileId];
-            while (currentParentId) {
-              const parentPrevPerms = prevPermissions[currentParentId] || {};
-              if (parentPrevPerms.show !== true) { 
-                console.log(`Auto-showing parent ${currentParentId}`);
-                // Add or merge the update for the parent
-                updates[currentParentId] = { ...(updates[currentParentId] || {}), show: true }; 
-              }
-              currentParentId = dialogParentMap[currentParentId];
-            }
-          }
-  
-          // Apply all updates atomically, ensuring complete FilePermission objects
-          const nextPermissions: Record<string, FilePermission> = { ...prevPermissions }; 
-          Object.keys(updates).forEach((id) => {
-            const currentCompletePerms = prevPermissions[id] || defaultPermValues; // Start with previous or defaults
-            const partialUpdate = updates[id];
-            // Merge and ensure all fields exist, using defaults if needed after merge
-            // Explicitly defining all fields to satisfy FilePermission type
-            const mergedUpdate = { ...currentCompletePerms, ...partialUpdate }; 
-            nextPermissions[id] = {
-                show: mergedUpdate.show ?? defaultPermValues.show,
-                viewAccess: mergedUpdate.viewAccess ?? defaultPermValues.viewAccess,
-                downloadAccess: mergedUpdate.downloadAccess ?? defaultPermValues.downloadAccess,
-                deleteEditAccess: mergedUpdate.deleteEditAccess ?? defaultPermValues.deleteEditAccess,
-                requireAgreement: mergedUpdate.requireAgreement ?? defaultPermValues.requireAgreement,
-                viewTags: mergedUpdate.viewTags ?? defaultPermValues.viewTags,
-                addTags: mergedUpdate.addTags ?? defaultPermValues.addTags,
-                allowUploads: mergedUpdate.allowUploads ?? defaultPermValues.allowUploads,
-                moveAccess: mergedUpdate.moveAccess ?? defaultPermValues.moveAccess,
-                renameAccess: mergedUpdate.renameAccess ?? defaultPermValues.renameAccess,
-                watermarkContent: mergedUpdate.watermarkContent ?? defaultPermValues.watermarkContent,
-                viewComments: mergedUpdate.viewComments ?? defaultPermValues.viewComments,
-                addComments: mergedUpdate.addComments ?? defaultPermValues.addComments,
-                canQuery: mergedUpdate.canQuery ?? defaultPermValues.canQuery,
-                isVisible: mergedUpdate.isVisible ?? defaultPermValues.isVisible,
-            };
-          });
-  
-          console.log("Final updates being applied:", updates);
-          console.log("Resulting permissions state:", nextPermissions);
-  
-          // Ensure the final object assigned matches the state type
-          const finalPermissionsForState: Record<string, FilePermission> = nextPermissions;
 
-          return {
-            ...prevState,
-            allAccess: false, 
-            fileIdAccess: finalPermissionsForState as Record<string, FilePermission>, // Explicit cast
+      setNewGroup(prevState => {
+        // Explicitly type prevPermissions and cast the potentially partial state value
+        const prevPermissions: Record<string, FilePermission> = (prevState.fileIdAccess as Record<string, FilePermission>) || {};
+        const updates: Record<string, Partial<FilePermission>> = {}; // Store all partial updates needed
+
+        // Helper: Get descendants
+        const getAllDescendantIds = (itemId: string): string[] => {
+          const result: string[] = [];
+          const queue: string[] = [...(dialogChildrenMap[itemId] || [])];
+          while (queue.length > 0) {
+            const currentId = queue.shift()!;
+            if (currentId) {
+              result.push(currentId);
+              const children = dialogChildrenMap[currentId] || [];
+              queue.push(...children);
+            }
+          }
+          return result;
+        };
+
+        // 1. Prepare the direct update
+        const directUpdate: Partial<FilePermission> = { show: newVisibility };
+        if (!newVisibility) {
+          directUpdate.viewAccess = false;
+          directUpdate.downloadAccess = false;
+          directUpdate.deleteEditAccess = false;
+          directUpdate.requireAgreement = false;
+          directUpdate.viewTags = false;
+          directUpdate.allowUploads = false;
+        }
+        updates[fileId] = directUpdate;
+
+        // 2. Prepare Cascade Downwards updates (if folder)
+        if (item.type === 'folder') {
+          const descendants = getAllDescendantIds(fileId);
+          console.log(`Cascading visibility ${newVisibility} to ${descendants.length} descendants`);
+          descendants.forEach(descId => {
+            const descPrevPerms = prevPermissions[descId] || {};
+            if (descPrevPerms.show !== newVisibility) {
+              const descUpdate: Partial<FilePermission> = { show: newVisibility };
+              if (!newVisibility) {
+                descUpdate.viewAccess = false;
+                descUpdate.downloadAccess = false;
+                descUpdate.deleteEditAccess = false;
+                descUpdate.requireAgreement = false;
+                descUpdate.viewTags = false;
+                descUpdate.allowUploads = false;
+              }
+              // Add or merge the update for the descendant
+              updates[descId] = { ...(updates[descId] || {}), ...descUpdate };
+            }
+          });
+        }
+
+        // 3. Prepare Cascade Upwards updates (if showing)
+        if (newVisibility) {
+          let currentParentId = dialogParentMap[fileId];
+          while (currentParentId) {
+            const parentPrevPerms = prevPermissions[currentParentId] || {};
+            if (parentPrevPerms.show !== true) {
+              console.log(`Auto-showing parent ${currentParentId}`);
+              // Add or merge the update for the parent
+              updates[currentParentId] = { ...(updates[currentParentId] || {}), show: true };
+            }
+            currentParentId = dialogParentMap[currentParentId];
+          }
+        }
+
+        // Apply all updates atomically, ensuring complete FilePermission objects
+        const nextPermissions: Record<string, FilePermission> = { ...prevPermissions };
+        Object.keys(updates).forEach((id) => {
+          const currentCompletePerms = prevPermissions[id] || defaultPermValues; // Start with previous or defaults
+          const partialUpdate = updates[id];
+          // Merge and ensure all fields exist, using defaults if needed after merge
+          // Explicitly defining all fields to satisfy FilePermission type
+          const mergedUpdate = { ...currentCompletePerms, ...partialUpdate };
+          nextPermissions[id] = {
+            show: mergedUpdate.show ?? defaultPermValues.show,
+            viewAccess: mergedUpdate.viewAccess ?? defaultPermValues.viewAccess,
+            downloadAccess: mergedUpdate.downloadAccess ?? defaultPermValues.downloadAccess,
+            deleteEditAccess: mergedUpdate.deleteEditAccess ?? defaultPermValues.deleteEditAccess,
+            requireAgreement: mergedUpdate.requireAgreement ?? defaultPermValues.requireAgreement,
+            viewTags: mergedUpdate.viewTags ?? defaultPermValues.viewTags,
+            addTags: mergedUpdate.addTags ?? defaultPermValues.addTags,
+            allowUploads: mergedUpdate.allowUploads ?? defaultPermValues.allowUploads,
+            moveAccess: mergedUpdate.moveAccess ?? defaultPermValues.moveAccess,
+            renameAccess: mergedUpdate.renameAccess ?? defaultPermValues.renameAccess,
+            watermarkContent: mergedUpdate.watermarkContent ?? defaultPermValues.watermarkContent,
+            viewComments: mergedUpdate.viewComments ?? defaultPermValues.viewComments,
+            addComments: mergedUpdate.addComments ?? defaultPermValues.addComments,
+            canQuery: mergedUpdate.canQuery ?? defaultPermValues.canQuery,
+            isVisible: mergedUpdate.isVisible ?? defaultPermValues.isVisible,
           };
         });
-  
+
+        console.log("Final updates being applied:", updates);
+        console.log("Resulting permissions state:", nextPermissions);
+
+        // Ensure the final object assigned matches the state type
+        const finalPermissionsForState: Record<string, FilePermission> = nextPermissions;
+
+        return {
+          ...prevState,
+          allAccess: false,
+          fileIdAccess: finalPermissionsForState as Record<string, FilePermission>, // Explicit cast
+        };
+      });
+
     } else {
       // Apply non-visibility or combined updates
       setNewGroup(prevState => {
-          // Explicitly type prevSpecificPermissions and cast the potentially partial state value
-          const prevSpecificPermissions: Record<string, FilePermission> = (prevState.fileIdAccess as Record<string, FilePermission>) || {};
-          const currentCompletePerms = prevSpecificPermissions[fileId] || defaultPermValues;
-          const mergedUpdate = { ...currentCompletePerms, ...permissionUpdate };
-          // Ensure complete object even for single updates, satisfying FilePermission type
-          const nextPermission: FilePermission = {
-              show: mergedUpdate.show ?? defaultPermValues.show,
-              viewAccess: mergedUpdate.viewAccess ?? defaultPermValues.viewAccess,
-              downloadAccess: mergedUpdate.downloadAccess ?? defaultPermValues.downloadAccess,
-              deleteEditAccess: mergedUpdate.deleteEditAccess ?? defaultPermValues.deleteEditAccess,
-              requireAgreement: mergedUpdate.requireAgreement ?? defaultPermValues.requireAgreement,
-              viewTags: mergedUpdate.viewTags ?? defaultPermValues.viewTags,
-              addTags: mergedUpdate.addTags ?? defaultPermValues.addTags,
-              allowUploads: mergedUpdate.allowUploads ?? defaultPermValues.allowUploads,
-              moveAccess: mergedUpdate.moveAccess ?? defaultPermValues.moveAccess,
-              renameAccess: mergedUpdate.renameAccess ?? defaultPermValues.renameAccess,
-              watermarkContent: mergedUpdate.watermarkContent ?? defaultPermValues.watermarkContent,
-              viewComments: mergedUpdate.viewComments ?? defaultPermValues.viewComments,
-              addComments: mergedUpdate.addComments ?? defaultPermValues.addComments,
-              canQuery: mergedUpdate.canQuery ?? defaultPermValues.canQuery,
-              isVisible: mergedUpdate.isVisible ?? defaultPermValues.isVisible,
-           };
-         
-          // Construct the final object for the state update with explicit typing
-          const finalSpecificPermissionsForState: Record<string, FilePermission> = {
-            ...prevSpecificPermissions,
-            [fileId]: nextPermission,
-          };
+        // Explicitly type prevSpecificPermissions and cast the potentially partial state value
+        const prevSpecificPermissions: Record<string, FilePermission> = (prevState.fileIdAccess as Record<string, FilePermission>) || {};
+        const currentCompletePerms = prevSpecificPermissions[fileId] || defaultPermValues;
+        const mergedUpdate = { ...currentCompletePerms, ...permissionUpdate };
+        // Ensure complete object even for single updates, satisfying FilePermission type
+        const nextPermission: FilePermission = {
+          show: mergedUpdate.show ?? defaultPermValues.show,
+          viewAccess: mergedUpdate.viewAccess ?? defaultPermValues.viewAccess,
+          downloadAccess: mergedUpdate.downloadAccess ?? defaultPermValues.downloadAccess,
+          deleteEditAccess: mergedUpdate.deleteEditAccess ?? defaultPermValues.deleteEditAccess,
+          requireAgreement: mergedUpdate.requireAgreement ?? defaultPermValues.requireAgreement,
+          viewTags: mergedUpdate.viewTags ?? defaultPermValues.viewTags,
+          addTags: mergedUpdate.addTags ?? defaultPermValues.addTags,
+          allowUploads: mergedUpdate.allowUploads ?? defaultPermValues.allowUploads,
+          moveAccess: mergedUpdate.moveAccess ?? defaultPermValues.moveAccess,
+          renameAccess: mergedUpdate.renameAccess ?? defaultPermValues.renameAccess,
+          watermarkContent: mergedUpdate.watermarkContent ?? defaultPermValues.watermarkContent,
+          viewComments: mergedUpdate.viewComments ?? defaultPermValues.viewComments,
+          addComments: mergedUpdate.addComments ?? defaultPermValues.addComments,
+          canQuery: mergedUpdate.canQuery ?? defaultPermValues.canQuery,
+          isVisible: mergedUpdate.isVisible ?? defaultPermValues.isVisible,
+        };
 
-          return {
-              ...prevState,
-              allAccess: false, 
-              fileIdAccess: finalSpecificPermissionsForState as Record<string, FilePermission>, // Explicit cast
-          };
+        // Construct the final object for the state update with explicit typing
+        const finalSpecificPermissionsForState: Record<string, FilePermission> = {
+          ...prevSpecificPermissions,
+          [fileId]: nextPermission,
+        };
+
+        return {
+          ...prevState,
+          allAccess: false,
+          fileIdAccess: finalSpecificPermissionsForState as Record<string, FilePermission>, // Explicit cast
+        };
       });
     }
   };
@@ -787,7 +791,7 @@ const UserManagement: React.FC<UserManagementProps> = ({ dataroomId }) => {
 
   // Add state for delete dialog
   const [groupToDelete, setGroupToDelete] = useState<PermissionGroup | null>(null);
-  
+
   // Add state for edit group
   const [isEditGroupDialogOpen, setIsEditGroupDialogOpen] = useState(false);
   const [editingGroup, setEditingGroup] = useState<PermissionGroup | null>(null);
@@ -804,22 +808,22 @@ const UserManagement: React.FC<UserManagementProps> = ({ dataroomId }) => {
   // Function to save edited group
   const handleUpdatePermissionGroup = async () => {
     if (!editingGroup || !newGroupName.trim() || !bucketUuid) return;
-    
+
     setIsCreatingGroup(true); // Reuse the loading state
     try {
       await updatePermissionGroup(bucketUuid, editingGroup.id, newGroupName, newGroup);
-      
+
       toast({
         title: "Success",
         description: `Permission group "${newGroupName}" updated successfully.`
       });
-      
+
       // Reset state and close dialog
       setIsEditGroupDialogOpen(false);
       setEditingGroup(null);
       setNewGroupName('');
       setNewGroup({} as PermissionGroup); // Reset newGroup
-      
+
       // Refresh the permission groups list
       await loadPermissionGroups();
     } catch (error) {
@@ -837,15 +841,15 @@ const UserManagement: React.FC<UserManagementProps> = ({ dataroomId }) => {
   // Function to handle deleting a permission group
   const handleDeleteGroup = async (groupId: string) => {
     if (!bucketUuid) return;
-    
+
     try {
       await deletePermissionGroup(bucketUuid, groupId);
-      
+
       toast({
         title: "Success",
         description: "Permission group deleted successfully."
       });
-      
+
       // Refresh the permission groups list
       await loadPermissionGroups();
     } catch (error) {
@@ -901,7 +905,7 @@ const UserManagement: React.FC<UserManagementProps> = ({ dataroomId }) => {
     <>
       <div className="mx-auto px-4 py-6 flex flex-col w-full dark:bg-darkbg">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <div className="flex justify-between items-center mb-6">
+          <div className="flex justify-between items-center mb-6">
             <TabsList className="dark:bg-slate-800">
               <TabsTrigger value="users" className="data-[state=active]:dark:bg-slate-700">
                 <Users className="h-4 w-4 mr-2" />
@@ -912,32 +916,82 @@ const UserManagement: React.FC<UserManagementProps> = ({ dataroomId }) => {
                 Permission Groups
               </TabsTrigger>
             </TabsList>
-            
-            {activeTab === 'users' ? (
-          <Button
-            onClick={() => setIsInviteDialogOpen(true)}
-            className="flex items-center gap-2 text-white"
-          >
-            <UserPlus className="h-4 w-4" />
-            Add User
-          </Button>
-            ) : (
-              <Button
-                onClick={handleOpenDialog}
-                className="flex items-center gap-2 text-white"
-              >
-                <Plus className="h-4 w-4" />
-                Create New Permission Group
-              </Button>
-            )}
-        </div>
-          
+
+            <div className="flex items-center gap-2">
+              {activeTab === 'users' ? (
+                <div className="flex items-center gap-2">
+                  {!permissionDetails?.canInviteUsers?.includes('*') ? (
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <div>
+                            <Button
+                              onClick={() => setIsInviteDialogOpen(true)}
+                              className="flex items-center gap-2 text-white"
+                              disabled
+                            >
+                              <UserPlus className="h-4 w-4" />
+                              Add User
+                            </Button>
+                          </div>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          Adding users is disabled
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  ) : (
+                    <Button
+                      onClick={() => setIsInviteDialogOpen(true)}
+                      className="flex items-center gap-2 text-white"
+                    >
+                      <UserPlus className="h-4 w-4" />
+                      Add User
+                    </Button>
+                  )}
+                </div>
+              ) : (
+                <div className="flex items-center gap-2">
+                  {!permissionDetails?.canCreatePermissionGroups ? (
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <div>
+                            <Button
+                              onClick={handleOpenDialog}
+                              className="flex items-center gap-2 text-white"
+                              disabled
+                            >
+                              <Plus className="h-4 w-4" />
+                              Create New Permission Group
+                            </Button>
+                          </div>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          Creating permission groups is disabled
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  ) : (
+                    <Button
+                      onClick={handleOpenDialog}
+                      className="flex items-center gap-2 text-white"
+                    >
+                      <Plus className="h-4 w-4" />
+                      Create New Permission Group
+                    </Button>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+
           <TabsContent value="users" className="mt-0">
-          {isLoading ? (
-            // Render a few skeleton cards while loading
+            {isLoading ? (
+              // Render a few skeleton cards while loading
               <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden">
                 {/* Current user skeleton with blue tint */}
-                <div className="bg-blue-50/50 dark:bg-slate-800 p-6 border-b dark:border-gray-700">
+                <div className="bg-blue-50 dark:bg-slate-800 p-6 border-b dark:border-gray-700">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-4">
                       <div className="rounded-full bg-blue-200/50 dark:bg-blue-900/30 h-10 w-10 animate-pulse" />
@@ -955,60 +1009,60 @@ const UserManagement: React.FC<UserManagementProps> = ({ dataroomId }) => {
                 <SkeletonCard />
                 <SkeletonCard />
                 <SkeletonCard />
-            </div>
-          ) :
-            users.length === 0 ? (
-              <div className="p-6 text-center text-gray-500">No users found</div>
-            ) : (
+              </div>
+            ) :
+              users.length === 0 ? (
+                <div className="p-6 text-center text-gray-500">No users found</div>
+              ) : (
                 <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden">
-              <div className="divide-y divide-gray-200 dark:divide-gray-700">
-                {/* Current User Section */}
-                {currentUser && (
-                  <div className="bg-blue-50 dark:bg-slate-800 p-6">
-                    <div className="flex items-center justify-between">
-                      <div className="flex-grow">
-                        <div className="flex items-center space-x-3">
-                          <div className="h-10 w-10 rounded-full bg-blue-100 dark:bg-blue-500 flex items-center justify-center">
-                            <span className="text-blue-600 font-medium dark:text-white">
-                              {currentUser.name.charAt(0).toUpperCase()}
-                            </span>
+                  <div className="divide-y divide-gray-200 dark:divide-gray-700">
+                    {/* Current User Section */}
+                    {currentUser && (
+                      <div className="bg-blue-50 dark:bg-slate-800 p-6">
+                        <div className="flex items-center justify-between">
+                          <div className="flex-grow">
+                            <div className="flex items-center space-x-3">
+                              <div className="h-10 w-10 rounded-full bg-blue-100 dark:bg-blue-500 flex items-center justify-center">
+                                <span className="text-blue-600 font-medium dark:text-white">
+                                  {currentUser.name.charAt(0).toUpperCase()}
+                                </span>
+                              </div>
+                              <div>
+                                <p className="font-medium text-gray-900 dark:text-white">
+                                  {currentUser.name} <span className="text-blue-600 text-sm">(You)</span>
+                                </p>
+                                <p className="text-sm text-gray-500 dark:text-gray-300">{currentUser.email}</p>
+                                <p className="text-xs text-gray-400 mt-1 dark:text-gray-200">
+                                  Added: {new Date(currentUser.addedAt).toLocaleDateString()}
+                                </p>
+                              </div>
+                            </div>
                           </div>
-                          <div>
-                            <p className="font-medium text-gray-900 dark:text-white">
-                              {currentUser.name} <span className="text-blue-600 text-sm">(You)</span>
-                            </p>
-                            <p className="text-sm text-gray-500 dark:text-gray-300">{currentUser.email}</p>
-                            <p className="text-xs text-gray-400 mt-1 dark:text-gray-200">
-                              Added: {new Date(currentUser.addedAt).toLocaleDateString()}
-                            </p>
+                          <div className="ml-6">
+                            <RoleSelect user={currentUser} currentUserRole={currentUser.role as Role} onRoleChange={handleRoleChange} currentUserEmail={currentUser.email} availableRoles={availableRoles} />
                           </div>
                         </div>
                       </div>
-                      <div className="ml-6">
-                            <RoleSelect user={currentUser} currentUserRole={currentUser.role as Role} onRoleChange={handleRoleChange} currentUserEmail={currentUser.email} availableRoles={availableRoles} />
-                      </div>
-                    </div>
-                  </div>
-                )}
+                    )}
 
-                {/* Other Users Section */}
-                {otherUsers.map((user) => (
-                      <UserCard 
-                        key={user.userId} 
-                        user={user} 
-                        currentUserRole={currentUser?.role as Role} 
+                    {/* Other Users Section */}
+                    {otherUsers.map((user) => (
+                      <UserCard
+                        key={user.userId}
+                        user={user}
+                        currentUserRole={currentUser?.role as Role}
                         currentUserEmail={currentUser?.email || null}
                         onRoleChange={handleRoleChange}
                         onRemoveUser={setUserToRemove}
                         availableRoles={availableRoles}
                       />
-                ))}
-              </div>
-        </div>
+                    ))}
+                  </div>
+                </div>
               )
             }
           </TabsContent>
-          
+
           <TabsContent value="permissionGroups" className="mt-0">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {allGroupsToDisplay.length > 0 ? (
@@ -1031,38 +1085,38 @@ const UserManagement: React.FC<UserManagementProps> = ({ dataroomId }) => {
                     </CardHeader>
                     <CardContent>
                       <div className="text-sm dark:text-gray-300 space-y-1">
-                         <p>
-                           <span className="font-semibold">Query Dataroom:</span> {group.canQueryEntireDataroom ? 'Yes' : 'No'}
-                         </p>
-                         <p>
-                           <span className="font-semibold">Organize Files:</span> {group.canOrganize ? 'Yes' : 'No'}
-                         </p>
-                         <p>
-                           <span className="font-semibold">View Audit Logs:</span> {group.canViewAuditLogs ? 'Yes' : 'No'}
-                         </p>
-                         {/* Add a few more key indicators */}
-                         <p>
-                           <span className="font-semibold">Manage Users:</span> {group.canAccessUserManagementPanel ? 'Yes' : 'No'}
-                         </p>
-                          <p>
-                           <span className="font-semibold">Manage Issues:</span> {group.canAccessIssuesPanel ? 'Yes' : 'No'}
-                         </p>
+                        <p>
+                          <span className="font-semibold">Query Dataroom:</span> {group.canQueryEntireDataroom ? 'Yes' : 'No'}
+                        </p>
+                        <p>
+                          <span className="font-semibold">Organize Files:</span> {group.canOrganize ? 'Yes' : 'No'}
+                        </p>
+                        <p>
+                          <span className="font-semibold">View Audit Logs:</span> {group.canViewAuditLogs ? 'Yes' : 'No'}
+                        </p>
+                        {/* Add a few more key indicators */}
+                        <p>
+                          <span className="font-semibold">Manage Users:</span> {group.canAccessUserManagementPanel ? 'Yes' : 'No'}
+                        </p>
+                        <p>
+                          <span className="font-semibold">Manage Issues:</span> {group.canAccessIssuesPanel ? 'Yes' : 'No'}
+                        </p>
                       </div>
                     </CardContent>
                     <CardFooter className="flex gap-2 justify-end">
                       {/* Conditionally render buttons only for non-default groups */}
                       {!group.isDefault ? (
                         <>
-                          <Button 
-                            variant="outline" 
-                            size="sm" 
+                          <Button
+                            variant="outline"
+                            size="sm"
                             className="dark:text-white"
                             onClick={() => handleEditGroup(group)}
                           >
                             Edit
                           </Button>
-                          <Button 
-                            variant="destructive" 
+                          <Button
+                            variant="destructive"
                             size="sm"
                             onClick={() => setGroupToDelete(group)}
                           >
@@ -1070,10 +1124,10 @@ const UserManagement: React.FC<UserManagementProps> = ({ dataroomId }) => {
                           </Button>
                         </>
                       ) : (
-                         /* For default roles, show view details button */
-                        <Button 
-                          variant="outline" 
-                          size="sm" 
+                        /* For default roles, show view details button */
+                        <Button
+                          variant="outline"
+                          size="sm"
                           className="dark:text-white dark:border-gray-600"
                           onClick={() => handleViewGroupDetails(group)}
                         >
@@ -1087,15 +1141,15 @@ const UserManagement: React.FC<UserManagementProps> = ({ dataroomId }) => {
                 // No groups defined message
                 <div className="col-span-full p-8 bg-white dark:bg-gray-800 rounded-lg shadow text-center">
                   <p className="text-gray-500 dark:text-gray-400 mb-4">No permission groups found</p>
-                   {(currentUser?.role === 'OWNER' || currentUser?.role === 'ADMIN') && (
-                     <Button 
-                       onClick={() => setIsCreateGroupDialogOpen(true)}
-                       className="mx-auto"
-                     >
-                       <Plus className="h-4 w-4 mr-2" />
-                       Create First Custom Group
-                     </Button>
-                   )} 
+                  {(currentUser?.role === 'OWNER' || currentUser?.role === 'ADMIN') && (
+                    <Button
+                      onClick={() => setIsCreateGroupDialogOpen(true)}
+                      className="mx-auto"
+                    >
+                      <Plus className="h-4 w-4 mr-2" />
+                      Create First Custom Group
+                    </Button>
+                  )}
                 </div>
               )}
             </div>
@@ -1104,11 +1158,11 @@ const UserManagement: React.FC<UserManagementProps> = ({ dataroomId }) => {
       </div>
 
       {/* Dialog Components */}
-      <InviteUserDialog 
+      <InviteUserDialog
         isOpen={isInviteDialogOpen}
         onClose={() => {
           setIsInviteDialogOpen(false);
-            setInviteError(null);
+          setInviteError(null);
         }}
         email={inviteEmail}
         onEmailChange={(value) => setInviteEmail(value)}
@@ -1119,21 +1173,21 @@ const UserManagement: React.FC<UserManagementProps> = ({ dataroomId }) => {
         error={inviteError}
       />
 
-      <RemoveUserDialog 
+      <RemoveUserDialog
         isOpen={!!userToRemove}
         user={userToRemove}
         onClose={() => setUserToRemove(null)}
         onConfirm={handleRemoveUser}
       />
 
-      <TransferOwnershipDialogComponent 
+      <TransferOwnershipDialogComponent
         isOpen={ownerTransfer.isOpen}
         targetUser={ownerTransfer.targetUser}
         onClose={() => setOwnerTransfer({ isOpen: false, targetUser: null })}
         onConfirm={handleOwnershipTransfer}
       />
 
-      <PermissionGroupDialog 
+      <PermissionGroupDialog
         isOpen={isCreateGroupDialogOpen}
         onClose={() => setIsCreateGroupDialogOpen(false)}
         newGroupName={newGroupName}
@@ -1155,7 +1209,7 @@ const UserManagement: React.FC<UserManagementProps> = ({ dataroomId }) => {
       />
 
       {/* Edit Group Dialog - reuse the same PermissionGroupDialog but with different props */}
-      <PermissionGroupDialog 
+      <PermissionGroupDialog
         isOpen={isEditGroupDialogOpen}
         onClose={() => {
           setIsEditGroupDialogOpen(false);
@@ -1181,10 +1235,10 @@ const UserManagement: React.FC<UserManagementProps> = ({ dataroomId }) => {
         handleAllAccessChange={handleAllAccessChange}
       />
 
-      <ViewGroupDetailsDialog 
+      <ViewGroupDetailsDialog
         isOpen={viewGroupDetails.isOpen}
         group={viewGroupDetails.group}
-        onClose={() => setViewGroupDetails({isOpen: false, group: null})}
+        onClose={() => setViewGroupDetails({ isOpen: false, group: null })}
       />
 
       <DeletePermissionGroupDialog

@@ -25,6 +25,8 @@ import {
     DonutChart
 } from "@tremor/react";
 import { Checkbox } from '@/components/ui/checkbox';
+import { usePermissionsStore } from '@/stores/permissionsStore';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 // Fix the ResponsiveGridLayout typing issue
 const ResponsiveGridLayoutWithChildren = WidthProvider(Responsive) as any;
@@ -127,11 +129,11 @@ const ChartWidget = ({ widget }: { widget: Widget }) => {
     if (widget.data.chart_type === 'line') {
         // Extract relevant data
         const { title, description, labels, datasets, xAxis, yAxis, options } = widget.data;
-    
+
         // Format data for Tremor LineChart
         const formattedData = labels.map((label: string, index: number) => {
             const dataPoint: Record<string, any> = { date: label };
-    
+
             // Add each dataset's value for this label
             datasets.forEach((dataset: any) => {
                 // Use a shortened version of the label for cleaner display
@@ -139,7 +141,7 @@ const ChartWidget = ({ widget }: { widget: Widget }) => {
                     .replace(' Revenue (in millions)', '')
                     .replace(' (Revenue Range)', '')
                     .replace('Revenue ', '');
-    
+
                 // If the value is an array [min, max], take the average
                 if (Array.isArray(dataset.data[index]) && dataset.data[index].length === 2) {
                     dataPoint[shortLabel] = (dataset.data[index][0] + dataset.data[index][1]) / 2;
@@ -147,32 +149,32 @@ const ChartWidget = ({ widget }: { widget: Widget }) => {
                     dataPoint[shortLabel] = dataset.data[index];
                 }
             });
-    
+
             return dataPoint;
         });
-    
+
         // Create categories array from dataset labels
-        const categories = datasets.map((dataset: any) => 
+        const categories = datasets.map((dataset: any) =>
             dataset.label
                 .replace(' Revenue (in millions)', '')
                 .replace(' (Revenue Range)', '')
                 .replace('Revenue ', '')
         );
-    
+
         // Define colors to match the dataset border colors or use defaults
         const colorValues = ["blue", "emerald", "violet", "amber", "cyan"];
 
-    
+
         // Calculate appropriate yAxisWidth based on data values
-        const maxValue = Math.max(...datasets.flatMap((d: any) => 
+        const maxValue = Math.max(...datasets.flatMap((d: any) =>
             d.data.filter((v: any) => v !== null)
                 .map((v: any) => Array.isArray(v) ? Math.max(...v) : v)
         ));
         const yAxisWidth = maxValue >= 1000000 ? 60 : (maxValue >= 10000 ? 50 : 40);
-    
+
         // Determine if showAnimation should be true based on points option
         const showAnimation = options?.showPoints !== false;
-    
+
         return (
             <div className="flex flex-col h-full w-full">
                 {/* Title and description */}
@@ -180,7 +182,7 @@ const ChartWidget = ({ widget }: { widget: Widget }) => {
                     {title && <h3 className="font-semibold text-sm">{title}</h3>}
                     {description && <p className="text-xs text-gray-500 dark:text-gray-400">{description}</p>}
                 </div>
-    
+
                 {/* Chart container with fixed height */}
                 <div className="relative flex-1" style={{ height: 'calc(100% - 60px)', minHeight: 150 }}>
                     <LineChart
@@ -203,7 +205,7 @@ const ChartWidget = ({ widget }: { widget: Widget }) => {
                         connectNulls={true}
                         customTooltip={({ payload, active, label }) => {
                             if (!active || !payload) return null;
-    
+
                             return (
                                 <div className="bg-white dark:bg-gray-800 shadow-lg border border-gray-200 dark:border-gray-700 p-2 rounded-md">
                                     <div className="font-medium">{label}</div>
@@ -232,7 +234,7 @@ const ChartWidget = ({ widget }: { widget: Widget }) => {
                         }}
                     />
                 </div>
-    
+
                 {/* Legend at the bottom */}
                 <div className="flex flex-wrap justify-center gap-2 text-xs mt-1 mb-1">
                     {datasets.map((dataset: any, index: number) => (
@@ -245,7 +247,7 @@ const ChartWidget = ({ widget }: { widget: Widget }) => {
                         </div>
                     ))}
                 </div>
-    
+
                 {/* Display range information if available */}
                 {datasets.some((d: any) => d.data.some((v: any) => Array.isArray(v))) && (
                     <div className="text-xs text-center text-gray-500 mb-1">
@@ -374,22 +376,22 @@ const ChartWidget = ({ widget }: { widget: Widget }) => {
     if (widget.data.chart_type === 'pie') {
         // Extract relevant data
         const { title, description, labels, datasets } = widget.data;
-        
+
         // Format data for Tremor's DonutChart
         const pieData = labels.map((label: string, index: number) => ({
             name: label,
             value: datasets[0].data[index]
         }));
-        
+
         // Determine if we should show as donut or pie
         const showDonut = widget.data.options?.donut === true;
-        
+
         // Get colors from the dataset or use defaults
-        const customColors = datasets[0].backgroundColor || 
+        const customColors = datasets[0].backgroundColor ||
             ['#36A2EB', '#FF6384', '#FFCE56', '#4BC0C0', '#9966FF'];
-        
+
         // Format Tremor colors - convert hex to Tremor color names when possible
-        const tremorColors = customColors.map((color: string) => 
+        const tremorColors = customColors.map((color: string) =>
             getTremorColor(color)
         );
 
@@ -400,7 +402,7 @@ const ChartWidget = ({ widget }: { widget: Widget }) => {
                     {title && <h3 className="font-semibold text-sm">{title}</h3>}
                     {description && <p className="text-xs text-gray-500 dark:text-gray-400">{description}</p>}
                 </div>
-                
+
                 {/* Chart container */}
                 <div className="flex-1 flex items-center justify-center">
                     <DonutChart
@@ -416,7 +418,7 @@ const ChartWidget = ({ widget }: { widget: Widget }) => {
                         variant={showDonut ? "donut" : "pie"}
                     />
                 </div>
-                
+
                 {/* Legend */}
                 <div className="flex flex-wrap justify-center gap-2 text-xs mt-1 mb-1">
                     {labels.map((label: string, index: number) => (
@@ -443,7 +445,7 @@ const TableWidget = ({ widget }: { widget: Widget }) => {
     // Parse the data if it's a string
     const parseTableData = () => {
         if (!widget.data) return null;
-        
+
         // Check if we have a string that needs to be parsed
         if (typeof widget.data === 'string') {
             try {
@@ -453,7 +455,7 @@ const TableWidget = ({ widget }: { widget: Widget }) => {
                 return null;
             }
         }
-        
+
         // Check for new format (JSON string inside a property)
         if (typeof widget.data[widget.id] === 'string') {
             try {
@@ -463,21 +465,21 @@ const TableWidget = ({ widget }: { widget: Widget }) => {
                 return null;
             }
         }
-        
+
         // Legacy format support
         return widget.data;
     };
-    
+
     const tableData = parseTableData();
-    
+
     // Handle loading state - check if it's null or has loading status
-    if (!tableData || tableData.status === 'loading' || 
+    if (!tableData || tableData.status === 'loading' ||
         (widget.data && widget.data.status === 'loading')) {
         return (
             <div className="flex items-center justify-center h-full">Loading data...</div>
         );
     }
-    
+
     // New format with columns and rows of objects
     if (tableData.columns && tableData.rows) {
         return (
@@ -498,8 +500,8 @@ const TableWidget = ({ widget }: { widget: Widget }) => {
                     </thead>
                     <tbody>
                         {tableData.rows.map((row: any, rowIndex: number) => (
-                            <tr 
-                                key={rowIndex} 
+                            <tr
+                                key={rowIndex}
                                 className={rowIndex % 2 === 0 ? 'bg-white dark:bg-gray-950' : 'bg-gray-50 dark:bg-gray-900'}
                             >
                                 {tableData.columns.map((column: string, colIndex: number) => (
@@ -519,7 +521,7 @@ const TableWidget = ({ widget }: { widget: Widget }) => {
             </div>
         );
     }
-    
+
     // Legacy format support with headers and rows of arrays
     if (tableData.headers && tableData.rows) {
         return (
@@ -536,8 +538,8 @@ const TableWidget = ({ widget }: { widget: Widget }) => {
                     </thead>
                     <tbody>
                         {tableData.rows.map((row: any[], rowIndex: number) => (
-                            <tr 
-                                key={rowIndex} 
+                            <tr
+                                key={rowIndex}
                                 className={rowIndex % 2 === 0 ? 'bg-white dark:bg-gray-950' : 'bg-gray-50 dark:bg-gray-900'}
                             >
                                 {row.map((cell, cellIndex) => (
@@ -552,7 +554,7 @@ const TableWidget = ({ widget }: { widget: Widget }) => {
             </div>
         );
     }
-    
+
     return <div className="flex items-center justify-center h-full">Invalid table data format</div>;
 };
 
@@ -584,6 +586,7 @@ export default function DiligenceDashboardViewer() {
     const [newWidgetDonut, setNewWidgetDonut] = useState(false);
     const [newWidgetShowPercentages, setNewWidgetShowPercentages] = useState(false);
     const [newWidgetTableCols, setNewWidgetTableCols] = useState<string[]>([]);
+    const { permissionDetails } = usePermissionsStore();
 
     // Layout settings
     const cols = { lg: 12, md: 10, sm: 6, xs: 4, xxs: 2 };
@@ -592,7 +595,7 @@ export default function DiligenceDashboardViewer() {
     // Load dashboard data on component mount
     useEffect(() => {
         loadDashboardState();
-        
+
         // Load dashboard name from localStorage if available
         const savedName = localStorage.getItem(`dashboard-${bucketId}-name`);
         if (savedName) {
@@ -612,7 +615,7 @@ export default function DiligenceDashboardViewer() {
             const convertedWidgets = convertWidgetsFormat(loadedWidgetsMap);
             console.log("Converted widgets with positions:", convertedWidgets);
             setWidgets(convertedWidgets);
-            
+
             toast({
                 title: "Success",
                 description: "Dashboard loaded successfully"
@@ -692,7 +695,7 @@ export default function DiligenceDashboardViewer() {
             });
             return;
         }
-        
+
         if (!newWidgetMetric.trim()) {
             toast({
                 title: "Error",
@@ -718,16 +721,16 @@ export default function DiligenceDashboardViewer() {
                     expanded: false
                 }
             };
-            
+
             // Add optional parameters if they exist
             if (newWidgetDetails) newWidget.extraDetails = newWidgetDetails;
-            
+
             // Add chart-specific parameters
             if (newWidgetFormat === FORMAT_TYPES.CHART) {
                 if (newWidgetChartType) newWidget.chartType = newWidgetChartType;
                 if (newWidgetXAxis) newWidget.xAxis = newWidgetXAxis;
                 if (newWidgetYAxis) newWidget.yAxis = newWidgetYAxis;
-                
+
                 // Add chart type specific options
                 if (newWidgetChartType === 'bar') {
                     if (newWidgetStacked) newWidget.stacked = true;
@@ -740,7 +743,7 @@ export default function DiligenceDashboardViewer() {
                     if (newWidgetShowPercentages) newWidget.showPercentages = true;
                 }
             }
-            
+
             // Add table-specific parameters
             if (newWidgetFormat === FORMAT_TYPES.TABLE && newWidgetTableCols && newWidgetTableCols.length > 0) {
                 newWidget.tableCols = newWidgetTableCols;
@@ -748,7 +751,7 @@ export default function DiligenceDashboardViewer() {
 
             // Add widget to backend
             const savedWidget = await MetricsService.addWidget(bucketId, newWidget);
-            
+
             // Convert to dashboard widget format for local state
             const dashboardWidget: DashboardWidget = {
                 id: savedWidget.id,
@@ -811,10 +814,10 @@ export default function DiligenceDashboardViewer() {
         try {
             // Delete widget from backend first
             await MetricsService.deleteWidget(bucketId, id);
-            
+
             // Once backend deletion is successful, update local state
             setWidgets(prevWidgets => prevWidgets.filter(widget => widget.id !== id));
-            
+
             toast({
                 title: "Success",
                 description: "Widget deleted successfully"
@@ -829,58 +832,58 @@ export default function DiligenceDashboardViewer() {
         }
     };
 
-   // ...existing code...
-const handleLayoutChange = (layout: any[]) => {
-    // Create a new copy of widgets with updated positions
-    const updatedWidgets = widgets.map(widget => {
-        const layoutItem = layout.find(item => item.i === widget.id);
-        if (!layoutItem) return widget;
-        
-        return {
-            ...widget,
-            x: layoutItem.x, 
-            y: layoutItem.y,
-            w: layoutItem.w,
-            h: layoutItem.h
-        };
-    });
-    
-    // Update state with the new widget positions
-    setWidgets(updatedWidgets);
-    
-    // Then send updates to the backend (with debouncing)
-    layout.forEach(layoutItem => {
-        const widget = widgets.find(w => w.id === layoutItem.i);
-        if (!widget) return;
-        
-        // Only update if position actually changed
-        if (
-            widget.x !== layoutItem.x ||
-            widget.y !== layoutItem.y ||
-            widget.w !== layoutItem.w ||
-            widget.h !== layoutItem.h
-        ) {
-            // Debounce API calls to prevent too many requests
-            updateWidgetPosition(widget.id, {
+    // ...existing code...
+    const handleLayoutChange = (layout: any[]) => {
+        // Create a new copy of widgets with updated positions
+        const updatedWidgets = widgets.map(widget => {
+            const layoutItem = layout.find(item => item.i === widget.id);
+            if (!layoutItem) return widget;
+
+            return {
+                ...widget,
                 x: layoutItem.x,
                 y: layoutItem.y,
-                width: layoutItem.w,
-                height: layoutItem.h,
-                expanded: widget.config?.expanded || false
-            });
-        }
-    });
-};
-// ...existing code...
+                w: layoutItem.w,
+                h: layoutItem.h
+            };
+        });
+
+        // Update state with the new widget positions
+        setWidgets(updatedWidgets);
+
+        // Then send updates to the backend (with debouncing)
+        layout.forEach(layoutItem => {
+            const widget = widgets.find(w => w.id === layoutItem.i);
+            if (!widget) return;
+
+            // Only update if position actually changed
+            if (
+                widget.x !== layoutItem.x ||
+                widget.y !== layoutItem.y ||
+                widget.w !== layoutItem.w ||
+                widget.h !== layoutItem.h
+            ) {
+                // Debounce API calls to prevent too many requests
+                updateWidgetPosition(widget.id, {
+                    x: layoutItem.x,
+                    y: layoutItem.y,
+                    width: layoutItem.w,
+                    height: layoutItem.h,
+                    expanded: widget.config?.expanded || false
+                });
+            }
+        });
+    };
+    // ...existing code...
     // Debounce function to limit API calls
     const debounceMap = new Map<string, NodeJS.Timeout>();
-    
+
     const updateWidgetPosition = (widgetId: string, positionData: { x: number, y: number, width: number, height: number, expanded?: boolean }) => {
         // Clear any existing timeout for this widget
         if (debounceMap.has(widgetId)) {
             clearTimeout(debounceMap.get(widgetId)!);
         }
-        
+
         // Set a new timeout
         const timeoutId = setTimeout(async () => {
             try {
@@ -897,7 +900,7 @@ const handleLayoutChange = (layout: any[]) => {
                 });
             }
         }, 500); // 500ms debounce
-        
+
         debounceMap.set(widgetId, timeoutId);
     };
 
@@ -905,7 +908,7 @@ const handleLayoutChange = (layout: any[]) => {
         try {
             // Save dashboard name in local storage or your preferred storage
             localStorage.setItem(`dashboard-${bucketId}-name`, dashboardName);
-            
+
             toast({
                 title: "Success",
                 description: "Dashboard name saved successfully"
@@ -926,20 +929,20 @@ const handleLayoutChange = (layout: any[]) => {
     const toggleWidgetExpanded = async (widgetId: string) => {
         const widget = widgets.find(w => w.id === widgetId);
         if (!widget) return;
-        
+
         const expanded = !widget.config?.expanded;
-        
+
         // Update local state first
-        const updatedWidgets = widgets.map(w => 
-            w.id === widgetId 
-                ? { 
-                    ...w, 
-                    config: { ...w.config, expanded } 
-                } 
+        const updatedWidgets = widgets.map(w =>
+            w.id === widgetId
+                ? {
+                    ...w,
+                    config: { ...w.config, expanded }
+                }
                 : w
         );
         setWidgets(updatedWidgets);
-        
+
         // Update in backend
         try {
             const positionData = {
@@ -949,7 +952,7 @@ const handleLayoutChange = (layout: any[]) => {
                 height: widget.h,
                 expanded
             };
-            
+
             await MetricsService.modifyWidget(bucketId, widgetId, { positionData });
         } catch (error) {
             console.error('Error updating widget expanded state:', error);
@@ -978,9 +981,9 @@ const handleLayoutChange = (layout: any[]) => {
             extraDetails: widget.config?.extraDetails,
             data: widget.data
         };
-        
+
         // Placeholder rendering based on widget type
-        switch(widget.format) {
+        switch (widget.format) {
             case FORMAT_TYPES.CHART:
                 return <ChartWidget widget={adaptedWidget} />;
             case FORMAT_TYPES.TABLE:
@@ -1014,12 +1017,35 @@ const handleLayoutChange = (layout: any[]) => {
                             Load Template
                         </Button>
 
-                        <Button
-                            onClick={() => setIsAddWidgetOpen(true)}
-                        >
-                            <PlusCircle className="mr-2 h-4 w-4" />
-                            Add Widget
-                        </Button>
+
+
+                        {!permissionDetails?.canCreateDiligenceWidget ? (
+                            <TooltipProvider>
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <div>
+                                            <Button
+                                                onClick={() => setIsAddWidgetOpen(true)}
+                                                disabled
+                                            >
+                                                <PlusCircle className="mr-2 h-4 w-4" />
+                                                Add Widget
+                                            </Button>
+                                        </div>
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                        Creating widgets is disabled
+                                    </TooltipContent>
+                                </Tooltip>
+                            </TooltipProvider>
+                        ) : (
+                            <Button
+                                onClick={() => setIsAddWidgetOpen(true)}
+                            >
+                                <PlusCircle className="mr-2 h-4 w-4" />
+                                Add Widget
+                            </Button>
+                        )}
                     </div>
                 </div>
 
@@ -1046,25 +1072,25 @@ const handleLayoutChange = (layout: any[]) => {
                     </div>
                 ) : (
                     <ResponsiveGridLayoutWithChildren
-                    className="layout"
-                    layouts={{
-                        lg: widgets.map(w => ({
-                            i: w.id,
-                            x: w.x,
-                            y: w.y,
-                            w: w.w,
-                            h: w.h,
-                            minW: w.minW,
-                            minH: w.minH,
-                            maxW: w.maxW,
-                            maxH: w.maxH
-                        }))
-                    }}
-                    // breakpoints={{ lg: 1200, md: 996, sm: 768, xs: 480, xxs: 0 }}
-                    // cols={cols}
-                    // rowHeight={rowHeight}
-                    onLayoutChange={handleLayoutChange}
-                    draggableHandle=".widget-drag-handle"
+                        className="layout"
+                        layouts={{
+                            lg: widgets.map(w => ({
+                                i: w.id,
+                                x: w.x,
+                                y: w.y,
+                                w: w.w,
+                                h: w.h,
+                                minW: w.minW,
+                                minH: w.minH,
+                                maxW: w.maxW,
+                                maxH: w.maxH
+                            }))
+                        }}
+                        // breakpoints={{ lg: 1200, md: 996, sm: 768, xs: 480, xxs: 0 }}
+                        // cols={cols}
+                        // rowHeight={rowHeight}
+                        onLayoutChange={handleLayoutChange}
+                        draggableHandle=".widget-drag-handle"
                     // useCSSTransforms={true}
                     // compactType="vertical"
                     // preventCollision={true}      // Change to true to prevent collision during drag
@@ -1076,22 +1102,45 @@ const handleLayoutChange = (layout: any[]) => {
                     // isBounded={true}
                     // isDraggable={true}
                     // transformScale={1}           // Ensure correct scaling
-                >
+                    >
                         {widgets.map((widget) => (
                             <div key={widget.id}>
                                 <Card className="flex flex-col h-full overflow-hidden">
                                     <div className="p-3 border-b bg-muted/20 flex items-center justify-between cursor-default">
                                         <div className="font-medium truncate">{widget.title}</div>
                                         <div className="flex items-center space-x-1">
-                                            <Button
-                                                variant="ghost"
-                                                size="icon"
-                                                className="h-7 w-7 widget-drag-handle cursor-move"
-                                                onClick={() => toggleWidgetExpanded(widget.id)}
-                                                title={widget.config?.expanded ? "Minimize" : "Maximize"}
-                                            >
-                                               <Move className = "h-4 w-4"/>
-                                            </Button>
+                                            {!permissionDetails?.canMoveWidgets ? (
+                                                <TooltipProvider>
+                                                    <Tooltip>
+                                                        <TooltipTrigger asChild>
+                                                            <div>
+                                                                <Button
+                                                                    variant="ghost"
+                                                                    size="icon"
+                                                                    className="h-7 w-7 widget-drag-handle cursor-move"
+                                                                    disabled
+                                                                >
+                                                                    <Move className="h-4 w-4" />
+                                                                </Button>
+                                                            </div>
+
+                                                        </TooltipTrigger>
+                                                        <TooltipContent>
+                                                            Moving widgets is disabled
+                                                        </TooltipContent>
+                                                    </Tooltip>
+                                                </TooltipProvider>
+                                            ) : (
+                                                <Button
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    className="h-7 w-7 widget-drag-handle cursor-move"
+                                                    onClick={() => toggleWidgetExpanded(widget.id)}
+                                                    title={widget.config?.expanded ? "Minimize" : "Maximize"}
+                                                >
+                                                    <Move className="h-4 w-4" />
+                                                </Button>
+                                            )}
                                             <Button
                                                 variant="ghost"
                                                 size="icon"
@@ -1100,14 +1149,39 @@ const handleLayoutChange = (layout: any[]) => {
                                             >
                                                 <Settings className="h-4 w-4" />
                                             </Button>
-                                            <Button
-                                                variant="ghost"
-                                                size="icon"
-                                                className="h-7 w-7 text-destructive hover:text-destructive"
-                                                onClick={() => handleDeleteWidget(widget.id)}
-                                            >
-                                                <X className="h-4 w-4" />
-                                            </Button>
+                                            <div className="flex items-center gap-2">
+                                                {!permissionDetails?.canDeleteWidgets ? (
+                                                    <TooltipProvider>
+                                                        <Tooltip>
+                                                            <TooltipTrigger asChild>
+                                                                <div>
+                                                                    <Button
+                                                                        variant="ghost"
+                                                                        size="icon"
+                                                                        className="h-7 w-7 text-destructive hover:text-destructive"
+                                                                        disabled
+                                                                    >
+                                                                        <X className="h-4 w-4" />
+                                                                    </Button>
+                                                                </div>
+
+                                                            </TooltipTrigger>
+                                                            <TooltipContent>
+                                                                Deleting widgets is disabled
+                                                            </TooltipContent>
+                                                        </Tooltip>
+                                                    </TooltipProvider>
+                                                ) : (
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="icon"
+                                                        className="h-7 w-7 text-destructive hover:text-destructive"
+                                                        onClick={() => handleDeleteWidget(widget.id)}
+                                                    >
+                                                        <X className="h-4 w-4" />
+                                                    </Button>
+                                                )}
+                                            </div>
                                         </div>
                                     </div>
                                     <div className="flex-grow p-4 overflow-auto">
@@ -1228,20 +1302,20 @@ const handleLayoutChange = (layout: any[]) => {
                                                     <div className="col-span-1"></div>
                                                     <div className="flex space-x-4 col-span-3">
                                                         <div className="flex items-center space-x-2">
-                                                            <Checkbox 
+                                                            <Checkbox
                                                                 id="stacked"
                                                                 checked={newWidgetStacked || false}
-                                                                onCheckedChange={(checked) => 
+                                                                onCheckedChange={(checked) =>
                                                                     setNewWidgetStacked(checked === true)
                                                                 }
                                                             />
                                                             <label htmlFor="stacked" className="text-sm">Stacked</label>
                                                         </div>
                                                         <div className="flex items-center space-x-2">
-                                                            <Checkbox 
+                                                            <Checkbox
                                                                 id="horizontal"
                                                                 checked={newWidgetHorizontal || false}
-                                                                onCheckedChange={(checked) => 
+                                                                onCheckedChange={(checked) =>
                                                                     setNewWidgetHorizontal(checked === true)
                                                                 }
                                                             />
@@ -1256,20 +1330,20 @@ const handleLayoutChange = (layout: any[]) => {
                                                     <div className="col-span-1"></div>
                                                     <div className="flex space-x-4 col-span-3">
                                                         <div className="flex items-center space-x-2">
-                                                            <Checkbox 
+                                                            <Checkbox
                                                                 id="time-series"
                                                                 checked={newWidgetTimeSeries || false}
-                                                                onCheckedChange={(checked) => 
+                                                                onCheckedChange={(checked) =>
                                                                     setNewWidgetTimeSeries(checked === true)
                                                                 }
                                                             />
                                                             <label htmlFor="time-series" className="text-sm">Time Series</label>
                                                         </div>
                                                         <div className="flex items-center space-x-2">
-                                                            <Checkbox 
+                                                            <Checkbox
                                                                 id="show-points"
                                                                 checked={newWidgetShowPoints || false}
-                                                                onCheckedChange={(checked) => 
+                                                                onCheckedChange={(checked) =>
                                                                     setNewWidgetShowPoints(checked === true)
                                                                 }
                                                             />
@@ -1284,20 +1358,20 @@ const handleLayoutChange = (layout: any[]) => {
                                                     <div className="col-span-1"></div>
                                                     <div className="flex space-x-4 col-span-3">
                                                         <div className="flex items-center space-x-2">
-                                                            <Checkbox 
+                                                            <Checkbox
                                                                 id="donut"
                                                                 checked={newWidgetDonut || false}
-                                                                onCheckedChange={(checked) => 
+                                                                onCheckedChange={(checked) =>
                                                                     setNewWidgetDonut(checked === true)
                                                                 }
                                                             />
                                                             <label htmlFor="donut" className="text-sm">Donut Chart</label>
                                                         </div>
                                                         <div className="flex items-center space-x-2">
-                                                            <Checkbox 
+                                                            <Checkbox
                                                                 id="show-percentages"
                                                                 checked={newWidgetShowPercentages || false}
-                                                                onCheckedChange={(checked) => 
+                                                                onCheckedChange={(checked) =>
                                                                     setNewWidgetShowPercentages(checked === true)
                                                                 }
                                                             />

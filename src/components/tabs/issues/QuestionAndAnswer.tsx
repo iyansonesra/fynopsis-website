@@ -15,6 +15,8 @@ import { CreateIssueForm } from './CreateIssueForm'
 import { useToast } from '@/components/ui/use-toast'
 import { extractUniqueTagsFromIssues } from '../../services/QAService'
 import { IssueFilters } from './filtering/FilterControls'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
+import { usePermissionsStore } from '@/stores/permissionsStore'
 
 
 export function Issues() {
@@ -32,6 +34,7 @@ export function Issues() {
   const [availableTags, setAvailableTags] = useState<string[]>([])
   const [selectedTags, setSelectedTags] = useState<string[]>([])
   const [sortOption, setSortOption] = useState<string>('newest') // Add this state for sorting
+  const { permissionDetails } = usePermissionsStore();
 
   // Add ref to track selected issue
   const prevSelectedIssueRef = useRef<string | number | null>(null);
@@ -256,13 +259,35 @@ const filteredIssues = useMemo(() => {
           <IssueSearch value={searchQuery} onChange={setSearchQuery} />
 
           <div className="flex w-full md:w-auto gap-2 justify-between">
-            <Button
-              className="bg-blue-500 hover:bg-blue-800 h-9"
-              onClick={() => setIsCreateIssueOpen(true)}
-            >
-              <Plus className="h-4 w-4 mr-2" />
-              <span>New issue</span>
-            </Button>
+            {!permissionDetails?.canCreateIssue ? (
+                <TooltipProvider>
+                    <Tooltip>
+                        <TooltipTrigger asChild>
+                            <div>
+                                <Button
+                                    className="bg-blue-500 hover:bg-blue-800 h-9"
+                                    onClick={() => setIsCreateIssueOpen(true)}
+                                    disabled
+                                >
+                                    <Plus className="h-4 w-4 mr-2" />
+                                    <span>New issue</span>
+                                </Button>
+                            </div>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                            Creating issues is disabled
+                        </TooltipContent>
+                    </Tooltip>
+                </TooltipProvider>
+            ) : (
+                <Button
+                    className="bg-blue-500 hover:bg-blue-800 h-9"
+                    onClick={() => setIsCreateIssueOpen(true)}
+                >
+                    <Plus className="h-4 w-4 mr-2" />
+                    <span>New issue</span>
+                </Button>
+            )}
           </div>
         </div>
 

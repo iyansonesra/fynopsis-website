@@ -47,7 +47,8 @@ import { ContainerScroll } from '../../../ui/container-scroll-animation';
 import { HoverCardPortal } from '@radix-ui/react-hover-card';
 import { MessageItem } from './MessageItem';
 import websocketManager from '@/lib/websocketManager';
-
+import { usePermissionsStore } from '@/stores/permissionsStore'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 
 // import { w3cwebsocket as W3CWebSocket } from "websocket";
 // import { Signer } from '@aws-amplify/core';
@@ -267,7 +268,7 @@ const DetailSection: React.FC<DetailsSectionProps> = ({
     const resetAccordionValues = useFileStore(state => state.resetAccordionValues);
     // Use useRef to store the throttle function with closure over the latest state setter
     const throttledSetMessagesRef = useRef<(value: Message[] | ((prev: Message[]) => Message[])) => void>();
-
+    const { permissionDetails } = usePermissionsStore();
     // useEffect(() => {
     //     throttledSetMessagesRef.current = (value) => throttledSetState(setMessagesState, value);
     // }, [setMessagesState]);
@@ -1312,12 +1313,30 @@ const DetailSection: React.FC<DetailsSectionProps> = ({
                 </ScrollArea >
 
                 <div className="px-4 bg-transparent">
-                    <AIInputWithSearch
-                        onSubmit={queryAllDocuments}
-                        onFileSelect={(file) => {
-                        }}
-                        disabled={isLoading}
-                    />
+                    {!permissionDetails?.canQueryEntireDataroom ? (
+                        <TooltipProvider>
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <div className="opacity-50 cursor-not-allowed">
+                                        <AIInputWithSearch
+                                            onSubmit={queryAllDocuments}
+                                            onFileSelect={(file) => {}}
+                                            disabled={true}
+                                        />
+                                    </div>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                    Querying the dataroom is disabled
+                                </TooltipContent>
+                            </Tooltip>
+                        </TooltipProvider>
+                    ) : (
+                        <AIInputWithSearch
+                            onSubmit={queryAllDocuments}
+                            onFileSelect={(file) => {}}
+                            disabled={isLoading}
+                        />
+                    )}
 
                 </div>
 

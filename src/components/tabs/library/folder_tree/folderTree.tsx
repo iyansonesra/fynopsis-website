@@ -204,6 +204,7 @@ const buildFolderStructure = (folders: Folder[], files: FileItem[]): Node[] => {
 
 const FolderTree: React.FC<FolderTreeProps> = () => {
     const [folderStructure, setFolderStructure] = useState<Node[]>([]);
+    const [selectedNode, setSelectedNode] = useState<Node | null>(null);
     const router = useRouter();
     const pathname = usePathname() || '';
     const pathArray = pathname.split('/');
@@ -417,6 +418,8 @@ const FolderTree: React.FC<FolderTreeProps> = () => {
                             node={node}
                             key={node.name}
                             onSelect={handleNodeSelect}
+                            isSelected={selectedNode?.id === node.id}
+                            onNodeSelect={setSelectedNode}
                         />
                     ))}
                 </ul>

@@ -12,6 +12,8 @@ import { cn } from '@/lib/utils';
 import DetailSection from '../library/querying/DetailsSection';
 import { Skeleton } from '@mui/material';
 import { HoverCard, HoverCardContent, HoverCardTrigger } from '../../ui/hover-card';
+import { usePermissionsStore } from '@/stores/permissionsStore'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 
 interface AuditEvent {
     eventId: string;
@@ -102,23 +104,23 @@ const SortableItem = React.memo<{
             <td className="p-4">
                 <div className="flex flex-col gap-1">
                     {event.action === 'FILE_MOVE' && (
-                         <HoverCard>
-                         <HoverCardTrigger asChild>
-                             <span className="text-gray-600 dark:text-gray-300 rounded-full inline-block">
-                                 File Moved: {event.details.itemName}
-                             </span>
-                         </HoverCardTrigger>
-                         <HoverCardContent className="w-80">
-                             <div className="flex justify-between space-x-4">
-                                 <div className="space-y-1">
-                                     <h4 className="text-xs font-semibold">Full Path</h4>
-                                     <p className="text-xs text-gray-600 dark:text-gray-300">
-                                         {event.details.metadata?.fullPath || event.details.itemName}
-                                     </p>
-                                 </div>
-                             </div>
-                         </HoverCardContent>
-                     </HoverCard>
+                        <HoverCard>
+                            <HoverCardTrigger asChild>
+                                <span className="text-gray-600 dark:text-gray-300 rounded-full inline-block">
+                                    File Moved: {event.details.itemName}
+                                </span>
+                            </HoverCardTrigger>
+                            <HoverCardContent className="w-80">
+                                <div className="flex justify-between space-x-4">
+                                    <div className="space-y-1">
+                                        <h4 className="text-xs font-semibold">Full Path</h4>
+                                        <p className="text-xs text-gray-600 dark:text-gray-300">
+                                            {event.details.metadata?.fullPath || event.details.itemName}
+                                        </p>
+                                    </div>
+                                </div>
+                            </HoverCardContent>
+                        </HoverCard>
                     )}
                     {event.action === 'FILE_UPLOAD' && (
                         <HoverCard>
@@ -217,98 +219,98 @@ const SortableItem = React.memo<{
                     )}
                     {event.action === 'USER_INVITE' && (
                         <HoverCard>
-                        <HoverCardTrigger asChild>
-                            <span className="text-gray-600 dark:text-gray-300 rounded-full inline-block">
-                                User: {event.details.itemName}
-                            </span>
-                        </HoverCardTrigger>
-                        <HoverCardContent className="w-80">
-                            <div className="flex justify-between space-x-4">
-                                <div className="space-y-1">
-                                    <h4 className="text-xs font-semibold">Full Path</h4>
-                                    <p className="text-xs text-gray-600 dark:text-gray-300">
-                                        {event.details.metadata?.fullPath || event.details.itemName}
-                                    </p>
+                            <HoverCardTrigger asChild>
+                                <span className="text-gray-600 dark:text-gray-300 rounded-full inline-block">
+                                    User: {event.details.itemName}
+                                </span>
+                            </HoverCardTrigger>
+                            <HoverCardContent className="w-80">
+                                <div className="flex justify-between space-x-4">
+                                    <div className="space-y-1">
+                                        <h4 className="text-xs font-semibold">Full Path</h4>
+                                        <p className="text-xs text-gray-600 dark:text-gray-300">
+                                            {event.details.metadata?.fullPath || event.details.itemName}
+                                        </p>
+                                    </div>
                                 </div>
-                            </div>
-                        </HoverCardContent>
-                    </HoverCard>
+                            </HoverCardContent>
+                        </HoverCard>
                     )}
                     {event.action === 'USER_REMOVE' && (
                         <HoverCard>
-                        <HoverCardTrigger asChild>
-                            <span className="text-gray-600 dark:text-gray-300 rounded-full inline-block">
-                                User: {event.details.itemName}
-                            </span>
-                        </HoverCardTrigger>
-                        <HoverCardContent className="w-80">
-                            <div className="flex justify-between space-x-4">
-                                <div className="space-y-1">
-                                    <h4 className="text-xs font-semibold">Full Path</h4>
-                                    <p className="text-xs text-gray-600 dark:text-gray-300">
-                                        {event.details.metadata?.fullPath || event.details.itemName}
-                                    </p>
+                            <HoverCardTrigger asChild>
+                                <span className="text-gray-600 dark:text-gray-300 rounded-full inline-block">
+                                    User: {event.details.itemName}
+                                </span>
+                            </HoverCardTrigger>
+                            <HoverCardContent className="w-80">
+                                <div className="flex justify-between space-x-4">
+                                    <div className="space-y-1">
+                                        <h4 className="text-xs font-semibold">Full Path</h4>
+                                        <p className="text-xs text-gray-600 dark:text-gray-300">
+                                            {event.details.metadata?.fullPath || event.details.itemName}
+                                        </p>
+                                    </div>
                                 </div>
-                            </div>
-                        </HoverCardContent>
-                    </HoverCard>
+                            </HoverCardContent>
+                        </HoverCard>
                     )}
                     {event.action === 'PERMISSION_CHANGE' && (
-                         <HoverCard>
-                         <HoverCardTrigger asChild>
-                             <span className="text-gray-600 dark:text-gray-300 rounded-full inline-block">
-                                 Permission Change: {event.details.itemName}
-                             </span>
-                         </HoverCardTrigger>
-                         <HoverCardContent className="w-80">
-                             <div className="flex justify-between space-x-4">
-                                 <div className="space-y-1">
-                                     <h4 className="text-xs font-semibold">Full Path</h4>
-                                     <p className="text-xs text-gray-600 dark:text-gray-300">
-                                         {event.details.metadata?.fullPath || event.details.itemName}
-                                     </p>
-                                 </div>
-                             </div>
-                         </HoverCardContent>
-                     </HoverCard>
+                        <HoverCard>
+                            <HoverCardTrigger asChild>
+                                <span className="text-gray-600 dark:text-gray-300 rounded-full inline-block">
+                                    Permission Change: {event.details.itemName}
+                                </span>
+                            </HoverCardTrigger>
+                            <HoverCardContent className="w-80">
+                                <div className="flex justify-between space-x-4">
+                                    <div className="space-y-1">
+                                        <h4 className="text-xs font-semibold">Full Path</h4>
+                                        <p className="text-xs text-gray-600 dark:text-gray-300">
+                                            {event.details.metadata?.fullPath || event.details.itemName}
+                                        </p>
+                                    </div>
+                                </div>
+                            </HoverCardContent>
+                        </HoverCard>
                     )}
                     {event.action === 'FILE_RENAME' && (
-                       <HoverCard>
-                       <HoverCardTrigger asChild>
-                           <span className="text-gray-600 dark:text-gray-300 rounded-full inline-block">
-                               File Renamed: {event.details.newName}
-                           </span>
-                       </HoverCardTrigger>
-                       <HoverCardContent className="w-80">
-                           <div className="flex justify-between space-x-4">
-                               <div className="space-y-1">
-                               <h4 className="text-xs font-semibold">Old Name</h4>
-                                    <p className="text-xs text-gray-600 dark:text-gray-300">
-                                        {event.details.oldName}
-                                    </p>
-                               </div>
-                           </div>
-                       </HoverCardContent>
-                   </HoverCard>
+                        <HoverCard>
+                            <HoverCardTrigger asChild>
+                                <span className="text-gray-600 dark:text-gray-300 rounded-full inline-block">
+                                    File Renamed: {event.details.newName}
+                                </span>
+                            </HoverCardTrigger>
+                            <HoverCardContent className="w-80">
+                                <div className="flex justify-between space-x-4">
+                                    <div className="space-y-1">
+                                        <h4 className="text-xs font-semibold">Old Name</h4>
+                                        <p className="text-xs text-gray-600 dark:text-gray-300">
+                                            {event.details.oldName}
+                                        </p>
+                                    </div>
+                                </div>
+                            </HoverCardContent>
+                        </HoverCard>
                     )}
                     {event.action === 'FOLDER_RENAME' && (
                         <HoverCard>
-                        <HoverCardTrigger asChild>
-                            <span className="text-gray-600 dark:text-gray-300 rounded-full inline-block">
-                                Folder Renamed: {event.details.newName}
-                            </span>
-                        </HoverCardTrigger>
-                        <HoverCardContent className="w-80">
-                            <div className="flex justify-between space-x-4">
-                                <div className="space-y-1">
-                                    <h4 className="text-xs font-semibold">Old Name</h4>
-                                    <p className="text-xs text-gray-600 dark:text-gray-300">
-                                        {event.details.oldName}
-                                    </p>
+                            <HoverCardTrigger asChild>
+                                <span className="text-gray-600 dark:text-gray-300 rounded-full inline-block">
+                                    Folder Renamed: {event.details.newName}
+                                </span>
+                            </HoverCardTrigger>
+                            <HoverCardContent className="w-80">
+                                <div className="flex justify-between space-x-4">
+                                    <div className="space-y-1">
+                                        <h4 className="text-xs font-semibold">Old Name</h4>
+                                        <p className="text-xs text-gray-600 dark:text-gray-300">
+                                            {event.details.oldName}
+                                        </p>
+                                    </div>
                                 </div>
-                            </div>
-                        </HoverCardContent>
-                    </HoverCard>
+                            </HoverCardContent>
+                        </HoverCard>
                     )}
                 </div>
             </td>
@@ -327,6 +329,7 @@ export const AuditLogViewer: React.FC<AuditLogViewerProps> = ({ bucketId, permis
     const [startDate, setStartDate] = useState<Date>();
     const [endDate, setEndDate] = useState<Date>();
     const [nextToken, setNextToken] = useState<string | null>(null);
+    const { permissionDetails: globalPermissionDetails } = usePermissionsStore();
 
     const fetchAuditLogs = async (reset = false) => {
         try {
@@ -429,13 +432,13 @@ export const AuditLogViewer: React.FC<AuditLogViewerProps> = ({ bucketId, permis
     };
 
     // Check if user can export audit logs
-    const canExportAuditLogs = permissionDetails?.canExportAuditLogs !== false;
+    const canExportAuditLogs = globalPermissionDetails?.canExportAuditLogs !== false;
 
     return (
         <div className="flex flex-col h-full p-4 gap-4 w-full">
             <div className="flex items-center justify-between gap-4 pr-8">
-            {/* <h2 className="text-xl font-bold text-gray-800 dark:text-white">Audit Log</h2> */}
-            <div className="flex-1 flex flex-row">
+                {/* <h2 className="text-xl font-bold text-gray-800 dark:text-white">Audit Log</h2> */}
+                <div className="flex-1 flex flex-row">
                     <Input
                         placeholder="Search..."
                         value={searchTerm}
@@ -484,12 +487,30 @@ export const AuditLogViewer: React.FC<AuditLogViewerProps> = ({ bucketId, permis
                             />
                         </PopoverContent>
                     </Popover>
-                    {canExportAuditLogs && (
-                        <Button onClick={handleExport}>
-                            <Download className="mr-2 h-4 w-4" />
-                            Export
-                        </Button>
-                    )}
+                    <div>
+                        {!canExportAuditLogs ? (
+                            <TooltipProvider>
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <div>
+                                            <Button disabled>
+                                                <Download className="mr-2 h-4 w-4" />
+                                                Export
+                                            </Button>
+                                        </div>
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                        Exporting audit logs is disabled
+                                    </TooltipContent>
+                                </Tooltip>
+                            </TooltipProvider>
+                        ) : (
+                            <Button onClick={handleExport}>
+                                <Download className="mr-2 h-4 w-4" />
+                                Export
+                            </Button>
+                        )}
+                    </div>
                 </div>
             </div>
 
