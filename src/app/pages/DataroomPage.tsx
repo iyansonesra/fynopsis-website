@@ -35,7 +35,8 @@ import { IssueDetail } from '@/components/tabs/issues/issueDetail';
 import websocketManager, { FileUpdateMessage } from '@/lib/websocketManager';
 import { useToast } from "@/components/ui/use-toast";
 import QATable from '@/components/tabs/question_answers/QATable';
-import { useDataroomContext } from '../dataroom/[id]/layout'; // Import the context hook
+import { usePermissionsStore } from '@/stores/permissionsStore';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 
 type IndicatorStyle = {
   top: string;
@@ -52,8 +53,8 @@ export default function Home() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
-  // Consume context from the layout
-  const { permissionDetails, isLoadingPermissions, hasPermission, dataroomId: contextDataroomId } = useDataroomContext();
+  // Replace context with store
+  const { permissionDetails, isLoadingPermissions, hasPermission, dataroomId: contextDataroomId } = usePermissionsStore();
 
   // Define tabs first so we can use it in initialTabIndex calculation
   const tabs: Tab[] = [
@@ -79,11 +80,11 @@ export default function Home() {
 
   // Initialize activeTab based on the default tab from URL
   const initialTabIndex = tabs.findIndex(tab => tab.label.toLowerCase() === defaultTab);
-  const { activeTab, setActiveTab, activeIssueId, setActiveIssueId, issuesActiveTab, setIssuesActiveTab, clearMessages, 
-    setSearchableFiles, setSearchableFolders, setCutFiles, setShowDetailsView, setSelectedFile, 
-    setPendingSelectFileId, documentBounds, setDocumentBounds, setTabSystemPanelSize, 
+  const { activeTab, setActiveTab, activeIssueId, setActiveIssueId, issuesActiveTab, setIssuesActiveTab, clearMessages,
+    setSearchableFiles, setSearchableFolders, setCutFiles, setShowDetailsView, setSelectedFile,
+    setPendingSelectFileId, documentBounds, setDocumentBounds, setTabSystemPanelSize,
     setDetailSectionPanelSize, setLastQuery, setCurrentThreadId, resetAccordionValues } = useFileStore();
-  
+
   // Get tabStore functions
   const { setTabs, setActiveTabId, tabs: tabStoreTabs } = useTabStore();
 
@@ -94,10 +95,10 @@ export default function Home() {
   const getFilteredTabs = (permissions: any) => {
     // Library tab is always accessible
     if (!permissions) return [tabs[0]];
-    
+
     return tabs.filter(tab => {
       const tabName = tab.label.toLowerCase();
-      
+
       switch (tabName) {
         case 'library':
           return true;
@@ -108,11 +109,11 @@ export default function Home() {
         case 'q&a':
           return permissions.canAccessQuestionairePanel !== false;
         case 'users':
-          return permissions.canAccessUserManagementPanel === true && 
-                 permissions.canViewUsers !== false;
+          return permissions.canAccessUserManagementPanel === true &&
+            permissions.canViewUsers !== false;
         case 'activity':
-          return permissions.canAccessAuditLogsPanel === true && 
-                 permissions.canViewAuditLogs !== false;
+          return permissions.canAccessAuditLogsPanel === true &&
+            permissions.canViewAuditLogs !== false;
         default:
           return false;
       }
@@ -124,17 +125,17 @@ export default function Home() {
     if (permissionDetails) {
       const newFilteredTabs = getFilteredTabs(permissionDetails);
       setFilteredTabs(newFilteredTabs);
-      
+
       // If current tab is not in filtered tabs, switch to library tab
       const currentTabName = selectedTab.toLowerCase();
       const hasAccess = newFilteredTabs.some(tab => tab.label.toLowerCase() === currentTabName);
-      
+
       if (!hasAccess) {
         const libraryTabIndex = newFilteredTabs.findIndex(tab => tab.label.toLowerCase() === 'library');
         if (libraryTabIndex !== -1) {
           setActiveTab(libraryTabIndex);
           setSelectedTab('library');
-          
+
           // Update URL query parameter without full page navigation
           const params = new URLSearchParams(searchParams.toString());
           params.set('tab', 'library');
@@ -144,8 +145,8 @@ export default function Home() {
         }
       }
     }
-  // Depend on permissionDetails from context
-  }, [permissionDetails, selectedTab, setActiveTab]); 
+    // Depend on permissionDetails from context
+  }, [permissionDetails, selectedTab, setActiveTab]);
 
   // Function to reset all relevant state when switching datarooms
   // This might need adjustment if called from elsewhere, but keep for now
@@ -171,7 +172,7 @@ export default function Home() {
     setLastQuery('');
     setCurrentThreadId('');
     resetAccordionValues();
-    
+
     // Clear tabStore but preserve the "All Files" tab
     if (tabStoreTabs.length > 0) {
       const allFilesTab = tabStoreTabs.find(tab => tab.title === "All Files");
@@ -202,7 +203,7 @@ export default function Home() {
 
   // REMOVE useEffect hooks related to fetching permissions and tracking dataroomId changes
   // useEffect(() => {
-    // ... removed logic ...
+  // ... removed logic ...
   // }, [dataroomId, subId, currentDataroomId, currentSubId, resetDataroomState]); 
 
   // Fetch searchable files - this might need rethinking. Does it need to refetch on subId change?
@@ -210,12 +211,12 @@ export default function Home() {
   useEffect(() => {
     if (contextDataroomId) { // Use dataroomId from context
       console.log(`DataroomPage: Fetching searchable files for ${contextDataroomId}`);
-      fetchSearchableFiles(contextDataroomId); 
+      fetchSearchableFiles(contextDataroomId);
     } else {
-        console.warn("DataroomPage: No dataroomId from context, cannot fetch searchable files.");
+      console.warn("DataroomPage: No dataroomId from context, cannot fetch searchable files.");
     }
-  // Depend on dataroomId from context
-  }, [contextDataroomId]); 
+    // Depend on dataroomId from context
+  }, [contextDataroomId]);
 
   // Keep indicatorStyle and refs for the sidebar tabs
   const [indicatorStyle, setIndicatorStyle] = useState<IndicatorStyle>({} as IndicatorStyle);
@@ -256,22 +257,22 @@ export default function Home() {
 
   // Keep tab click logic
   function handleTabClick(index: number): void {
-     // ... (keep existing logic, ensure it uses filteredTabs)
-      if (activeTab !== index && index < filteredTabs.length) { // Add bounds check
-        const tabName = filteredTabs[index].label.toLowerCase();
-        // ... rest of the logic
-         setActiveTab(index);
-         setSelectedTab(tabName);
-         // ... update URL logic
-         const params = new URLSearchParams(searchParams.toString());
-         params.set('tab', tabName);
-         if (tabName !== 'issues') {
-            params.delete('issueId');
-         }
-         const pathname = window.location.pathname;
-         const newUrl = `${pathname}?${params.toString()}`;
-         window.history.pushState({}, '', newUrl);
-     }
+    // ... (keep existing logic, ensure it uses filteredTabs)
+    if (activeTab !== index && index < filteredTabs.length) { // Add bounds check
+      const tabName = filteredTabs[index].label.toLowerCase();
+      // ... rest of the logic
+      setActiveTab(index);
+      setSelectedTab(tabName);
+      // ... update URL logic
+      const params = new URLSearchParams(searchParams.toString());
+      params.set('tab', tabName);
+      if (tabName !== 'issues') {
+        params.delete('issueId');
+      }
+      const pathname = window.location.pathname;
+      const newUrl = `${pathname}?${params.toString()}`;
+      window.history.pushState({}, '', newUrl);
+    }
   }
 
   // Keep useEffect for initial active tab setting
@@ -321,17 +322,17 @@ export default function Home() {
   // Keep useEffect for indicator style
   useEffect(() => {
     // ... (keep existing logic, ensure it uses filteredTabs)
-     if (!tabRefs.current || tabRefs.current.length === 0) return;
-     const currentTab = activeTab !== null ? activeTab : initialTabIndex;
-     if (currentTab >= 0 && currentTab < filteredTabs.length && tabRefs.current[currentTab]) {
-       const tabElement = tabRefs.current[currentTab];
-       if (tabElement) { 
-         setIndicatorStyle({
-           top: `${tabElement.offsetTop}px`,
-           height: `${tabElement.offsetHeight}px`,
-         });
-       }
-     }
+    if (!tabRefs.current || tabRefs.current.length === 0) return;
+    const currentTab = activeTab !== null ? activeTab : initialTabIndex;
+    if (currentTab >= 0 && currentTab < filteredTabs.length && tabRefs.current[currentTab]) {
+      const tabElement = tabRefs.current[currentTab];
+      if (tabElement) {
+        setIndicatorStyle({
+          top: `${tabElement.offsetTop}px`,
+          height: `${tabElement.offsetHeight}px`,
+        });
+      }
+    }
   }, [activeTab, filteredTabs.length, initialTabIndex]);
 
   // Keep useEffect for fetching user attributes
@@ -356,7 +357,7 @@ export default function Home() {
       const restOperation = get({
         apiName: 'S3_API',
         // Use the passed ID
-        path: `/s3/${idToFetch}/get-file-keys`, 
+        path: `/s3/${idToFetch}/get-file-keys`,
       });
 
       const { body } = await restOperation.response;
@@ -438,7 +439,7 @@ export default function Home() {
         const restOperation = post({
           apiName: 'S3_API',
           // Use contextDataroomId
-          path: `/share-folder/${contextDataroomId}/invite-user`, 
+          path: `/share-folder/${contextDataroomId}/invite-user`,
           options: {
             headers: {
               'Content-Type': 'application/json'
@@ -473,7 +474,6 @@ export default function Home() {
 
   // Keep renderSelectedScreen logic (use permissionDetails from context)
   const renderSelectedScreen = () => {
-    // Use permissionDetails from context for checks
     if (activeIssueId && selectedTab.toLowerCase() === 'issues') {
       if (permissionDetails && permissionDetails.canAccessIssuesPanel === false) {
         return (
@@ -494,12 +494,10 @@ export default function Home() {
     }
     switch (selectedTab.toLowerCase()) {
       case "library":
-        // Pass context permissionDetails down
         return <Files setSelectedTab={setSelectedTab} permissionDetails={permissionDetails} />;
       case "form":
         return <ExcelViewer />;
       case "users":
-        // Check if user has permission to access user management panel
         if (permissionDetails && permissionDetails.canAccessUserManagementPanel === false) {
           return (
             <div className="grid h-screen place-items-center">
@@ -509,7 +507,6 @@ export default function Home() {
             </div>
           );
         }
-        // Also check if user has permission to view users
         if (permissionDetails && permissionDetails.canViewUsers === false) {
           return (
             <div className="grid h-screen place-items-center">
@@ -521,7 +518,6 @@ export default function Home() {
         }
         return <UserManagement dataroomId={contextDataroomId || ''} />;
       case "activity":
-        // Check if user has permission to access audit logs panel
         if (permissionDetails && permissionDetails.canAccessAuditLogsPanel === false) {
           return (
             <div className="grid h-screen place-items-center">
@@ -531,7 +527,6 @@ export default function Home() {
             </div>
           );
         }
-        // Also check if user has permission to view audit logs
         if (permissionDetails && permissionDetails.canViewAuditLogs === false) {
           return (
             <div className="grid h-screen place-items-center">
@@ -542,12 +537,7 @@ export default function Home() {
           );
         }
         return <AuditLogViewer bucketId={contextDataroomId || ''} permissionDetails={permissionDetails} />;
-      // case "extract":
-      //   return <TableViewer />;
-      // case "deep research":
-      //   return <DeepResearchViewer />;
       case "diligence":
-        // Check if user has permission to access diligence dashboard
         if (permissionDetails && permissionDetails.canAccessDiligenceDashboard === false) {
           return (
             <div className="grid h-screen place-items-center">
@@ -559,7 +549,6 @@ export default function Home() {
         }
         return <DiligenceDashboardViewer />;
       case "issues":
-        // Check if user has permission to access issues panel
         if (permissionDetails && permissionDetails.canAccessIssuesPanel === false) {
           return (
             <div className="grid h-screen place-items-center">
@@ -571,7 +560,6 @@ export default function Home() {
         }
         return <Issues key={`issues-list-${forceRender}-${issuesActiveTab}`} />;
       case "q&a":
-        // Check if user has permission to access questionnaire panel
         if (permissionDetails && permissionDetails.canAccessQuestionairePanel === false) {
           return (
             <div className="grid h-screen place-items-center">
@@ -583,7 +571,6 @@ export default function Home() {
         }
         return <QATable />;
       default:
-        // Pass context permissionDetails down
         return <Files setSelectedTab={setSelectedTab} permissionDetails={permissionDetails} />;
     }
   };
@@ -600,82 +587,103 @@ export default function Home() {
   // Return the main JSX structure
   return (
     <div className="relative h-screen w-full flex flex-row sans-serif">
-       {/* Sidebar */}
+      {/* Sidebar */}
       <div className="w-20 bg-slate-900 h-full flex flex-col items-center justify-between pt-4 pb-6">
-          {/* Add the logo back here */}
-          <div className="flex items-center flex-col">
-              <img
-                src={logo.src}
-                alt="logo"
-                className="h-14 w-auto mb-8 cursor-pointer"
-                onClick={() => router.push('/dashboard')}
+        {/* Add the logo back here */}
+        <div className="flex items-center flex-col">
+          <img
+            src={logo.src}
+            alt="logo"
+            className="h-14 w-auto mb-8 cursor-pointer"
+            onClick={() => router.push('/dashboard')}
+          />
+          {/* Tab Icons */}
+          <div className="relative flex flex-col items-center">
+            {activeTab !== null && activeTab < filteredTabs.length && ( // Add bounds check
+              <div
+                className={`absolute left-0 w-full bg-blue-300 rounded-xl ${shouldAnimate ? 'transition-all duration-300 ease-in-out' : 'transition-none'} z-20`}
+                style={{
+                  top: `${tabRefs.current[activeTab]?.offsetTop || 0}px`,
+                  height: `${tabRefs.current[activeTab]?.offsetHeight || 0}px`
+                }}
               />
-               {/* Tab Icons */}
-               <div className="relative flex flex-col items-center">
-                 {activeTab !== null && activeTab < filteredTabs.length && ( // Add bounds check
-                   <div
-                     className={`absolute left-0 w-full bg-blue-300 rounded-xl ${shouldAnimate ? 'transition-all duration-300 ease-in-out' : 'transition-none'} z-20`}
-                     style={{
-                       top: `${tabRefs.current[activeTab]?.offsetTop || 0}px`,
-                       height: `${tabRefs.current[activeTab]?.offsetHeight || 0}px`
-                     }}
-                   />
-                 )}
-                 {filteredTabs.map((tab, index) => (
-                   <div
-                     key={tab.label}
-                     ref={(el) => { tabRefs.current[index] = el }}
-                     className={`relative z-30 p-2 mb-4 cursor-pointer ${activeTab === index ? 'text-slate-900' : 'text-white'}`}
-                     onClick={() => handleTabClick(index)}
-                   >
-                     <tab.icon size={24} />
-                   </div>
-                 ))}
-               </div>
-           </div>
-           {/* Share Button - use context permissionDetails */}
-           <Dialog open={isShareDialogOpen} onOpenChange={(open) => {
-             setIsShareDialogOpen(open);
-             if (!open) {
-               setShareError(null);
-             }
-           }}>
-              <DialogContent className="dark:bg-darkbg outline-none border-none">
-                <DialogHeader>
-                  <DialogTitle className='dark:text-white'>Share Dataroom</DialogTitle>
-                </DialogHeader>
-                <div className="space-y-4 py-4">
-                  <Input
-                    value={userEmail}
-                    onChange={(e) => setUserEmail(e.target.value)}
-                    placeholder="Enter user email"
-                    type="email"
-                    className='outline-none select-none dark:bg-darkbg dark:text-white'
-                  />
-                  <select
-                    value={permissionLevel}
-                    onChange={(e) => setPermissionLevel(e.target.value)}
-                    className="w-full p-2 border rounded"
-                  >
-                    <option value="READ">Read</option>
-                    <option value="WRITE">Write</option>
-                    <option value="ADMIN">Admin</option>
-                  </select>
-                  {shareError && (
-                    <div className="text-red-500 text-sm mt-2">
-                      {shareError}
-                    </div>
-                  )}
+            )}
+            {filteredTabs.map((tab, index) => (
+              <div
+                key={tab.label}
+                ref={(el) => { tabRefs.current[index] = el }}
+                className={`relative z-30 p-2 mb-4 cursor-pointer ${activeTab === index ? 'text-slate-900' : 'text-white'}`}
+                onClick={() => handleTabClick(index)}
+              >
+                <tab.icon size={24} />
+              </div>
+            ))}
+          </div>
+        </div>
+        {/* Share Button - use context permissionDetails */}
+        <Dialog open={isShareDialogOpen} onOpenChange={(open) => {
+          setIsShareDialogOpen(open);
+          if (!open) {
+            setShareError(null);
+          }
+        }}>
+          <DialogContent className="dark:bg-darkbg outline-none border-none">
+            <DialogHeader>
+              <DialogTitle className='dark:text-white'>Share Dataroom</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <Input
+                value={userEmail}
+                onChange={(e) => setUserEmail(e.target.value)}
+                placeholder="Enter user email"
+                type="email"
+                className='outline-none select-none dark:bg-darkbg dark:text-white'
+              />
+              <select
+                value={permissionLevel}
+                onChange={(e) => setPermissionLevel(e.target.value)}
+                className="w-full p-2 border rounded"
+              >
+                <option value="READ">Read</option>
+                <option value="WRITE">Write</option>
+                <option value="ADMIN">Admin</option>
+              </select>
+              {shareError && (
+                <div className="text-red-500 text-sm mt-2">
+                  {shareError}
                 </div>
-                <DialogFooter>
-                  <Button
-                    variant="outline"
-                    onClick={() => setIsShareDialogOpen(false)}
-                    disabled={isSharing}
-                    className="dark:bg-transparent dark:text-white dark:hover:bg-slate-800"
-                  >
-                    Cancel
-                  </Button>
+              )}
+            </div>
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => setIsShareDialogOpen(false)}
+                disabled={isSharing}
+                className="dark:bg-transparent dark:text-white dark:hover:bg-slate-800"
+              >
+                Cancel
+              </Button>
+              <div>
+                {!permissionDetails?.canInviteUsers?.includes('*') ? (
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <div>
+                          <Button
+                            disabled
+                            className="bg-blue-600 hover:bg-blue-700 text-white"
+                          >
+                            Share
+                          </Button>
+                        </div>
+
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        Adding users is disabled
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                ) : (
                   <Button
                     onClick={handleShareDataroom}
                     disabled={!userEmail.trim() || isSharing}
@@ -693,42 +701,44 @@ export default function Home() {
                       'Share'
                     )}
                   </Button>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
-           <div className="flex items-center flex-col gap-3">
-               {permissionDetails && 
-                (Array.isArray(permissionDetails.canInviteUsers) && 
-                 permissionDetails.canInviteUsers.length > 0) && (
-                 <Button onClick={() => setIsShareDialogOpen(true)} className="flex justify-center items-center">
-                   <Share size={24} />
-                 </Button>
-               )}
-               <Popover>
-                  <PopoverTrigger className='bg-sky-600 h-10 aspect-square rounded-full flex items-center justify-center text-white'>
-                   {userAttributes?.given_name && userAttributes?.family_name
-                     ? (givenName[0] + familyName[0]).toUpperCase()
-                     : 'U'}
-                 </PopoverTrigger>
-                 <PopoverContent className="w-auto p-0">
-                   <button
-                     onClick={signOut}
-                     className="flex items-center space-x-2 px-4 py-2 text-red-500 hover:bg-gray-100 w-full text-sm"
-                   >
-                     <LogOut size={14} />
-                     <span>Logout</span>
-                   </button>
-                   <Separator orientation="horizontal" />
-                   <button
-                     onClick={toggleDarkMode}
-                     className="flex items-center space-x-2 px-4 py-2 text-red-500 hover:bg-gray-100 w-full text-sm gap-2"
-                   >
-                     {isDarkMode ? '🌙' : '☀️'}
-                     {isDarkMode ? <span className="text-black">Dark</span> : <span className="text-black">Light</span>}
-                   </button>
-                 </PopoverContent>
-               </Popover>
-           </div>
+                )}
+              </div>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+        <div className="flex items-center flex-col gap-3">
+          {permissionDetails &&
+            (Array.isArray(permissionDetails.canInviteUsers) &&
+              permissionDetails.canInviteUsers.length > 0) && (
+              <Button onClick={() => setIsShareDialogOpen(true)} className="flex justify-center items-center">
+                <Share size={24} />
+              </Button>
+            )}
+          <Popover>
+            <PopoverTrigger className='bg-sky-600 h-10 aspect-square rounded-full flex items-center justify-center text-white'>
+              {userAttributes?.given_name && userAttributes?.family_name
+                ? (givenName[0] + familyName[0]).toUpperCase()
+                : 'U'}
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0">
+              <button
+                onClick={signOut}
+                className="flex items-center space-x-2 px-4 py-2 text-red-500 hover:bg-gray-100 w-full text-sm"
+              >
+                <LogOut size={14} />
+                <span>Logout</span>
+              </button>
+              <Separator orientation="horizontal" />
+              <button
+                onClick={toggleDarkMode}
+                className="flex items-center space-x-2 px-4 py-2 text-red-500 hover:bg-gray-100 w-full text-sm gap-2"
+              >
+                {isDarkMode ? '🌙' : '☀️'}
+                {isDarkMode ? <span className="text-black">Dark</span> : <span className="text-black">Light</span>}
+              </button>
+            </PopoverContent>
+          </Popover>
+        </div>
       </div>
       {/* Main Content Area */}
       <div className="flex-1 overflow-hidden flex h-full dark:bg-darkbg">

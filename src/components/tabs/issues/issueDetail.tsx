@@ -10,7 +10,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { useToast } from '@/components/ui/use-toast'
 import { useParams, useRouter } from 'next/navigation'
 import { useFileStore } from '@/components/services/HotkeyService'
-
+import { usePermissionsStore } from '@/stores/permissionsStore'
 import {
     Dialog,
     DialogContent,
@@ -19,6 +19,12 @@ import {
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Link } from "lucide-react"
+import {
+    Tooltip,
+    TooltipContent,
+    TooltipProvider,
+    TooltipTrigger,
+} from "@/components/ui/tooltip"
 
 
 interface Comment {
@@ -58,6 +64,7 @@ export const IssueDetail: React.FC<IssueDetailProps> = ({ issueId, onBack }) => 
     const [referenceHoverData, setReferenceHoverData] = useState<any>(null)
     const [referenceHoverPosition, setReferenceHoverPosition] = useState({ top: 0, left: 0 })
     const [issueNumberToIdMap, setIssueNumberToIdMap] = useState<Record<string, string>>({})
+    const { permissionDetails } = usePermissionsStore()
 
     // Access the global issue tab state for filter consistency
     const { issuesActiveTab } = useFileStore()
@@ -557,13 +564,34 @@ const loadAvailableIssues = useCallback(async () => {
                                 </span>
                             </div>
                             <div className="mt-3 flex justify-end">
-                                <Button
-                                    className="bg-blue-500 hover:bg-blue-800"
-                                    onClick={handleSubmitAnswer}
-                                    disabled={isSubmitting || !answerContent.trim()}
-                                >
-                                    {isSubmitting ? 'Submitting...' : 'Comment'}
-                                </Button>
+                                {!permissionDetails?.canAnswerIssue ? (
+                                    <TooltipProvider>
+                                        <Tooltip>
+                                            <TooltipTrigger asChild>
+                                                <div>
+                                                    <Button
+                                                        className="bg-blue-500 hover:bg-blue-800"
+                                                        onClick={handleSubmitAnswer}
+                                                        disabled
+                                                    >
+                                                        Comment
+                                                    </Button>
+                                                </div>
+                                            </TooltipTrigger>
+                                            <TooltipContent>
+                                                Adding comments is disabled
+                                            </TooltipContent>
+                                        </Tooltip>
+                                    </TooltipProvider>
+                                ) : (
+                                    <Button
+                                        className="bg-blue-500 hover:bg-blue-800"
+                                        onClick={handleSubmitAnswer}
+                                        disabled={isSubmitting || !answerContent.trim()}
+                                    >
+                                        {isSubmitting ? 'Submitting...' : 'Comment'}
+                                    </Button>
+                                )}
                             </div>
 
                             {isHoveringReference && referenceHoverData && (

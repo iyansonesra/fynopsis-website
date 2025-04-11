@@ -27,6 +27,7 @@ import {
 } from "@tanstack/react-table";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
+import { usePermissionsStore } from "@/stores/permissionsStore";
 
 type QAItem = {
   id: string;
@@ -58,6 +59,7 @@ export default function QATable() {
   const [isSidePanelOpen, setIsSidePanelOpen] = useState(false);
   const tagInputRef = useRef<HTMLInputElement>(null);
   const tagDropdownRef = useRef<HTMLDivElement>(null);
+  const { permissionDetails } = usePermissionsStore();
 
   // Get all unique tags from qaItems
   const allTags = useMemo(() => {
@@ -410,9 +412,26 @@ export default function QATable() {
               </PopoverContent>
             </Popover>
           </div>
-          <Button onClick={() => setIsAddDialogOpen(true)}>
-            <Plus className="mr-2 h-4 w-4" /> Add Q&A
-          </Button>
+          <TooltipProvider>
+            {!permissionDetails?.canAddQuestionaire ? (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div>
+                    <Button onClick={() => setIsAddDialogOpen(true)} disabled>
+                      <Plus className="mr-2 h-4 w-4" /> Add Q&A
+                    </Button>
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent>
+                  Adding questions is disabled
+                </TooltipContent>
+              </Tooltip>
+            ) : (
+              <Button onClick={() => setIsAddDialogOpen(true)}>
+                <Plus className="mr-2 h-4 w-4" /> Add Q&A
+              </Button>
+            )}
+          </TooltipProvider>
         </div>
       </div>
 
