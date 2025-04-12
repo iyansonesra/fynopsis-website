@@ -32,7 +32,7 @@ import {
   Role 
 } from './CollaboratorsTypes';
 import { DEFAULT_ROLES } from './CollaboratorsTypes';
-import { FolderPermissionTree, ItemPermissionsPanel } from './PermissionFolderTree';
+// import { FolderPermissionTree, ItemPermissionsPanel } from './PermissionFolderTree';
 import { usePermissionsStore } from '@/stores/permissionsStore'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 
@@ -309,6 +309,10 @@ const UserManagement: React.FC<UserManagementProps> = ({ dataroomId }) => {
       }
     };
     folderStructure.forEach((item: FileTreeItemType) => processItem(item));
+    console.log('folderStructure', folderStructure);
+    console.log('itemMap', itemMap);
+    console.log('childMap', childMap);
+    console.log('pMap', pMap);
 
     setDialogItemsMap(itemMap);
     setDialogChildrenMap(childMap);

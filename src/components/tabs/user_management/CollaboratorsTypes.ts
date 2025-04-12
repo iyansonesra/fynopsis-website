@@ -61,12 +61,31 @@ export interface FilePermission {
   editAccess?: boolean;
 }
 
+export type FolderPermission = {
+  allowUploads: boolean;
+  createFolders: boolean;
+  addComments: boolean;
+  viewComments: boolean;
+  viewContents: boolean;
+  viewTags: boolean;
+  addTags: boolean;
+  canQuery: boolean;
+  isVisible: boolean;
+  moveContents: boolean;
+  renameContents: boolean;
+  deleteContents: boolean;
+  inheritFileAccess?: FilePermission;
+  inheritFolderAccess?: Omit<FolderPermission, 'inheritFileAccess' | 'inheritFolderAccess'>;
+  };
+  
+
 export interface FileTreeItem {
   id: string;
   name: string;
   type: 'file' | 'folder';
   parentId?: string;
   children?: FileTreeItem[];
+  isFolder?: boolean;
 }
 
 export interface TransferOwnershipDialog {

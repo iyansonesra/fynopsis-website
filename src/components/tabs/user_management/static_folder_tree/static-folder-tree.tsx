@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect } from 'react';
 import { Clock, Star } from 'lucide-react';
 import { FileItem, Folder, useFileStore } from '@/components/services/HotkeyService';
 import { useRouter, usePathname } from 'next/navigation';
@@ -9,11 +9,14 @@ import { useTabStore } from '@/components/tabStore';
 import { get } from 'aws-amplify/api';
 import PDFViewer from '@/components/tabs/library/table/PDFViewer';
 import { useFolderTreeStore } from '@/components/services/treeStateStore';
+import { useFolderStructureStore, DEFAULT_FOLDER_PERMISSIONS, DEFAULT_FILE_PERMISSIONS, FolderPermissions, FilePermissions } from '@/components/services/folderStructureStore';
 import { Checkbox } from '@/components/ui/checkbox';
 import { FaFolder, FaFile } from 'react-icons/fa';
+import { handleCheckboxSelect } from '../utils/folderTreeUtils';
 
 interface FolderTreeProps {
     onNodeSelect?: (node: Node) => void;
+    deviators?: string[]; // Add deviators prop
 }
 
 export type Node = {
@@ -38,6 +41,7 @@ export type Node = {
     uploadedBy?: string;
     uploadedByEmail?: string;
     isCustomized?: boolean; // Add isCustomized property
+    permissions?: FolderPermissions | FilePermissions;
 };
 
 type MoveResponse = {
@@ -62,28 +66,47 @@ type MoveResponse = {
 // Function to build folder structure from folders and files
 const buildFolderStructure = (folders: Folder[], files: FileItem[]): Node[] => {
     const root: Record<string, Node> = {};
+    const { setFolderPermissions, setFilePermissions } = useFolderStructureStore.getState();
+    const folderPermissionsMap = new Map<string, FolderPermissions>();
+    const filePermissionsMap = new Map<string, FilePermissions>();
 
     // First, build the folder structure
     folders.forEach((folder) => {
+        console.log('FOLDEEEERRR:', folder);
         const pathParts = folder.fullPath.split('/').filter(part => part !== 'Root' && part !== '');
         let currentLevel = root;
-        let parentId = 'ROOT'; // Start with ROOT as parent
+        let parentId = 'ROOT';
+        console.log('PATH PARTS:', pathParts);
+        
+        const folderIdMap = new Map();
+        folders.forEach(f => {
+            const fPath = f.fullPath.split('/').filter(part => part !== 'Root' && part !== '').join('/');
+            folderIdMap.set(fPath, f.id);
+        });
 
         pathParts.forEach((part, index) => {
+            const currentPath = pathParts.slice(0, index + 1).join('/');
+            const folderId = folderIdMap.get(currentPath);
+
             if (!currentLevel[part]) {
                 currentLevel[part] = {
                     name: part,
                     nodes: [],
-                    id: index === pathParts.length - 1 ? folder.id : undefined,
-                    path: pathParts.slice(0, index + 1).join('/'),
+                    id: folderId,
+                    path: currentPath,
                     isFolder: true,
-                    parentFolderId: parentId,
-                    show: true // Default visibility to true
+                    parentFolderId: parentId
                 };
+                if (folderId) {
+                    folderPermissionsMap.set(folderId, { ...DEFAULT_FOLDER_PERMISSIONS });
+                }
+            } else if (folderId) {
+                currentLevel[part].id = folderId;
+                folderPermissionsMap.set(folderId, { ...DEFAULT_FOLDER_PERMISSIONS });
             }
 
             if (index < pathParts.length - 1) {
-                parentId = currentLevel[part].id || parentId; // Update parent ID for next level
+                parentId = currentLevel[part].id || parentId;
                 currentLevel = currentLevel[part].nodes as unknown as Record<string, Node>;
             }
         });
@@ -91,7 +114,6 @@ const buildFolderStructure = (folders: Folder[], files: FileItem[]): Node[] => {
 
     // Then, add files to their parent folders
     files.forEach((file) => {
-        // Skip files with empty names
         if (!file.fileName || file.fileName.trim() === '') {
             return;
         }
@@ -100,25 +122,21 @@ const buildFolderStructure = (folders: Folder[], files: FileItem[]): Node[] => {
         let currentLevel = root;
         let parentId = 'ROOT';
 
-        // Navigate to the parent folder
         for (let i = 0; i < pathParts.length - 1; i++) {
             const part = pathParts[i];
             if (!currentLevel[part]) {
-                // Create parent folder if it doesn't exist
                 currentLevel[part] = {
                     name: part,
                     nodes: [],
                     path: pathParts.slice(0, i + 1).join('/'),
                     isFolder: true,
-                    parentFolderId: parentId,
-                    show: true // Default visibility to true
+                    parentFolderId: parentId
                 };
             }
             parentId = currentLevel[part].id || parentId;
             currentLevel = currentLevel[part].nodes as unknown as Record<string, Node>;
         }
 
-        // Add the file to the current level
         const fileName = pathParts[pathParts.length - 1];
         if (!currentLevel[fileName]) {
             currentLevel[fileName] = {
@@ -128,8 +146,6 @@ const buildFolderStructure = (folders: Folder[], files: FileItem[]): Node[] => {
                 path: file.fullPath,
                 isFolder: false,
                 parentFolderId: file.parentFolderId || parentId,
-                show: true, // Default visibility to true
-                // Add all file attributes
                 fileId: file.fileId,
                 fileName: file.fileName,
                 fullPath: file.fullPath,
@@ -141,8 +157,18 @@ const buildFolderStructure = (folders: Folder[], files: FileItem[]): Node[] => {
                 uploadedBy: file.uploadedBy,
                 uploadedByEmail: file.uploadedByEmail
             };
+            if (file.fileId) {
+                filePermissionsMap.set(file.fileId, { ...DEFAULT_FILE_PERMISSIONS });
+            }
         }
     });
+
+    // Update the store with the new permissions maps
+    setFolderPermissions(folderPermissionsMap);
+    setFilePermissions(filePermissionsMap);
+
+    console.log('FOLDER PERMISSIONS:', folderPermissionsMap);
+    console.log('FILE PERMISSIONS:', filePermissionsMap);
 
     // Add numbering to nodes recursively
     const addNumbering = (nodes: Node[], prefix: string): Node[] => {
@@ -191,10 +217,7 @@ const buildFolderStructure = (folders: Folder[], files: FileItem[]): Node[] => {
     }];
 };
 
-const FolderTree: React.FC<FolderTreeProps> = ({ onNodeSelect }) => {
-    const [folderStructure, setFolderStructure] = useState<Node[]>([]);
-    const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
-    const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
+const FolderTree: React.FC<FolderTreeProps> = ({ onNodeSelect, deviators = [] }) => {
     const router = useRouter();
     const pathname = usePathname() || '';
     const pathArray = pathname.split('/');
@@ -207,39 +230,15 @@ const FolderTree: React.FC<FolderTreeProps> = ({ onNodeSelect }) => {
     const { addTab, setActiveTabId, tabs } = useTabStore();
     const { openNode } = useFolderTreeStore();
 
-    // Function to get all node IDs (recursive)
-    const getAllNodeIds = (node: Node): string[] => {
-        const ids: string[] = [];
-        // Use node.id if available, otherwise generate a consistent ID
-        const nodeId = node.id || (node.path ? `${node.path}/${node.name}` : node.name);
-        ids.push(nodeId);
-        
-        if (node.nodes) {
-            node.nodes.forEach(child => {
-                ids.push(...getAllNodeIds(child));
-            });
-        }
-        return ids;
-    };
-
-    // Function to get parent IDs (recursive)
-    const getParentIds = (node: Node, targetId: string): string[] => {
-        if (!node.nodes) return [];
-        
-        const nodeId = node.id || (node.path ? `${node.path}/${node.name}` : node.name);
-        
-        for (const child of node.nodes) {
-            const childId = child.id || (child.path ? `${child.path}/${child.name}` : child.name);
-            if (childId === targetId) {
-                return nodeId ? [nodeId] : [];
-            }
-            const parentIds = getParentIds(child, targetId);
-            if (parentIds.length > 0) {
-                return nodeId ? [...parentIds, nodeId] : parentIds;
-            }
-        }
-        return [];
-    };
+    // Use the folder structure store
+    const {
+        folderStructure,
+        setFolderStructure,
+        selectedItems,
+        setSelectedItems,
+        selectedNodeId,
+        setSelectedNodeId
+    } = useFolderStructureStore();
 
     useEffect(() => {
         openNode('ROOT');
@@ -268,113 +267,19 @@ const FolderTree: React.FC<FolderTreeProps> = ({ onNodeSelect }) => {
         // Initialize selectedItems with all visible node IDs
         const visibleNodeIds = folderTree.flatMap(node => getVisibleNodeIds(node));
         setSelectedItems(new Set(visibleNodeIds));
-    }, [openNode, searchableFiles, searchableFolders]);
+    }, [openNode, searchableFiles, searchableFolders, setFolderStructure, setSelectedItems]);
 
     // Function to handle checkbox selection (with children and parents)
-    const handleCheckboxSelect = (node: Node, isSelected: boolean) => {
-        console.log("Checkbox selected:", node.name, isSelected);
-        const newSelectedItems = new Set(selectedItems);
-        const childIds = getAllNodeIds(node);
-        const nodeId = node.id || (node.path ? `${node.path}/${node.name}` : node.name);
-        
-        // Update the selected node ID to highlight this item
-        setSelectedNodeId(nodeId);
-        
-        // First, update the current node's visibility in memory
-        node.show = isSelected;
-
-        // Update the node and its children in selectedItems set
-        if (isSelected) {
-            // Add the node and its children
-            childIds.forEach(id => newSelectedItems.add(id));
-            
-            // Check and add parents if needed
-            const parentIds = getParentIds(folderStructure[0], nodeId);
-            parentIds.forEach(parentId => {
-                if (!newSelectedItems.has(parentId)) {
-                    newSelectedItems.add(parentId);
-                }
-            });
-
-            // Update parent nodes' visibility
-            parentIds.forEach(parentId => {
-                const findNode = (searchNode: Node, targetId: string): Node | null => {
-                    const searchNodeId = searchNode.id || (searchNode.path ? `${searchNode.path}/${searchNode.name}` : searchNode.name);
-                    if (searchNodeId === targetId) return searchNode;
-                    if (!searchNode.nodes) return null;
-                    for (const child of searchNode.nodes) {
-                        const found = findNode(child, targetId);
-                        if (found) return found;
-                    }
-                    return null;
-                };
-
-                const parentNode = findNode(folderStructure[0], parentId);
-                if (parentNode) {
-                    // Update parent visibility in memory
-                    parentNode.show = true;
-                    
-                    // Update parent visibility in item permissions
-                    const updatedParent = {
-                        ...parentNode,
-                        show: true
-                    };
-                    onNodeSelect?.(updatedParent);
-                }
-            });
-        } else {
-            // Remove the node and its children
-            childIds.forEach(id => newSelectedItems.delete(id));
-        }
-        
-        setSelectedItems(newSelectedItems);
-
-        // Create a mapping of all affected nodes for efficient updates
-        const updateNodeAndChildren = (currentNode: Node, visibility: boolean) => {
-            // First, update the node in memory
-            currentNode.show = visibility;
-            
-            // Then, notify the permissions panel
-            if (onNodeSelect && currentNode.id) {
-                onNodeSelect({
-                    ...currentNode,
-                    show: visibility
-                });
-            }
-            
-            // If it's a folder, only update direct file children, not subfolder children
-            if (currentNode.nodes) {
-                currentNode.nodes.forEach(child => {
-                    // Only update the child if it's a file, not a folder
-                    if (!child.isFolder && !child.nodes) {
-                        // Update files only
-                        child.show = visibility;
-                        
-                        // Notify permissions panel about the file
-                        if (onNodeSelect && child.id) {
-                            onNodeSelect({
-                                ...child,
-                                show: visibility
-                            });
-                        }
-                    } else if (child.isFolder === true) {
-                        // For folder children, just update the visibilityMap entry but don't recursively update their children
-                        child.show = visibility;
-                        
-                        // Notify permissions panel about the subfolder
-                        if (onNodeSelect && child.id) {
-                            onNodeSelect({
-                                ...child,
-                                show: visibility
-                            });
-                        }
-                    }
-                });
-            }
-        };
-        
-        // Apply the visibility change to the node and all its children
-        updateNodeAndChildren(node, isSelected);
+    const handleCheckboxSelectWrapper = (node: Node, isSelected: boolean) => {
+        const newSelectedItems = handleCheckboxSelect(
+            node,
+            isSelected,
+            selectedItems,
+            setSelectedItems,
+            setSelectedNodeId,
+            folderStructure,
+            onNodeSelect
+        );
         
         // Update the folder structure to trigger re-render with new visibility
         setFolderStructure([...folderStructure]);
@@ -490,11 +395,12 @@ const FolderTree: React.FC<FolderTreeProps> = ({ onNodeSelect }) => {
                             node={node}
                             key={node.id}
                             onSelect={handleNodeClick}
-                            onCheckboxSelect={handleCheckboxSelect}
+                            onCheckboxSelect={handleCheckboxSelectWrapper}
                             isCheckboxSelected={isNodeCheckboxSelected(node)}
                             isNodeSelected={node.id === selectedNodeId}
                             selectedItems={selectedItems}
                             selectedNodeId={selectedNodeId}
+                            deviators={deviators}
                         />
                     ))}
                 </ul>

@@ -51,6 +51,7 @@ interface FilesystemItemProps {
     isNodeSelected?: boolean
     selectedItems?: Set<string>
     selectedNodeId?: string | null
+    deviators?: string[]
 }
 
 export function FilesystemItem({
@@ -61,7 +62,8 @@ export function FilesystemItem({
     isCheckboxSelected = false,
     isNodeSelected = false,
     selectedItems = new Set(),
-    selectedNodeId = null
+    selectedNodeId = null,
+    deviators = []
 }: FilesystemItemProps) {
     const { isNodeOpen, toggleNode } = useFolderTreeStore();
     const pathname = usePathname();
@@ -83,6 +85,10 @@ export function FilesystemItem({
 
     // Check if this item has custom permissions
     const hasCustomPermissions = node.isCustomized === true;
+
+    // Check if this node is a deviator
+
+    const isDeviator = node.id ? deviators.includes(node.id) : false;
 
     const handleMouseEnter = () => {
         // No need to implement handleMouseEnter as it's not used in the new ChildrenList component
@@ -313,6 +319,7 @@ export function FilesystemItem({
                     isNodeSelected={childNodeId === selectedNodeId}
                     selectedItems={selectedItems}
                     selectedNodeId={selectedNodeId}
+                    deviators={deviators}
                 />
             );
         });
@@ -343,7 +350,7 @@ export function FilesystemItem({
         }
         
         return null;
-    }, [node.nodes, isOpen, animated, onSelect, shouldAnimate, onCheckboxSelect, selectedItems, selectedNodeId]);
+    }, [node.nodes, isOpen, animated, onSelect, shouldAnimate, onCheckboxSelect, selectedItems, selectedNodeId, deviators]);
 
     return (
         <ContextMenu>
@@ -353,7 +360,7 @@ export function FilesystemItem({
                     onContextMenu={handleContextMenu}
                 >
                     <div
-                        className={`flex items-center py-0.5 px-1 rounded-md text-sm font-medium justify-between 
+                        className={`flex items-center py-2 px-1 rounded-md text-sm font-medium justify-between 
                             ${isNodeSelected ? "bg-blue-100" : "hover:bg-gray-100"}
                             ${!isCheckboxSelected ? "text-gray-400 opacity-60" : "text-gray-900"}
                         `}
@@ -362,6 +369,9 @@ export function FilesystemItem({
                         onClick={handleItemClick}
                     >
                         <div className="flex items-center flex-grow min-w-0 relative">
+                            {isDeviator && (
+                                <div className="absolute w-2 h-2 rounded-full bg-yellow-400 left-0 top-1/2 transform -translate-y-1/2 -translate-x-3"></div>
+                            )}
                             {hasCustomPermissions && !node.isFolder && (
                                 <div className="absolute w-2 h-2 rounded-full bg-yellow-400 left-0 top-1/2 transform -translate-y-1/2 -translate-x-3"></div>
                             )}
