@@ -46,7 +46,7 @@ import {
 import { ContainerScroll } from '../../../ui/container-scroll-animation';
 import { HoverCardPortal } from '@radix-ui/react-hover-card';
 import { MessageItem } from './MessageItem';
-import websocketManager from '@/lib/websocketManager';
+import streamManager from '@/lib/websocketManager';
 import { usePermissionsStore } from '@/stores/permissionsStore'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 
@@ -363,7 +363,7 @@ const DetailSection: React.FC<DetailsSectionProps> = ({
         // Create a message handler for this specific query
         const messageHandler = (data: any) => {
             try {
-                console.log("WebSocket message received:", data);
+                console.log("Stream message received:", data);
                 if (data.type === 'progress') {
                     const progressText = data.step || data.message;
                     setProgressText(progressText);
@@ -560,15 +560,27 @@ const DetailSection: React.FC<DetailsSectionProps> = ({
                 }
 
                 if (data.type === 'complete') {
+                    console.log("Stream complete, displaying message log");
                     setIsWebSocketActive(false);
                     setIsLoading(false);
                     
+                    // Log all messages that were received
+                    const messageLog = streamManager.getMessageLog();
+                    if (messageLog.length <= 1) {
+                        // Only completion message was received
+                        console.warn("Only received completion message, no content");
+                        addMessage({
+                            type: 'error',
+                            content: 'No content was received from the server. This could be due to a network issue or a problem with the request.'
+                        });
+                    }
+                    
                     // Remove this handler once complete
-                    websocketManager.removeMessageHandler(messageHandler);
+                    streamManager.removeMessageHandler(messageHandler);
                 }
                 
                 if (data.type === 'error') {
-                    console.error('WebSocket error:', data.error);
+                    console.error('Stream error:', data.error);
                     setIsWebSocketActive(false);
                     setIsLoading(false);
                     setShowRetry(true);
@@ -577,29 +589,33 @@ const DetailSection: React.FC<DetailsSectionProps> = ({
                     if (data.error) {
                         addMessage({
                             type: 'error',
-                            content: data.error
+                            content: `Error: ${data.error}\n\nPlease check the console for more details.`
                         });
                     }
                     
-                    websocketManager.removeMessageHandler(messageHandler);
+                    streamManager.removeMessageHandler(messageHandler);
                 }
             } catch (error) {
                 console.error('Error processing message:', error);
                 setIsWebSocketActive(false);
                 setIsLoading(false);
+                addMessage({
+                    type: 'error',
+                    content: `Error processing response: ${error instanceof Error ? error.message : String(error)}`
+                });
             }
         };
         
-        // Connect to WebSocket if not already connected
-        if (!websocketManager.isConnectedTo(bucketUuid)) {
-            await websocketManager.connect(bucketUuid);
+        // Connect to dataroom if not already connected
+        if (!streamManager.isConnectedTo(bucketUuid)) {
+            await streamManager.connect(bucketUuid);
         }
         
         // Add the message handler
-        websocketManager.addMessageHandler(messageHandler);
+        streamManager.addMessageHandler(messageHandler);
         
         // Send the query through the manager
-        websocketManager.sendMessage({
+        streamManager.sendMessage({
             action: 'query',
             data: {
                 thread_id: currentThreadId || undefined,
@@ -614,7 +630,7 @@ const DetailSection: React.FC<DetailsSectionProps> = ({
         
         // Return a cleanup function to remove the handler if the component unmounts
         return () => {
-            websocketManager.removeMessageHandler(messageHandler);
+            streamManager.removeMessageHandler(messageHandler);
         };
 
     } catch (err) {
@@ -624,10 +640,10 @@ const DetailSection: React.FC<DetailsSectionProps> = ({
         setIsLoading(false);
         setShowRetry(true);
         
-        // Add error message
+        // Add error message with more details
         addMessage({
             type: 'error',
-            content: 'Failed to connect to the server. Please try again.'
+            content: `Failed to connect to the server: ${err instanceof Error ? err.message : String(err)}\n\nThis could be due to a CORS issue if you're in development mode.`
         });
     }
 };

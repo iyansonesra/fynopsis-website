@@ -72,18 +72,20 @@ export interface MessageState {
 
 type MessageStateListener = (state: MessageState) => void;
 
-class WebSocketManager {
-  private ws: WebSocket | null = null;
+class StreamManager {
+  private eventSource: EventSource | null = null;
   private messageHandlers: ((message: FileUpdateMessage) => void)[] = [];
   private stateListeners: MessageStateListener[] = [];
   private reconnectAttempts = 0;
   private maxReconnectAttempts = 5;
-  private reconnectDelay = 1000;
-  private pingInterval: NodeJS.Timeout | null = null;
+  private reconnectDelay = 30000; // 30 seconds
   private currentDataroomId: string | null = null;
   private isConnecting = false;
   private connectionRefs = 0;
   private pendingMessages: any[] = [];
+  private baseUrl = process.env.NEXT_PUBLIC_SEARCH_API_URL || 'https://dev.fynopsis.ai';
+  // Add a message log for debugging
+  private messageLog: any[] = [];
   
   // State management
   private messageState: MessageState = {
@@ -95,23 +97,23 @@ class WebSocketManager {
   constructor() {
     // Check if we need to reconnect on page load
     if (typeof window !== 'undefined') {
-      const savedState = sessionStorage.getItem('websocket_state');
+      const savedState = sessionStorage.getItem('stream_state');
       if (savedState) {
         try {
           const state = JSON.parse(savedState);
           if (state.dataroomId) {
-            console.log('Attempting to reconnect to previous WebSocket session');
+            console.log('Restoring previous stream session state');
             
             // Restore message state if available
             if (state.messageState) {
               this.messageState = state.messageState;
             }
             
-            this.connect(state.dataroomId);
+            // Note: We don't automatically reconnect since SSE connections are request-based
           }
         } catch (e) {
-          console.error('Error parsing saved WebSocket state', e);
-          sessionStorage.removeItem('websocket_state');
+          console.error('Error parsing saved stream state', e);
+          sessionStorage.removeItem('stream_state');
         }
       }
     }
@@ -138,7 +140,7 @@ class WebSocketManager {
     
     // Update session storage with latest state
     if (typeof window !== 'undefined' && this.currentDataroomId) {
-      sessionStorage.setItem('websocket_state', JSON.stringify({
+      sessionStorage.setItem('stream_state', JSON.stringify({
         dataroomId: this.currentDataroomId,
         messageState: this.messageState
       }));
@@ -183,37 +185,43 @@ class WebSocketManager {
   }
 
   async connect(dataroomId: string) {
-    // Save active dataroom ID to session storage for reconnection after refresh
+    // For SSE, we don't establish a persistent connection until query
+    // We just store the dataroomId for future use
+    this.currentDataroomId = dataroomId;
+    this.connectionRefs = 1;
+    
+    // Save active dataroom ID to session storage
     if (typeof window !== 'undefined') {
-      sessionStorage.setItem('websocket_state', JSON.stringify({ 
+      sessionStorage.setItem('stream_state', JSON.stringify({ 
         dataroomId,
         messageState: this.messageState
       }));
     }
+    
+    console.log('Stream manager initialized for dataroom:', dataroomId);
+  }
 
-    // If we're already connected to this dataroom, just increment the ref count
-    if (this.currentDataroomId === dataroomId && 
-       (this.ws?.readyState === WebSocket.OPEN || 
-        this.ws?.readyState === WebSocket.CONNECTING || 
-        this.isConnecting)) {
-      this.connectionRefs++;
-      console.log(`Already connected to dataroom ${dataroomId}, ref count: ${this.connectionRefs}`);
+  // This method starts a new SSE connection for a specific query
+  async sendMessage(message: any) {
+    // Close any existing connection
+    this.disconnect();
+    
+    // Clear message log for new request
+    this.messageLog = [];
+    
+    if (!this.currentDataroomId) {
+      console.error('Cannot send message: No dataroom ID set');
+      this.messageHandlers.forEach(handler => 
+        handler({ type: 'error', error: 'No dataroom ID set' })
+      );
       return;
     }
     
-    // If we're connecting to a different dataroom, disconnect first
-    if (this.currentDataroomId && this.currentDataroomId !== dataroomId) {
-      this.disconnect();
-    }
-    
-    this.connectionRefs = 1;
-    this.currentDataroomId = dataroomId;
-    this.isConnecting = true;
-    
     try {
-      console.log('Connecting to WebSocket for dataroom:', dataroomId);
+      this.isConnecting = true;
+      console.log('Starting stream connection for query:', message);
       
-      // Get the auth session directly
+      // Get the auth session
       const session = await fetchAuthSession();
       const idToken = session.tokens?.idToken?.toString();
       
@@ -221,115 +229,207 @@ class WebSocketManager {
         throw new Error('No ID token available');
       }
       
-      // Create WebSocket URL directly
-      const wsUrl = `wss://${process.env.NEXT_PUBLIC_SEARCH_API_CODE}.execute-api.${process.env.NEXT_PUBLIC_REGION}.amazonaws.com/prod?idToken=${idToken}&dataroomId=${dataroomId}`;
+      // Prepare query parameters
+      const queryParams = {
+        collection_name: this.currentDataroomId,
+        query: message.data.query,
+        thread_id: message.data.thread_id || undefined,
+        file_keys: message.data.file_keys || [],
+        use_reasoning: message.data.use_reasoning || false,
+        use_planning: message.data.use_planning || false,
+        use_deep_search: message.data.use_deep_search || false,
+        code_execution: false,
+        web_search: false,
+        format_params: {}
+      };
       
-      // Close existing connection if open
-      if (this.ws && (this.ws.readyState === WebSocket.OPEN || this.ws.readyState === WebSocket.CONNECTING)) {
-        this.ws.close();
-      }
+      // Create a headers object with the Authorization token
+      const headers = new Headers({
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${idToken}`,
+        'Accept': 'text/event-stream'
+      });
       
-      this.ws = new WebSocket(wsUrl);
-
-      this.ws.onopen = () => {
-        console.log('WebSocket connected to dataroom:', dataroomId);
-        this.isConnecting = false;
-        this.reconnectAttempts = 0;
+      // Create the request with credentials
+      const request = new Request(`${this.baseUrl}/query/stream`, {
+        method: 'POST',
+        headers: headers,
+        body: JSON.stringify(queryParams),
+        mode: 'cors',
+        // credentials: 'include'
+      });
+      
+      console.log('Sending stream request to:', `${this.baseUrl}/query/stream`);
+      console.log('With headers:', JSON.stringify(Array.from(headers.entries())));
+      console.log('With body:', JSON.stringify(queryParams));
+      
+      // Start the fetch request but don't await it
+      fetch(request)
+        .then(response => {
+          if (!response.ok) {
+            console.error(`Stream response not OK: ${response.status} ${response.statusText}`);
+            throw new Error(`HTTP error! status: ${response.status}`);
+          }
+          
+          console.log('Stream response headers:', JSON.stringify(Array.from(response.headers.entries())));
+          console.log('Stream connected with status:', response.status);
+          
+          // Create a new ReadableStream from the response body
+          const reader = response.body?.getReader();
+          if (!reader) {
+            throw new Error('Response body reader could not be created');
+          }
+          
+          // Set up a text decoder
+          const decoder = new TextDecoder();
+          let buffer = '';
+          
+          // Function to process chunks
+          const processChunks = async () => {
+            try {
+              while (true) {
+                const { value, done } = await reader.read();
+                
+                if (done) {
+                  console.log('Stream reader done, processing remaining buffer:', buffer);
+                  // Process any remaining data in the buffer
+                  if (buffer.trim()) {
+                    this.processEventData(buffer);
+                  }
+                  
+                  // Signal completion
+                  this.messageHandlers.forEach(handler => 
+                    handler({ type: 'complete' })
+                  );
+                  
+                  // Log all messages received during this stream
+                  console.log('Complete message log:', JSON.stringify(this.messageLog));
+                  break;
+                }
+                
+                // Decode the chunk and add to buffer
+                const chunk = decoder.decode(value, { stream: true });
+                console.log('Raw chunk received:', chunk);
+                buffer += chunk;
+                
+                // Process complete events in the buffer
+                const events = buffer.split('\n\n');
+                // Keep the last (potentially incomplete) event in the buffer
+                buffer = events.pop() || '';
+                
+                console.log(`Split ${events.length} complete events from buffer, ${buffer.length} bytes remaining`);
+                
+                // Process each complete event
+                for (const event of events) {
+                  if (event.trim()) {
+                    console.log('Processing event:', event);
+                    this.processEventData(event);
+                  }
+                }
+              }
+            } catch (error) {
+              console.error('Error processing stream:', error);
+              this.messageHandlers.forEach(handler => 
+                handler({ 
+                  type: 'error', 
+                  error: `Stream processing error: ${error instanceof Error ? error.message : String(error)}` 
+                })
+              );
+            } finally {
+              this.isConnecting = false;
+            }
+          };
+          
+          // Start processing chunks
+          processChunks();
+        })
+        .catch(error => {
+          console.error('Stream request error:', error);
+          this.isConnecting = false;
+          this.messageHandlers.forEach(handler => 
+            handler({ 
+              type: 'error', 
+              error: `Stream connection error: ${error instanceof Error ? error.message : String(error)}` 
+            })
+          );
+        });
         
-        // Set up ping to keep connection alive every 50 seconds
-        this.setupPingInterval();
-        
-        // Process any pending messages
-        this.processPendingMessages();
-      };
-
-      this.ws.onmessage = (event) => {
-        try {
-          const message = JSON.parse(event.data) as FileUpdateMessage;
-          console.log('WebSocket message received:', message);
-          this.messageHandlers.forEach(handler => handler(message));
-        } catch (error) {
-          console.error('Error parsing WebSocket message:', error);
-        }
-      };
-
-      this.ws.onclose = (event) => {
-        this.isConnecting = false;
-        console.log(`WebSocket disconnected from dataroom: ${dataroomId}, code: ${event.code}, reason: ${event.reason || 'No reason provided'}`);
-        this.clearPingInterval();
-        
-        // Only attempt to reconnect for non-normal closure or if we didn't initiate the close
-        if (event.code !== 1000 && event.code !== 1001 && this.connectionRefs > 0) {
-          this.attemptReconnect();
-        }
-      };
-
-      this.ws.onerror = (error) => {
-        this.isConnecting = false;
-        console.error('WebSocket error:', error);
-      };
     } catch (error) {
       this.isConnecting = false;
-      console.error('Error connecting to WebSocket:', error);
+      console.error('Error setting up stream:', error);
+      this.messageHandlers.forEach(handler => 
+        handler({ 
+          type: 'error', 
+          error: `Error setting up stream: ${error instanceof Error ? error.message : String(error)}` 
+        })
+      );
     }
   }
-
-  // Rest of the original WebSocketManager methods...
-  private setupPingInterval() {
-    this.clearPingInterval();
-    this.pingInterval = setInterval(() => {
-      if (this.ws && this.ws.readyState === WebSocket.OPEN) {
-        try {
-          this.ws.send(JSON.stringify({ action: 'ping' }));
-          console.log('Ping sent to keep connection alive');
-        } catch (err) {
-          console.error('Error sending ping:', err);
+  
+  // Process incoming SSE data
+  private processEventData(eventData: string) {
+    // Split the event string by lines
+    const lines = eventData.split('\n');
+    let eventType = '';
+    let data = '';
+    
+    // Parse the event
+    for (const line of lines) {
+      if (line.startsWith('event:')) {
+        eventType = line.substring(6).trim();
+      } else if (line.startsWith('data:')) {
+        data = line.substring(5).trim();
+      }
+    }
+    
+    // Log the event components
+    console.log('Event type:', eventType || 'none');
+    console.log('Event data:', data || 'none');
+    
+    // If there's data, try to parse it
+    if (data) {
+      try {
+        // Try to parse as JSON first
+        const jsonData = JSON.parse(data);
+        console.log('Parsed JSON data:', jsonData);
+        
+        // Add to message log
+        this.messageLog.push({
+          timestamp: new Date().toISOString(),
+          eventType,
+          data: jsonData
+        });
+        
+        // Process based on event type if specified, otherwise process based on data.type
+        if (eventType === 'complete') {
+          this.messageHandlers.forEach(handler => handler({ type: 'complete' }));
+        } else if (jsonData && typeof jsonData === 'object') {
+          // Forward the message to all handlers
+          this.messageHandlers.forEach(handler => handler(jsonData));
         }
+      } catch (e) {
+        // If not valid JSON, treat as raw text response
+        console.log('Received non-JSON data:', data);
+        
+        // Add to message log
+        this.messageLog.push({
+          timestamp: new Date().toISOString(),
+          eventType,
+          rawData: data
+        });
+        
+        // Forward as a response type message
+        this.messageHandlers.forEach(handler => 
+          handler({ type: 'response', response: data })
+        );
       }
-    }, 50000); // 50 seconds
-  }
-
-  private clearPingInterval() {
-    if (this.pingInterval) {
-      clearInterval(this.pingInterval);
-      this.pingInterval = null;
-    }
-  }
-
-  private processPendingMessages() {
-    if (this.ws && this.ws.readyState === WebSocket.OPEN && this.pendingMessages.length > 0) {
-      console.log(`Processing ${this.pendingMessages.length} pending messages`);
-      
-      while (this.pendingMessages.length > 0) {
-        const message = this.pendingMessages.shift();
-        this.sendMessage(message);
-      }
-    }
-  }
-
-  private attemptReconnect() {
-    if (this.reconnectAttempts >= this.maxReconnectAttempts || !this.currentDataroomId) {
-      console.log('Max reconnect attempts reached, giving up');
-      return;
-    }
-
-    this.reconnectAttempts++;
-    const delay = this.reconnectDelay * Math.pow(2, this.reconnectAttempts - 1);
-    console.log(`Attempting to reconnect in ${delay}ms (attempt ${this.reconnectAttempts})`);
-
-    setTimeout(() => {
-      console.log(`Reconnecting (attempt ${this.reconnectAttempts})...`);
-      this.connect(this.currentDataroomId!);
-    }, delay);
-  }
-
-  sendMessage(message: any) {
-    if (this.ws && this.ws.readyState === WebSocket.OPEN) {
-      this.ws.send(JSON.stringify(message));
     } else {
-      console.error('Cannot send message: WebSocket not connected');
-      // Store message to send when connection is established
-      this.pendingMessages.push(message);
+      // Log empty events too
+      this.messageLog.push({
+        timestamp: new Date().toISOString(),
+        eventType: eventType || 'unknown',
+        empty: true
+      });
     }
   }
 
@@ -344,37 +444,39 @@ class WebSocketManager {
   release() {
     if (this.connectionRefs > 0) {
       this.connectionRefs--;
-      console.log(`Released WebSocket connection, ref count: ${this.connectionRefs}`);
+      console.log(`Released stream connection, ref count: ${this.connectionRefs}`);
     }
     
     // Only disconnect when no more references
     if (this.connectionRefs === 0) {
       this.disconnect();
       if (typeof window !== 'undefined') {
-        sessionStorage.removeItem('websocket_state');
+        sessionStorage.removeItem('stream_state');
       }
     }
   }
 
   disconnect() {
-    this.connectionRefs = 0;
-    this.clearPingInterval();
-    this.currentDataroomId = null;
-    
-    if (this.ws) {
-      console.log('Disconnecting WebSocket');
-      this.ws.close(1000, 'Disconnected by client');
-      this.ws = null;
+    // For SSE, we simply abort any ongoing requests
+    if (this.eventSource) {
+      console.log('Closing SSE connection');
+      this.eventSource.close();
+      this.eventSource = null;
     }
   }
 
   // Check if we're connected to a specific dataroom
   isConnectedTo(dataroomId: string): boolean {
-    return this.currentDataroomId === dataroomId && 
-           this.ws?.readyState === WebSocket.OPEN;
+    // For SSE, we're "connected" if the dataroomId matches
+    return this.currentDataroomId === dataroomId;
+  }
+
+  // Add method to get message log
+  getMessageLog() {
+    return [...this.messageLog];
   }
 }
 
 // Singleton instance
-const websocketManager = new WebSocketManager();
-export default websocketManager;
+const streamManager = new StreamManager();
+export default streamManager;
