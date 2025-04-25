@@ -46,7 +46,7 @@ import {
 import { ContainerScroll } from '../../../ui/container-scroll-animation';
 import { HoverCardPortal } from '@radix-ui/react-hover-card';
 import { MessageItem } from './MessageItem';
-import websocketManager from '@/lib/websocketManager';
+import streamManager from '@/lib/websocketManager';
 import { usePermissionsStore } from '@/stores/permissionsStore'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 
@@ -471,58 +471,42 @@ const DetailSection: React.FC<DetailsSectionProps> = ({
         
         const currentBucketUuid = window.location.pathname.split('/')[2] || '';
         
-        // Create a message queue to handle rapid messages
-        const messageQueue: any[] = [];
-        let isProcessingQueue = false;
+        // Create a message handler for this specific query
+        const messageHandler = (data: any) => {
+            try {
+                console.log("Stream message received:", data);
+                if (data.type === 'progress') {
+                    const progressText = data.step || data.message;
+                    setProgressText(progressText);
+                    setEndThinkFound(false);
 
-        const processMessageQueue = () => {
-            if (isProcessingQueue || messageQueue.length === 0) return;
-            
-            isProcessingQueue = true;
-            
-            // Batch all pending messages
-            const pendingMessages = [...messageQueue];
-            messageQueue.length = 0; // Clear the queue
-            
-            // Process all messages in a single batch
-            const batchUpdates = {
-                progressText: '',
-                messageUpdates: [] as Array<{ type: string; update: any }>,
-                searchResults: [] as Array<{ response: string; sources: any; thread_id: string }>
-            };
-            
-            pendingMessages.forEach(message => {
-                console.log("MESSAGE:", message);
-                try {
-                    if (message.type === 'progress') {
-                        console.log("PROGRESS MESSAGE:", message);
-                        const progressText = message.step || message.message;
-                        batchUpdates.progressText = progressText;
-                        setEndThinkFound(false);
-                        
-                        const currentMessages = useFileStore.getState().messages;
-                        if (currentMessages.length > 0) {
-                            const lastMessage = currentMessages[currentMessages.length - 1];
-                            if (lastMessage?.type === 'answer' && lastMessage.progressText !== progressText) {
-                                batchUpdates.messageUpdates.push({
-                                    type: 'updateLastMessage',
-                                    update: { progressText }
-                                });
-                            } else if (lastMessage?.type === 'question') {
-                                batchUpdates.messageUpdates.push({
-                                    type: 'addMessage',
-                                    update: {
-                                        type: 'answer',
-                                        content: '',
-                                        progressText
-                                    }
-                                });
+                    const currentMessages = useFileStore.getState().messages;
+
+                    // Update messages with progress
+                    if (currentMessages.length > 0) {
+                        const lastMessage = currentMessages[currentMessages.length - 1];
+                        // Only update the message if it's an answer message
+                        if (lastMessage?.type === 'answer') {
+                            // Only update if progress text has changed
+                            if (lastMessage.progressText !== progressText) {
+                                updateLastMessage({ progressText });
                             }
+                        } else if (lastMessage?.type === 'question') {
+                            addMessage({
+                                type: 'answer',
+                                content: '',
+                                progressText: progressText
+                            });
                         }
                     }
+                }
+
+                if (data.type === 'batch') {
+                    // Handle batch response
+                    const batchItems = data.items || [];
                     
-                    if (message.type === 'batch') {
-                        const batchItems = message.items || [];
+                    if (batchItems.length > 0) {
+                        // We're interested in step_start items which contain the description
                         const stepStartItem = batchItems.find((item: { type: string; }) => item.type === 'step_start');
                         
                         if (stepStartItem) {
@@ -663,89 +647,65 @@ const DetailSection: React.FC<DetailsSectionProps> = ({
                             thread_id: message.thread_id || ''
                         });
                     }
-                    
-                    if (message.type === 'complete') {
-                        setIsWebSocketActive(false);
-                        setIsLoading(false);
-                        websocketManager.removeMessageHandler(messageHandler);
-                        websocketManager.disconnect();
-                    }
-                    
-                    if (message.type === 'error') {
-                        console.error('WebSocket error:', message.error);
-                        setIsWebSocketActive(false);
-                        setIsLoading(false);
-                        setShowRetry(true);
-                        
-                        if (message.error) {
-                            batchUpdates.messageUpdates.push({
-                                type: 'addMessage',
-                                update: {
-                                    type: 'error',
-                                    content: message.error
-                                }
-                            });
-                        }
-                        
-                        websocketManager.removeMessageHandler(messageHandler);
-                    }
-                } catch (error) {
-                    console.error('Error processing message:', error);
+                }
+
+                if (data.type === 'complete') {
+                    console.log("Stream complete, displaying message log");
                     setIsWebSocketActive(false);
                     setIsLoading(false);
-                }
-            });
-            
-            // Apply all updates in a single batch
-            requestAnimationFrame(() => {
-                // Update progress text if changed
-                if (batchUpdates.progressText) {
-                    setProgressText(batchUpdates.progressText);
+                    
+                    // Log all messages that were received
+                    const messageLog = streamManager.getMessageLog();
+                    if (messageLog.length <= 1) {
+                        // Only completion message was received
+                        console.warn("Only received completion message, no content");
+                        addMessage({
+                            type: 'error',
+                            content: 'No content was received from the server. This could be due to a network issue or a problem with the request.'
+                        });
+                    }
+                    
+                    // Remove this handler once complete
+                    streamManager.removeMessageHandler(messageHandler);
                 }
                 
-                // Apply message updates
-                batchUpdates.messageUpdates.forEach(({ type, update }) => {
-                    if (type === 'updateLastMessage') {
-                        updateLastMessage(update);
-                    } else if (type === 'addMessage') {
-                        addMessage(update);
+                if (data.type === 'error') {
+                    console.error('Stream error:', data.error);
+                    setIsWebSocketActive(false);
+                    setIsLoading(false);
+                    setShowRetry(true);
+                    
+                    // Add error message if there is one
+                    if (data.error) {
+                        addMessage({
+                            type: 'error',
+                            content: `Error: ${data.error}\n\nPlease check the console for more details.`
+                        });
                     }
+                    
+                    streamManager.removeMessageHandler(messageHandler);
+                }
+            } catch (error) {
+                console.error('Error processing message:', error);
+                setIsWebSocketActive(false);
+                setIsLoading(false);
+                addMessage({
+                    type: 'error',
+                    content: `Error processing response: ${error instanceof Error ? error.message : String(error)}`
                 });
-                
-                // Process search results
-                if (batchUpdates.searchResults.length > 0) {
-                    pendingSearchResultsRef.current.push(...batchUpdates.searchResults);
-                    if (!processingRef.current) {
-                        processSearchResultBuffer();
-                    }
-                }
-                
-                // Process next batch if available
-                isProcessingQueue = false;
-                if (messageQueue.length > 0) {
-                    setTimeout(processMessageQueue, 0);
-                }
-            });
-        };
-
-        // Create a message handler for this specific query
-        const messageHandler = (data: any) => {
-            messageQueue.push(data);
-            if (!isProcessingQueue) {
-                processMessageQueue();
             }
         };
         
-        // Connect to WebSocket if not already connected
-        if (!websocketManager.isConnectedTo(currentBucketUuid)) {
-            await websocketManager.connect(currentBucketUuid);
+        // Connect to dataroom if not already connected
+        if (!streamManager.isConnectedTo(bucketUuid)) {
+            await streamManager.connect(bucketUuid);
         }
         
         // Add the message handler
-        websocketManager.addMessageHandler(messageHandler);
+        streamManager.addMessageHandler(messageHandler);
         
         // Send the query through the manager
-        const queryMessage = {
+        streamManager.sendMessage({
             action: 'query',
             data: {
                 thread_id: currentThreadId || undefined,
@@ -763,7 +723,7 @@ const DetailSection: React.FC<DetailsSectionProps> = ({
         
         // Return a cleanup function to remove the handler if the component unmounts
         return () => {
-            websocketManager.removeMessageHandler(messageHandler);
+            streamManager.removeMessageHandler(messageHandler);
         };
 
     } catch (err) {
@@ -773,12 +733,10 @@ const DetailSection: React.FC<DetailsSectionProps> = ({
         setIsLoading(false);
         setShowRetry(true);
         
-        // Add error message
-        requestAnimationFrame(() => {
-            addMessage({
-                type: 'error',
-                content: 'Failed to connect to the server. Please try again.'
-            });
+        // Add error message with more details
+        addMessage({
+            type: 'error',
+            content: `Failed to connect to the server: ${err instanceof Error ? err.message : String(err)}\n\nThis could be due to a CORS issue if you're in development mode.`
         });
     }
 };
