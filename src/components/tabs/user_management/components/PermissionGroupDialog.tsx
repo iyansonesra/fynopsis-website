@@ -12,14 +12,12 @@ import {
 import type { FilePermission, FileTreeItem as FileTreeItemType, PermissionGroup } from '../CollaboratorsTypes';
 import { FolderPermission } from '../CollaboratorsTypes';
 // import { FolderPermissionTree } from '../PermissionFolderTree';
-import { ItemPermissionsPanel } from '../PermissionFolderTree';
 import { cn } from "@/lib/utils";
 import FolderTree, { Node } from '../static_folder_tree/static-folder-tree';
 import { useFileStore } from '@/components/services/HotkeyService';
-import FileSpecificPermissionPanel from './FileSpecificPermissionPanel';
 import FileSpecificPermissionPanel2 from './FileSpeciifcPermissionPanel2';
 import { handleCheckboxSelect } from '../utils/folderTreeUtils';
-import { useFolderStructureStore } from '@/components/services/folderStructureStore';
+import { useFolderStructureStore } from '@/components/tabs/user_management/utils/folderStructureStore';
 
 interface PermissionGroupDialogProps {
   isOpen: boolean;

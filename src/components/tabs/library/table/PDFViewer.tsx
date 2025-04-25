@@ -69,19 +69,18 @@ const getFileType = (url: string): string => {
   return baseUrl.split('.').pop()?.toLowerCase() || '';
 };
 
-const getViewerUrl = (documentUrl: string): string => {
-  const fileType = getFileType(documentUrl);
+const getViewerUrl = (documentUrl: string, fileType: string): string => {
   const encodedUrl = encodeURIComponent(documentUrl);
 
   switch (fileType) {
     case 'xlsx':
     case 'xls':
     case 'csv':
+    case 'ppt':
+    case 'pptx':
       return `https://view.officeapps.live.com/op/embed.aspx?src=${encodedUrl}`;
     case 'doc':
     case 'docx':
-    case 'ppt':
-    case 'pptx':
       return `https://docs.google.com/viewer?url=${encodedUrl}&embedded=true`;
     default:
       return `https://docs.google.com/viewer?url=${encodedUrl}&embedded=true`;
@@ -102,7 +101,7 @@ const PDFViewer: React.FC<PDFViewerProps> = ({
   const [isLoading, setIsLoading] = useState(true);
 
   const fileType = getFileType(name);
-  const viewerUrl = getViewerUrl(documentUrl);
+  const viewerUrl = getViewerUrl(documentUrl, fileType);
   const isOfficeFile = ['xlsx', 'xls', 'csv'].includes(fileType);
   const isPdfFile = fileType === 'pdf';
 

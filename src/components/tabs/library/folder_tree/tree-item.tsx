@@ -4,7 +4,7 @@ import { useState, useCallback, memo, useEffect } from "react"
 import { ChevronRight, Folder, File, MoreHorizontal, Download, Pencil } from "lucide-react"
 import { AnimatePresence, motion } from "framer-motion"
 import { useFolderTreeStore } from '@/components/services/treeStateStore';
-import { FaFilePdf } from "react-icons/fa";
+import { FaFilePdf, FaFileWord, FaFileExcel, FaFilePowerpoint, FaFileImage, FaFileArchive, FaFileAudio, FaFileVideo, FaFileCode, FaFileAlt } from "react-icons/fa";
 import { get, post } from 'aws-amplify/api';
 import { usePathname } from 'next/navigation';
 import { usePermissionsStore } from '@/stores/permissionsStore';
@@ -406,7 +406,7 @@ export function FilesystemItem({
                     <Popover open={showPopover && !isRenaming}>
                         <PopoverTrigger asChild>
                             <div
-                                className={`group flex items-center gap-1.5 py-1 px-2 text-sm whitespace-nowrap rounded cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 relative select-none overflow-hidden ${
+                                className={`group flex items-center gap-1.5 py-1 px-1 text-sm whitespace-nowrap rounded cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 relative select-none overflow-hidden ${
                                     isSelected ? 'bg-blue-50 dark:bg-blue-900 border-r-2 border-blue-500' : ''
                                 }`}
                                 onClick={handleClick}
@@ -428,6 +428,24 @@ export function FilesystemItem({
                                         <div></div>
                                     ) : node.name?.toLowerCase().endsWith('.pdf') ? (
                                         <FaFilePdf className={`ml-[22px] w-4 h-4 text-red-500 flex-shrink-0`} />
+                                    ) : node.name?.toLowerCase().endsWith('.docx') || node.name?.toLowerCase().endsWith('.doc') ? (
+                                        <FaFileWord className={`ml-[22px] w-4 h-4 text-blue-600 flex-shrink-0`} />
+                                    ) : node.name?.toLowerCase().endsWith('.xlsx') || node.name?.toLowerCase().endsWith('.xls') ? (
+                                        <FaFileExcel className={`ml-[22px] w-4 h-4 text-green-600 flex-shrink-0`} />
+                                    ) : node.name?.toLowerCase().endsWith('.pptx') || node.name?.toLowerCase().endsWith('.ppt') ? (
+                                        <FaFilePowerpoint className={`ml-[22px] w-4 h-4 text-orange-600 flex-shrink-0`} />
+                                    ) : node.name?.toLowerCase().match(/\.(jpe?g|png|gif|bmp|svg|webp)$/) ? (
+                                        <FaFileImage className={`ml-[22px] w-4 h-4 text-purple-500 flex-shrink-0`} />
+                                    ) : node.name?.toLowerCase().match(/\.(zip|rar|7z|tar|gz)$/) ? (
+                                        <FaFileArchive className={`ml-[22px] w-4 h-4 text-amber-600 flex-shrink-0`} />
+                                    ) : node.name?.toLowerCase().match(/\.(mp3|wav|ogg|flac|aac)$/) ? (
+                                        <FaFileAudio className={`ml-[22px] w-4 h-4 text-blue-400 flex-shrink-0`} />
+                                    ) : node.name?.toLowerCase().match(/\.(mp4|mov|avi|mkv|wmv|flv)$/) ? (
+                                        <FaFileVideo className={`ml-[22px] w-4 h-4 text-pink-500 flex-shrink-0`} />
+                                    ) : node.name?.toLowerCase().match(/\.(html?|css|jsx?|tsx?|py|java|php|rb|c|cpp|go)$/) ? (
+                                        <FaFileCode className={`ml-[22px] w-4 h-4 text-gray-600 flex-shrink-0`} />
+                                    ) : node.name?.toLowerCase().match(/\.(txt|md|json|xml|log)$/) ? (
+                                        <FaFileAlt className={`ml-[22px] w-4 h-4 text-gray-500 flex-shrink-0`} />
                                     ) : (
                                         <File className="ml-[22px] w-4 h-4 text-gray-900 flex-shrink-0" />
                                     )}

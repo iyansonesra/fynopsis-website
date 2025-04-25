@@ -22,7 +22,7 @@ import { usePathname } from 'next/navigation';
 import {
   ChevronDown, ChevronRight, Circle, FileIcon,
   Plus, RefreshCcw, Upload, Search, Download, Pencil, Trash,
-  RotateCcw
+  RotateCcw, X
 } from 'lucide-react';
 import { 
   FaFilePdf, 
@@ -1875,6 +1875,7 @@ export function FileSystem({ onFileSelect, permissionDetails }: FileSystemProps)
   const [showDeleteConfirmation, setShowDeleteConfirmation] = useState<boolean>(false);
   const allowUploads = permissionDetails?.defaultFolderPerms.allowUploads;
   const createFolders = permissionDetails?.defaultFolderPerms.createFolders;
+  const deleteAccess = permissionDetails?.defaultFilePerms.deleteAccess;
   return (
     <div className="select-none w-full dark:bg-darkbg pt-4 h-full flex flex-col overflow-hidden">
       <style jsx>{`
@@ -1963,8 +1964,7 @@ th {
           <BreadcrumbNav />
         ), [pathArray[3]])} {/* Only re-render when the current path ID changes */}
       </div>
-      <div className="flex justify-between items-center  py-4 h-[10%] px-[36px] mb-2">
-
+      <div className="flex justify-between items-center py-1 mb-1 px-[36px] mb-0">
         <div className="buttons flex flex-row gap-2">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -2131,8 +2131,8 @@ th {
           </div>
         </div>
       </div>
-      <div className="flex flex-col flex-1 overflow-hidden">
 
+      <div className="flex flex-col flex-1 overflow-hidden">
         <ScrollArea data-drop-zone className="relative w-full flex-1">
           <ContextMenu>
             <ContextMenuTrigger className="flex flex-grow">
@@ -2290,9 +2290,69 @@ th {
 
           <ScrollBar orientation="horizontal" />
         </ScrollArea>
-
       </div>
 
+      {/* Selection Panel */}
+      {selectedItemIds.length > 1 && (
+        <div className="absolute bottom-0 left-1/2 -translate-x-1/2 flex items-center px-4 py-2 bg-blue-50 dark:bg-slate-800 border border-blue-100 dark:border-slate-700 z-10 rounded-t-lg shadow-lg mb-4 animate-slide-up">
+          <button
+            onClick={() => setSelectedItemIds([])}
+            className="mr-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors"
+          >
+            <X size={16} />
+          </button>
+          <div className="text-xs text-blue-600 dark:text-blue-400">
+            {selectedItemIds.length} items selected
+          </div>
+          <div className="flex items-center gap-2 ml-4">
+            {!deleteAccess ? (
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <div className="opacity-50 cursor-not-allowed text-xs">
+                      <button
+                        disabled
+                        className="flex items-center gap-2 px-3 py-1 text-sm text-red-600 dark:text-red-400 rounded-md hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                      >
+                        <Trash size={16} />
+                        Delete
+                      </button>
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Delete access is disabled</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            ) : (
+              <button
+                onClick={() => setShowDeleteConfirmation(true)}
+                className="flex items-center gap-2 px-3 py-1 text-sm text-red-600 dark:text-red-400 rounded-md hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+              >
+                <Trash size={16} />
+                Delete
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
+      <style jsx>{`
+        @keyframes slideUp {
+          from {
+            transform: translate(-50%, 100%);
+            opacity: 0;
+          }
+          to {
+            transform: translate(-50%, 0);
+            opacity: 1;
+          }
+        }
+
+        .animate-slide-up {
+          animation: slideUp 0.3s ease-out forwards;
+        }
+      `}</style>
 
       {showUploadOverlay && (
         <DragDropOverlay

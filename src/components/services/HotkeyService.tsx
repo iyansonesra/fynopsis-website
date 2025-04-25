@@ -170,6 +170,9 @@ interface FileStore {
   resetAccordionValues: () => void;
 }
 
+// Add localStorage keys
+const PANEL_SIZE_STORAGE_KEY = 'fynopsis-panel-sizes';
+
 export const useFileStore = create<FileStore>((set, get) => ({
   cutFiles: [],
   setCutFiles: (files) => set({ cutFiles: files }),
@@ -212,10 +215,28 @@ export const useFileStore = create<FileStore>((set, get) => ({
   setActiveIssueId: (issueId) => set({ activeIssueId: issueId }),
   issuesActiveTab: 'open',
   setIssuesActiveTab: (tab) => set({ issuesActiveTab: tab }),
-  tabSystemPanelSize: 75,
-  detailSectionPanelSize: 25,
-  setTabSystemPanelSize: (size) => set({ tabSystemPanelSize: size }),
-  setDetailSectionPanelSize: (size) => set({ detailSectionPanelSize: size }),
+  
+  // Initialize panel sizes from localStorage or use defaults
+  tabSystemPanelSize: typeof window !== 'undefined' 
+    ? Number(localStorage.getItem(`${PANEL_SIZE_STORAGE_KEY}-tabSystem`)) || 75 
+    : 75,
+  detailSectionPanelSize: typeof window !== 'undefined' 
+    ? Number(localStorage.getItem(`${PANEL_SIZE_STORAGE_KEY}-detailSection`)) || 25 
+    : 25,
+  
+  // Update panel sizes with localStorage persistence
+  setTabSystemPanelSize: (size) => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem(`${PANEL_SIZE_STORAGE_KEY}-tabSystem`, size.toString());
+    }
+    set({ tabSystemPanelSize: size });
+  },
+  setDetailSectionPanelSize: (size) => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem(`${PANEL_SIZE_STORAGE_KEY}-detailSection`, size.toString());
+    }
+    set({ detailSectionPanelSize: size });
+  },
   
   // Initialize message state
   messages: [],

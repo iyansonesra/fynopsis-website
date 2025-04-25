@@ -120,6 +120,9 @@ export default function GeneralDashboard() {
     const [isAccepting, setIsAccepting] = useState(false);
 
     const tabs: Tab[] = [
+        { icon: Library, label: 'Library' },
+        { icon: Clipboard, label: 'Question Bank' },
+        { icon: ListChecks, label: 'Checklist Bank' },
     ];
 
     function signIn(): void {
@@ -133,6 +136,10 @@ export default function GeneralDashboard() {
     const [familyName, setFamilyName] = useState('');
     const [givenName, setGivenName] = useState('');
 
+    // Add useEffect to monitor dataRooms changes
+    useEffect(() => {
+        console.log("dataRooms updated:", dataRooms);
+    }, [dataRooms]);
 
     const handleDataRoomClick = (id: string | null | undefined) => {
         router.push(`/dataroom/${id}/home`);
@@ -177,7 +184,8 @@ export default function GeneralDashboard() {
                     sharedBy: user.username,
                     id: response.uuid,
                     title: response.bucketName,
-                    lastOpened: 'Never Opened'
+                    lastOpened: 'Never Opened',
+                    status: response.status // Add status from response
                 };
 
                 setDataRooms([...dataRooms, newDataroom]);
@@ -198,7 +206,7 @@ export default function GeneralDashboard() {
             if (!credentials) {
                 throw new Error('User is not authenticated');
             }
-    
+
             const restOperation = get({
                 apiName: 'S3_API',
                 path: '/get-data-rooms',
@@ -209,13 +217,13 @@ export default function GeneralDashboard() {
                     withCredentials: true
                 }
             });
-    
+
             const { body } = await restOperation.response;
             const responseText = await body.text();
             const response = JSON.parse(responseText);
-    
+
             console.log("datarooms fetched", response);
-    
+
             // Update data rooms from the response
             const newDataRooms = response.buckets.map((room: DataRoom) => ({
                 id: room.uuid,
@@ -232,7 +240,7 @@ export default function GeneralDashboard() {
                 users: room.users,
                 status: room.status || 'ready' // Default to 'ready' if status is not provided
             }));
-    
+
             // Update invited rooms from the response
             const newInvitedDatarooms = response.invited.map((room: InvitedRoom) => ({
                 bucketId: room.uuid,
@@ -241,10 +249,10 @@ export default function GeneralDashboard() {
                 permissionLevel: room.permissionLevel,
                 sharedAt: room.sharedAt
             }));
-    
+
             setDataRooms(newDataRooms);
             setInvitedDatarooms(newInvitedDatarooms);
-    
+
         } catch (error) {
             console.error('Error fetching data rooms:', error);
         } finally {
@@ -321,10 +329,10 @@ export default function GeneralDashboard() {
 
     const handleConfirmAccept = async () => {
         if (!pendingAcceptBucketId) return;
-        
+
         const fullName = `${givenName} ${familyName}`;
         if (confirmationName !== fullName) return;
-        
+
         setIsAccepting(true);
         try {
             const restOperation = post({
@@ -406,7 +414,7 @@ export default function GeneralDashboard() {
                 setIsLoading(false);
             }
         }
-        
+
         if (user) {
             initializeDashboard();
         }
@@ -431,6 +439,29 @@ export default function GeneralDashboard() {
                 <div className="w-20 bg-slate-900 h-full flex flex-col items-center justify-between pt-4 pb-6">
                     <div className="">
                         <img src={logo.src} alt="logo" className="h-14 w-auto mb-8" />
+                        <div className="relative flex flex-col items-center">
+                            {activeTab !== null && (
+                                <div
+                                    className="absolute left-0 w-full bg-blue-300 rounded-xl transition-all duration-300 ease-in-out z-0"
+                                    style={{
+                                        top: `${tabRefs.current[activeTab]?.offsetTop || 0}px`,
+                                        height: `${tabRefs.current[activeTab]?.offsetHeight || 0}px`
+                                    }}
+                                />
+                            )}
+                            {tabs.map((tab, index) => (
+                                <div
+                                    key={tab.label}
+                                    ref={(el) => { tabRefs.current[index] = el }}
+                                    className={`relative z-10 p-2 mb-4 cursor-pointer ${activeTab === index ? 'text-slate-900' : 'text-white'
+                                        }`}
+                                    onClick={() => handleTabClick(index)}
+                                >
+                                    <tab.icon size={24} />
+                                </div>
+                            ))}
+                        </div>
+
                     </div>
 
                     <Popover>
@@ -464,51 +495,113 @@ export default function GeneralDashboard() {
 
                 <div className="flex-1 overflow-hidden flex flex-row dark:bg-darkbg">
                     <div className="flex-[2] px-4 py-4">
-                        <>
-                            <div className="flex justify-between items-center mb-4">
-                                <div className="flex flex-row gap-2 items-center ml-2">
-                                    <Library className="w-6 h-6 dark:text-gray-200" />
-                                    <h1 className="font-semibold text-xl dark:text-white">Your Datarooms</h1>
-                                </div>
-                                <Button onClick={() => setIsAddDialogOpen(true)}>
-                                    <Plus className="mr-2 h-4 w-4" /> Add Dataroom
-                                </Button>
-                            </div>
-                            <div className="flex flex-col">
-                                {isLoading ? (
-                                    <div className="flex flex-col gap-2">
-                                        <SkeletonCard />
-                                        <SkeletonCard />
-                                        <SkeletonCard />
+                        {selectedTab === 'library' ? (
+                            <>
+                                <div className="flex justify-between items-center mb-4">
+                                    <div className="flex flex-row gap-2 items-center ml-2">
+                                        <Library className="w-6 h-6 dark:text-gray-200" />
+                                        <h1 className="font-semibold text-xl dark:text-white">Your Datarooms</h1>
                                     </div>
-                                ) : (
-                                    dataRooms.map((room) => (
-                                        <div key={room.id} className="w-full">
-                                            <DataRoomCard
-                                                id={room.id || ''}
-                                                title={room.title}
-                                                users={room.users || []}
-                                                lastOpened={room.lastOpened}
-                                                permissionLevel={room.permissionLevel}
-                                                sharedBy={room.sharedBy || ''}
-                                                status={room.status || 'READY'}
-                                                onClick={() => {
-                                                    if (room.status === 'READY' || !room.status) {
-                                                        handleDataRoomClick(room.id);
-                                                    }
-                                                }}
-                                                onDelete={() => {
-                                                    setDataRooms(dataRooms.filter(r => r.id !== room.id));
-                                                }}
-                                                onLeave={() => {
-                                                    setDataRooms(dataRooms.filter(r => r.id !== room.id));
-                                                }}
-                                            />
+                                    <Button onClick={() => setIsAddDialogOpen(true)}>
+                                        <Plus className="mr-2 h-4 w-4" /> Add Dataroom
+                                    </Button>
+                                </div>
+                                <div className="flex flex-col">
+                                    {isLoading ? (
+                                        <div className="flex flex-col gap-2">
+                                            <SkeletonCard />
+                                            <SkeletonCard />
+                                            <SkeletonCard />
                                         </div>
-                                    ))
-                                )}
-                            </div>
-                        </>
+                                    ) : (
+                                        dataRooms.map((room) => (
+                                            <div key={room.id} className="w-full">
+                                                <DataRoomCard
+                                                    id={room.id || ''}
+                                                    title={room.title}
+                                                    users={room.users || []}
+                                                    lastOpened={room.lastOpened}
+                                                    permissionLevel={room.permissionLevel}
+                                                    sharedBy={room.sharedBy || ''}
+                                                    status={room.status || 'READY'}
+                                                    onClick={() => {
+                                                        if (room.status === 'READY' || !room.status) {
+                                                            handleDataRoomClick(room.id);
+                                                        }
+                                                    }}
+                                                    onDelete={() => {
+                                                        console.log("Deleting room:", room.id);
+                                                        setDataRooms(prevRooms => {
+                                                            const newRooms = prevRooms.filter(r => r.id !== room.id);
+                                                            console.log("New rooms after delete:", newRooms);
+                                                            return newRooms;
+                                                        });
+                                                    }}
+                                                    onLeave={() => {
+                                                        setDataRooms(prevRooms => prevRooms.filter(r => r.id !== room.id));
+                                                    }}
+                                                    onRetry={(newDataroom) => {
+                                                        console.log("Adding new dataroom:", newDataroom);
+                                                        setDataRooms(prevRooms => {
+                                                            const newRooms = [...prevRooms, newDataroom];
+                                                            console.log("New rooms after retry:", newRooms);
+                                                            return newRooms;
+                                                        });
+                                                    }}
+                                                />
+                                            </div>
+                                        ))
+                                    )}
+
+
+                                    <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+                                        <DialogContent className="dark:bg-darkbg dark:text-white border-none">
+                                            <DialogHeader>
+                                                <DialogTitle>Create New Dataroom</DialogTitle>
+                                            </DialogHeader>
+                                            <Input
+                                                value={newDataroomName}
+                                                onChange={(e) => setNewDataroomName(e.target.value)}
+                                                placeholder="Enter dataroom name"
+                                                className="outline-none select-none dark:bg-darkbg dark:text-white"
+                                                disabled={isCreating}
+                                            />
+                                            <DialogFooter>
+                                                <Button
+                                                    variant="outline"
+                                                    onClick={() => setIsAddDialogOpen(false)}
+                                                    className="dark:bg-darkbg dark:border dark:hover:text-slate-400"
+                                                    disabled={isCreating}
+                                                >
+                                                    Cancel
+                                                </Button>
+                                                <Button
+                                                    onClick={handleAddDataroom}
+                                                    className="dark:hover:text-slate-400"
+                                                    disabled={isCreating}
+                                                >
+                                                    {isCreating ? (
+                                                        <span className="flex items-center">
+                                                            <svg className="animate-spin -ml-1 mr-2 h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                                            </svg>
+                                                            Creating...
+                                                        </span>
+                                                    ) : (
+                                                        'Create'
+                                                    )}
+                                                </Button>
+                                            </DialogFooter>
+                                        </DialogContent>
+                                    </Dialog>
+                                </div>
+                            </>
+                        ) : selectedTab === 'question bank' ? (
+                            <QuestionBank />
+                        ) : (
+                            <ChecklistBank />
+                        )}
                     </div>
 
                     {selectedTab === 'library' && (
@@ -574,7 +667,7 @@ export default function GeneralDashboard() {
                         </DialogHeader>
                         <div className="my-4">
                             <p className="text-sm mb-4 dark:text-slate-300">
-                                By accessing this dataroom, you agree to maintain the confidentiality of all information contained within. 
+                                By accessing this dataroom, you agree to maintain the confidentiality of all information contained within.
                             </p>
                             <p className="text-sm font-medium mb-2 dark:text-white">Enter your full name below:</p>
                             <Input

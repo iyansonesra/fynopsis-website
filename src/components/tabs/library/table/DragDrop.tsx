@@ -1,6 +1,6 @@
 import React, { useState, useCallback } from 'react';
 import { useDropzone } from 'react-dropzone';
-import { Upload as UploadIcon, X, Info, HelpCircle, Archive, ChevronRight, Circle, CheckCircle2 } from 'lucide-react';
+import { Upload as UploadIcon, X, Info, HelpCircle, Archive, ChevronRight, Circle, CheckCircle2, Share2 } from 'lucide-react';
 import { post } from 'aws-amplify/api';
 import { usePathname } from 'next/navigation';
 import { useS3Store, TreeNode } from "../../../services/fileService";
@@ -11,6 +11,8 @@ import JSZip from 'jszip';
 import { Alert, AlertDescription } from '../../../ui/alert';
 import ZipPreview from './ZipPreview';
 import ZipUploadProgress from './ZipUploadProgress';
+import { Button } from "@/components/ui/button";
+import SharePointUpload from './SharePointUpload';
 
 
 interface DragDropOverlayProps {
@@ -144,6 +146,7 @@ const DragDropOverlay: React.FC<DragDropOverlayProps> = ({
   const [selectedZipFile, setSelectedZipFile] = useState<File | null>(null);
   const [isUploadingZip, setIsUploadingZip] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
+  const [showSharePointUpload, setShowSharePointUpload] = useState(false);
   interface ProcessedItem {
     path: string;
     file: File;
@@ -155,7 +158,7 @@ const DragDropOverlay: React.FC<DragDropOverlayProps> = ({
   const processZipFile = async (zipFile: File, bucketUuid: string): Promise<ExtractedFile[]> => {
     const zip = new JSZip();
     const extractedItems: ProcessedItem[] = [];
-    const folderIds: FolderMapping = { '/': 'ROOT' };
+    const folderIds: FolderMapping = { '/': folderId || 'ROOT' };
     
     try {
       const zipContent = await zip.loadAsync(zipFile);
@@ -164,28 +167,18 @@ const DragDropOverlay: React.FC<DragDropOverlayProps> = ({
       // Process each file path to ensure folder structure is created
       const filePaths: {path: string, file: JSZip.JSZipObject}[] = [];
       
-      // Check if all files are under a single root folder
-      const paths = Object.keys(zipContent.files).filter(path => path !== '');
-      const rootFolders = new Set(paths.map(path => path.split('/')[0]));
-      const hasSingleRootFolder = rootFolders.size === 1 && paths.every(path => path.startsWith(rootFolders.values().next().value + '/'));
-      const rootFolderToStrip = hasSingleRootFolder ? rootFolders.values().next().value + '/' : '';
-      
       for (const [path, file] of Object.entries(zipContent.files)) {
         if (path === '') continue;
         
         // Skip __MACOSX directories and macOS metadata files
         if (path.includes('__MACOSX') || path.startsWith('._') || path.includes('.DS_Store')) continue;
         
-        // Strip the root folder if it exists
-        const strippedPath = rootFolderToStrip ? path.replace(rootFolderToStrip, '') : path;
-        if (strippedPath === '') continue; // Skip if we're left with an empty path
-        
-        filePaths.push({path: strippedPath, file});
+        filePaths.push({path, file});
         
         if (!file.dir) {
-          const parts = strippedPath.split('/').filter(part => part !== '');
+          const parts = path.split('/').filter(part => part !== '');
           let currentPath = '';
-          let parentFolderId = 'ROOT';
+          let parentFolderId = folderId || 'ROOT';
           
           // Process each folder in the path
           const folderParts = parts.slice(0, -1); // All parts except the filename
@@ -482,6 +475,14 @@ const DragDropOverlay: React.FC<DragDropOverlayProps> = ({
   const handleConfirmUpload = async () => {
     setIsConfirming(true);
     try {
+      // Check if there are any ZIP files
+      const zipFiles = pendingFiles.filter(file => 
+        file.type === 'application/zip' || file.type === 'application/x-zip-compressed'
+      );
+      const regularFiles = pendingFiles.filter(file => 
+        file.type !== 'application/zip' && file.type !== 'application/x-zip-compressed'
+      );
+
       // Set all pending files to uploading state with 0 progress
       setFileUploads(prev => {
         const updated = { ...prev };
@@ -495,9 +496,15 @@ const DragDropOverlay: React.FC<DragDropOverlayProps> = ({
         });
         return updated;
       });
-  
-      // Create an array of upload promises to handle all uploads in parallel
-      const uploadPromises = pendingFiles.map(async (file) => {
+
+      // Handle ZIP files first
+      for (const zipFile of zipFiles) {
+        setSelectedZipFile(zipFile);
+        await handleZipUploadConfirm();
+      }
+
+      // Handle regular files
+      const uploadPromises = regularFiles.map(async (file) => {
         const updateProgress = (progress: number) => {
           setFileUploads(prev => ({
             ...prev,
@@ -507,7 +514,7 @@ const DragDropOverlay: React.FC<DragDropOverlayProps> = ({
             }
           }));
         };
-  
+
         try {
           updateProgress(20);
           
@@ -540,13 +547,13 @@ const DragDropOverlay: React.FC<DragDropOverlayProps> = ({
         }
       });
       
-      // Wait for all upload promises to complete
+      // Wait for all regular file uploads to complete
       await Promise.all(uploadPromises);
-  
+
       const uploadedFiles = Object.values(fileUploads)
         .filter(upload => upload.status === 'completed')
         .map(upload => upload.file);
-  
+
       onFilesUploaded(uploadedFiles, fileHashes);
       onClose();
     } catch (error) {
@@ -650,6 +657,16 @@ const DragDropOverlay: React.FC<DragDropOverlayProps> = ({
           <div className="mt-2">
             <FileTypeInfo />
           </div>
+          <div className="mt-4">
+            <Button
+              onClick={() => setShowSharePointUpload(true)}
+              variant="outline"
+              className="flex items-center gap-2"
+            >
+              <Share2 className="h-4 w-4" />
+              Upload from SharePoint
+            </Button>
+          </div>
         </>
       ) : null}
       {zipProcessingError && (
@@ -742,6 +759,14 @@ const DragDropOverlay: React.FC<DragDropOverlayProps> = ({
           </div>
         </div>
       </div>
+      {showSharePointUpload && (
+        <SharePointUpload
+          onClose={() => setShowSharePointUpload(false)}
+          onFilesUploaded={onFilesUploaded}
+          folderId={folderId}
+          onRefreshNeeded={onRefreshNeeded}
+        />
+      )}
     </div>
   );
 };

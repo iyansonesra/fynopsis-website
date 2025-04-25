@@ -213,7 +213,7 @@ class WebSocketManager {
     try {
       console.log('Connecting to WebSocket for dataroom:', dataroomId);
       
-      // Get the auth session directly
+      // Get a fresh auth session
       const session = await fetchAuthSession();
       const idToken = session.tokens?.idToken?.toString();
       
@@ -221,17 +221,27 @@ class WebSocketManager {
         throw new Error('No ID token available');
       }
       
-      // Create WebSocket URL directly
+      // Create WebSocket URL with fresh token
       const wsUrl = `wss://${process.env.NEXT_PUBLIC_SEARCH_API_CODE}.execute-api.${process.env.NEXT_PUBLIC_REGION}.amazonaws.com/prod?idToken=${idToken}&dataroomId=${dataroomId}`;
       
       // Close existing connection if open
       if (this.ws && (this.ws.readyState === WebSocket.OPEN || this.ws.readyState === WebSocket.CONNECTING)) {
+        console.log("CLOSING EXISTING CONNECTION");
         this.ws.close();
       }
       
       this.ws = new WebSocket(wsUrl);
 
+      // Set a connection timeout
+      const connectionTimeout = setTimeout(() => {
+        if (this.ws?.readyState !== WebSocket.OPEN) {
+          console.error('WebSocket connection timeout');
+          this.ws?.close();
+        }
+      }, 10000); // 10 second timeout
+
       this.ws.onopen = () => {
+        clearTimeout(connectionTimeout);
         console.log('WebSocket connected to dataroom:', dataroomId);
         this.isConnecting = false;
         this.reconnectAttempts = 0;
@@ -246,7 +256,6 @@ class WebSocketManager {
       this.ws.onmessage = (event) => {
         try {
           const message = JSON.parse(event.data) as FileUpdateMessage;
-          console.log('WebSocket message received:', message);
           this.messageHandlers.forEach(handler => handler(message));
         } catch (error) {
           console.error('Error parsing WebSocket message:', error);
@@ -254,6 +263,7 @@ class WebSocketManager {
       };
 
       this.ws.onclose = (event) => {
+        clearTimeout(connectionTimeout);
         this.isConnecting = false;
         console.log(`WebSocket disconnected from dataroom: ${dataroomId}, code: ${event.code}, reason: ${event.reason || 'No reason provided'}`);
         this.clearPingInterval();
@@ -265,6 +275,7 @@ class WebSocketManager {
       };
 
       this.ws.onerror = (error) => {
+        clearTimeout(connectionTimeout);
         this.isConnecting = false;
         console.error('WebSocket error:', error);
       };
@@ -325,6 +336,7 @@ class WebSocketManager {
 
   sendMessage(message: any) {
     if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+      console.log("SENDING MESSAGE:", message);
       this.ws.send(JSON.stringify(message));
     } else {
       console.error('Cannot send message: WebSocket not connected');

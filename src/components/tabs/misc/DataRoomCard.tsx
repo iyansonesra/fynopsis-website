@@ -17,6 +17,7 @@ interface DataRoomCardProps {
   status?: string;
   onDelete?: () => void;
   onLeave?: () => void;
+  onRetry?: (newDataroom: any) => void;
 }
 
 interface sharedUser {
@@ -35,23 +36,27 @@ const DataRoomCard: React.FC<DataRoomCardProps> = ({
   onDelete, 
   onLeave, 
   users,
-  status = 'ready'
+  status = 'ready',
+  onRetry
 }) => {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = React.useState(false);
   const [isLeaveDialogOpen, setIsLeaveDialogOpen] = React.useState(false);
   const [isRenameDialogOpen, setIsRenameDialogOpen] = React.useState(false);
+  const [isRetryDialogOpen, setIsRetryDialogOpen] = React.useState(false);
   const [newName, setNewName] = React.useState(title);
   const [isDeleting, setIsDeleting] = React.useState(false);
+  const [isRetrying, setIsRetrying] = React.useState(false);
   const [isUsersDialogOpen, setIsUsersDialogOpen] = React.useState(false);
 
-  const isDataroomReady = status === 'READY';
+  const isDataroomReady = status === 'READY' || status === 'ready';
+  const isProcessing = status === 'PROCESSING';
+  const isFailed = status === 'FAILED';
 
   const handleCardClick = (e: React.MouseEvent) => {
     console.log("CARD CLICKED")
     if (isDataroomReady) {
       console.log("DATAROOM IS READY");
       onClick();
-
     } else {
       e.preventDefault();
       e.stopPropagation();
@@ -117,6 +122,62 @@ const DataRoomCard: React.FC<DataRoomCardProps> = ({
     }
   };
 
+  const handleRetry = async () => {
+    if (isRetrying) return;
+    setIsRetrying(true);
+    try {
+      // First delete the failed dataroom
+      const deleteOperation = del({
+        apiName: 'S3_API',
+        path: `/share-folder/${id}/delete-room`,
+        options: {
+          headers: { 'Content-Type': 'application/json' },
+          withCredentials: true,
+        },
+      });
+      await deleteOperation.response;
+      onDelete?.(); // Remove the failed dataroom from the list immediately after deletion
+      
+      // Then create a new one with the same name
+      const createOperation = post({
+        apiName: 'S3_API',
+        path: '/create-data-room',
+        options: {
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: {
+            bucketName: title
+          },
+          withCredentials: true
+        }
+      });
+
+      const { body } = await createOperation.response;
+      const responseText = await body.text();
+      const response = JSON.parse(responseText);
+
+      const newDataroom = {
+        bucketName: title,
+        uuid: response.uuid,
+        permissionLevel: 'OWNER',
+        addedAt: new Date().toISOString(),
+        sharedBy: sharedBy,
+        id: response.uuid,
+        title: response.bucketName,
+        lastOpened: 'Never Opened',
+        status: response.status
+      };
+
+      setIsRetryDialogOpen(false);
+      onRetry?.(newDataroom); // Add the new dataroom to the list
+    } catch (error) {
+      console.error('Error retrying dataroom:', error);
+    } finally {
+      setIsRetrying(false);
+    }
+  };
+
   return (
     <>
       <div 
@@ -125,11 +186,52 @@ const DataRoomCard: React.FC<DataRoomCardProps> = ({
         transition-all duration-300 w-full relative group border-b border-gray-200 dark:border-gray-700`} 
         onClick={handleCardClick}
       >
-        {!isDataroomReady && (
+        <div onClick={handleCardClick} className="p-6">
+          <div className="flex items-center justify-between mb-2">
+            <h2 className="text-xl font-semibold text-gray-900 dark:text-white">{title}</h2>
+          </div>
+          
+          {(!isDataroomReady && !isFailed) && (
+            <div className="flex items-center text-sm text-amber-600 dark:text-amber-400 mb-2">
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              <span>Setting up dataroom...</span>
+            </div>
+          )}
+          
+          <div className="flex items-center text-sm text-gray-500 dark:text-gray-400">
+            <Clock className="mr-2 h-4 w-4" />
+            <span>Last Opened: {lastOpened}</span>
+          </div>
+        </div>
+
+        {(isProcessing || !isDataroomReady) && (
           <div className="absolute inset-0 bg-slate-100/50 dark:bg-slate-800/50 z-10 flex items-center justify-center">
             <div className="bg-white dark:bg-slate-700 p-2 rounded-lg shadow-md flex items-center space-x-2">
-              <Loader2 className="h-4 w-4 animate-spin text-blue-500" />
-              <span className="text-sm font-medium text-slate-700 dark:text-slate-200">Preparing...</span>
+              {isFailed ? (
+                <div className="flex flex-col items-center space-y-2">
+                  <span className="text-sm font-medium text-red-600 dark:text-red-400">
+                    Failed to setup
+                  </span>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setIsRetryDialogOpen(true);
+                    }}
+                    className="text-xs"
+                  >
+                    Retry
+                  </Button>
+                </div>
+              ) : (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin text-blue-500" />
+                  <span className="text-sm font-medium text-slate-700 dark:text-slate-200">
+                    {isProcessing ? 'Setting up...' : 'Preparing...'}
+                  </span>
+                </>
+              )}
             </div>
           </div>
         )}
@@ -190,24 +292,6 @@ const DataRoomCard: React.FC<DataRoomCardProps> = ({
             </Popover>
           </div>
         </div>
-
-        <div onClick={handleCardClick} className="p-6">
-          <div className="flex items-center justify-between mb-2">
-            <h2 className="text-xl font-semibold text-gray-900 dark:text-white">{title}</h2>
-          </div>
-          
-          {!isDataroomReady && (
-            <div className="flex items-center text-sm text-amber-600 dark:text-amber-400 mb-2">
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              <span>Setting up dataroom...</span>
-            </div>
-          )}
-          
-          <div className="flex items-center text-sm text-gray-500 dark:text-gray-400">
-            <Clock className="mr-2 h-4 w-4" />
-            <span>Last Opened: {lastOpened}</span>
-          </div>
-        </div>
       </div>
 
       <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
@@ -266,6 +350,35 @@ const DataRoomCard: React.FC<DataRoomCardProps> = ({
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsRenameDialogOpen(false)}>Cancel</Button>
             <Button variant="default" onClick={handleRename}>Rename</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isRetryDialogOpen} onOpenChange={setIsRetryDialogOpen}>
+        <DialogContent className="dark:bg-darkbg dark:text-white border-none">
+          <DialogHeader>
+            <DialogTitle>Retry Dataroom Setup</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm mb-4 dark:text-slate-300">
+            This will delete the failed dataroom and create a new one with the same name. Are you sure you want to proceed?
+          </p>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsRetryDialogOpen(false)} disabled={isRetrying}>
+              Cancel
+            </Button>
+            <Button variant="default" onClick={handleRetry} disabled={isRetrying}>
+              {isRetrying ? (
+                <span className="flex items-center">
+                  <svg className="animate-spin -ml-1 mr-2 h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  Retrying...
+                </span>
+              ) : (
+                'Retry'
+              )}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

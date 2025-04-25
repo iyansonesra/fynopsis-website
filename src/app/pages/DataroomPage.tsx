@@ -49,7 +49,7 @@ type Tab = {
 };
 
 export default function Home() {
-  console.log("--- DataroomPage Component Render/Mount ---"); // Log component render
+  // console.log("--- DataroomPage Component Render/Mount ---"); // Log component render
   const router = useRouter();
   const searchParams = useSearchParams();
 

@@ -9,7 +9,7 @@ import { useTabStore } from '@/components/tabStore';
 import { get } from 'aws-amplify/api';
 import PDFViewer from '@/components/tabs/library/table/PDFViewer';
 import { useFolderTreeStore } from '@/components/services/treeStateStore';
-import { useFolderStructureStore, DEFAULT_FOLDER_PERMISSIONS, DEFAULT_FILE_PERMISSIONS, FolderPermissions, FilePermissions } from '@/components/services/folderStructureStore';
+import { useFolderStructureStore, DEFAULT_FOLDER_PERMISSIONS, DEFAULT_FILE_PERMISSIONS, FolderPermissions, FilePermissions } from '@/components/tabs/user_management/utils/folderStructureStore';
 import { Checkbox } from '@/components/ui/checkbox';
 import { FaFolder, FaFile } from 'react-icons/fa';
 import { handleCheckboxSelect } from '../utils/folderTreeUtils';

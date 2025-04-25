@@ -3,7 +3,7 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Node } from '../static_folder_tree/static-folder-tree';
-import { useFolderStructureStore, FilePermissions, FolderPermissions } from '@/components/services/folderStructureStore';
+import { useFolderStructureStore, FilePermissions, FolderPermissions } from '@/components/tabs/user_management/utils/folderStructureStore';
 import { FileText, FolderOpen } from 'lucide-react';
 
 interface FileSpecificPermissionPanel2Props {
@@ -57,7 +57,9 @@ export const FileSpecificPermissionPanel2: React.FC<FileSpecificPermissionPanel2
             const newMap = new Map(folderPermissions);
             newMap.set(itemId, newPermissions);
             setFolderPermissions(newMap);
-        } else {
+        } 
+        else
+         {
             const newPermissions = { ...currentPermissions as FilePermissions, [key]: value };
             const newMap = new Map(filePermissions);
             newMap.set(itemId, newPermissions);
@@ -201,25 +203,29 @@ export const FileSpecificPermissionPanel2: React.FC<FileSpecificPermissionPanel2
     return (
         <div className="p-4 space-y-4">
             <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-2">
-                    {isFolder ? (
-                        <FolderOpen className="h-5 w-5 text-gray-500" />
-                    ) : (
-                        <FileText className="h-5 w-5 text-gray-500" />
-                    )}
-                    <h3 className="text-lg font-medium">{selectedItem.name}</h3>
+                <div className="flex flex-col gap-2">
+                    <div className = "flex flex-row gap-2">
+                        {isFolder ? (
+                            <FolderOpen className="h-5 w-5 text-gray-500" />
+                        ) : (
+                            <FileText className="h-5 w-5 text-gray-500" />
+                        )}
+                        <h3 className="text-lg font-medium">{selectedItem.name}</h3>
+                    </div>
+
                     {!isFolder && isDeviator(itemId) && (
-                        <>
-                            <span className="text-sm text-yellow-500">(Custom Permissions)</span>
+                        <div className="flex flex-row gap-2 items-center">
                             <Button
                                 variant="outline"
                                 size="sm"
                                 onClick={handleRevertToStandard}
-                                className="text-xs"
+                                className="text-xs hover:bg-gray-100 dark:hover:bg-gray-800"
                             >
                                 Revert to Standard
                             </Button>
-                        </>
+                            <span className="text-sm text-yellow-500">(Custom Permissions)</span>
+
+                        </div>
                     )}
                 </div>
             </div>

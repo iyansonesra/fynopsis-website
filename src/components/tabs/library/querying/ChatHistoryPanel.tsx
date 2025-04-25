@@ -65,6 +65,8 @@ export const ChatHistoryPanel: React.FC<ChatHistoryPanelProps> = ({
   };
 
   const fetchChatThread = async (threadId: string) => {
+    console.log("fetching chat thread:", threadId);
+    console.log("bucketId:", bucketId);
     try {
       setIsThreadLoading(true);
       setSelectedThreadId(threadId);
@@ -79,6 +81,8 @@ export const ChatHistoryPanel: React.FC<ChatHistoryPanelProps> = ({
       const { body } = await chatResponse.response;
       const responseText = await body.text();
       const parsedResponse = JSON.parse(responseText);
+
+      console.log("parsedResponse:", parsedResponse);
   
       // Extract messages from the history array
       const messages = parsedResponse.history
