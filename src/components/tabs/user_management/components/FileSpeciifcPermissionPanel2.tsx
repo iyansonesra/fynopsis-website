@@ -124,13 +124,11 @@ export const FileSpecificPermissionPanel2: React.FC<FileSpecificPermissionPanel2
                             newFileMap.set(node.id, {
                                 ...currentFilePerms,
                                 [key]: value,
-                                inheritedFileAccess: newChildFileStandard
                             });
                         } else {
                             // For deviators, only update the inheritedFileAccess
                             newFileMap.set(node.id, {
                                 ...currentFilePerms,
-                                inheritedFileAccess: newChildFileStandard
                             });
                         }
                     }
@@ -159,7 +157,6 @@ export const FileSpecificPermissionPanel2: React.FC<FileSpecificPermissionPanel2
         const newFileMap = new Map(filePermissions);
         newFileMap.set(selectedItem.id, {
             ...newPermissions,
-            inheritedFileAccess: parentFolder.ChildFileStandard
         });
         setFilePermissions(newFileMap);
 

@@ -14,7 +14,6 @@ export interface FilePermissions {
     canQuery: boolean;
     deleteAccess: boolean;
     editAccess: boolean;
-    inheritedFileAccess: FilePermissions;
 }
 
 export interface FolderPermissions {
@@ -86,11 +85,8 @@ export const DEFAULT_FILE_PERMISSIONS: FilePermissions = {
     canQuery: true,
     deleteAccess: true,
     editAccess: true,
-    inheritedFileAccess: null as unknown as FilePermissions // This will be set after object creation
 };
 
-// Set the recursive reference after object creation
-DEFAULT_FILE_PERMISSIONS.inheritedFileAccess = DEFAULT_FILE_PERMISSIONS;
 
 export const DEFAULT_FOLDER_PERMISSIONS: FolderPermissions = {
     viewAccess: true,
