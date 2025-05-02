@@ -46,7 +46,7 @@ import {
 import { ContainerScroll } from '../../../ui/container-scroll-animation';
 import { HoverCardPortal } from '@radix-ui/react-hover-card';
 import { MessageItem } from './MessageItem';
-import streamManager from '@/lib/websocketManager';
+import streamManager, { MessageBatch } from '@/lib/websocketManager';
 import { usePermissionsStore } from '@/stores/permissionsStore'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 
@@ -124,7 +124,8 @@ interface MessageItemProps {
     isLastMessage: boolean;
     handleSourceCardClick: (sourceUrl: string) => void;
     getFileName: (filename: string) => string;
-
+    accordionValues: Record<string, string>;
+    setAccordionValue: (messageId: string, value: string) => void;
 }
 
 
@@ -139,6 +140,8 @@ interface Message {
     sourcingSteps?: string[];
     subSources?: Record<string, any>;
     citations?: Citation[];  // Add this new field
+    batches?: MessageBatch[]; // Added batches
+    timestamp?: number; // Add timestamp property
 }
 
 interface DetailsSectionProps {
@@ -738,10 +741,10 @@ const DetailSection: React.FC<DetailsSectionProps> = ({
                 handleSourceCardClick={handleSourceCardClick}
                 getFileName={getFileName}
                 // accordionValues={accordionValues}
-                // setAccordionValues={setAccordionValues}
+                // setAccordionValue={setAccordionValue}
             />
         )),
-        [messagesState, accordionValues, handleSourceCardClick, getFileName]
+        [messagesState, handleSourceCardClick, getFileName, accordionValues, setAccordionValue]
     );
 
     const GreenCircle: React.FC<{
