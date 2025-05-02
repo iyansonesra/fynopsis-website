@@ -86,7 +86,7 @@ class StreamManager {
   private baseUrl = process.env.NEXT_PUBLIC_SEARCH_API_URL || 'https://dev.fynopsis.ai';
   // Add a message log for debugging
   private messageLog: any[] = [];
-  
+
   // State management
   private messageState: MessageState = {
     messages: [],
@@ -103,12 +103,12 @@ class StreamManager {
           const state = JSON.parse(savedState);
           if (state.dataroomId) {
             console.log('Restoring previous stream session state');
-            
+
             // Restore message state if available
             if (state.messageState) {
               this.messageState = state.messageState;
             }
-            
+
             // Note: We don't automatically reconnect since SSE connections are request-based
           }
         } catch (e) {
@@ -121,7 +121,7 @@ class StreamManager {
 
   // Message state management
   getMessageState(): MessageState {
-    return {...this.messageState};
+    return { ...this.messageState };
   }
 
   addStateListener(listener: MessageStateListener) {
@@ -137,7 +137,7 @@ class StreamManager {
   private notifyStateListeners() {
     const state = this.getMessageState();
     this.stateListeners.forEach(listener => listener(state));
-    
+
     // Update session storage with latest state
     if (typeof window !== 'undefined' && this.currentDataroomId) {
       sessionStorage.setItem('stream_state', JSON.stringify({
@@ -154,17 +154,17 @@ class StreamManager {
   }
 
   addMessage(message: Message) {
-    this.messageState.messages = [...this.messageState.messages, {...message, timestamp: Date.now()}];
+    this.messageState.messages = [...this.messageState.messages, { ...message, timestamp: Date.now() }];
     this.notifyStateListeners();
   }
 
   updateLastMessage(update: Partial<Message>) {
     if (this.messageState.messages.length === 0) return;
-    
+
     const messages = [...this.messageState.messages];
     const lastIndex = messages.length - 1;
-    messages[lastIndex] = {...messages[lastIndex], ...update};
-    
+    messages[lastIndex] = { ...messages[lastIndex], ...update };
+
     this.messageState.messages = messages;
     this.notifyStateListeners();
   }
@@ -189,15 +189,15 @@ class StreamManager {
     // We just store the dataroomId for future use
     this.currentDataroomId = dataroomId;
     this.connectionRefs = 1;
-    
+
     // Save active dataroom ID to session storage
     if (typeof window !== 'undefined') {
-      sessionStorage.setItem('stream_state', JSON.stringify({ 
+      sessionStorage.setItem('stream_state', JSON.stringify({
         dataroomId,
         messageState: this.messageState
       }));
     }
-    
+
     console.log('Stream manager initialized for dataroom:', dataroomId);
   }
 
@@ -205,30 +205,30 @@ class StreamManager {
   async sendMessage(message: any) {
     // Close any existing connection
     this.disconnect();
-    
+
     // Clear message log for new request
     this.messageLog = [];
-    
+
     if (!this.currentDataroomId) {
       console.error('Cannot send message: No dataroom ID set');
-      this.messageHandlers.forEach(handler => 
+      this.messageHandlers.forEach(handler =>
         handler({ type: 'error', error: 'No dataroom ID set' })
       );
       return;
     }
-    
+
     try {
       this.isConnecting = true;
       console.log('Starting stream connection for query:', message);
-      
+
       // Get the auth session
       const session = await fetchAuthSession();
       const idToken = session.tokens?.idToken?.toString();
-      
+
       if (!idToken) {
         throw new Error('No ID token available');
       }
-      
+
       // Prepare query parameters
       const queryParams = {
         collection_name: this.currentDataroomId,
@@ -242,14 +242,14 @@ class StreamManager {
         web_search: false,
         format_params: {}
       };
-      
+
       // Create a headers object with the Authorization token
       const headers = new Headers({
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${idToken}`,
         'Accept': 'text/event-stream'
       });
-      
+
       // Create the request with credentials
       const request = new Request(`${this.baseUrl}/query/stream`, {
         method: 'POST',
@@ -258,11 +258,11 @@ class StreamManager {
         mode: 'cors',
         // credentials: 'include'
       });
-      
+
       console.log('Sending stream request to:', `${this.baseUrl}/query/stream`);
       console.log('With headers:', JSON.stringify(Array.from(headers.entries())));
       console.log('With body:', JSON.stringify(queryParams));
-      
+
       // Start the fetch request but don't await it
       fetch(request)
         .then(response => {
@@ -270,109 +270,111 @@ class StreamManager {
             console.error(`Stream response not OK: ${response.status} ${response.statusText}`);
             throw new Error(`HTTP error! status: ${response.status}`);
           }
-          
+
           console.log('Stream response headers:', JSON.stringify(Array.from(response.headers.entries())));
           console.log('Stream connected with status:', response.status);
-          
+
           // Create a new ReadableStream from the response body
           const reader = response.body?.getReader();
           if (!reader) {
             throw new Error('Response body reader could not be created');
           }
-          
+
           // Set up a text decoder
           const decoder = new TextDecoder();
           let buffer = '';
-          
+
           // Function to process chunks
           const processChunks = async () => {
             try {
               while (true) {
                 const { value, done } = await reader.read();
-                
+
                 if (done) {
                   console.log('Stream reader done, processing remaining buffer:', buffer);
                   // Process any remaining data in the buffer
                   if (buffer.trim()) {
                     this.processEventData(buffer);
                   }
-                  
+
                   // Signal completion
-                  this.messageHandlers.forEach(handler => 
+                  this.messageHandlers.forEach(handler =>
                     handler({ type: 'complete' })
                   );
-                  
+
                   // Log all messages received during this stream
                   console.log('Complete message log:', JSON.stringify(this.messageLog));
                   break;
                 }
-                
+
                 // Decode the chunk and add to buffer
                 const chunk = decoder.decode(value, { stream: true });
                 console.log('Raw chunk received:', chunk);
-                buffer += chunk;
+                console.log("_____________________________________________");
+
+                // Split the chunk by 'data:' to handle multiple messages
+                const messages = chunk.split('data:').filter(msg => msg.trim());
                 
-                // Process complete events in the buffer
-                const events = buffer.split('\n\n');
-                // Keep the last (potentially incomplete) event in the buffer
-                buffer = events.pop() || '';
-                
-                console.log(`Split ${events.length} complete events from buffer, ${buffer.length} bytes remaining`);
-                
-                // Process each complete event
-                for (const event of events) {
-                  if (event.trim()) {
-                    console.log('Processing event:', event);
-                    this.processEventData(event);
+                for (const message of messages) {
+                  try {
+                    const jsonData = JSON.parse(message.trim());
+                    console.log("Parsed JSON:", jsonData);
+                    console.log("_____________________________________________");
+                    this.messageHandlers.forEach(handler =>
+                      handler(jsonData)
+                    );
+                  } catch (e) {
+                    console.log("Failed to parse JSON:", message);
+                    console.log("_____________________________________________");
                   }
                 }
               }
             } catch (error) {
               console.error('Error processing stream:', error);
-              this.messageHandlers.forEach(handler => 
-                handler({ 
-                  type: 'error', 
-                  error: `Stream processing error: ${error instanceof Error ? error.message : String(error)}` 
+              this.messageHandlers.forEach(handler =>
+                handler({
+                  type: 'error',
+                  error: `Stream processing error: ${error instanceof Error ? error.message : String(error)}`
                 })
               );
             } finally {
               this.isConnecting = false;
             }
           };
-          
+
           // Start processing chunks
           processChunks();
         })
         .catch(error => {
           console.error('Stream request error:', error);
           this.isConnecting = false;
-          this.messageHandlers.forEach(handler => 
-            handler({ 
-              type: 'error', 
-              error: `Stream connection error: ${error instanceof Error ? error.message : String(error)}` 
+          this.messageHandlers.forEach(handler =>
+            handler({
+              type: 'error',
+              error: `Stream connection error: ${error instanceof Error ? error.message : String(error)}`
             })
           );
         });
-        
+
     } catch (error) {
       this.isConnecting = false;
       console.error('Error setting up stream:', error);
-      this.messageHandlers.forEach(handler => 
-        handler({ 
-          type: 'error', 
-          error: `Error setting up stream: ${error instanceof Error ? error.message : String(error)}` 
+      this.messageHandlers.forEach(handler =>
+        handler({
+          type: 'error',
+          error: `Error setting up stream: ${error instanceof Error ? error.message : String(error)}`
         })
       );
     }
   }
-  
+
   // Process incoming SSE data
   private processEventData(eventData: string) {
     // Split the event string by lines
     const lines = eventData.split('\n');
     let eventType = '';
     let data = '';
-    
+
     // Parse the event
     for (const line of lines) {
       if (line.startsWith('event:')) {
@@ -381,25 +383,25 @@ class StreamManager {
         data = line.substring(5).trim();
       }
     }
-    
+
     // Log the event components
     console.log('Event type:', eventType || 'none');
     console.log('Event data:', data || 'none');
-    
+
     // If there's data, try to parse it
     if (data) {
       try {
         // Try to parse as JSON first
         const jsonData = JSON.parse(data);
         console.log('Parsed JSON data:', jsonData);
-        
+
         // Add to message log
         this.messageLog.push({
           timestamp: new Date().toISOString(),
           eventType,
           data: jsonData
         });
-        
+
         // Process based on event type if specified, otherwise process based on data.type
         if (eventType === 'complete') {
           this.messageHandlers.forEach(handler => handler({ type: 'complete' }));
@@ -410,16 +412,16 @@ class StreamManager {
       } catch (e) {
         // If not valid JSON, treat as raw text response
         console.log('Received non-JSON data:', data);
-        
+
         // Add to message log
         this.messageLog.push({
           timestamp: new Date().toISOString(),
           eventType,
           rawData: data
         });
-        
+
         // Forward as a response type message
-        this.messageHandlers.forEach(handler => 
+        this.messageHandlers.forEach(handler =>
           handler({ type: 'response', response: data })
         );
       }
@@ -446,7 +448,7 @@ class StreamManager {
       this.connectionRefs--;
       console.log(`Released stream connection, ref count: ${this.connectionRefs}`);
     }
-    
+
     // Only disconnect when no more references
     if (this.connectionRefs === 0) {
       this.disconnect();

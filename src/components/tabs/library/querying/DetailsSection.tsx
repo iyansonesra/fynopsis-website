@@ -504,7 +504,7 @@ const DetailSection: React.FC<DetailsSectionProps> = ({
                                     if (data.sources[key]) {
                                         const source = data.sources[key];
                                         // Only save if it has the necessary coordinate information
-                                        if (source &&
+                                        if (source && source.bounding_box &&
                                             (source.bounding_box.x0 !== undefined &&
                                              source.bounding_box.y0 !== undefined &&
                                              source.bounding_box.x1 !== undefined &&
@@ -569,10 +569,10 @@ const DetailSection: React.FC<DetailsSectionProps> = ({
                     if (messageLog.length <= 1) {
                         // Only completion message was received
                         console.warn("Only received completion message, no content");
-                        addMessage({
-                            type: 'error',
-                            content: 'No content was received from the server. This could be due to a network issue or a problem with the request.'
-                        });
+                        // addMessage({
+                        //     type: 'error',
+                        //     content: 'No content was received from the server. This could be due to a network issue or a problem with the request.'
+                        // });
                     }
                     
                     // Remove this handler once complete
