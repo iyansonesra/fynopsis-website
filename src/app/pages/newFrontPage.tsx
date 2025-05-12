@@ -178,6 +178,23 @@ const FrontPage: React.FC = () => {
                                 />
                             </NeonGradientCard>
                         </FadeInSlideUp>
+
+                        {/* Video Embed Section */}
+                        {/* <FadeInSlideUp className="mt-16 relative max-w-[90%] md:max-w-[95%] lg:max-w-[90%] mx-auto">
+                            <h2 className="text-2xl md:text-3xl font-semibold text-center mb-6 text-white font-cormorant">
+                                See <span className="bg-gradient-to-r from-[#38B6FF] via-[#5271FF] to-[#004AAD] bg-clip-text text-transparent">Fynopsis</span> in Action
+                            </h2>
+                            <NeonGradientCard className="items-center justify-center text-center p-1">
+                                <div className="rounded-3xl overflow-hidden w-full aspect-video md:h-[450px] lg:h-[550px] xl:h-[650px]">
+                                    <iframe
+                                        src="https://drive.google.com/file/d/1OBfU2etnjAofWTmFU5Bm_wIrlAr8xiMe/preview"
+                                        className="w-full h-full"
+                                        allow="autoplay"
+                                        allowFullScreen
+                                    ></iframe>
+                                </div>
+                            </NeonGradientCard>
+                        </FadeInSlideUp> */}
                     </div>
 
                     <div className="mt-12 flex flex-col items-center justify-center w-full  gap-4 z-40">

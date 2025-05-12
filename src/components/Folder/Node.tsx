@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { usePathname } from 'next/navigation';
 import { post } from 'aws-amplify/api';
-import { useS3Store } from '../fileService';
+import { useS3Store } from '../services/fileService';
 
 const Node = ({ node, style, dragHandle, tree }: { node: any; style: any; dragHandle?: any; tree: any; }) => {
   const [anchorEl, setAnchorEl] = useState(null);

@@ -1,0 +1,354 @@
+'use client'
+
+import { useState, useMemo, useEffect, useCallback, useRef } from 'react'
+import { Button } from '@/components/ui/button'
+import { BookMarked, Plus, Tag } from 'lucide-react'
+import { ScrollArea } from '@/components/ui/scroll-area'
+import { useParams, useRouter, useSearchParams } from 'next/navigation'
+import { useFileStore } from '../../services/HotkeyService'
+import { IssueSearch } from './IssueSearchBar'
+import { FilterDialog } from './filtering/FilterDialog'
+import { IssueListHeader } from './filtering/IssueListHeader'
+import { IssueItem } from './issueItem'
+import { qaService, FrontendIssue } from '../../services/QAService'
+import { CreateIssueForm } from './CreateIssueForm'
+import { useToast } from '@/components/ui/use-toast'
+import { extractUniqueTagsFromIssues } from '../../services/QAService'
+import { IssueFilters } from './filtering/FilterControls'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
+import { usePermissionsStore } from '@/stores/permissionsStore'
+
+
+export function Issues() {
+  const router = useRouter()
+  const { id: dataroomId, subId } = useParams();
+  const searchParams = useSearchParams();
+  const [issues, setIssues] = useState<FrontendIssue[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [searchQuery, setSearchQuery] = useState('')
+  const { setActiveIssueId, issuesActiveTab, setIssuesActiveTab } = useFileStore();
+  const [isCreateIssueOpen, setIsCreateIssueOpen] = useState(false)
+  const [lastEvaluatedKey, setLastEvaluatedKey] = useState<string | null>(null)
+  const [selectedIssueId, setSelectedIssueId] = useState<string | number | null>(null);
+  const { toast } = useToast()
+  const [availableTags, setAvailableTags] = useState<string[]>([])
+  const [selectedTags, setSelectedTags] = useState<string[]>([])
+  const [sortOption, setSortOption] = useState<string>('newest') // Add this state for sorting
+  const { permissionDetails } = usePermissionsStore();
+
+  // Add ref to track selected issue
+  const prevSelectedIssueRef = useRef<string | number | null>(null);
+
+  // Filter issues based on issuesActiveTab
+ // Modify the filteredIssues useMemo function to include searching by issue number
+
+const filteredIssues = useMemo(() => {
+  const filtered = issues.filter(issue => {
+    // First, filter by tab (open/closed)
+    const statusMatch = issuesActiveTab === 'open' ?
+      issue.status === 'open' :
+      issue.status === 'closed';
+
+    // Then, filter by search query if it exists
+    // Check if the search query is numeric and matches issue number
+    const isSearchingByNumber = !isNaN(Number(searchQuery.trim())) && searchQuery.trim() !== '';
+    
+    const searchMatch = !searchQuery.trim() || 
+      issue.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
+      (isSearchingByNumber && issue.issueNumber === Number(searchQuery.trim()));
+
+    // Filter by selected tags if any are selected
+    // Use ANY logic (OR) instead of ALL logic (AND)
+    const tagsMatch = selectedTags.length === 0 ||
+      (issue.tags && issue.tags.some(tag => selectedTags.includes(tag)));
+
+    return statusMatch && searchMatch && tagsMatch;
+  });
+
+  // Then, sort the filtered issues
+  return filtered.sort((a, b) => {
+    // Parse the timestamps for comparison
+    const timeA = new Date(a.timestamp || a.createdAt).getTime();
+    const timeB = new Date(b.timestamp || b.createdAt).getTime();
+    
+    switch (sortOption) {
+      case 'newest':
+        return timeB - timeA; // Newest first (descending)
+      case 'oldest':
+        return timeA - timeB; // Oldest first (ascending)
+      // Add more sort options here as needed
+      default:
+        return timeB - timeA; // Default to newest
+    }
+  });
+}, [issues, issuesActiveTab, searchQuery, selectedTags, sortOption]);
+  // Count issues by status
+  const openIssuesCount = useMemo(() => {
+    return issues.filter(issue => issue.status === 'open').length;
+  }, [issues]);
+
+  const closedIssuesCount = useMemo(() => {
+    return issues.filter(issue => issue.status === 'closed').length;
+  }, [issues]);
+
+  // Fetch issues
+  const fetchIssues = useCallback(async () => {
+    if (!dataroomId) return;
+
+    try {
+      setIsLoading(true);
+      const result = await qaService.getIssues(dataroomId as string);
+      setIssues(result.items);
+
+      console.log("issues", issues)
+      setLastEvaluatedKey(result.lastEvaluatedKey);
+    } catch (error) {
+      console.error('Error fetching issues:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to load questions',
+        variant: 'destructive'
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  }, [dataroomId, toast]);
+
+  // Fetch more issues (pagination)
+  const fetchMoreIssues = useCallback(async () => {
+    if (!dataroomId || !lastEvaluatedKey) return;
+
+    try {
+      setIsLoading(true);
+      const result = await qaService.getIssues(
+        dataroomId as string,
+        'all',
+        50,
+        lastEvaluatedKey
+      );
+
+      setIssues(prevIssues => [...prevIssues, ...result.items]);
+      setLastEvaluatedKey(result.lastEvaluatedKey);
+    } catch (error) {
+      console.error('Error fetching more issues:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to load more questions',
+        variant: 'destructive'
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  }, [dataroomId, lastEvaluatedKey, toast]);
+
+  // Load issues on component mount
+  useEffect(() => {
+    const fetchIssuesAndTags = async () => {
+      if (!dataroomId) return;
+
+      try {
+        setIsLoading(true);
+        const result = await qaService.getIssues(dataroomId as string);
+        setIssues(result.items);
+
+        console.log("issues", issues)
+        setLastEvaluatedKey(result.lastEvaluatedKey);
+
+        // Extract unique tags from the fetched issues
+        const tags = extractUniqueTagsFromIssues(result.items);
+        setAvailableTags(tags);
+      } catch (error) {
+        console.error('Error fetching issues:', error);
+        toast({
+          title: 'Error',
+          description: 'Failed to load questions',
+          variant: 'destructive'
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchIssuesAndTags();
+
+    // Check for issueId in query parameters on initial mount only
+    const issueId = searchParams.get('issueId');
+    if (issueId) {
+      setActiveIssueId(issueId);
+      setSelectedIssueId(issueId);
+    }
+  }, [fetchIssues, searchParams, setActiveIssueId]);
+
+  const handleTagsChange = (tags: string[]) => {
+    setSelectedTags(tags);
+  };
+
+  const handleSortChange = (option: string) => {
+    setSortOption(option);
+  };
+
+  const getTagColor = (tag: string) => {
+    if (tag.includes('Component:')) {
+      return 'bg-[#fbca04] text-black'
+    } else if (tag.includes('Status:')) {
+      return 'bg-[#cfd3d7] text-[#24292f]'
+    } else if (tag.includes('Type:')) {
+      return 'bg-[#d73a4a] text-white'
+    } else if (tag.includes('React 19')) {
+      return 'bg-[#0075ca] text-white'
+    } else {
+      return 'bg-[#ededed] text-[#57606a]'
+    }
+  }
+
+  // Modified handleIssueClick to use state and add query param for shareable links
+  const handleIssueClick = (issueId: number | string) => {
+    // Only update if the selected issue is changing and not toggling back and forth
+    if (issueId.toString() !== selectedIssueId?.toString() && issueId.toString() !== prevSelectedIssueRef.current?.toString()) {
+      // Store the previous issue ID to prevent toggling
+      prevSelectedIssueRef.current = issueId;
+
+      // First update state
+      setActiveIssueId(issueId);
+      setSelectedIssueId(issueId);
+
+      // Then update URL query parameter without page refresh
+      const url = new URL(window.location.href);
+      url.searchParams.set('issueId', issueId.toString());
+      window.history.pushState({}, '', url.toString());
+    }
+  };
+
+  const handleCreateIssue = async (newIssueData: Omit<FrontendIssue, 'id' | 'number' | 'createdAt'>) => {
+    try {
+      // Map to Lambda's expected format
+      const createRequest = {
+        question: newIssueData.title,
+        fileContext: newIssueData.description || '',
+        status: newIssueData.status,
+        tags: newIssueData.tags
+      };
+
+      // Create the issue
+      const newIssue = await qaService.createIssue(dataroomId as string, createRequest);
+
+      // Add the new issue to the list
+      setIssues(prevIssues => [newIssue, ...prevIssues]);
+
+      toast({
+        title: 'Success',
+        description: 'Question created successfully',
+      });
+    } catch (error) {
+      console.error('Error creating issue:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to create question',
+        variant: 'destructive'
+      });
+    }
+  }
+
+
+
+  return (
+    <ScrollArea className="w-full h-full">
+      <div className="w-full px-6 mx-auto py-6">
+        {/* Issues header */}
+        <div className="flex flex-col md:flex-row justify-between items-stretch md:items-center mb-4 gap-3">
+          <IssueSearch value={searchQuery} onChange={setSearchQuery} />
+
+          <div className="flex w-full md:w-auto gap-2 justify-between">
+            {!permissionDetails?.canCreateIssue ? (
+                <TooltipProvider>
+                    <Tooltip>
+                        <TooltipTrigger asChild>
+                            <div>
+                                <Button
+                                    className="bg-blue-500 hover:bg-blue-800 h-9"
+                                    onClick={() => setIsCreateIssueOpen(true)}
+                                    disabled
+                                >
+                                    <Plus className="h-4 w-4 mr-2" />
+                                    <span>New issue</span>
+                                </Button>
+                            </div>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                            Creating issues is disabled
+                        </TooltipContent>
+                    </Tooltip>
+                </TooltipProvider>
+            ) : (
+                <Button
+                    className="bg-blue-500 hover:bg-blue-800 h-9"
+                    onClick={() => setIsCreateIssueOpen(true)}
+                >
+                    <Plus className="h-4 w-4 mr-2" />
+                    <span>New issue</span>
+                </Button>
+            )}
+          </div>
+        </div>
+
+        {/* Issues list */}
+        <div className="border github-border rounded-md overflow-hidden">
+        <IssueListHeader
+            activeTab={issuesActiveTab}
+            setActiveTab={setIssuesActiveTab}
+            openCount={openIssuesCount}
+            closedCount={closedIssuesCount}
+            availableTags={availableTags}
+            selectedTags={selectedTags}
+            onTagsChange={handleTagsChange}
+            sortOption={sortOption}          // Add this prop
+            onSortChange={handleSortChange}  // Add this prop
+          />
+
+          {/* Issues list */}
+          <div className="w-full overflow-x-auto">
+            {isLoading && filteredIssues.length === 0 ? (
+              <div className="p-8 text-center text-gray-500">
+                Loading questions...
+              </div>
+            ) : filteredIssues.length === 0 ? (
+              <div className="p-8 text-center text-gray-500">
+                No questions found. Create a new one to get started.
+              </div>
+            ) : (
+              <>
+                {filteredIssues.map((issue) => (
+                  <IssueItem
+                    key={issue.id}
+                    issue={issue}
+                    onClick={handleIssueClick}
+                    getTagColor={getTagColor}
+                  />
+                ))}
+
+                {lastEvaluatedKey && (
+                  <div className="py-3 px-4 text-center">
+                    <Button
+                      variant="outline"
+                      onClick={fetchMoreIssues}
+                      disabled={isLoading}
+                    >
+                      {isLoading ? 'Loading...' : 'Load more'}
+                    </Button>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Create Issue Dialog */}
+      <CreateIssueForm
+        isOpen={isCreateIssueOpen}
+        onClose={() => setIsCreateIssueOpen(false)}
+        onSubmit={handleCreateIssue}
+      />
+    </ScrollArea>
+  )
+}

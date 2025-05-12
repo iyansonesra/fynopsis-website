@@ -3,8 +3,7 @@ import { Montserrat, Inter, Poppins, Cormorant, Open_Sans } from "next/font/goog
 import "./globals.css";
 import ClientComponent from "./clientLayout";
 import { CSPostHogProvider } from './providers';
-import logo from './assets/fynopsis_noBG.png';
-// ./../assets/fynopsis_noBG.png
+import logo from '../app/assets/fynopsis_noBG.png'
 // Remove this import
 // import { DndProvider } from 'react-dnd';
 // import { HTML5Backend } from 'react-dnd-html5-backend';

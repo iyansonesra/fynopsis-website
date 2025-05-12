@@ -9,6 +9,7 @@ import { GridBackground } from "@/components/ui/spotlight-new";
 import { Spotlight } from "@/components/ui/spotlight-new";
 import logo from "../assets/fynopsis_noBG.png";
 import { Button } from "@/components/ui/gradient-button";
+import { ArrowLeft } from 'lucide-react';
 
 type AuthMode = 'signIn' | 'signUp' | 'verify' | 'forgotPassword' | 'resetPassword';
 
@@ -197,6 +198,16 @@ export default function SignInDetails() {
     <div className="relative min-h-screen bg-black overflow-hidden">
       <Spotlight />
       <GridBackground />
+
+      <div className="absolute top-4 left-4 z-50">
+        <button
+          onClick={() => router.push('/')}
+          className="px-4 py-2 text-sm font-medium text-white hover:text-blue-200 transition-colors flex items-center gap-2"
+        >
+          <ArrowLeft className="w-4 h-4" />
+          Back to Home
+        </button>
+      </div>
 
       <div className="flex min-h-screen items-center justify-center px-4 overflow-hidden">
         <div className= {`w-full max-w-md space-y-8 rounded-xl bg-gradient-to-br from-gray-900 to-black backdrop-blur-xl p-8 shadow-xl min-h-[500px] overflow-hidden`}>
