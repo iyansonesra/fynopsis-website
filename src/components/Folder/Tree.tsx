@@ -142,9 +142,7 @@ const TreeFolder: React.FC<TreeFolderProps> = ({ onFileSelect }) => {
   //     const response = JSON.parse(responseText);
 
   //     if (response.headObjects) {
-  //       console.log('S3 objects:', response.headObjects);
   //       const transformedData = transformS3DataToTree(response.headObjects);
-  //       console.log('Transformed tree data:', transformedData);
   //       setTreeData(transformedData);
   //     }
   //   } catch (error) {
@@ -210,7 +208,6 @@ const TreeFolder: React.FC<TreeFolderProps> = ({ onFileSelect }) => {
   };
 
   const createFolder = async (folderPath: string) => {
-    console.log('Creating folder:', folderPath);
     try {
       const response = await post({
         apiName: 'S3_API',
@@ -226,7 +223,6 @@ const TreeFolder: React.FC<TreeFolderProps> = ({ onFileSelect }) => {
       const { body } = await response.response;
       const result = await body.json();
 
-      console.log('Folder created successfully:', result);
       return result;
 
     } catch (error) {
@@ -252,7 +248,6 @@ const TreeFolder: React.FC<TreeFolderProps> = ({ onFileSelect }) => {
       const { body } = await response.response;
       const result = await body.json();
 
-      console.log('File moved successfully:', result);
       await fetchObjects(bucketUuid);
       return result;
 
@@ -305,7 +300,6 @@ const TreeFolder: React.FC<TreeFolderProps> = ({ onFileSelect }) => {
               : item.name;
 
             try {
-              console.log('Moving file:', sourceKey, 'to', destinationKey);
               await moveFile(sourceKey, destinationKey);
             } catch (error) {
               console.error('Error moving file:', error);
@@ -348,7 +342,6 @@ const TreeFolder: React.FC<TreeFolderProps> = ({ onFileSelect }) => {
       const { body } = await response.response;
       const result = await body.json();
 
-      console.log('Item deleted successfully:', result);
       return result;
 
     } catch (error) {

@@ -120,7 +120,6 @@ export const FolderStructureEditor: React.FC<FolderStructureEditorProps> = ({ on
     // Example parsing logic (you'll need to adjust this based on your schema format)
     // This is a placeholder; implement your actual parsing logic here
 
-    console.log(schema);
     return [
       {
         id: '1',

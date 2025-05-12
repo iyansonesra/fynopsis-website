@@ -46,7 +46,9 @@ interface IssueDetailProps {
 
 export const IssueDetail: React.FC<IssueDetailProps> = ({ issueId, onBack }) => {
     const router = useRouter()
-    const { id: dataroomId, subId } = useParams()
+    const params = useParams() as Record<string, string | string[]> | null
+    const dataroomId = params?.id ? (Array.isArray(params.id) ? params.id[0] : params.id) : ''
+    const subId = params?.subId ? (Array.isArray(params.subId) ? params.subId[0] : params.subId) : ''
     const [issue, setIssue] = useState<any>(null)
     const [comments, setComments] = useState<Comment[]>([])
     const [isLoading, setIsLoading] = useState(true)

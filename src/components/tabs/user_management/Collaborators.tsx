@@ -309,10 +309,6 @@ const UserManagement: React.FC<UserManagementProps> = ({ dataroomId }) => {
       }
     };
     folderStructure.forEach((item: FileTreeItemType) => processItem(item));
-    console.log('folderStructure', folderStructure);
-    console.log('itemMap', itemMap);
-    console.log('childMap', childMap);
-    console.log('pMap', pMap);
 
     setDialogItemsMap(itemMap);
     setDialogChildrenMap(childMap);
@@ -552,7 +548,6 @@ const UserManagement: React.FC<UserManagementProps> = ({ dataroomId }) => {
   
   // --- Enhanced handleFilePermissionChange with Cascade Logic ---
   const handleFilePermissionChange = (fileId: string, permissionUpdate: Partial<FilePermission>) => {
-    console.log(`handleFilePermissionChange called for ${fileId} with update:`, permissionUpdate);
   
     // Default Permission Values (used when creating/updating to ensure type compliance)
     const defaultPermValues: FilePermission = {
@@ -619,7 +614,6 @@ const UserManagement: React.FC<UserManagementProps> = ({ dataroomId }) => {
           // 2. Prepare Cascade Downwards updates (if folder)
           if (item.type === 'folder') {
             const descendants = getAllDescendantIds(fileId);
-            console.log(`Cascading visibility ${newVisibility} to ${descendants.length} descendants`);
             descendants.forEach(descId => {
               const descPrevPerms = prevPermissions[descId] || {};
               if (descPrevPerms.show !== newVisibility) { 
@@ -644,7 +638,6 @@ const UserManagement: React.FC<UserManagementProps> = ({ dataroomId }) => {
             while (currentParentId) {
               const parentPrevPerms = prevPermissions[currentParentId] || {};
               if (parentPrevPerms.show !== true) { 
-                console.log(`Auto-showing parent ${currentParentId}`);
                 // Add or merge the update for the parent
                 updates[currentParentId] = { ...(updates[currentParentId] || {}), show: true }; 
               }
@@ -679,8 +672,6 @@ const UserManagement: React.FC<UserManagementProps> = ({ dataroomId }) => {
             };
           });
   
-          console.log("Final updates being applied:", updates);
-          console.log("Resulting permissions state:", nextPermissions);
   
           // Ensure the final object assigned matches the state type
           const finalPermissionsForState: Record<string, FilePermission> = nextPermissions;

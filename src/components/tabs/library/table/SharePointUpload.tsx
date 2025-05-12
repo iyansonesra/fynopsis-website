@@ -156,7 +156,9 @@ const SharePointUpload: React.FC<SharePointUploadProps> = ({
         }
 
         const blob = await response.blob();
-        const fileObj = new File([blob], file.name, { type: blob.type });
+        const fileObj = new (window.File as {
+          new (fileBits: BlobPart[], fileName: string, options?: FilePropertyBag): File;
+        })([blob], file.name, { type: blob.type });
 
         // Upload to S3
         const uploadResponse = await post({
@@ -190,7 +192,9 @@ const SharePointUpload: React.FC<SharePointUploadProps> = ({
         });
       }
 
-      onFilesUploaded(selectedFiles.map(f => new File([], f.name)), fileHashes);
+      onFilesUploaded(selectedFiles.map(f => new (window.File as {
+        new (fileBits: BlobPart[], fileName: string, options?: FilePropertyBag): File;
+      })([], f.name)), fileHashes);
       onClose();
       onRefreshNeeded?.();
     } catch (error) {

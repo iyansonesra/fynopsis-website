@@ -58,17 +58,14 @@ export default function DataroomLayout({ children }: { children: React.ReactNode
   const fetchPermissionLevel = async (id: string) => {
     // Only start loading if we don't have details or the ID changed
     // if (!permissionDetails || id !== currentDataroomId) {
-    //   console.log(`Layout: Setting loading true for dataroom: ${id}`);
     //   setLoading(true);
     //   setPermissions(null);
     // } else {
-    //   console.log(`Layout: Permissions already loaded for ${id}, skipping fetch.`);
     //   setLoading(false);
     //   return;
     // }
 
     try {
-      console.log(`Layout: Fetching permissions for dataroom: ${id}`);
       const restOperation = get({
         apiName: 'S3_API',
         path: `/share-folder/${id}/get-permissions`,
@@ -81,7 +78,6 @@ export default function DataroomLayout({ children }: { children: React.ReactNode
       const responseText = await body.text();
       const response = JSON.parse(responseText);
 
-      console.log("Layout: Permission response:", response);
       setPermissions(response.permissionDetails);
       // setCanAccessAuditLogsPanel(true);
       // setCanAccessIssuesPanel(true);
@@ -119,22 +115,17 @@ export default function DataroomLayout({ children }: { children: React.ReactNode
       setPermissions(null as any);
       setHasPermission(false);
     } finally {
-      console.log(`Layout: Finished fetching permissions for ${id}, setting loading false.`);
       setLoading(false);
     }
   };
 
   // Effect to fetch permissions when dataroomId changes
   useEffect(() => {
-    console.log(`Layout: useEffect triggered. dataroomId: ${dataroomId}, currentDataroomId: ${currentDataroomId}`);
     if (dataroomId && dataroomId !== currentDataroomId) {
-      console.log(`Layout: Dataroom ID changed to ${dataroomId}. Fetching permissions.`);
       fetchPermissionLevel(dataroomId);
     } else if (dataroomId ) {
-      console.log(`Layout: Initial load for dataroom ${dataroomId}. Fetching permissions.`);
       fetchPermissionLevel(dataroomId);
     } else if (!dataroomId) {
-      console.log("Layout: No dataroomId found.");
       setLoading(false);
       setHasPermission(false);
     }
@@ -145,7 +136,6 @@ export default function DataroomLayout({ children }: { children: React.ReactNode
   };
 
   if (isLoadingPermissions) {
-    console.log("Layout: Rendering Loading State");
     return (
       <div className="grid h-screen place-items-center">
         <div className="flex flex-col items-center gap-4">
@@ -157,7 +147,6 @@ export default function DataroomLayout({ children }: { children: React.ReactNode
   }
 
   if (!hasPermission) {
-    console.log("Layout: Rendering No Permission State");
     return (
       <div className="grid h-screen place-items-center">
         <div className="flex flex-col items-center gap-4">
@@ -170,7 +159,6 @@ export default function DataroomLayout({ children }: { children: React.ReactNode
     );
   }
 
-  console.log("Layout: Rendering Children");
   return <>{children}</>;
 }
 

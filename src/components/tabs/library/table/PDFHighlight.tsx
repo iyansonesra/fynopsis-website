@@ -148,11 +148,8 @@ const PDFHighlighterComponentBase: React.FC<PDFHighlighterProps> = ({
   const pdfComponentKey = useRef(`pdf-${Math.random().toString(36).substring(2, 9)}`);
   useEffect(() => {
     // Log the bounding boxes when component initializes or when boundingBoxes change
-    console.log("PDFHighlighterComponent - boundingBoxes:", boundingBoxes);
-    console.log("PDFHighlighterComponent - initialHighlights:", initialHighlights);
 
     // You can also log the combined highlights if needed
-    console.log("PDFHighlighterComponent - combined highlights:", [...initialHighlights, ...boundingBoxes]);
 
   }, [JSON.stringify(boundingBoxes), JSON.stringify(initialHighlights)]);
 
@@ -160,7 +157,6 @@ const PDFHighlighterComponentBase: React.FC<PDFHighlighterProps> = ({
   // }, [JSON.stringify(boundingBoxes), JSON.stringify(initialHighlights)]);
 
   const addHighlight = (highlight: NewHighlight) => {
-    console.log("Adding highlight:", highlight);
     setHighlights(prevHighlights => [
       { ...highlight, id: getNextId() },
       ...prevHighlights
@@ -178,7 +174,6 @@ const PDFHighlighterComponentBase: React.FC<PDFHighlighterProps> = ({
   // useEffect(() => {
   //   // Only trigger onHighlightsChange when the highlights actually change
   //   const newHighlightsSignature = JSON.stringify(highlights);
-  //   console.log("HIGHLIGHTS CHANGED\n");
   //   if (onHighlightsChange && newHighlightsSignature !== highlightsSignatureRef.current) {
   //     highlightsSignatureRef.current = newHighlightsSignature;
   //     onHighlightsChange(highlights);
@@ -322,7 +317,6 @@ const PDFHighlighterComponentBase: React.FC<PDFHighlighterProps> = ({
     position: Partial<ScaledPosition>,
     content: Partial<Content>
   ) => {
-    console.log("Updating highlight:", highlightId, position, content);
     setHighlights(prevHighlights =>
       prevHighlights.map(h => {
         const {

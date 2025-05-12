@@ -35,8 +35,6 @@ const GreenCircle = memo<GreenCircleProps>(({ number, fileKey, onSourceClick, ch
 
     const bounds = useFileStore.getState().getDocumentBounds(boundsKey);
 
-    console.log("BOUNDS", bounds);
-    console.log("BOUNDS KEY", boundsKey);
 
     // Use useMemo to avoid recalculating the file name on every render
     const fileName = useMemo(() => {
@@ -113,7 +111,6 @@ export const AnswerWithCitations = memo<AnswerWithCitationsProps>(({ content, ci
     const transformedContent = useMemo(() => {
         if (content.includes("<t")) return "";
 
-        // console.log("CITATIONS IN ANSWERWITH", citations);
         
         return content.replace(/@(\d+)@/g, (match, number, offset, string) => {
             const citation = getCitationByStep(number);

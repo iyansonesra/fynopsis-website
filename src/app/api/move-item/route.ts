@@ -4,7 +4,6 @@ import { post } from 'aws-amplify/api';
 export async function POST(request: Request) {
     try {
         const { itemId, targetFolderId, bucketUuid } = await request.json();
-        console.log('Moving item:', itemId, 'to folder:', targetFolderId);
 
         // Call the backend API to move the item
         const response = await post({

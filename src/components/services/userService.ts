@@ -37,7 +37,6 @@ export const fetchUsers = async (bucketUuid: string): Promise<{ users: User[], r
     const responseText = await body.text();
     const response = JSON.parse(responseText);
     
-    console.log('response', response);
     
     // Handle the new response format with users and roles
     if (response && response.users && Array.isArray(response.users)) {
@@ -170,7 +169,8 @@ export const fetchPermissionGroups = async (bucketUuid: string): Promise<Permiss
     const groups = await response.body.json();
     
     if (Array.isArray(groups)) {
-      return groups as PermissionGroup[];
+      // Cast to unknown first, then to PermissionGroup[]
+      return groups as unknown as PermissionGroup[];
     } else {
       console.error("Unexpected response format for permission groups:", groups);
       return [];
@@ -419,7 +419,7 @@ export const createPermissionGroup = async (
         body: {
           groupName,
           permissions: backendPermissionsPayload
-        },
+        } as any, // Cast to any to satisfy aws-amplify/api type
         headers: { 'Content-Type': 'application/json' },
         withCredentials: true
       }
@@ -500,7 +500,7 @@ export const updatePermissionGroup = async (
         body: {
           name: groupName,
           ...backendPermissionsPayload
-        },
+        } as any, // Cast to any to satisfy aws-amplify/api type
         withCredentials: true
       }
     });

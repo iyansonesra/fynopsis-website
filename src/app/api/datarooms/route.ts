@@ -19,7 +19,7 @@ Amplify.configure({
 export async function GET() {
   try {
     const session = await getServerSession(authOptions);
-    if (!session) {
+    if (!session || !session.user || !session.user.accessToken) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -29,7 +29,7 @@ export async function GET() {
       options: {
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session.accessToken}`
+          'Authorization': `Bearer ${session.user.accessToken}`
         }
       }
     });
@@ -48,7 +48,7 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     const session = await getServerSession(authOptions);
-    if (!session) {
+    if (!session || !session.user || !session.user.accessToken) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -61,7 +61,7 @@ export async function POST(request: Request) {
       options: {
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session.accessToken}`
+          'Authorization': `Bearer ${session.user.accessToken}`
         },
         body: {
           bucketName

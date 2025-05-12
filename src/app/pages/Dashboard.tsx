@@ -138,7 +138,6 @@ export default function GeneralDashboard() {
 
     // Add useEffect to monitor dataRooms changes
     useEffect(() => {
-        console.log("dataRooms updated:", dataRooms);
     }, [dataRooms]);
 
     const handleDataRoomClick = (id: string | null | undefined) => {
@@ -174,7 +173,6 @@ export default function GeneralDashboard() {
                 const responseText = await body.text();
                 const response = JSON.parse(responseText);
 
-                console.log("response for dataroom creation", response);
 
                 const newDataroom: DataRoom = {
                     bucketName: newDataroomNameExist,
@@ -222,7 +220,6 @@ export default function GeneralDashboard() {
             const responseText = await body.text();
             const response = JSON.parse(responseText);
 
-            console.log("datarooms fetched", response);
 
             // Update data rooms from the response
             const newDataRooms = response.buckets.map((room: DataRoom) => ({
@@ -530,10 +527,8 @@ export default function GeneralDashboard() {
                                                         }
                                                     }}
                                                     onDelete={() => {
-                                                        console.log("Deleting room:", room.id);
                                                         setDataRooms(prevRooms => {
                                                             const newRooms = prevRooms.filter(r => r.id !== room.id);
-                                                            console.log("New rooms after delete:", newRooms);
                                                             return newRooms;
                                                         });
                                                     }}
@@ -541,10 +536,8 @@ export default function GeneralDashboard() {
                                                         setDataRooms(prevRooms => prevRooms.filter(r => r.id !== room.id));
                                                     }}
                                                     onRetry={(newDataroom) => {
-                                                        console.log("Adding new dataroom:", newDataroom);
                                                         setDataRooms(prevRooms => {
                                                             const newRooms = [...prevRooms, newDataroom];
-                                                            console.log("New rooms after retry:", newRooms);
                                                             return newRooms;
                                                         });
                                                     }}

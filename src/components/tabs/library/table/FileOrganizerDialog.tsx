@@ -952,7 +952,6 @@ export const FileOrganizerDialog: React.FC<FileOrganizerDialogProps> = ({ bucket
         file_assignments[sourceKey] = ensureRootPrefix(newPath);
       });
 
-      console.log('file_assignments', file_assignments);
 
       const response = await post({
         apiName: 'S3_API',

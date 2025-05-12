@@ -102,7 +102,6 @@ class StreamManager {
         try {
           const state = JSON.parse(savedState);
           if (state.dataroomId) {
-            console.log('Restoring previous stream session state');
 
             // Restore message state if available
             if (state.messageState) {
@@ -198,7 +197,6 @@ class StreamManager {
       }));
     }
 
-    console.log('Stream manager initialized for dataroom:', dataroomId);
   }
 
   // This method starts a new SSE connection for a specific query
@@ -219,7 +217,6 @@ class StreamManager {
 
     try {
       this.isConnecting = true;
-      console.log('Starting stream connection for query:', message);
 
       // Get the auth session
       const session = await fetchAuthSession();
@@ -259,9 +256,6 @@ class StreamManager {
         // credentials: 'include'
       });
 
-      console.log('Sending stream request to:', `${this.baseUrl}/query/stream`);
-      console.log('With headers:', JSON.stringify(Array.from(headers.entries())));
-      console.log('With body:', JSON.stringify(queryParams));
 
       // Create an abort controller to timeout the connection if it doesn't connect in 3 seconds
       const controller = new AbortController();
@@ -279,8 +273,6 @@ class StreamManager {
             throw new Error(`HTTP error! status: ${response.status}`);
           }
 
-          console.log('Stream response headers:', JSON.stringify(Array.from(response.headers.entries())));
-          console.log('Stream connected with status:', response.status);
 
           // Create a new ReadableStream from the response body
           const reader = response.body?.getReader();
@@ -299,7 +291,6 @@ class StreamManager {
                 const { value, done } = await reader.read();
 
                 if (done) {
-                  console.log('Stream reader done, processing remaining buffer:', buffer);
                   // Process any remaining data in the buffer
                   if (buffer.trim()) {
                     this.processEventData(buffer);
@@ -311,14 +302,11 @@ class StreamManager {
                   );
 
                   // Log all messages received during this stream
-                  console.log('Complete message log:', JSON.stringify(this.messageLog));
                   break;
                 }
 
                 // Decode the chunk and add to buffer
                 const chunk = decoder.decode(value, { stream: true });
-                console.log('Raw chunk received:', chunk);
-                console.log("_____________________________________________");
 
                 // Split the chunk by 'data:' to handle multiple messages
                 const messages = chunk.split('data:').filter(msg => msg.trim());
@@ -326,14 +314,10 @@ class StreamManager {
                 for (const message of messages) {
                   try {
                     const jsonData = JSON.parse(message.trim());
-                    console.log("Parsed JSON:", jsonData);
-                    console.log("_____________________________________________");
                     this.messageHandlers.forEach(handler =>
                       handler(jsonData)
                     );
                   } catch (e) {
-                    console.log("Failed to parse JSON:", message);
-                    console.log("_____________________________________________");
                   }
                 }
               }
@@ -402,15 +386,12 @@ class StreamManager {
     }
 
     // Log the event components
-    console.log('Event type:', eventType || 'none');
-    console.log('Event data:', data || 'none');
 
     // If there's data, try to parse it
     if (data) {
       try {
         // Try to parse as JSON first
         const jsonData = JSON.parse(data);
-        console.log('Parsed JSON data:', jsonData);
 
         // Add to message log
         this.messageLog.push({
@@ -428,7 +409,6 @@ class StreamManager {
         }
       } catch (e) {
         // If not valid JSON, treat as raw text response
-        console.log('Received non-JSON data:', data);
 
         // Add to message log
         this.messageLog.push({
@@ -463,7 +443,6 @@ class StreamManager {
   release() {
     if (this.connectionRefs > 0) {
       this.connectionRefs--;
-      console.log(`Released stream connection, ref count: ${this.connectionRefs}`);
     }
 
     // Only disconnect when no more references
@@ -478,7 +457,6 @@ class StreamManager {
   disconnect() {
     // For SSE, we simply abort any ongoing requests
     if (this.eventSource) {
-      console.log('Closing SSE connection');
       this.eventSource.close();
       this.eventSource = null;
     }

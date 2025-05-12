@@ -64,11 +64,9 @@ const buildFolderStructure = (folders: Folder[], files: FileItem[]): Node[] => {
 
     // First, build the folder structure
     folders.forEach((folder) => {
-        console.log('FOLDEEEERRR:', folder);
         const pathParts = folder.fullPath.split('/').filter(part => part !== 'Root' && part !== '');
         let currentLevel = root;
         let parentId = 'ROOT'; // Start with ROOT as parent
-        console.log('PATH PARTS:', pathParts);
         
         // Create a map to store folder IDs by their full path
         const folderIdMap = new Map();
@@ -227,10 +225,7 @@ const FolderTree: React.FC<FolderTreeProps> = () => {
         if (node.isFolder && node.id) {
             // If this is a drop event (contains draggedItem)
             if (node.draggedItem) {
-                console.log('Moving item:', node.draggedItem);
                 const draggedItem = node.draggedItem;
-                console.log('Moving item:', draggedItem);
-                console.log('Moving item:', node.id);
                 try {
                     // Call the API to move the item
                     const response = await post({
@@ -248,7 +243,6 @@ const FolderTree: React.FC<FolderTreeProps> = () => {
 
                     const { body } = await response.response;
                     const result = await body.json() as MoveResponse;
-                    console.log('Moving item:', result);
                     if (result.results.successful.length > 0) {
                         // Function to remove a node from its current location
                         const removeNode = (nodes: Node[], targetId: string): { updatedNodes: Node[], removedNode: Node | null } => {
@@ -353,7 +347,6 @@ const FolderTree: React.FC<FolderTreeProps> = () => {
                 const responseText = await body.text();
                 const { signedUrl } = JSON.parse(responseText);
 
-                console.log('Signed URL:', signedUrl);
 
                 // const { body } = await response.response;
                 // const fileDetails = await body.json();
@@ -378,7 +371,6 @@ const FolderTree: React.FC<FolderTreeProps> = () => {
                 // Just activate the existing tab
                 setActiveTabId(existingTab.id);
             } else {
-                console.log('Adding new tab:', newTabId);
                 addTab({
                     id: newTabId,
                     title: file.name,

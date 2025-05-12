@@ -21,7 +21,9 @@ import { usePermissionsStore } from '@/stores/permissionsStore'
 
 export function Issues() {
   const router = useRouter()
-  const { id: dataroomId, subId } = useParams();
+  const params = useParams() as Record<string, string | string[]> | null;
+  const dataroomId = params?.id ? (Array.isArray(params.id) ? params.id[0] : params.id) : '';
+  const subId = params?.subId ? (Array.isArray(params.subId) ? params.subId[0] : params.subId) : '';
   const searchParams = useSearchParams();
   const [issues, setIssues] = useState<FrontendIssue[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -100,7 +102,6 @@ const filteredIssues = useMemo(() => {
       const result = await qaService.getIssues(dataroomId as string);
       setIssues(result.items);
 
-      console.log("issues", issues)
       setLastEvaluatedKey(result.lastEvaluatedKey);
     } catch (error) {
       console.error('Error fetching issues:', error);
@@ -151,7 +152,6 @@ const filteredIssues = useMemo(() => {
         const result = await qaService.getIssues(dataroomId as string);
         setIssues(result.items);
 
-        console.log("issues", issues)
         setLastEvaluatedKey(result.lastEvaluatedKey);
 
         // Extract unique tags from the fetched issues
@@ -172,7 +172,7 @@ const filteredIssues = useMemo(() => {
     fetchIssuesAndTags();
 
     // Check for issueId in query parameters on initial mount only
-    const issueId = searchParams.get('issueId');
+    const issueId = searchParams ? searchParams.get('issueId') : null;
     if (issueId) {
       setActiveIssueId(issueId);
       setSelectedIssueId(issueId);

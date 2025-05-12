@@ -291,7 +291,6 @@ const DetailSection: React.FC<DetailsSectionProps> = ({
         if (isClickProcessing) return;
         setIsClickProcessing(true);
 
-        console.log("SOURCE CARD CLICKED:", sourceUrl);
 
         try {
             // First check if file exists in s3Objects
@@ -366,7 +365,6 @@ const DetailSection: React.FC<DetailsSectionProps> = ({
         // Create a message handler for this specific query
         const messageHandler = (data: any) => {
             try {
-                console.log("Stream message received:", data);
                 if (data.type === 'progress') {
                     const progressText = data.step || data.message;
                     setProgressText(progressText);
@@ -563,7 +561,6 @@ const DetailSection: React.FC<DetailsSectionProps> = ({
                 }
 
                 if (data.type === 'complete') {
-                    console.log("Stream complete, displaying message log");
                     setIsWebSocketActive(false);
                     setIsLoading(false);
                     
@@ -863,7 +860,6 @@ const DetailSection: React.FC<DetailsSectionProps> = ({
         if (searchResult && searchResult.response) {
             setIsAnswerLoading(true);
             let response = searchResult.response;
-            console.log("response:", searchResult);
 
             if (searchResult.response.includes("</think>")) {
                 setEndThinkFound(true);
@@ -1060,7 +1056,6 @@ const DetailSection: React.FC<DetailsSectionProps> = ({
                             position: offset
                         });
 
-                        // console.log("citations:", citations);
                         return `@${stepNum}@`;
                     }
                 );

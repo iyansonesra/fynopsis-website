@@ -136,7 +136,6 @@ export class MetricsService {
   // Save dashboard state
   static async saveDashboardState(bucketId: string, widgets: Record<string, Widget>): Promise<any> {
     try {
-      console.log('Saving dashboard state for bucket:', bucketId);
       
       // Convert widgets object to array
       const widgetsArray = Object.values(widgets);
@@ -189,7 +188,6 @@ export class MetricsService {
       });
       
       // Log what we're sending to help debug
-      console.log('Sending widgets array:', JSON.stringify(widgetsArray).substring(0, 200) + '...');
       
       const response = await post({
         apiName: 'S3_API',
@@ -208,7 +206,6 @@ export class MetricsService {
       const { body } = await response.response;
       const responseText = await body.text();
 
-      console.log("posting dashboard state: ", responseText);
       return JSON.parse(responseText);
     } catch (error) {
       console.error('Error saving dashboard state:', error);
@@ -226,7 +223,6 @@ export class MetricsService {
       const { body } = await restOperation.response;
       const responseText = await body.text();
       const response = JSON.parse(responseText);
-      console.log("getting dashboard state: ", response);
 
       return response.widgets;
     } catch (error) {
@@ -485,7 +481,6 @@ export class MetricsService {
       
       await response.response;
 
-      console.log("deleting widget: ", response);
     } catch (error) {
       console.error('Error deleting widget:', error);
       throw error;

@@ -382,10 +382,8 @@ export default function QuestionBank() {
   };
 
   const handleAddTag = (tag?: string) => {
-    console.log('handleAddTag called with:', tag);
     const tagToAdd = tag || newTagInput.trim();
     if (tagToAdd && !newQuestion.tags.includes(tagToAdd)) {
-      console.log('Adding tag:', tagToAdd);
       setNewQuestion({
         ...newQuestion,
         tags: [...newQuestion.tags, tagToAdd],
@@ -614,7 +612,6 @@ export default function QuestionBank() {
                             onClick={(e) => {
                               e.preventDefault();
                               e.stopPropagation();
-                              console.log('Tag clicked:', tag);
                               handleAddTag(tag);
                             }}
                           >
@@ -626,7 +623,6 @@ export default function QuestionBank() {
                               onClick={(e) => {
                                 e.preventDefault();
                                 e.stopPropagation();
-                                console.log('Plus button clicked for tag:', tag);
                                 handleAddTag(tag);
                               }}
                             >

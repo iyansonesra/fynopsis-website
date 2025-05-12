@@ -99,7 +99,6 @@ class QAService {
       const { body } = await response.response;
       const responseData = await body.json();
 
-      console.log("responsedata", responseData);
       
       // Transform the response data to backend format first
       let backendItems: Issue[] = [];
@@ -151,7 +150,6 @@ class QAService {
       const { body } = await response.response;
       const responseData = await body.json();
 
-      console.log("ISSUE RESPONSE DATA", responseData);
       
       const backendIssue = this.mapQuestionToIssue(responseData);
       return this.mapToFrontend(backendIssue);

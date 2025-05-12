@@ -51,7 +51,6 @@ const Node = ({ node, style, dragHandle, tree }: { node: any; style: any; dragHa
         const { body } = await response.response;
         const result = await body.json();
   
-        console.log('Item deleted successfully:', result);
         await fetchObjects(bucketUuid);
         return result;
   
@@ -77,14 +76,11 @@ const Node = ({ node, style, dragHandle, tree }: { node: any; style: any; dragHa
     pathParts[pathParts.length - 1] = newName;
     let newPath = pathParts.join('/');
 
-    console.log('Old path:', oldPath);
-    console.log('New path:', newPath);
     if(node.data.isFolder) {
       newPath += '/';
       oldPath += '/';
     }
 
-    console.log('Old path:', oldPath);
     
     try {
       await renameFile(oldPath, newPath);
@@ -112,7 +108,6 @@ const Node = ({ node, style, dragHandle, tree }: { node: any; style: any; dragHa
         const { body } = await response.response;
         const result = await body.json();
   
-        console.log('File moved successfully:', result);
         await fetchObjects(bucketUuid);
         return result;
   

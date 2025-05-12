@@ -191,12 +191,10 @@ export default function Files({ setSelectedTab, permissionDetails }: {
     };
 
     useEffect(() => {
-        console.log("showDetailsView changed:", showDetailsView);
     }, [showDetailsView]);
 
     // Remove the addOrActivateTab function and update handleFileSelect:
     function handleFileSelect(file: FileSelectProps, fileChunk?: string) {
-        console.log('Files component - File selected:', file);
         let highlightData: IHighlight[] = [];
 
         const createEmptyHighlight = (): IHighlight => {
@@ -234,13 +232,10 @@ export default function Files({ setSelectedTab, permissionDetails }: {
         };
 
         if (fileChunk) {
-            console.log("FILE CHUNK", fileChunk);
             const boundsKey = `${file.id}::${fileChunk}`;
             const bounds = useFileStore.getState().getDocumentBounds(boundsKey);
-            console.log("BOUNDS", bounds);
             if (bounds) {
                 const highlight = boundsToHighlight(bounds, file.id, bounds.chunk_title);
-                console.log("Found bounds for chunk:", highlight);
                 highlightData.push(highlight);
                 highlightData.push(createEmptyHighlight());
 
@@ -248,13 +243,11 @@ export default function Files({ setSelectedTab, permissionDetails }: {
                 highlightData.push(createEmptyHighlight());
             }
         } else {
-            console.log("FILE CHUNK NA");
             highlightData.push(createEmptyHighlight());
         }
 
         setSelectedFile(file);
         if (file.type && file.type.length > 0) {
-            console.log("WE IN\n");
             setShowDetailsView(true);
         }
 
@@ -264,15 +257,11 @@ export default function Files({ setSelectedTab, permissionDetails }: {
             // Use the store's methods directly
             const existingTab = tabs.find(tab => tab.title === file.name);
 
-            console.log("file url", file.s3Url);
-            console.log("file name", file.name);
 
             if (existingTab) {
                 // Just activate the existing tab
-                console.log("existing tab", existingTab);
                 setActiveTabId(existingTab.id);
             } else {
-                console.log("new tab", newTabId);
                 addTab({
                     id: newTabId,
                     title: file.name,

@@ -221,7 +221,6 @@ export function FilesystemItem({
         e.stopPropagation();
         // Use the nodeId for toggling, which works for nodes with or without an ID
         toggleNode(nodeId);
-        console.log("Toggling folder:", node.name, "with ID:", nodeId);
     }, [node, nodeId, toggleNode]);
 
     const handleItemClick = useCallback((e: React.MouseEvent<HTMLDivElement, MouseEvent>): void => {

@@ -236,9 +236,6 @@ export const PermissionGroupDialog: React.FC<PermissionGroupDialogProps> = ({
   // const handlePermissionChange = (id: string, permissions: Partial<FilePermission>) => {
   //   if (!id) return;
 
-  //   console.log('=== Starting Permission Change ===');
-  //   console.log('Target Node ID:', id);
-  //   console.log('New Permissions:', permissions);
 
   //   setPermissionsMap(prev => {
   //     const newPermissions = { ...prev };
@@ -248,7 +245,6 @@ export const PermissionGroupDialog: React.FC<PermissionGroupDialogProps> = ({
   //       ...newPermissions[id],
   //       ...permissions
   //     };
-  //     console.log('Updated permissions for node:', id, newPermissions[id]);
 
   //     // Check if this node's permissions deviate from the default
   //     const isDeviating = Object.entries(permissions).some(([key, value]) => {
@@ -274,7 +270,6 @@ export const PermissionGroupDialog: React.FC<PermissionGroupDialogProps> = ({
 
   // Update handleNodeSelect to store name
   const handleNodeSelect = (node: Node & { show?: boolean }) => {
-    console.log("Node selected in Dialog:", node); // Log the selected node
     if (node.id) {
       setSelectedItem(node);
 

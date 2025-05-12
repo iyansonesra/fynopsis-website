@@ -86,13 +86,10 @@ export const FileSpecificPermissionPanel2: React.FC<FileSpecificPermissionPanel2
             }
 
             // If viewAccess is being toggled, update the visibility state
-            console.log('key:', key);
-            console.log('onCheckboxSelect:', onCheckboxSelect);
 
         }
 
         if (key === 'viewAccess' && onCheckboxSelect) {
-            console.log('viewAccess is being toggled, updating visibility state');
             onCheckboxSelect(selectedItem, value);
         }
     };

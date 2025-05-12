@@ -72,7 +72,6 @@
 //   };
 
 //   const handleMove = (args: any) => {
-//     console.log('Move:', args);
 //     // Implement move logic here
 //   };
 

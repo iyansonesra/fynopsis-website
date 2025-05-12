@@ -53,7 +53,6 @@ const createTreeStructure = (objects: S3Object[]): TreeNode => {
 
   for (const obj of objects) {
     const parts = obj.key.split('/').filter(part => part !== '');
-    // console.log('obj:', obj);
 
     let currentLevel = tree;
     let currKey = "";
@@ -139,10 +138,7 @@ export const useS3Store = create<S3State>()(((set, get) => ({
 
     //   });
 
-    //   // console.log("SEARCHABLE FILES:");
     //   get().searchableFiles.forEach((file) => {
-    //     // console.log("File:", file.key, "Metadata:", file.metadata);
-    //     // console.log("Original Name:", file.metadata.originalname);
     //   });
 
     //   if (response.headObjects) {
@@ -155,15 +151,12 @@ export const useS3Store = create<S3State>()(((set, get) => ({
     //       filteredObjects: objects
     //     });
 
-    //     console.log('treee currently', tree);
     //   }
     // } catch (error) {
     //   console.error('Error fetching S3 objects:', error);
     // } finally {
-    //   // console.log('finally');
     //   set({ isLoading: false });
     //   get().isLoading
-    //   // console.log('isLoading:', );
     // }
   },
   navigateToPath: (path: string[]) => {
@@ -207,7 +200,6 @@ export const useS3Store = create<S3State>()(((set, get) => ({
     }
     let passIn = `${s3Upload}${folderName}/`;
 
-    // console.log("s3key stored in tree:", folderPath);
 
     // Add folder to tree immediately with pending status
     const newFolder: TreeNode = {
@@ -234,9 +226,7 @@ export const useS3Store = create<S3State>()(((set, get) => ({
     set({ currentNode: tempo });
 
 
-    // console.log("folder path for s3:", passIn);
     try {
-      // console.log('folderPath:', passIn);
       const response = await post({
         apiName: 'S3_API',
         path: `/s3/${bucketUuid}/create-folder`,
@@ -291,8 +281,6 @@ export const useS3Store = create<S3State>()(((set, get) => ({
     const folderPath = `${currentPath}${folderName}/`;
     const filePath = `${currentPath}${folderName}`;
 
-    // console.log('folderPath:', folderPath.slice(1));
-    // console.log('filePath:', filePath.slice(1));
 
     // Mark folder as pending deletion in the tree
     const updatedNode = {
@@ -308,7 +296,6 @@ export const useS3Store = create<S3State>()(((set, get) => ({
 
     set({ currentNode: updatedNode });
 
-    // console.log('isFolder:', isFolder);
 
     try {
       // Make API call to delete folder
@@ -329,7 +316,6 @@ export const useS3Store = create<S3State>()(((set, get) => ({
       // Remove folder from tree after successful deletion
       const { [folderName]: removed, ...remainingChildren } = state.currentNode.children;
       delete state.currentNode.children[folderName];
-      // console.log('Folder deleted successfully:', result);
 
     } catch (error) {
       console.error('Error deleting folder:', error);
@@ -375,8 +361,6 @@ export const useS3Store = create<S3State>()(((set, get) => ({
     const sourceParts = sourceKey.split('/').filter(part => part !== '');
     const destParts = destinationKey.split('/').filter(part => part !== '');
 
-    console.log('sourceParts:', sourceParts);
-    console.log('destParts:', destParts);
 
     let sourceNode = get().currentNode;
     while(sourceNode.name !== 'root') {
@@ -384,12 +368,8 @@ export const useS3Store = create<S3State>()(((set, get) => ({
     }
 
     sourceNode = sourceNode.children[bucketUuid];
-    console.log("sourceNode:", sourceNode);
     for (let i = 0; i < sourceParts.length - 1; i++) {
-      console.log("current sourcenode:", sourceNode);
-      console.log("part:", sourceParts[i]);
       sourceNode = sourceNode.children[sourceParts[i]];
-      console.log("current node step:", sourceNode);
     }
 
     // Find destination parent node
@@ -402,11 +382,7 @@ export const useS3Store = create<S3State>()(((set, get) => ({
       destParentNode = destParentNode.children[destParts[i]];
     }
 
-    console.log('sourceNode:', sourceNode);
-    console.log('destparentnode:', destParentNode);
 
-    console.log("changer's email:", changersEmail);
-    console.log("current email:", currEmail);
 
 
     const itemName = destParts[destParts.length - 1];
@@ -416,7 +392,6 @@ export const useS3Store = create<S3State>()(((set, get) => ({
 
     // Move node in tree
     if (changersEmail !== currEmail && sourceNode.children[sourceParts[sourceParts.length-1]]) {
-      console.log("GOT INTO THE OPPOSITE CONDITIONAL")
       const NodeToMove = sourceNode.children[sourceParts[sourceParts.length - 1]];
   
       NodeToMove.s3Key = bucketUuid + '/' + destinationKey;
@@ -444,7 +419,6 @@ export const useS3Store = create<S3State>()(((set, get) => ({
     }
 
     const foundNode = findNodeByName(starter, currentNodeName);
-    console.log('foundNode:', foundNode);
     if (foundNode) {
       set({ currentNode: foundNode });
     }

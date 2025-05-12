@@ -72,11 +72,9 @@ const buildFolderStructure = (folders: Folder[], files: FileItem[]): Node[] => {
 
     // First, build the folder structure
     folders.forEach((folder) => {
-        console.log('FOLDEEEERRR:', folder);
         const pathParts = folder.fullPath.split('/').filter(part => part !== 'Root' && part !== '');
         let currentLevel = root;
         let parentId = 'ROOT';
-        console.log('PATH PARTS:', pathParts);
         
         const folderIdMap = new Map();
         folders.forEach(f => {
@@ -167,8 +165,6 @@ const buildFolderStructure = (folders: Folder[], files: FileItem[]): Node[] => {
     setFolderPermissions(folderPermissionsMap);
     setFilePermissions(filePermissionsMap);
 
-    console.log('FOLDER PERMISSIONS:', folderPermissionsMap);
-    console.log('FILE PERMISSIONS:', filePermissionsMap);
 
     // Add numbering to nodes recursively
     const addNumbering = (nodes: Node[], prefix: string): Node[] => {
@@ -362,7 +358,6 @@ const FolderTree: React.FC<FolderTreeProps> = ({ onNodeSelect, deviators = [] })
                 // Just activate the existing tab
                 setActiveTabId(existingTab.id);
             } else {
-                console.log('Adding new tab:', newTabId);
                 addTab({
                     id: newTabId,
                     title: file.name,

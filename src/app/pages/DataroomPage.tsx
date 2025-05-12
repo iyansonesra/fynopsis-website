@@ -49,7 +49,6 @@ type Tab = {
 };
 
 export default function Home() {
-  // console.log("--- DataroomPage Component Render/Mount ---"); // Log component render
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -70,7 +69,7 @@ export default function Home() {
   ];
 
   // Get the active tab from URL query parameters or default to "library"
-  const defaultTab = searchParams.get('tab')?.toLowerCase() || "library";
+  const defaultTab = searchParams?.get('tab')?.toLowerCase() || "library";
   const [selectedTab, setSelectedTab] = useState(defaultTab);
   const { user, signOut } = useAuthenticator((context) => [context.user]);
   const [userAttributes, setUserAttributes] = useState<FetchUserAttributesOutput | null>(null);
@@ -136,7 +135,7 @@ export default function Home() {
           setSelectedTab('library');
 
           // Update URL query parameter without full page navigation
-          const params = new URLSearchParams(searchParams.toString());
+          const params = new URLSearchParams(searchParams?.toString() || '');
           params.set('tab', 'library');
           const pathname = window.location.pathname;
           const newUrl = `${pathname}?${params.toString()}`;
@@ -150,7 +149,6 @@ export default function Home() {
   // Function to reset all relevant state when switching datarooms
   // This might need adjustment if called from elsewhere, but keep for now
   const resetDataroomState = () => {
-    console.log("DataroomPage: Resetting page-specific state");
     clearMessages();
     setSearchableFiles([]);
     setSearchableFolders([]);
@@ -176,7 +174,6 @@ export default function Home() {
     if (tabStoreTabs.length > 0) {
       const allFilesTab = tabStoreTabs.find(tab => tab.title === "All Files");
       if (allFilesTab) {
-        console.log("DataroomPage: Preserving All Files tab");
         setTabs([allFilesTab]);
         setActiveTabId(allFilesTab.id);
       } else {
@@ -209,7 +206,6 @@ export default function Home() {
   // For now, let's fetch it once when the component mounts within a valid dataroom context.
   useEffect(() => {
     if (contextDataroomId) { // Use dataroomId from context
-      console.log(`DataroomPage: Fetching searchable files for ${contextDataroomId}`);
       fetchSearchableFiles(contextDataroomId);
     } else {
       console.warn("DataroomPage: No dataroomId from context, cannot fetch searchable files.");
@@ -263,8 +259,7 @@ export default function Home() {
       setActiveTab(index);
       setSelectedTab(tabName);
       // ... update URL logic
-      const params = new URLSearchParams(searchParams.toString());
-      params.set('tab', tabName);
+      const params = new URLSearchParams(searchParams?.toString() || '');
       if (tabName !== 'issues') {
         params.delete('issueId');
       }
@@ -286,7 +281,7 @@ export default function Home() {
     // ... (keep existing logic, ensure it uses filteredTabs)
     if (!pathname || pathname === prevPathRef.current) return;
     prevPathRef.current = pathname;
-    const issueIdParam = searchParams.get('issueId');
+    const issueIdParam = searchParams?.get('issueId');
     const pathArray = pathname.split('/');
     let tabFromUrl = 'library';
     if (pathArray.length >= 4) {
@@ -351,7 +346,6 @@ export default function Home() {
 
   // Modify fetchSearchableFiles to accept dataroomId
   const fetchSearchableFiles = async (idToFetch: string) => { // Accept ID as parameter
-    console.log(`DataroomPage: Inside fetchSearchableFiles for ${idToFetch}`);
     try {
       const restOperation = get({
         apiName: 'S3_API',
@@ -362,7 +356,6 @@ export default function Home() {
       const { body } = await restOperation.response;
       const responseText = await body.text();
       const response = JSON.parse(responseText);
-      console.log("Searchable files response: ", response);
 
       const formattedFiles: FileItem[] = [];
       const formattedFolders: Folder[] = [];
@@ -591,7 +584,7 @@ export default function Home() {
         {/* Add the logo back here */}
         <div className="flex items-center flex-col">
           <img
-            src={logo.src}
+            src={typeof logo === 'string' ? logo : (logo as { src: string }).src}
             alt="logo"
             className="h-14 w-auto mb-8 cursor-pointer"
             onClick={() => router.push('/dashboard')}

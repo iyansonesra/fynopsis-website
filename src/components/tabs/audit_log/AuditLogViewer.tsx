@@ -350,7 +350,6 @@ export const AuditLogViewer: React.FC<AuditLogViewerProps> = ({ bucketId, permis
 
             const data = (await response.body.json() as unknown) as AuditLogResponse;
 
-            console.log(data);
 
             if (reset) {
                 setEvents(data?.events || []);

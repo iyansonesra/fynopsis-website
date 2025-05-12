@@ -275,7 +275,6 @@
 //   // const connectWebSocket = async (dataroomId: string): Promise<WebSocket> => {
 //     // try {
 //     //   // Add logging for debugging
-//     //   console.log('Starting WebSocket connection process for dataroom:', dataroomId);
       
 //     //   const session = await fetchAuthSession();
 //     //   const idToken = session.tokens?.idToken?.toString();
@@ -295,8 +294,6 @@
       
 //     //   // For debugging, log connection information (without exposing the full token)
 //     //   const tokenPreview = idToken.substring(0, 10) + '...' + idToken.substring(idToken.length - 10);
-//     //   console.log(`WebSocket connecting to: ${websocketHost}/prod`);
-//     //   console.log(`Connection parameters: dataroomId=${dataroomId}, idToken=${tokenPreview}`);
       
 //     //   // Create a promise that resolves when the connection opens or rejects on error
 //     //   return new Promise<WebSocket>((resolve, reject) => {
@@ -306,11 +303,9 @@
 //     //       reject(new Error('WebSocket connection timed out after 20 seconds'));
 //     //     }, 20000); // 20 second timeout
         
-//     //     console.log('Creating WebSocket instance...');
         
 //     //     // Close any existing connection before creating a new one
 //     //     if (wsConnection) {
-//     //       console.log('Found existing WebSocket connection, closing it before creating a new one');
 //     //       try {
 //     //         wsConnection.close();
 //     //       } catch (err) {
@@ -322,7 +317,6 @@
 //     //     const ws = new WebSocket(wsUrl);
 
 //     //     ws.onopen = () => {
-//     //       console.log('WebSocket connection established successfully');
 //     //       clearTimeout(connectionTimeout);
 //     //       setWsConnection(ws);
           
@@ -334,7 +328,6 @@
 //     //         // Test the connection with a ping
 //     //         try {
 //     //           ws.send(JSON.stringify({ action: 'ping' }));
-//     //           console.log('Initial ping test sent successfully');
 //     //         } catch (err) {
 //     //           console.warn('Failed to send initial ping test:', err);
 //     //         }
@@ -348,7 +341,6 @@
           
 //     //       // Check if this is a pong response (if the server responds to pings)
 //     //       if (data && typeof data === 'string' && data.includes('pong')) {
-//     //         console.log('Received pong from server - connection confirmed active');
 //     //         return;
 //     //       }
           
@@ -360,8 +352,6 @@
 //     //       clearTimeout(connectionTimeout);
           
 //     //       // Log detailed close information
-//     //       console.log(`WebSocket connection closed with code ${event.code} and reason: ${event.reason || 'No reason provided'}`);
-//     //       console.log('WebSocket close was clean:', event.wasClean);
           
 //     //       setWsConnection(null);
           
@@ -443,7 +433,6 @@
 //     // This is well below the default AWS WebSocket timeout of 10 minutes
 //     pingIntervalRef.current = setInterval(() => {
 //       if (ws && ws.readyState === WebSocket.OPEN) {
-//         console.log('Sending WebSocket ping to keep connection alive');
 //         try {
 //           // Send a minimal ping message
 //           ws.send(JSON.stringify({ action: 'ping' }));
@@ -451,7 +440,6 @@
 //           console.error('Error sending ping:', err);
 //           // If we can't send a ping, the connection might be dead
 //           if (ws) {
-//             console.log('Closing potentially dead connection after ping failure');
 //             ws.close();
 //           }
 //         }
@@ -465,7 +453,6 @@
 //   const handleWebSocketMessage = (event: MessageEvent) => {
 //     try {
 //       const message = JSON.parse(event.data);
-//       console.log('Received WebSocket message:', message);
       
 //       if (message.type === 'cell_update') {
 //         // Get the file ID and content from the message
@@ -564,7 +551,6 @@
     
 //   //   // First attempt - no delay
 //   //   try {
-//   //     console.log('Initial WebSocket connection attempt');
 //   //     return await connectWebSocket(dataroomId);
 //   //   } catch (error) {
 //   //     console.error('Initial WebSocket connection failed:', error);
@@ -579,7 +565,6 @@
 //   //       // and increasing exponentially: 3s, 6s, 12s
 //   //       const backoffTime = 3000 * Math.pow(2, retries - 1);
         
-//   //       console.log(`Retry attempt ${retries}/${maxRetries} after ${backoffTime}ms backoff...`);
         
 //   //       // Show a toast if we're retrying
 //   //       toast({
@@ -592,7 +577,6 @@
 //   //       await new Promise(resolve => setTimeout(resolve, backoffTime));
         
 //   //       // Log that we're attempting to reconnect
-//   //       console.log(`Attempting reconnection after backoff (attempt ${retries + 1})`);
         
 //   //       // Try connecting again
 //   //       return await connectWebSocket(dataroomId);
@@ -716,9 +700,7 @@
 //       if (ws && ws.readyState === WebSocket.OPEN) {
 //         try {
 //           // Just check if we can use the existing connection - don't try to reconnect yet
-//           console.log('Testing existing WebSocket connection...');
 //           ws.send(JSON.stringify({ action: 'ping' }));
-//           console.log('Using existing WebSocket connection - ping test passed');
           
 //           // Ping succeeded - use the existing connection
 //           needNewConnection = false;
@@ -726,7 +708,6 @@
 //           console.error('Error with existing WebSocket:', err);
 //           // Force close the broken connection so we can create a new one
 //           if (ws.readyState === WebSocket.OPEN) {
-//             console.log('Closing broken WebSocket connection');
 //             ws.close();
 //           }
 //           ws = null;
@@ -734,13 +715,11 @@
 //         }
 //       } else if (ws) {
 //         // Connection exists but is not in OPEN state - clean it up
-//         console.log(`Cannot use WebSocket connection in ${
 //           ws.readyState === WebSocket.CONNECTING ? 'connecting' : 
 //           ws.readyState === WebSocket.CLOSING ? 'closing' : 'closed'
 //         } state`);
         
 //         if (ws.readyState !== WebSocket.CLOSED) {
-//           console.log('Closing non-open WebSocket connection');
 //           ws.close();
 //         }
 //         ws = null;
@@ -749,7 +728,6 @@
       
 //       // Create a new connection only if needed
 //       if (needNewConnection) {
-//         console.log('No usable WebSocket connection, establishing new connection...');
 //         ws = await connectWithRetry(dataroomId);
         
 //         // Allow a brief moment for the connection to stabilize after creation
@@ -761,7 +739,6 @@
 //         throw new Error('WebSocket connection not open or unstable');
 //       }
       
-//       console.log('WebSocket connection ready, preparing to send query...');
       
 //       // Format column data for the backend
 //       const columnData = columns.map(col => ({
@@ -785,7 +762,6 @@
 //         }
 //       };
       
-//       console.log('Sending WebSocket query message:', message);
 //       ws.send(JSON.stringify(message));
       
 //       setProcessingStatus('Processing files...');

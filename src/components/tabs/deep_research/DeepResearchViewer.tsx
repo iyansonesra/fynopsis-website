@@ -440,7 +440,6 @@ export const DeepResearchViewer: React.FC = () => {
   // Handle source click
   const handleSourceClick = useCallback((fileKey: string, chunk?: string) => {
     // Implementation of source click handler
-    console.log('Source clicked:', fileKey, chunk);
     toast({
       title: "Source selected",
       description: `Viewing source: ${fileKey.split('/').pop()}`,
@@ -498,11 +497,9 @@ export const DeepResearchViewer: React.FC = () => {
       ws.onmessage = (event) => {
         try {
           const data = JSON.parse(event.data);
-          console.log("WebSocket data received:", data);
 
           // Handle pong response - just log it
           if (data.type === 'pong') {
-            console.log('Received pong from server');
             return;
           }
 

@@ -105,19 +105,9 @@ const PDFViewer: React.FC<PDFViewerProps> = ({
   const isOfficeFile = ['xlsx', 'xls', 'csv'].includes(fileType);
   const isPdfFile = fileType === 'pdf';
 
-  console.log("documenturl", documentUrl);
-  console.log("doc name", name);
-  console.log("file type", fileType);
-  console.log("isPdfFile", isPdfFile);
-  console.log("bounding boxes", boundingBoxes);
 
   // useEffect(() => {
   //   // Skip iframe loading checks for PDF files as they're handled by PDFHighlighter
-  //   console.log("documenturl", documentUrl);
-  //   console.log("doc name", name);
-  //   console.log('PDFViewer useEffect', fileType);
-  //   console.log('PDFViewer isPDF', isPdfFile);
-  //   console.log("bounding boxes", boundingBoxes);
   //   if (isPdfFile) {
   //     setIsLoading(false);
   //     return;
@@ -142,7 +132,6 @@ const PDFViewer: React.FC<PDFViewerProps> = ({
 
   //       if (!iframeDoc || iframeDoc.body.children.length === 0) {
   //         if (retryCount < maxRetries) {
-  //           console.log('Reloading document...');
   //           setRetryCount(prev => prev + 1);
   //           iframeRef.current.src = viewerUrl;
   //         } else {
@@ -154,7 +143,6 @@ const PDFViewer: React.FC<PDFViewerProps> = ({
   //         clearInterval(checkTimer);
   //       }
   //     } catch (error) {
-  //       // console.log('Checking iframe content failed:', error);
   //     }
   //   };
 
@@ -181,7 +169,6 @@ const PDFViewer: React.FC<PDFViewerProps> = ({
           setIsLoading(false);
         }
       } catch (error) {
-        console.log('Load handler failed:', error);
       }
     }
   };

@@ -24,7 +24,6 @@ export interface DataPoint {
       }
       return access;
     } catch (error) {
-      // console.log(error);
       return null;
     }
   }
@@ -106,7 +105,6 @@ export interface DataPoint {
           const innerBody = responseMain.body;
           if (innerBody && innerBody.message && innerBody.message.info) {
             const info = innerBody.message.info;
-            // console.log(innerBody);
             setStockInfo(info);
   
             if (innerBody.message.history) {
@@ -136,8 +134,6 @@ export interface DataPoint {
     setAboutCompanyText: React.Dispatch<React.SetStateAction<string>>
   ) => {
     setIsLoadingAboutText(true);
-    // console.log("yo");
-    // console.log(userMessage);
   
     const accessTokens = await handleFetchAccess();
     if (accessTokens) {
@@ -233,13 +229,10 @@ export const parseHistoryData = (history: any): { dataPoints: DataPoint[], month
       if (group.length > 0) {
         const topMonth = group.reduce((max, current) => (current.volume > max.volume ? current : max), group[0]);
         topMonths.push(topMonth);
-        // console.log(`Top month for group ${i + 1}: ${topMonth.month} with total volume ${formatNumber(topMonth.volume)} and avg daily volume ${formatNumber(topMonth.avgDailyVolume)}`);
       }
     }
   
-    // console.log('\nSelected top months:');
     topMonths.forEach(month => {
-      // console.log(`${month.month}: Total Volume: ${formatNumber(month.volume)}, Avg Daily: ${formatNumber(month.avgDailyVolume)}`);
     });
   
     return topMonths.map(item => ({
@@ -292,7 +285,6 @@ export const parseHistoryData = (history: any): { dataPoints: DataPoint[], month
 
   export const extractRelevantLinks = (content: string | object): { title: string; url: string }[] => {
     let sourcesSection: any;
-    console.log(content);
     if (typeof content === 'string') {
       try {
         sourcesSection = JSON.parse(content);

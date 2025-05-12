@@ -243,11 +243,7 @@ export function FilesystemItem({
         // Single click behavior
         // Handle selection first
 
-        console.log('NODE:', node);
-        console.log('IS SELECTED:', isSelected);
-        console.log('ON NODE SELECT:', onNodeSelect);
         if (onNodeSelect) {
-            console.log('ON NODE SELECT:', onNodeSelect);
             onNodeSelect(isSelected ? null : node);
         }
 

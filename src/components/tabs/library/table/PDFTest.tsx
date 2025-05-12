@@ -96,35 +96,28 @@ const BasicPDFViewer: React.FC<PDFViewerProps> = ({
 // Add search functionality when document is loaded and searchPhrase is provided
 useEffect(() => {
   if (isDocumentLoaded && viewerRef.current && searchPhrase && !searchPerformed) {
-    console.log(`Starting search for phrase: "${searchPhrase}"`);
     
     // Use a longer timeout to ensure the PDF is fully rendered and DOM elements are available
     const timer = setTimeout(() => {
       if (viewerRef.current && viewerRef.current.element) {
         try {
           // Check if viewer is properly initialized
-          console.log('Viewer status:', viewerRef.current.element ? 'Mounted' : 'Not mounted');
           
           // Initialize the search module
           const searchModule = viewerRef.current.textSearchModule;
           if (searchModule) {
-            console.log('Search module initialized');
             
             // Add event listeners to track search results
             viewerRef.current.textSearchComplete = (args: any) => {
-              console.log('Search completed with results:', args);
               if (args.searchText === searchPhrase) {
                 if (args.matchesCount > 0) {
-                  console.log(`Found ${args.matchesCount} matches for "${searchPhrase}"`);
                 } else {
-                  console.log(`No matches found for "${searchPhrase}"`);
                 }
               }
             };
             
             // Make sure DOM is ready before searching
             if (document.getElementById('container')) {
-              console.log('Executing search query...');
               searchModule.searchText(searchPhrase, false); // false = don't match case
               setSearchPerformed(true);
             } else {
@@ -148,7 +141,6 @@ useEffect(() => {
   // Reset search when searchPhrase changes
   useEffect(() => {
     if (searchPhrase) {
-      console.log(`Search phrase changed to: "${searchPhrase}", resetting search state`);
     }
     setSearchPerformed(false);
   }, [searchPhrase]);

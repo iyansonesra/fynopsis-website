@@ -19,6 +19,9 @@ interface UsersTabContentProps {
   onTransferOwnership: () => Promise<void>;
   onRoleChange: (userEmail: string, newRole: string) => void;
   
+  // Add availableRoles prop
+  availableRoles: Record<string, { id: string; name: string; type: 'ROLE' | 'GROUP'; description?: string }>;
+  
   // Invite dialog state
   isInviteDialogOpen: boolean;
   setIsInviteDialogOpen: (isOpen: boolean) => void;
@@ -50,6 +53,7 @@ export const UsersTabContent: React.FC<UsersTabContentProps> = ({
   onRemoveUser,
   onTransferOwnership,
   onRoleChange,
+  availableRoles,
   isInviteDialogOpen,
   setIsInviteDialogOpen,
   inviteEmail,
@@ -124,6 +128,7 @@ export const UsersTabContent: React.FC<UsersTabContentProps> = ({
                         currentUserRole={currentUser.role as Role} 
                         onRoleChange={onRoleChange}
                         currentUserEmail={currentUser.email} 
+                        availableRoles={availableRoles}
                       />
                     </div>
                   </div>
@@ -139,6 +144,7 @@ export const UsersTabContent: React.FC<UsersTabContentProps> = ({
                   currentUserEmail={currentUser?.email || null}
                   onRoleChange={onRoleChange}
                   onRemoveUser={onRemoveUser}
+                  availableRoles={availableRoles}
                 />
               ))}
             </div>

@@ -609,11 +609,9 @@ export default function DiligenceDashboardViewer() {
             setIsLoading(true);
             // Get dashboard state from MetricsService
             const loadedWidgetsMap = await MetricsService.getDashboardState(bucketId);
-            console.log("Loaded widgets map:", loadedWidgetsMap);
 
             // Convert from MetricsService.Widget format to DashboardWidget format
             const convertedWidgets = convertWidgetsFormat(loadedWidgetsMap);
-            console.log("Converted widgets with positions:", convertedWidgets);
             setWidgets(convertedWidgets);
 
             toast({
@@ -810,7 +808,6 @@ export default function DiligenceDashboardViewer() {
     };
 
     const handleDeleteWidget = async (id: string) => {
-        console.log("DELETING WIDGET");
         try {
             // Delete widget from backend first
             await MetricsService.deleteWidget(bucketId, id);
@@ -889,7 +886,6 @@ export default function DiligenceDashboardViewer() {
             try {
                 // Use MetricsService to update the widget position
                 await MetricsService.modifyWidget(bucketId, widgetId, { positionData });
-                console.log(`Widget ${widgetId} position updated successfully`);
                 debounceMap.delete(widgetId);
             } catch (error) {
                 console.error(`Error updating position for widget ${widgetId}:`, error);

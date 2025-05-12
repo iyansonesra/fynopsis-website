@@ -349,7 +349,6 @@ export function FileSystem({ onFileSelect, permissionDetails }: FileSystemProps)
                 : item
             ));
 
-            // console.log('Cut:', selectedItem.s3Key);
           }
         } else if (e.key === 'v' && cutFiles) {
           // Handle paste (you might need to modify this to handle multiple files)
@@ -434,8 +433,6 @@ export function FileSystem({ onFileSelect, permissionDetails }: FileSystemProps)
   };
 
   const moveFile = async (ids: string[], folderId: string) => {
-    console.log('Moving file:', ids, folderId);
-    console.log('Bucket UUID:', bucketUuid);
     
     try {
       const response = await post({
@@ -466,7 +463,6 @@ export function FileSystem({ onFileSelect, permissionDetails }: FileSystemProps)
     // If there's no over target, it means the item was dropped outside any valid drop zone
     if (!over) {
       setActiveId(null);
-      // console.log("no over");
 
       return;
     }
@@ -480,7 +476,6 @@ export function FileSystem({ onFileSelect, permissionDetails }: FileSystemProps)
 
     // Only proceed if dropping onto a folder
     if (!overItem.isFolder) {
-      // console.log("not a folder");
 
       setActiveId(null);
       return;
@@ -1749,7 +1744,6 @@ export function FileSystem({ onFileSelect, permissionDetails }: FileSystemProps)
     const uploadPromises = files.map(async (file) => {
       try {
         // const s3Key = await uploadToS3(file);
-        // console.log("s3key of file in s3", temps3Key);
         const newFile: FileNode = {
           parentId: pathArray[3] === "home" ? "ROOT" : pathArray[3],
           name: file.name,
@@ -1770,9 +1764,7 @@ export function FileSystem({ onFileSelect, permissionDetails }: FileSystemProps)
 
 
 
-        // console.log("temps3Key", temps3Key);
 
-        // console.log("s3key of file in tree", temps3Key);
 
         return newFile;
       } catch (error) {
@@ -1782,12 +1774,10 @@ export function FileSystem({ onFileSelect, permissionDetails }: FileSystemProps)
     });
 
     // const newFiles = (await Promise.all(uploadPromises)).filter((item): item is FileNode => item !== null);
-    // // console.log("new files:", newFiles);
     // setTableData(prevData => [...prevData, ...newFiles]);
     // setShowUploadOverlay(false);
 
     const newFiles = (await Promise.all(uploadPromises)).filter((item): item is FileNode => item !== null);
-    // console.log("new files:", newFiles);
     setTableData(prevData => sortTableData([...prevData, ...newFiles]));
     setShowUploadOverlay(false);
 

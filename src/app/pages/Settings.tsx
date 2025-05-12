@@ -21,7 +21,6 @@ export default function Settings({ setSelectedTab }: { setSelectedTab: (tab: str
             const attributes = await fetchUserAttributes();
             setUserAttributes(attributes);
         } catch (error) {
-            console.log("error");
         }
     }
     const handleTabChange = (tab: string) => {
