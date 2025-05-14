@@ -263,9 +263,17 @@ class StreamManager {
       console.log('With headers:', JSON.stringify(Array.from(headers.entries())));
       console.log('With body:', JSON.stringify(queryParams));
 
-      // Start the fetch request but don't await it
-      fetch(request)
+      // Create an abort controller to timeout the connection if it doesn't connect in 3 seconds
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => {
+        console.error('Stream connection timed out after 3 seconds');
+        controller.abort();
+      }, 3000);
+
+      // Start the fetch request but don't await it, passing the abort signal
+      fetch(request, { signal: controller.signal })
         .then(response => {
+          clearTimeout(timeoutId);
           if (!response.ok) {
             console.error(`Stream response not OK: ${response.status} ${response.statusText}`);
             throw new Error(`HTTP error! status: ${response.status}`);
@@ -346,6 +354,15 @@ class StreamManager {
           processChunks();
         })
         .catch(error => {
+          clearTimeout(timeoutId);
+          if (error.name === 'AbortError') {
+            console.error('Stream connection timed out');
+            this.isConnecting = false;
+            this.messageHandlers.forEach(handler =>
+              handler({ type: 'error', error: 'Stream connection timed out' })
+            );
+            return;
+          }
           console.error('Stream request error:', error);
           this.isConnecting = false;
           this.messageHandlers.forEach(handler =>
