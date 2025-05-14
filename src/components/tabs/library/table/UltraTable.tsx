@@ -2028,15 +2028,55 @@ th {
             </DropdownMenuContent>
           </DropdownMenu>
           {showFileOrganizer && (
-            <FileOrganizerDialog
-              bucketId={bucketUuid}
-              onOrganize={(...args) => {
-                setShowFileOrganizer(false);
-                handleOrganize(...args);
+            <div 
+              className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center"
+              onClick={(e) => {
+                // Only close if clicking the backdrop (not the dialog itself)
+                if (e.target === e.currentTarget) {
+                  setShowFileOrganizer(false);
+                  // Reset selection state when dialog is closed
+                  setSelectedItemIds([]);
+                  // Force a refresh of the table data to ensure clean state
+                  setTableData(prevData => [...prevData]);
+                  // Force a re-render of the entire component
+                  setTimeout(() => {
+                    // This will ensure all event listeners are properly re-attached
+                    window.dispatchEvent(new Event('resize'));
+                  }, 100);
+                }
               }}
-              onClose={() => setShowFileOrganizer(false)}
-              open={true}
-            />
+            >
+               <FileOrganizerDialog
+                  bucketId={bucketUuid}
+                  onOrganize={(...args) => {
+                    setShowFileOrganizer(false);
+                    // Reset selection state to ensure clean state after organizing
+                    setSelectedItemIds([]);
+                    handleOrganize(...args);
+                    // Force a re-render of the entire component
+                    setTimeout(() => {
+                      // This will ensure all event listeners are properly re-attached
+                      window.dispatchEvent(new Event('resize'));
+                    }, 100);
+                  }}
+                  onClose={() => {
+                    setShowFileOrganizer(false);
+                    // Reset selection state when dialog is closed
+                    setSelectedItemIds([]);
+                    // Force a refresh of the table data to ensure clean state
+                    setTableData(prevData => [...prevData]);
+                    // Force a re-render of the entire component
+                    setTimeout(() => {
+                      // This will ensure all event listeners are properly re-attached
+                      window.dispatchEvent(new Event('resize'));
+                    }, 100);
+                  }}
+                  open={showFileOrganizer}
+                />
+              {/* <div className="relative" onClick={(e) => e.stopPropagation()}>
+               
+              </div> */}
+            </div>
           )}
           <button
             onClick={handleRefresh}

@@ -1298,7 +1298,7 @@ export const FileOrganizerDialog: React.FC<FileOrganizerDialogProps> = ({ bucket
         </div>
 
         <div className="min-h-[70%] max-h-[70%]">
-          <ScrollArea className="h-full">
+          <ScrollArea className="h-full px-4">
             <DndProvider backend={HTML5Backend}>
               <div className="h-full">
                 <FolderTreeEditor 
@@ -1362,22 +1362,32 @@ export const FileOrganizerDialog: React.FC<FileOrganizerDialogProps> = ({ bucket
     );
   };
 
+  // Only render the component when open is true
+  if (!open) return null;
+  
   return (
-
-    <Dialog open={open} onOpenChange={onClose}>
-      <div className="flex flex-col h-full">
-        <DialogContent className="max-w-4xl h-[80vh] dark:bg-darkbg border-none select-none outline-none flex flex-col">
-          <DialogHeader>
-            <DialogTitle className="dark:text-gray-200">Organize Files</DialogTitle>
-          </DialogHeader>
-          <div className="flex-1 h-full gap-4 ">
+    <div className="fixed inset-0 z-50" onClick={(e) => e.stopPropagation()}>
+      <div className="flex flex-col h-full w-full items-center justify-center">
+        <div className="bg-white dark:bg-darkbg rounded-lg shadow-lg max-w-4xl w-full h-[80vh] flex flex-col relative">
+          <div className="p-4 border-b dark:border-gray-800">
+            <div className="flex justify-between items-center">
+              <h2 className="text-lg font-semibold dark:text-gray-200">Organize Files</h2>
+              <button 
+                onClick={onClose}
+                className="p-1 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+              >
+                <X className="h-5 w-5 text-gray-500 dark:text-gray-400" />
+              </button>
+            </div>
+          </div>
+          <div className="flex-1 h-full gap-4 overflow-hidden">
             <div className="h-full flex flex-col">
               {renderContent()}
             </div>
           </div>
-        </DialogContent>
+        </div>
       </div>
-    </Dialog>
+    </div>
 
   );
 };
