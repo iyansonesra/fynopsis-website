@@ -83,7 +83,7 @@ class StreamManager {
   private isConnecting = false;
   private connectionRefs = 0;
   private pendingMessages: any[] = [];
-  private baseUrl = process.env.NEXT_PUBLIC_SEARCH_API_URL || 'https://dev.fynopsis.ai';
+  private baseUrl = process.env.NEXT_PUBLIC_SEARCH_API_URL || 'https://prod.fynopsis.ai';
   // Add a message log for debugging
   private messageLog: any[] = [];
 
