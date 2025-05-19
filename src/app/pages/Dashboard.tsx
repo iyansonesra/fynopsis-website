@@ -44,11 +44,6 @@ type Tab = {
     label: string;
 };
 
-type IndicatorStyle = {
-    top?: string;
-    height?: string;
-};
-
 type DataRoom = {
     id: string | null | undefined;
     title: string;
@@ -99,14 +94,18 @@ const SkeletonInvite = () => (
     </div>
 );
 
+type IndicatorStyle = {
+    top: string;
+    height: string;
+  };
+
 export default function GeneralDashboard() {
     const [selectedTab, setSelectedTab] = useState("library");
     const router = useRouter();
     const { user, signOut } = useAuthenticator((context) => [context.user]);
     const [userAttributes, setUserAttributes] = useState<FetchUserAttributesOutput | null>(null);
     const [isLoading, setIsLoading] = useState(true);
-    const [activeTab, setActiveTab] = useState<number | null>(0);
-    const [indicatorStyle, setIndicatorStyle] = useState<IndicatorStyle>({} as IndicatorStyle);
+    const [activeTab, setActiveTab] = useState<number>(0);
     const tabRefs = useRef<(HTMLDivElement | null)[]>([]);
     const [invitedDatarooms, setInvitedDatarooms] = useState<any[]>([]);
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
@@ -266,18 +265,6 @@ export default function GeneralDashboard() {
         setSelectedTab(tabs[index].label.toLowerCase());
     }
 
-    useEffect(() => {
-        if (activeTab !== null && tabRefs.current[activeTab]) {
-            const tabElement = tabRefs.current[activeTab];
-            if (tabElement) {
-                setIndicatorStyle({
-                    top: `${tabElement.offsetTop}px`,
-                    height: `${tabElement.offsetHeight}px`,
-                });
-            }
-        }
-    }, [activeTab]);
-
     const [isDarkMode, setIsDarkMode] = useState(() => {
         if (typeof window !== 'undefined') {
             return localStorage.getItem('color-theme') === 'dark';
@@ -300,26 +287,6 @@ export default function GeneralDashboard() {
         } catch (error) {
         }
     }
-
-
-    // const fetchInvitedDatarooms = async () => {
-    //     try {
-    //         const restOperation = get({
-    //             apiName: 'S3_API',
-    //             path: '/get-invited-datarooms',
-    //             options: {
-    //                 withCredentials: true
-    //             }
-    //         });
-
-    //         const { body } = await restOperation.response;
-    //         const responseText = await body.text();
-    //         const response = JSON.parse(responseText);
-    //         setInvitedDatarooms(response.invitedDatarooms || []);
-    //     } catch (error) {
-    //         console.error('Error fetching invited datarooms:', error);
-    //     }
-    // };
 
     const handleAcceptInvite = async (bucketId: string) => {
         setPendingAcceptBucketId(bucketId);
@@ -380,8 +347,6 @@ export default function GeneralDashboard() {
         }
     };
 
-
-
     const toggleDarkMode = () => {
         setIsDarkMode(!isDarkMode);
         if (isDarkMode) {
@@ -392,8 +357,6 @@ export default function GeneralDashboard() {
             localStorage.setItem('color-theme', 'dark');
         }
     };
-
-
 
     useEffect(() => {
         if (isDarkMode) {
@@ -440,28 +403,21 @@ export default function GeneralDashboard() {
                     <div className="">
                         <img src={logo.src} alt="logo" className="h-14 w-auto mb-8" />
                         <div className="relative flex flex-col items-center">
-                            {activeTab !== null && (
-                                <div
-                                    className="absolute left-0 w-full bg-blue-300 rounded-xl transition-all duration-300 ease-in-out z-0"
-                                    style={{
-                                        top: `${tabRefs.current[activeTab]?.offsetTop || 0}px`,
-                                        height: `${tabRefs.current[activeTab]?.offsetHeight || 0}px`
-                                    }}
-                                />
-                            )}
                             {tabs.map((tab, index) => (
                                 <div
                                     key={tab.label}
                                     ref={(el) => { tabRefs.current[index] = el }}
-                                    className={`relative z-10 p-2 mb-4 cursor-pointer ${activeTab === index ? 'text-slate-900' : 'text-white'
-                                        }`}
+                                    className={`p-2 mb-4 cursor-pointer rounded-lg ${
+                                        activeTab === index 
+                                            ? 'bg-blue-300 text-slate-900' 
+                                            : 'text-white'
+                                    }`}
                                     onClick={() => handleTabClick(index)}
                                 >
                                     <tab.icon size={24} />
                                 </div>
                             ))}
                         </div>
-
                     </div>
 
                     <Popover>

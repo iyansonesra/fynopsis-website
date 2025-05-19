@@ -3,6 +3,9 @@ import { Amplify } from "aws-amplify";
 import { Authenticator as AmplifyAuthenticator } from "@aws-amplify/ui-react";
 import { Montserrat, Poppins, Cormorant, Inter } from "next/font/google";
 import { ThemeProvider, createTheme } from '@mui/material/styles';
+import { MsalProvider } from "@azure/msal-react";
+import { PublicClientApplication } from "@azure/msal-browser";
+import { msalConfig } from "../config/msalConfig";
 
 if (!process.env.NEXT_PUBLIC_USER_POOL_ID || !process.env.NEXT_PUBLIC_USER_POOL_CLIENT_ID) {
   throw new Error('Environment variables NEXT_PUBLIC_USER_POOL_ID and NEXT_PUBLIC_USER_POOL_CLIENT_ID must be set');
@@ -91,12 +94,16 @@ Amplify.configure({
   },
 });
 
+// Initialize MSAL instance
+const msalInstance = new PublicClientApplication(msalConfig);
 
 const ClientComponent = ({ children }: { children: React.ReactNode }) => {
   return (
     <ThemeProvider theme = {theme}>
       <AmplifyAuthenticator.Provider>
-        {children}
+        <MsalProvider instance={msalInstance}>
+          {children}
+        </MsalProvider>
       </AmplifyAuthenticator.Provider>
     </ThemeProvider>
   );

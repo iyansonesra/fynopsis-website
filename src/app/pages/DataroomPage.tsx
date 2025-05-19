@@ -598,7 +598,7 @@ export default function Home() {
           />
           {/* Tab Icons */}
           <div className="relative flex flex-col items-center">
-            {activeTab !== null && activeTab < filteredTabs.length && ( // Add bounds check
+            {/* {activeTab !== null && activeTab < filteredTabs.length && ( // Add bounds check
               <div
                 className={`absolute left-0 w-full bg-blue-300 rounded-xl ${shouldAnimate ? 'transition-all duration-300 ease-in-out' : 'transition-none'} z-20`}
                 style={{
@@ -606,12 +606,14 @@ export default function Home() {
                   height: `${tabRefs.current[activeTab]?.offsetHeight || 0}px`
                 }}
               />
-            )}
+            )} */}
             {filteredTabs.map((tab, index) => (
               <div
                 key={tab.label}
                 ref={(el) => { tabRefs.current[index] = el }}
-                className={`relative z-30 p-2 mb-4 cursor-pointer ${activeTab === index ? 'text-slate-900' : 'text-white'}`}
+                className={`relative z-30 p-2 mb-4 cursor-pointer rounded-lg ${  activeTab === index 
+                  ? 'bg-blue-300 text-slate-900' 
+                  : 'text-white'}`}
                 onClick={() => handleTabClick(index)}
               >
                 <tab.icon size={24} />

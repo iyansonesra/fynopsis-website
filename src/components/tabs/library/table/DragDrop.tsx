@@ -12,8 +12,16 @@ import { Alert, AlertDescription } from '../../../ui/alert';
 import ZipPreview from './ZipPreview';
 import ZipUploadProgress from './ZipUploadProgress';
 import { Button } from "@/components/ui/button";
-import SharePointUpload from './SharePointUpload';
+import { useMicrosoftAuth } from '@/hooks/useMicrosoftAuth';
+import { useMsal } from '@azure/msal-react';
 
+declare global {
+  interface Window {
+    OneDrive: {
+      Picker: new (options: any) => any;
+    };
+  }
+}
 
 interface DragDropOverlayProps {
   onClose: () => void;
@@ -132,6 +140,8 @@ const DragDropOverlay: React.FC<DragDropOverlayProps> = ({
   folderId,
   onRefreshNeeded
 }) => {
+  const { isAuthenticated, signIn, signOut, user, isLoading: isAuthLoading } = useMicrosoftAuth();
+  const { instance } = useMsal();
   const fileHashes: FileHashMapping = {}; 
   const [pendingFiles, setPendingFiles] = useState<File[]>([]);
   const [fileUploads, setFileUploads] = useState<FileUploads>({});
@@ -146,7 +156,6 @@ const DragDropOverlay: React.FC<DragDropOverlayProps> = ({
   const [selectedZipFile, setSelectedZipFile] = useState<File | null>(null);
   const [isUploadingZip, setIsUploadingZip] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
-  const [showSharePointUpload, setShowSharePointUpload] = useState(false);
   interface ProcessedItem {
     path: string;
     file: File;
@@ -632,6 +641,205 @@ const DragDropOverlay: React.FC<DragDropOverlayProps> = ({
     </li>
   );
 
+  const handleSharePointUpload = async () => {
+    if (!isAuthenticated) {
+      try {
+        await signIn();
+      } catch (error: any) {
+        console.error('Sign in error:', error);
+        alert('Failed to sign in. Please try again.');
+        return;
+      }
+      return;
+    }
+
+    try {
+      const accounts = instance.getAllAccounts();
+      const account = instance.getActiveAccount() || accounts[0];
+      
+      if (!account) {
+        if (accounts.length > 0) {
+          instance.setActiveAccount(accounts[0]);
+        } else {
+          throw new Error('No active account');
+        }
+      }
+
+      const tokenResponse = await instance.acquireTokenSilent({
+        scopes: ['Files.Read', 'Files.Read.All', 'Sites.Read.All'],
+        account: account || accounts[0]
+      });
+
+      // Fetch files from OneDrive for Business
+      const response = await fetch('https://graph.microsoft.com/v1.0/me/drive/items/root/children?$select=id,name,size,file,folder,webUrl&$filter=folder eq null', {
+        headers: {
+          'Authorization': `Bearer ${tokenResponse.accessToken}`,
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        }
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error('OneDrive API Error:', errorData);
+        throw new Error(`Failed to fetch files from OneDrive: ${errorData.error?.message || response.statusText}`);
+      }
+
+      const data = await response.json();
+      const files = data.value;
+
+      // Create a simple file picker UI
+      const selectedFiles = await new Promise<any[]>((resolve) => {
+        const dialog = document.createElement('div');
+        dialog.style.position = 'fixed';
+        dialog.style.top = '50%';
+        dialog.style.left = '50%';
+        dialog.style.transform = 'translate(-50%, -50%)';
+        dialog.style.backgroundColor = 'white';
+        dialog.style.padding = '20px';
+        dialog.style.borderRadius = '8px';
+        dialog.style.boxShadow = '0 2px 10px rgba(0,0,0,0.1)';
+        dialog.style.zIndex = '1000';
+        dialog.style.maxHeight = '80vh';
+        dialog.style.overflowY = 'auto';
+
+        const fileList = document.createElement('div');
+        fileList.style.marginBottom = '20px';
+        fileList.style.maxHeight = '60vh';
+        fileList.style.overflowY = 'auto';
+
+        files.forEach((file: any) => {
+          const fileItem = document.createElement('div');
+          fileItem.style.padding = '10px';
+          fileItem.style.borderBottom = '1px solid #eee';
+          fileItem.style.cursor = 'pointer';
+          fileItem.style.display = 'flex';
+          fileItem.style.alignItems = 'center';
+          fileItem.style.gap = '10px';
+
+          const checkbox = document.createElement('input');
+          checkbox.type = 'checkbox';
+          checkbox.style.marginRight = '10px';
+
+          const fileName = document.createElement('span');
+          fileName.textContent = file.name;
+
+          fileItem.appendChild(checkbox);
+          fileItem.appendChild(fileName);
+          fileList.appendChild(fileItem);
+        });
+
+        const buttonContainer = document.createElement('div');
+        buttonContainer.style.display = 'flex';
+        buttonContainer.style.justifyContent = 'flex-end';
+        buttonContainer.style.gap = '10px';
+
+        const selectButton = document.createElement('button');
+        selectButton.textContent = 'Select';
+        selectButton.style.padding = '8px 16px';
+        selectButton.style.backgroundColor = '#0078d4';
+        selectButton.style.color = 'white';
+        selectButton.style.border = 'none';
+        selectButton.style.borderRadius = '4px';
+        selectButton.style.cursor = 'pointer';
+
+        const cancelButton = document.createElement('button');
+        cancelButton.textContent = 'Cancel';
+        cancelButton.style.padding = '8px 16px';
+        cancelButton.style.backgroundColor = '#f3f2f1';
+        cancelButton.style.border = '1px solid #d1d1d1';
+        cancelButton.style.borderRadius = '4px';
+        cancelButton.style.cursor = 'pointer';
+
+        selectButton.onclick = () => {
+          const selectedFiles = Array.from(fileList.querySelectorAll('input[type="checkbox"]:checked'))
+            .map((checkbox, index) => files[index]);
+          document.body.removeChild(dialog);
+          resolve(selectedFiles);
+        };
+
+        cancelButton.onclick = () => {
+          document.body.removeChild(dialog);
+          resolve([]);
+        };
+
+        buttonContainer.appendChild(cancelButton);
+        buttonContainer.appendChild(selectButton);
+
+        dialog.appendChild(fileList);
+        dialog.appendChild(buttonContainer);
+        document.body.appendChild(dialog);
+      });
+
+      if (selectedFiles.length === 0) {
+        return;
+      }
+
+      const newUploads: FileUploads = {};
+      const processedFiles: File[] = [];
+
+      for (const file of selectedFiles) {
+        try {
+          // Download file content
+          const downloadResponse = await fetch(`https://graph.microsoft.com/v1.0/me/drive/items/${file.id}/content`, {
+            headers: {
+              'Authorization': `Bearer ${tokenResponse.accessToken}`
+            }
+          });
+
+          if (!downloadResponse.ok) {
+            throw new Error(`Failed to download file: ${downloadResponse.statusText}`);
+          }
+
+          const blob = await downloadResponse.blob();
+          const fileObj = new File([blob], file.name, { type: file.file?.mimeType || 'application/octet-stream' });
+
+          let status: FileUpload['status'] = 'completed';
+          
+          if (fileObj.size > MAX_FILE_SIZE) {
+            status = 'file too large';
+          } else if (!isValidFileType(fileObj)) {
+            status = 'invalid file type';
+          } else if (!isValidFileName(fileObj.name)) {
+            status = 'invalid filename';
+          }
+
+          newUploads[fileObj.name] = {
+            file: fileObj,
+            progress: 0,
+            status,
+            isZip: false
+          };
+
+          if (status === 'completed') {
+            processedFiles.push(fileObj);
+          }
+        } catch (error) {
+          console.error(`Error processing file ${file.name}:`, error);
+          newUploads[file.name] = {
+            file: new File([], file.name),
+            progress: 0,
+            status: 'error',
+            isZip: false
+          };
+        }
+      }
+
+      // Update state with new files
+      if (Object.keys(newUploads).length > 0) {
+        setFileUploads(prev => ({
+          ...prev,
+          ...newUploads
+        }));
+        
+        setPendingFiles(prev => [...prev, ...processedFiles]);
+      }
+
+    } catch (error) {
+      console.error('Error in SharePoint upload:', error);
+    }
+  };
+
   const renderDropzoneContent = () => (
     <div
       {...getRootProps()}
@@ -659,13 +867,23 @@ const DragDropOverlay: React.FC<DragDropOverlayProps> = ({
           </div>
           <div className="mt-4">
             <Button
-              onClick={() => setShowSharePointUpload(true)}
               variant="outline"
               className="flex items-center gap-2"
+              onClick={handleSharePointUpload}
+              disabled={isAuthLoading}
             >
               <Share2 className="h-4 w-4" />
-              Upload from SharePoint
+              {isAuthenticated ? `Upload from SharePoint (${user?.name})` : 'Sign in with Microsoft'}
             </Button>
+            {isAuthenticated && (
+              <Button
+                variant="ghost"
+                className="mt-2 text-sm text-gray-500"
+                onClick={signOut}
+              >
+                Sign out
+              </Button>
+            )}
           </div>
         </>
       ) : null}
@@ -759,14 +977,7 @@ const DragDropOverlay: React.FC<DragDropOverlayProps> = ({
           </div>
         </div>
       </div>
-      {showSharePointUpload && (
-        <SharePointUpload
-          onClose={() => setShowSharePointUpload(false)}
-          onFilesUploaded={onFilesUploaded}
-          folderId={folderId}
-          onRefreshNeeded={onRefreshNeeded}
-        />
-      )}
+      
     </div>
   );
 };
