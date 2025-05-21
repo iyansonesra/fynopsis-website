@@ -325,7 +325,28 @@ export default function GeneralDashboard() {
             setIsAccepting(false);
         }
     };
-
+    const fetchRecentActivities = async () => {
+        try {
+          const response = await get({
+            apiName: 'S3_API',
+            path: '/recent-activities',
+            options: {
+              headers: {
+                'Content-Type': 'application/json',
+                'Access-Control-Allow-Origin': '*',
+                'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+                'Access-Control-Allow-Headers': 'Content-Type, Authorization'
+              },
+              withCredentials: true
+            },
+          });
+          console.log("Recent activities response: ", response);
+          return response;
+        } catch (error) {
+          console.error('Error fetching recent activities:', error);
+          throw error instanceof Error ? error.message : 'Failed to fetch recent activities';
+        }
+    };
     const handleDeclineInvite = async (bucketId: string) => {
         try {
             const restOperation = post({
@@ -371,6 +392,7 @@ export default function GeneralDashboard() {
             try {
                 await handleFetchUserAttributes();
                 await handleFetchDataRooms();
+                await fetchRecentActivities();
             } catch (error) {
                 console.error('Error initializing dashboard:', error);
             } finally {

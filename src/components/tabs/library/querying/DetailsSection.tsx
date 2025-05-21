@@ -49,6 +49,7 @@ import { MessageItem } from './MessageItem';
 import streamManager, { MessageBatch } from '@/lib/websocketManager';
 import { usePermissionsStore } from '@/stores/permissionsStore'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
+import { useSourceMappingStore } from '@/stores/sourceMappingStore';
 
 // import { w3cwebsocket as W3CWebSocket } from "websocket";
 // import { Signer } from '@aws-amplify/core';
@@ -366,7 +367,7 @@ const DetailSection: React.FC<DetailsSectionProps> = ({
         // Create a message handler for this specific query
         const messageHandler = (data: any) => {
             try {
-                console.log("Stream message received:", data);
+                // console.log("Stream message received:", data);
                 if (data.type === 'progress') {
                     const progressText = data.step || data.message;
                     setProgressText(progressText);
@@ -542,6 +543,12 @@ const DetailSection: React.FC<DetailsSectionProps> = ({
                                 progressText: "Generating sources..."
                             });
                         }
+                    }
+
+                    if(data.source_mapping) {
+                        const { addMultipleMappings, clearMappings } = useSourceMappingStore.getState();
+                        clearMappings(); // Clear existing mappings
+                        addMultipleMappings(data.source_mapping);
                     }
                 }
                 

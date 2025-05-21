@@ -338,6 +338,7 @@ export default function Home() {
   useEffect(() => {
     if (user) {
       handleFetchUserAttributes();
+
     }
   }, [user]);
 
@@ -429,6 +430,8 @@ export default function Home() {
     }
   };
 
+
+
   // Keep handleShareDataroom logic (use contextDataroomId)
   const handleShareDataroom = async () => {
     if (userEmail.trim() && contextDataroomId) { // Use contextDataroomId
@@ -459,6 +462,8 @@ export default function Home() {
       }
     }
   };
+
+
 
   // Keep handleFetchUserAttributes logic
   async function handleFetchUserAttributes() {

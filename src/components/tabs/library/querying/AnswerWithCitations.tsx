@@ -5,6 +5,7 @@ import { Button } from '../../../ui/button';
 import { HoverCard, HoverCardContent, HoverCardTrigger } from '../../../ui/hover-card';
 import { HoverCardPortal } from '@radix-ui/react-hover-card';
 import { useFileStore } from '../../../services/HotkeyService';
+import { useSourceMappingStore } from '@/stores/sourceMappingStore';
 
 interface Citation {
     id: string;
@@ -37,6 +38,8 @@ const GreenCircle = memo<GreenCircleProps>(({ number, fileKey, onSourceClick, ch
 
     console.log("BOUNDS", bounds);
     console.log("BOUNDS KEY", boundsKey);
+
+    console.log("FILE KEY", fileKey);
 
     // Use useMemo to avoid recalculating the file name on every render
     const fileName = useMemo(() => {
@@ -113,18 +116,17 @@ export const AnswerWithCitations = memo<AnswerWithCitationsProps>(({ content, ci
     const transformedContent = useMemo(() => {
         if (content.includes("<t")) return "";
 
-        // console.log("CITATIONS IN ANSWERWITH", citations);
-        
-        return content.replace(/@(\d+)@/g, (match, number, offset, string) => {
-            const citation = getCitationByStep(number);
+        return content.replace(/\[(\d+)\]/g, (match, number, offset, string) => {
+            // Get the source mapping from our store
+            const sourceMapping = useSourceMappingStore.getState().getMapping(parseInt(number));
             const followingChar = string[offset + match.length] || '';
 
             if (followingChar === ' ' || followingChar === '' || followingChar === '\n') {
-                return `<circle data-number="${number}" data-filekey="${citation?.fileKey || ''}" data-chunk="${citation?.chunkText}" />\n`;
+                return `<circle data-number="${number}" data-filekey="${sourceMapping?.source_id || ''}" data-chunk="${sourceMapping?.chunk_text || ''}" />\n`;
             }
-            return `<circle data-number="${number}" data-filekey="${citation?.fileKey || ''}" data-chunk="${citation?.chunkText}"/>`;
+            return `<circle data-number="${number}" data-filekey="${sourceMapping?.source_id || ''}" data-chunk="${sourceMapping?.chunk_text || ''}"/>`;
         });
-    }, [content, citations]);
+    }, [content]);
 
     // Define interface for circle component props
     interface CircleComponentProps {

@@ -318,7 +318,7 @@ class StreamManager {
                 // Decode the chunk and add to buffer
                 const chunk = decoder.decode(value, { stream: true });
                 console.log('Raw chunk received:', chunk);
-                console.log("_____________________________________________");
+                // console.log("_____________________________________________");
 
                 // Split the chunk by 'data:' to handle multiple messages
                 const messages = chunk.split('data:').filter(msg => msg.trim());
