@@ -293,6 +293,8 @@ const DetailSection: React.FC<DetailsSectionProps> = ({
         setIsClickProcessing(true);
 
         console.log("SOURCE CARD CLICKED:", sourceUrl);
+        sourceUrl = sourceUrl.split('::')[0] || '';
+        console.log("SOURCE CARD CLICKED:", sourceUrl);
 
         try {
             // First check if file exists in s3Objects

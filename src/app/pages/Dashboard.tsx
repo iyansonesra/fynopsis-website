@@ -392,7 +392,7 @@ export default function GeneralDashboard() {
             try {
                 await handleFetchUserAttributes();
                 await handleFetchDataRooms();
-                await fetchRecentActivities();
+                // await fetchRecentActivities();
             } catch (error) {
                 console.error('Error initializing dashboard:', error);
             } finally {

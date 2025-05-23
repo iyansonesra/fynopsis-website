@@ -44,7 +44,7 @@ const GreenCircle = memo<GreenCircleProps>(({ number, fileKey, onSourceClick, ch
     // Use useMemo to avoid recalculating the file name on every render
     const fileName = useMemo(() => {
         if (!fileKey) return '';
-        return getFileName(fileKey.split('/').pop() || '');
+        return getFileName(fileKey.split('::')[0] || '');
     }, [fileKey, getFileName]);
 
     useEffect(() => {
@@ -122,9 +122,9 @@ export const AnswerWithCitations = memo<AnswerWithCitationsProps>(({ content, ci
             const followingChar = string[offset + match.length] || '';
 
             if (followingChar === ' ' || followingChar === '' || followingChar === '\n') {
-                return `<circle data-number="${number}" data-filekey="${sourceMapping?.source_id || ''}" data-chunk="${sourceMapping?.chunk_text || ''}" />\n`;
+                return `<circle data-number="${number}" data-filekey="${sourceMapping?.source_id || ''}" data-chunk="${''}" />\n`;
             }
-            return `<circle data-number="${number}" data-filekey="${sourceMapping?.source_id || ''}" data-chunk="${sourceMapping?.chunk_text || ''}"/>`;
+            return `<circle data-number="${number}" data-filekey="${sourceMapping?.source_id || ''}" data-chunk="${''}"/>`;
         });
     }, [content]);
 
