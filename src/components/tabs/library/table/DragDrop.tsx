@@ -581,15 +581,30 @@ const DragDropOverlay: React.FC<DragDropOverlayProps> = ({
 
   
 
+  const handleRemoveFile = (fileName: string) => {
+    setFileUploads(prev => {
+      const newUploads = { ...prev };
+      delete newUploads[fileName];
+      return newUploads;
+    });
+    setPendingFiles(prev => prev.filter(file => file.name !== fileName));
+  };
+
   const FileItem = ({ fileName, upload }: { fileName: string; upload: FileUpload }) => (
     <li key={fileName} className="space-y-2 group relative z-10">
       <div className="flex justify-between items-center text-sm text-gray-600">
         <span>{fileName}</span>
-        <div className="flex items-center ">
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => handleRemoveFile(fileName)}
+            className="opacity-0 group-hover:opacity-100 transition-opacity text-red-500 hover:text-red-700"
+          >
+            <X className="h-4 w-4" />
+          </button>
           {upload.isZip && (
             <button
               onClick={() => handleZipPreview(upload.file)}
-              className="opacity-0 group-hover:opacity-100 transition-opacity text-blue-500 hover:text-blue-700 flex gap-2 "
+              className="opacity-0 group-hover:opacity-100 transition-opacity text-blue-500 hover:text-blue-700 flex gap-2"
             >
               <Archive className="h-4 w-4" />
               <span>Show structure</span>
