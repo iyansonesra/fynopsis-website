@@ -898,86 +898,85 @@ const DragDropOverlay: React.FC<DragDropOverlayProps> = ({
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
       <div className="relative bg-white p-8 rounded-lg shadow-lg w-4/5 max-w-4xl dark:bg-darkbg">
-        <div className="absolute top-4 right-4">
+        <div className="absolute top-4 right-4 z-20">
           <button onClick={onClose} className="text-gray-500 hover:text-gray-700">
             <X className="h-6 w-6 dark:text-gray-200" />
           </button>
         </div>
         
-        <div className="flex h-[600px]">
-          {/* Main content area */}
-          <div className="flex-1 relative overflow-hidden">
-            <div className="h-full flex flex-col">
-              {/* File list - only shown when there are files */}
-              {Object.keys(fileUploads).length > 0 && (
-                <div className="flex-1 flex flex-col">
-                  <h3 className="text-lg font-semibold mb-4 dark:text-gray-200">Uploading Files:</h3>
-                  <ScrollArea className="flex-1">
-                    <div className="p-4">
-                      <ul className="space-y-4">
-                        {Object.entries(fileUploads).map(([fileName, upload]) => (
-                          <FileItem key={fileName} fileName={fileName} upload={upload} />
-                        ))}
-                      </ul>
-                    </div>
-                  </ScrollArea>
-                  <div className="mt-4 flex justify-end space-x-4 relative z-10">
-                    <button
-                      onClick={onClose}
-                      className="px-4 py-2 text-gray-600 hover:text-gray-800"
-                      disabled={isConfirming}
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      onClick={handleConfirmUpload}
-                      className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 disabled:bg-gray-400 disabled:cursor-not-allowed"
-                      disabled={!areAllUploadsComplete || isConfirming || hasErrors}
-                    >
-                      {isConfirming ? 'Confirming...' : 'Confirm Uploads'}
-                    </button>
-                  </div>
+        <div className="flex flex-col h-[600px]">
+          {/* Title */}
+          <h3 className="text-lg font-semibold mb-4 dark:text-gray-200">File Uploading:</h3>
+          
+          {/* Scrollable file list area */}
+          <div className="flex-1 overflow-auto relative">
+            {Object.keys(fileUploads).length === 0 ? (
+              <div className="h-full">
+                {renderDropzoneContent()}
+              </div>
+            ) : (
+              <ScrollArea className="h-full ">
+                <div className="p-4 ">
+                  <ul className="space-y-4">
+                    {Object.entries(fileUploads).map(([fileName, upload]) => (
+                      <FileItem key={fileName} fileName={fileName} upload={upload} />
+                    ))}
+                  </ul>
                 </div>
-              )}
-              
-              {/* Dropzone - always present but visually hidden when files exist */}
-              {renderDropzoneContent()}
-
-              {/* ZIP Preview Overlay */}
-              {showZipPreview && (
-                <div className="absolute inset-0 bg-white dark:bg-darkbg rounded-lg shadow-lg transform transition-transform duration-300 ease-in-out z-50 flex flex-col"
-                     style={{ 
-                       transform: showZipPreview ? 'translateX(0)' : 'translateX(-100%)',
-                       left: '0',
-                       right: 'auto',
-                       width: '100%'
-                     }}>
-                  <div className="flex justify-between items-center p-4 border-b">
-                    <button
-                      onClick={() => setShowZipPreview(false)}
-                      className="text-gray-500 hover:text-gray-700 flex items-center space-x-1"
-                    >
-                      <ChevronRight className="h-4 w-4 rotate-180" />
-                      <span>Back</span>
-                    </button>
-                  </div>
-                  <div className="flex-1 p-4 min-h-0">
-                    <ZipPreview
-                      items={zipPreviewItems}
-                      onUpload={() => {
-                        setShowZipPreview(false);
-                        handleZipUploadConfirm();
-                      }}
-                      onCancel={() => setShowZipPreview(false)}
-                    />
-                  </div>
-                </div>
-              )}
-            </div>
+              </ScrollArea>
+            )}
           </div>
+
+          {/* Fixed bottom buttons */}
+          <div className="mt-4 flex justify-end space-x-4 border-t pt-4 relative z-20">
+            <button
+              onClick={onClose}
+              className="px-4 py-2 text-gray-600 hover:text-gray-800"
+              disabled={isConfirming}
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleConfirmUpload}
+              className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 disabled:bg-gray-400 disabled:cursor-not-allowed"
+              disabled={!areAllUploadsComplete || isConfirming || hasErrors}
+            >
+              {isConfirming ? 'Confirming...' : 'Confirm Uploads'}
+            </button>
+          </div>
+
+          {/* ZIP Preview Overlay */}
+          {showZipPreview && (
+            <div className="absolute inset-0 bg-white dark:bg-darkbg rounded-lg shadow-lg transform transition-transform duration-300 ease-in-out z-30 flex flex-col"
+                 style={{ 
+                   transform: showZipPreview ? 'translateX(0)' : 'translateX(-100%)',
+                   left: '0',
+                   right: 'auto',
+                   width: '100%'
+                 }}>
+              <div className="flex justify-between items-center p-4 border-b">
+                <button
+                  onClick={() => setShowZipPreview(false)}
+                  className="text-gray-500 hover:text-gray-700 flex items-center space-x-1"
+                >
+                  <ChevronRight className="h-4 w-4 rotate-180" />
+                  <span>Back</span>
+                </button>
+              </div>
+              <div className="flex-1 p-4 min-h-0">
+                <ZipPreview
+                  items={zipPreviewItems}
+                  onUpload={() => {
+                    setShowZipPreview(false);
+                    handleZipUploadConfirm();
+                  }}
+                  onCancel={() => setShowZipPreview(false)}
+                />
+              </div>
+            </div>
+          )}
         </div>
       </div>
-      
     </div>
   );
 };
